@@ -2590,6 +2590,7 @@ function switchCoachReglagesTab(tab) {
   document.querySelectorAll('#coach-reglages-drawer .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.crg === tab); });
   document.querySelectorAll('#coach-reglages-drawer .crg-panel').forEach(function (p) { p.style.display = (p.dataset.crg === tab) ? 'flex' : 'none'; });
   if (tab === 'data') { try { _remplirSelectBilanClient(); } catch (e) {} }
+  if (tab === 'pref') { try { majUiPushCoach(); } catch (e) {} }
 }
 
 function prefillCoachReglages() {
@@ -22141,7 +22142,7 @@ var _fcmAutoFait = false;   // ré-enregistrement silencieux du token : 1×/sess
 function _estAppNative() {
   try { return !!(window.NovalyzPlatform && window.NovalyzPlatform.isNativeApp()); } catch (_) { return false; }
 }
-function _fcmFlagKey() { return 'nv_fcm_on_' + ((athlete && athlete.athlete_id) || 'x'); }
+function _fcmFlagKey() { var c = (typeof coach !== 'undefined' && coach && coach.coach_id) ? 'coach_' + coach.coach_id : null; return 'nv_fcm_on_' + (c || (athlete && athlete.athlete_id) || 'x'); }
 function _fcmActif() { try { return localStorage.getItem(_fcmFlagKey()) === '1'; } catch (_) { return false; } }
 function _setFcmActif(v) { try { if (v) localStorage.setItem(_fcmFlagKey(), '1'); else localStorage.removeItem(_fcmFlagKey()); } catch (_) {} }
 // Identité pour la façade FCM : en session COACH, le token est enregistré sous
@@ -22285,14 +22286,33 @@ async function _promptNotifNatifCoach() {
   try {
     var perm = await P.checkPermissions();
     var etat = perm && perm.receive;
-    if (etat === 'granted') { try { await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {} return; }
+    if (etat === 'granted') { try { var r0 = await NovalyzNotifications.activer(_fcmOpts()); if (r0 && r0.ok) _setFcmActif(true); } catch (e) {} majUiPushCoach(); return; }
     if (etat === 'prompt' || etat === 'prompt-with-rationale') {
       var deja = false; try { deja = localStorage.getItem('nv_push_prompted_coach') === '1'; } catch (e) {}
       if (deja) return;
       try { localStorage.setItem('nv_push_prompted_coach', '1'); } catch (e) {}
-      try { await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {}
+      try { var r1 = await NovalyzNotifications.activer(_fcmOpts()); if (r1 && r1.ok) _setFcmActif(true); } catch (e) {}
+      majUiPushCoach();
     }
   } catch (e) {}
+}
+// Réglages coach ▸ Notifications (N1, 01/11) : activer à la main (demande refusée au 1er lancement, etc.).
+async function activerNotifsCoach() {
+  if (!_estAppNative()) { majUiPushCoach(); return; }
+  var r = null; try { r = await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {}
+  if (r && r.ok) { _setFcmActif(true); try { showToast('Notifications activées'); } catch (e) {} }
+  else { try { showToast(_fcmMsgErreur(r)); } catch (e) {} }
+  majUiPushCoach();
+}
+function majUiPushCoach() {
+  var st = document.getElementById('coach-push-statut'), b = document.getElementById('coach-push-btn'), h = document.getElementById('coach-push-hint');
+  if (!b) return;
+  if (!_estAppNative()) { b.style.display = 'none'; if (st) st.style.display = 'none'; if (h) h.textContent = 'Les notifications coach arrivent sur l\'app Android (installe-la et connecte-toi en coach).'; return; }
+  var on = _fcmActif();
+  if (st) { st.style.display = on ? 'block' : 'none'; st.style.color = 'var(--good)'; st.textContent = 'Notifications activées sur ce téléphone'; }
+  b.textContent = on ? 'Réenregistrer ce téléphone' : 'Activer les notifications';
+  b.style.background = on ? 'var(--surface2)' : 'var(--accent)'; b.style.color = on ? 'var(--text)' : 'var(--on-accent)'; b.style.border = on ? '1px solid var(--border)' : 'none';
+  if (h) h.textContent = 'Le même téléphone reçoit aussi tes notifications d\'athlète.';
 }
 
 // Rafraîchit messages + badge au RETOUR au premier plan, via l'événement 'resume'
@@ -22488,6 +22508,12 @@ function _ouvrirConversationNotif() {
 
 function _gererNotifTarget(target) {
   if (!target) return;
+  // Session coach (N6, 01/11) : alerte → Aujourd'hui du coach ; message d'un athlète → messagerie.
+  if (typeof coach !== 'undefined' && coach && coach.coach_id) {
+    if (target === 'coach-messages') { try { coachBandeauGo('messages'); } catch (e) {} }
+    else { try { coachBandeauGo('aujourdhui'); } catch (e) {} }
+    return;
+  }
   if (target === 'conversation') _ouvrirConversationNotif();
   else if (target === 'accueil' || target === 'alertes') { try { switchTab('accueil'); } catch (e) {} }
 }
