@@ -26,3 +26,8 @@ Légende : ✅ vérifié · ❌ défaut (vérifié contre code + données) · �
 
 ## 3. Non couvert / à vérifier sur téléphone
 - Import Health Connect réel (types de séances renvoyés par ta montre) — la correspondance `_hcMapType` est correcte pour WALKING / BIKING / RUNNING… ; le typage Fitbit historique (C9) ne l'est pas forcément.
+
+## 4. Réalisé (01/11, validé porteur)
+- **Données** : 6 doublons supprimés (copies du 23/09 ; originaux Fitbit conservés ; copie des valeurs dans `.work/audit/backup-doublons-cardio-2026-11-01.txt`). 7 sorties « Autre » avec des pas reclassées en Marche ; la 8ᵉ (21/06, 36 min, FC 154, sans pas ni distance) laissée en « Autre ». Les 4 micro-sorties de test (< 3 min) **n'ont pas été touchées** (non demandé).
+- **C1** points inventés supprimés (seuls les mois avec sorties sont tracés ; un seul point = sa vraie date). **C2** Efficience par sport (puces Marche / Vélo / Autre). **C3** « Tout importer » ignore une séance du même jour à ±2 min (« X déjà présente(s), ignorée(s) »). **C4** distance « — » ou « (n sorties sur N) » ; volume par sport en temps. **C5** vitesse pondérée (Marche 3,9 km/h). **C6** en-tête des graphiques avec la période du point (« oct. », « sem. du… »). **C7** virgule décimale (listes + axes de tous les graphiques), « 1 sortie ». C10 fait aussi (« RPE 6 (20 notées) »).
+- Vérifié : rendu réel sur les données corrigées ; courbe Marche 101,8 / 103,4 / 99,8 / 94 bpm = recalcul indépendant.

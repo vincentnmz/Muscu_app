@@ -13183,7 +13183,7 @@ function _maSingleRich(value, date, unit, color) {
     + '<circle cx="' + cx + '" cy="' + cy + '" r="6.5" fill="#00A854" stroke="#fff" stroke-width="2.5"/>'
     + '<text x="' + cx + '" y="' + (cy - 15) + '" text-anchor="middle" font-size="16" font-weight="800" fill="#00A854">' + v + (unit ? ' ' + unit : '') + '</text>'
     + '<text x="' + cx + '" y="' + (cy + 26) + '" text-anchor="middle" font-size="11.5" fill="var(--text-subtle)">' + _maE(_maShortDate(date)) + '</text>'
-    + '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="var(--text-muted)">1 séance sur la période · la courbe apparaît dès 2 séances</text>'
+    + '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="var(--text-muted)">1 seul point sur la période · la courbe apparaît dès 2 points</text>'
     + '</svg>';
 }
 // Graphe courbe RICHE (desktop) : axes + grille + étiquettes de données + dernier
@@ -13203,7 +13203,7 @@ function _maLineRich(series, dates, unit, color) {
   for (var g = 0; g <= 4; g++) {
     var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
     grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
-    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + String(Math.round(val * 10) / 10).replace('.', ',') + '</text>';
   }
   // Unité de l'axe Y (ex. « kg ») en tête, pour lever toute ambiguïté.
   if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
@@ -13213,7 +13213,7 @@ function _maLineRich(series, dates, unit, color) {
   series.forEach(function (v, i) {
     var xx = X(i), yv = Y(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + (last && unit ? ' ' + unit : '') + '</text>';
+    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + String(Math.round(v * 10) / 10).replace('.', ',') + (last && unit ? ' ' + unit : '') + '</text>';
   });
   // Une étiquette de date à CHAQUE point tant que ça reste lisible (≤ 9), sinon on
   // éclaircit. On affiche la vraie date partout (pas « Auj. ») — demande porteur.
@@ -13275,7 +13275,7 @@ function _maMultiLineRich(lines, dates, unit) {
   for (var g = 0; g <= 4; g++) {
     var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
     grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
-    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + String(Math.round(val * 10) / 10).replace('.', ',') + '</text>';
   }
   if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
   var paths = '';
@@ -13447,6 +13447,9 @@ function _maChartBlock(label, pts, unit, color, fill, axisFirst, note, datesOver
 // compacte (_maArea + axe « il y a N sem. → cette sem. ») en mobile. Utilisée par
 // les graphes cardio (Par sport, Efficience) qui ont leur propre en-tête.
 function _maWeeklySvg(pts, unit, color, fill, nWeeks, datesOverride) {
+  // Un seul point daté (ex. Efficience d'un sport avec 1 mois de données) : vraie date du point,
+  // pas l'axe « sem. du … / cette sem. » calculé depuis aujourd'hui (audit cardio 01/11).
+  if (pts && pts.length === 1 && datesOverride && datesOverride.length === 1) return _maSingleRich(pts[0], datesOverride[0], unit, color);
   if (pts && pts.length >= 2) {
     var n = pts.length, dts;
     if (datesOverride && datesOverride.length === n) { dts = datesOverride; }
@@ -14260,7 +14263,7 @@ function _maChargeRepsRich(pts) {
   for (var g = 0; g <= 4; g++) {
     var yy = cTop + g * (cBot - cTop) / 4, val = cMax - g * cRng / 4;
     grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
-    yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+    yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12" fill="var(--text-subtle)">' + String(Math.round(val * 10) / 10).replace('.', ',') + '</text>';
   }
   yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 18) + '" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent)">kg</text>';
   var pline = charges.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ');
@@ -14790,8 +14793,10 @@ function _maCardioAgg(hist, days, cutOverride, cutEndOverride) {
   (hist || []).forEach(function (s) {
     if ((s.date || '') < cut || (s.date || '') >= end) return;
     var t = s.type_cardio || 'autre';
-    if (!by[t]) by[t] = { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, cal: 0 };
+    if (!by[t]) by[t] = { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, cal: 0, nd: 0, dd: 0 };
     var o = by[t]; o.n++; o.dist += (+s.distance || 0); o.duree += (+s.duree || 0); o.cal += (+s.calories || 0);
+    // Audit cardio 01/11 : sorties AVEC distance (nd) et leur durée (dd) → vitesse = km ÷ heures (pondérée).
+    if (+s.distance > 0 && +s.duree > 0) { o.nd++; o.dd += +s.duree; }
     if (+s.vitesse_moy) { o.vit += +s.vitesse_moy; o.vn++; } if (+s.rpe) { o.rpe += +s.rpe; o.rn++; } if (+s.fc_moy) { o.fc += +s.fc_moy; o.fn++; } if (+s.puissance_moy) { o.w += +s.puissance_moy; o.wn++; }
   });
   return by;
@@ -14818,6 +14823,22 @@ function _maDerniereSortie(hist) {
   var lb = ''; try { var a = (_CARDIO_CATALOG || []).find(function (x) { return x.key === last.type_cardio; }); lb = a ? a.label : String(last.type_cardio || ''); } catch (e) {}
   return 'Dernière sortie le ' + p[2] + '/' + p[1] + (lb ? ' (' + _maE(lb) + ')' : '') + ' — élargis la période ci-dessus pour la voir.';
 }
+// Audit cardio 01/11 (C4, C5, C7) : format FR, vitesse pondérée, distance avec sa couverture.
+function _fr1(v) { return String(Math.round(v * 10) / 10).replace('.', ','); }
+function _cxVit(o) { return (o && o.dd > 0) ? Math.round(o.dist / (o.dd / 60) * 10) / 10 : null; }
+// Distance : « 283,1 km » ; « 0,9 km (1 sortie sur 18) » si la distance manque sur la moitié des sorties ou plus ; « — » si aucune.
+function _cxDist(o) {
+  if (!o || !o.nd) return '—';
+  return _fr1(o.dist) + ' km' + (o.nd * 2 <= o.n ? ' <span style="color:var(--text-subtle);font-weight:600">(' + o.nd + ' sortie' + (o.nd > 1 ? 's' : '') + ' sur ' + o.n + ')</span>' : '');
+}
+function _cxPl(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+// Libellé d'un point de graphique (« nov. », « sem. du 27/10 », « 31/10 ») selon la granularité.
+function _maBucketLbl(iso) {
+  var d = new Date(String(iso || '') + 'T00:00:00'); if (isNaN(d.getTime())) return '';
+  if (_maGran === 'A') return _MA_MON[d.getMonth()];
+  var dm = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+  return _maGran === 'M' ? 'sem. du ' + dm : dm;
+}
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var _w = _maWin();
@@ -14827,7 +14848,7 @@ function _maCardioResume(data) {
   var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : (hist.length ? 'Aucune sortie sur cette période' : 'Pas encore de cardio')) + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' ' + _w.plabel + (function () { var km = types.reduce(function (a, t) { return a + (by[t].dist || 0); }, 0); return km > 0 ? ' · ' + String(Math.round(km * 10) / 10).replace('.', ',') + ' km' : ''; })() + '.') : (hist.length ? _maDerniereSortie(hist) : 'Enregistre une séance cardio pour voir tes analyses ici.')) + '</div></div></div>';
   var listHtml = types.length ? ('<div class="ma-card">' + types.map(function (t) {
     var m = _maCM(t), o = by[t];
-    return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
+    return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + _fr1(o.rpe / o.rn) + (o.rn < o.n ? ' <span style="color:var(--text-subtle)">(' + o.rn + ' notée' + (o.rn > 1 ? 's' : '') + ')</span>' : '') : '') + '</div></div><div class="ma-spval"><div class="v">' + _cxDist(o) + '</div><div class="u">' + (_cxVit(o) != null ? _fr1(_cxVit(o)) + ' km/h' : '') + '</div></div></div>';
   }).join('') + '</div>') : _maEmpty('Aucune sortie sur la période.');
   // Pas quotidiens sur la période choisie (max 30 barres) + axe daté.
   // Pas : la MONTRE (sante_historique, Health Connect) prime sur l'ancienne source
@@ -14867,12 +14888,12 @@ function _maCardioParSport(data) {
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
   var _w = _maWin();
-  var o = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO)[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
+  var o = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO)[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, nd: 0, dd: 0 };
   // Sélecteur de sport (liste déroulante)
   var sportMenu = '<div id="ma-cx-sport-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + types.map(function (t, i) { var mm = _maCM(t); return '<div onclick="maSetCardioSport(\'' + t + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (t === sel ? 'background:var(--surface2);' : '') + '"><span style="color:' + mm[1] + '">' + _maSvg(mm[2], 16) + '</span><span style="font-weight:700;font-size:13px">' + _maE(mm[0]) + '</span><span style="margin-left:auto;font-size:11px;color:var(--text-subtle)">' + allBy[t].n + ' sorties</span></div>'; }).join('') + '</div>';
   var sel2 = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-cx-sport-menu\')" style="cursor:pointer"><span class="ma-actic">' + _maSvg(m[2], 20) + '</span><div style="flex:1"><div class="a">' + _maE(m[0]) + '</div><div class="b">Changer de sport (' + types.length + ')</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + sportMenu + '</div>';
-  var tiles = [[Math.round(o.dist * 10) / 10, 'km'], [_maHMS(o.duree), 'temps'], [o.vn ? Math.round(o.vit / o.vn * 10) / 10 : '—', 'km/h moy'], [o.wn ? Math.round(o.w / o.wn) : '—', 'watts moy'], [o.fn ? Math.round(o.fc / o.fn) : '—', 'bpm moy'], [o.rn ? Math.round(o.rpe / o.rn * 10) / 10 : '—', 'rpe moy']];
+  var tiles = [[o.nd ? Math.round(o.dist * 10) / 10 : '—', o.nd && o.nd * 2 <= o.n ? 'km (' + o.nd + '/' + o.n + ' sorties)' : 'km'], [_maHMS(o.duree), 'temps'], [_cxVit(o) != null ? _cxVit(o) : '—', 'km/h moy'], [o.wn ? Math.round(o.w / o.wn) : '—', 'watts moy'], [o.fn ? Math.round(o.fc / o.fn) : '—', 'bpm moy'], [o.rn ? Math.round(o.rpe / o.rn * 10) / 10 : '—', 'rpe moy']];
   var k3 = '<div class="ma-k3">' + tiles.map(function (t) { return '<div class="c"><span class="v">' + String(t[0]).replace('.', ',') + '</span><span class="u">' + t[1] + '</span></div>'; }).join('') + '</div>';
   // Graphique : métrique au choix (liste déroulante), hebdo 8 sem.
   var METRICS = [['distance', 'Distance', 'km'], ['vitesse_moy', 'Vitesse', 'km/h'], ['fc_moy', 'FC moy', 'bpm'], ['calories', 'Calories', 'kcal'], ['duree', 'Durée', 'min']];
@@ -14889,7 +14910,7 @@ function _maCardioParSport(data) {
   // retrouve bloqué sur une métrique vide, sans moyen d'en changer.
   var hasData = wk.some(function (v) { return v > 0; });
   var chartHead = '<div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span>'
-    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/' + _bNoun + '</span></span>' : '') + '</div>';
+    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + ' · ' + _maBucketLbl(tdPS.dates[tdPS.dates.length - 1]) + '</span></span>' : '') + '</div>';
   var chartBody = hasData
     ? (_maWeeklySvg(wk, curM[2], m[1], 'rgba(157,95,211,.12)', wk.length, tdPS.dates) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée · chaque point = 1 ' + _bNoun + ' (suit la période choisie).'))
     : (!sesss.some(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; })
@@ -14899,7 +14920,7 @@ function _maCardioParSport(data) {
   var lastArr = sesss.filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
-    var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
+    var parts = []; if (+s.distance) parts.push(_fr1(s.distance) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push(_fr1(s.vitesse_moy) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
   var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _w.plabel, o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
@@ -14912,7 +14933,8 @@ function _maCardioTendances(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var _w = _maWin();
   var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
-  var types = Object.keys(by).sort(function (a, b) { return by[b].dist - by[a].dist; });
+  // Audit cardio 01/11 (C4) : volume par sport en TEMPS (le vélo d'intérieur n'a pas de km) ; km en complément.
+  var types = Object.keys(by).sort(function (a, b) { return by[b].duree - by[a].duree; });
   // Vide sur la période choisie : on GARDE le sélecteur de période (sinon on reste
   // bloqué sur « Semaine » sans pouvoir élargir) + le rail (Novalyz).
   if (!types.length) {
@@ -14920,23 +14942,34 @@ function _maCardioTendances(data) {
     _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctEmpty + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
     return;
   }
-  var mx = Math.max.apply(null, types.map(function (t) { return by[t].dist || 0; }).concat([1]));
-  var vol = '<div class="ma-card ma-vol">' + types.map(function (t) { var m = _maCM(t); return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(m[0]) + '</span><span class="p">' + (Math.round(by[t].dist * 10) / 10) + ' km · ' + by[t].n + ' sorties</span></div><div class="ma-vt"><span style="width:' + Math.round(by[t].dist / mx * 100) + '%;background:' + m[1] + '"></span></div></div>'; }).join('') + '</div>';
+  var mx = Math.max.apply(null, types.map(function (t) { return by[t].duree || 0; }).concat([1]));
+  var vol = '<div class="ma-card ma-vol">' + types.map(function (t) { var m = _maCM(t), o = by[t]; return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(m[0]) + '</span><span class="p">' + _maHMS(o.duree) + ' · ' + _cxPl(o.n, 'sortie') + (o.nd ? ' · ' + _cxDist(o) : '') + '</span></div><div class="ma-vt"><span style="width:' + Math.round(o.duree / mx * 100) + '%;background:' + m[1] + '"></span></div></div>'; }).join('') + '</div>';
   // FC moyenne à effort (RPE) égal — proxy d'efficience : plus la FC baisse à RPE constant, mieux c'est.
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
-  var tdFc = _maSportTrend(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy');
+  // Audit cardio 01/11 (C2) : FC comparée DANS un même sport (marche ≠ vélo). Sport = celui choisi
+  // (puces), sinon celui de « Par sport », sinon le plus fréquent avec une FC sur la période.
+  var _fcTypes = types.filter(function (t) { return by[t].fn > 0; }).sort(function (a, b) { return by[b].fn - by[a].fn; });
+  var _effSel = (_maCardioSport && _fcTypes.indexOf(_maCardioSport) >= 0) ? _maCardioSport : (_fcTypes[0] || null);
+  var _histEff = hist.filter(function (s) { return (s.type_cardio || 'autre') === _effSel; });
+  var tdFc = _maSportTrend(_histEff.filter(function (s) { return +s.fc_moy; }), 'fc_moy');
   var fcW = tdFc.pts;
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
   // Verdict « mieux / moins bien » seulement avec ≥ 2 points ET un effort comparable (RPE
   // moyen à ±1) — avant : « ▼ mieux » affiché avec UN seul point (audit Tendances 30/10).
   var _fcPts = fcW.filter(function (v) { return v > 0; }).length;
-  var _rpeT = _maSportTrend(hist.filter(function (s) { return +s.fc_moy && +s.rpe; }), 'rpe').pts.filter(function (v) { return v > 0; });
+  var _rpeT = _maSportTrend(_histEff.filter(function (s) { return +s.fc_moy && +s.rpe; }), 'rpe').pts.filter(function (v) { return v > 0; });
   var _effComp = _rpeT.length >= 2 && Math.abs(_rpeT[_rpeT.length - 1] - _rpeT[0]) <= 1;
   var _fcVerdict = (_fcPts >= 2 && _effComp) ? (fcLast <= fcFirst ? 'mieux' : 'moins bien') : '';
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / ' + _bNoun + ' · ' + _w.plabel, 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (_fcVerdict === 'mieux' ? '#00A854' : (_fcVerdict ? '#DC3545' : 'var(--text-subtle)')) + '">bpm ' + (_fcVerdict === 'mieux' ? '▼ mieux' : (_fcVerdict ? '▲' : (_fcPts < 2 ? '· 1 point, pas de tendance' : '· effort non comparable'))) + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', fcW.length, tdFc.dates) + _maCap('Chaque point = 1 ' + _bNoun + '. À lire à effort comparable (RPE proche).') + '</div>') : '';
-  var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie.') + _maSec('Volume par sport', _w.plabel + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
+  // Audit cardio 01/11 (C1) : seuls les points AVEC des sorties sont tracés (avant : les mois vides
+  // recevaient la FC du 1er mois → points inventés, y compris pour des mois pas encore passés).
+  var _fcPtsOnly = [], _fcDatesOnly = [];
+  fcW.forEach(function (v, i) { if (v > 0) { _fcPtsOnly.push(v); _fcDatesOnly.push(tdFc.dates[i]); } });
+  var _effChips = _fcTypes.length > 1 ? ('<div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px">' + _fcTypes.map(function (t) { var on = t === _effSel; return '<span onclick="maSetEffSport(\'' + t + '\')" style="cursor:pointer;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid ' + (on ? '#9D5FD3' : 'var(--border)') + ';background:' + (on ? 'rgba(157,95,211,.12)' : 'var(--surface)') + ';color:' + (on ? '#9D5FD3' : 'var(--text-muted)') + '">' + _maE(_maCM(t)[0]) + '</span>'; }).join('') + '</div>') : '';
+  var eff = (_effSel && _fcPtsOnly.length) ? (_maSec('Efficience', 'FC moyenne ' + _maE(_maCM(_effSel)[0].toLowerCase()) + ' / ' + _bNoun + ' · ' + _w.plabel, 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (_fcVerdict === 'mieux' ? '#00A854' : (_fcVerdict ? '#DC3545' : 'var(--text-subtle)')) + '">bpm (' + _maBucketLbl(_fcDatesOnly[_fcDatesOnly.length - 1]) + ') ' + (_fcVerdict === 'mieux' ? '▼ mieux' : (_fcVerdict ? '▲' : (_fcPts < 2 ? '· 1 point, pas de tendance' : '· effort non comparable'))) + '</span></span></div>' + _effChips + _maWeeklySvg(_fcPtsOnly, 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', _fcPtsOnly.length, _fcDatesOnly) + _maCap('Chaque point = 1 ' + _bNoun + '. À lire à effort comparable (RPE proche).') + '</div>') : '';
+  var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie.') + _maSec('Volume par sport', _w.plabel + ' · temps') + vol + _maCap('Répartition de ton temps de cardio par sport sur la période (km quand la sortie en a).') + eff;
   _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
+function maSetEffSport(t) { _maCardioSport = t; try { _maCardioTendances(dernierAppData); } catch (e) {} }
 function _maCardioHistorique(data) {
   // Plus de filtre par période : N dernières sorties + « Charger plus ».
   var all = ((data.cardio && data.cardio.history) || []).slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
@@ -23917,6 +23950,9 @@ async function _hcImport(i, silent) {
   if (!silent && _cardioDoublonProbable(dateStr, durMin).length) {
     if (!confirm('Une séance de durée proche existe déjà le ' + dateStr + '.\nImporter quand même ? (doublon possible)')) return false;
   }
+  // Audit cardio 01/11 (C3) : l'import groupé ne vérifiait pas l'historique → 6 doublons (copies de
+  // séances Fitbit déjà présentes). Même jour à ±2 min → on n'importe pas, on la marque comme vue.
+  if (silent && _cardioDoublonProbable(dateStr, durMin).length) { _hcMarkImported(_hcKey(w)); return 'doublon'; }
   var btn = document.getElementById('hc-imp-' + i); if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
   var body = {
     action: 'saveCardio', athlete_id: athlete.athlete_id, date: dateStr,
@@ -23947,11 +23983,12 @@ async function _hcImportAll() {
   for (var i = 0; i < _hcWorkouts.length; i++) { if (imported.indexOf(_hcKey(_hcWorkouts[i])) < 0) todo.push(i); }
   if (!todo.length) return;
   _hcStatus('⏳ Import de ' + todo.length + ' séance(s)…', 'var(--text-muted)');
-  var ok = 0;
-  for (var j = 0; j < todo.length; j++) { if (await _hcImport(todo[j], true)) ok++; }
+  var ok = 0, dbl = 0;
+  for (var j = 0; j < todo.length; j++) { var _r = await _hcImport(todo[j], true); if (_r === 'doublon') dbl++; else if (_r) ok++; }
   try { chargerAppData(); } catch (e) {}
-  showToast(ok + ' séance(s) importée(s)', 'var(--good)');
-  _hcStatus('' + ok + ' séance(s) importée(s).', 'var(--good)');
+  var _msg = ok + ' séance(s) importée(s)' + (dbl ? ' · ' + dbl + ' déjà présente(s), ignorée(s)' : '');
+  showToast(_msg, 'var(--good)');
+  _hcStatus(_msg + '.', 'var(--good)');
   _hcRenderList(_hcWorkouts, _hcSteps);
 }
 
