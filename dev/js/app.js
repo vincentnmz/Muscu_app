@@ -16613,11 +16613,11 @@ function _beNormaleTxt(r, poss) {
 function _montreNormale(data, nowT) {
   nowT = nowT || Date.now();
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
-  var sh = ((data && data.sante_historique) || []).map(function (x) { return { t: _dYmd(x && x.date), s: Number(x && x.sommeil_min) }; }).filter(function (x) { return x.t != null && x.s > 0 && x.t <= t0; });
+  var sh = ((data && data.sante_historique) || []).map(function (x) { return { t: _dYmd(x && x.date), s: Number(x && x.sommeil_min) }; }).filter(function (x) { return x.t != null && x.s >= 180 && x.t <= t0; });   // nuit < 3 h = enregistrement incomplet (montre retirée) → ignorée (01/11)
   var r7 = sh.filter(function (x) { return t0 - x.t <= 6 * 864e5; }), rB = sh.filter(function (x) { return t0 - x.t > 6 * 864e5 && t0 - x.t <= 34 * 864e5; });
   var moy = function (a) { return a.reduce(function (s, x) { return s + x.s; }, 0) / a.length; };
   var out = {};
-  if (r7.length) out.sommeil = { moy: moy(r7), n: r7.length, base: rB.length >= 7 ? moy(rB) : null, nBase: rB.length };
+  if (r7.length) out.sommeil = { moy: moy(r7), n: r7.length, base: rB.length >= 14 ? moy(rB) : null, nBase: rB.length };   // normale dès 14 nuits complètes (comme le mail récap)
   var fc = data && data.moteur && data.moteur.charge_ressenti && data.moteur.charge_ressenti.fc_repos;
   if (fc && fc.recente != null) out.fc = fc;
   return (out.sommeil || out.fc) ? out : null;
@@ -16639,7 +16639,7 @@ function _normaleBloc(data, poss) {
   if (mo) {
     var mh = '';
     if (mo.sommeil) {
-      var so = mo.sommeil, sub = so.base != null ? poss + ' normale ' + _fmtHmin(so.base) + ' (' + so.nBase + ' nuits)' : '';
+      var so = mo.sommeil, sub = so.base != null ? poss + ' normale ' + _fmtHmin(so.base) + ' (' + so.nBase + ' nuits)' : (poss + ' normale dès 14 nuits complètes (' + so.nBase + ')');
       mh += line('#00A854', '<b>Sommeil réel</b> ' + _fmtHmin(so.moy) + ' / nuit <span style="color:var(--tj-subtle,var(--text-subtle))">(7 j, ' + so.n + ' nuit' + (so.n > 1 ? 's' : '') + ')</span>', sub);
     }
     if (mo.fc) {
