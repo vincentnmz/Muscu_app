@@ -27,3 +27,12 @@ Légende : ✅ vérifié · ❌ défaut (vérifié contre code + données) · �
 | **T8** | Mes pas | Période « **26 – 1 nov.** » (mois manquant à cheval sur 2 mois) ; icône vide (carré sans pictogramme). | « 26 oct. – 1 nov. » ; pictogramme « pas ». |
 
 Les 2 points 🟠 (seuil de reprise de T2, seuil de sommeil de T3) sont des choix Novalyz à valider.
+
+## Réalisé (01/11, validé porteur : T1 a, T2, T3 « vert si 1 h de plus », T4-T8)
+
+- **T1** : sans questionnaire sur les 7 derniers jours (fenêtre du moteur), « **État non renseigné** — pas de questionnaire depuis le 30/10 : fais celui du jour » au lieu de « Prêt à performer » (Aujourd'hui, rail bureau, Analyses ▸ Résumé). Vigilance / À surveiller inchangés (signaux réels). Questionnaire d'un autre jour daté (« Questionnaire du 30/10 », « Ton dernier point (30/10) ») ; au-delà de 7 jours, plus affiché.
+- **T2** : reco du moteur en cas d'absence ≥ 7 j = « Pas de séance depuis 7 jours ou plus : reprends une séance cette semaine… » (fini « RAS — maintenir la charge ») ; plus de « X exercices à pousser ». **≥ 21 jours sans séance** → mode « reprise » dans la règle de progression (saisie + Aujourd'hui) : mêmes charges et reps que la dernière fois. Source : McMaster et al. 2013, *Sports Med* 43:367 (force conservée ~3 semaines, puis déclin) — vérifiée sur le résumé.
+- **T3** : sommeil montre jugé dès 3 nuits sur 7 j — orange ≥ 1 h sous la normale ; vert dans la normale ou ≥ 1 h au-dessus (« au-dessus de ta normale ») ; sinon gris.
+- **T4** « Dernière nuit (29/10) » (nuit complète ≥ 3 h). **T5** pied « (montre : 4 semaines) ». **T6** trophée/badge et « Ton dernier record » sur les vrais records. **T7** bloc mort neutralisé (0 erreur console). **T8** « 26 oct. – 1 nov. », pictogramme des pas.
+- Demandes du 01/11 : bloc « **Récompenses et objectif** » ; login mobile (couleurs qui clignotent) : halos sans flou ni fusion sur mobile (dégradés radiaux), grille du nid d'abeille plus reconstruite quand la barre d'adresse / le clavier changent la hauteur, couleurs mises à jour une fois par image. Non reproductible en navigateur sans écran → **à confirmer sur téléphone**.
+- Vérifié : rejeu du vrai backend au 01/11, 09/11 et 25/11 + captures ; tests `surcharge-serie` (+4 cas reprise).

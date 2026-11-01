@@ -969,6 +969,17 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 #view-login .nv-login-body > .nv-hero-logo .nvl-ic { width:64px; height:70px; margin:0 auto 8px; }
 #view-login .nv-login-body > .nv-hero-logo .nv-brand-logo { width:200px; max-width:80%; }
 @media (prefers-reduced-motion:reduce) { #nv-aurora i { animation:none; } }
+/* Mobile (01/11, retour « les couleurs clignotent ») : un flou de 70 px + mode de fusion sur des halos
+   de 70 vmax animés en continu fait clignoter le rendu GPU des téléphones Android. Même aspect avec
+   des dégradés radiaux (aucun filtre, aucune fusion), calques promus pour le GPU. */
+@media (pointer:coarse), (max-width:700px) {
+  #nv-aurora i { filter:none; mix-blend-mode:normal; will-change:transform; backface-visibility:hidden; transform:translateZ(0); }
+  #nv-aurora .a1 { background:radial-gradient(circle, rgba(26,95,255,.95) 0%, rgba(26,95,255,0) 68%); }
+  #nv-aurora .a2 { background:radial-gradient(circle, rgba(34,211,238,.70) 0%, rgba(34,211,238,0) 68%); }
+  #nv-aurora .a3 { background:radial-gradient(circle, rgba(124,58,237,.75) 0%, rgba(124,58,237,0) 68%); }
+  #nv-aurora .a4 { background:radial-gradient(circle, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 68%); }
+  #nv-aurora .a5 { filter:none; background:radial-gradient(circle, rgba(90,176,255,.9) 0%, rgba(90,176,255,0) 70%); }
+}
 /* Dans l'app : le dégradé reste, avec un nid d'abeille discret à la place des grands hexagones. */
 #nv-bg .nv-hex, #app-side > .nv-hex { display:none; }
 #nv-bg, body.has-bottom-nav #app-side { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"), var(--nv-grad); background-size:56px 97px, 100% 100%; }

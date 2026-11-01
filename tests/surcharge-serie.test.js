@@ -110,6 +110,16 @@ check('catégorie moyen → 6-12 (décision 31/10)', S._exoFourchette('Curl', 8,
 check('programme ≠ 8-12 → le programme prime', S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).rmin === 5 && S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).src === 'prog');
 check('non classé → programme', S._exoFourchette('Leg curl', 8, 12, CM).rmin === 8 && S._exoFourchette('Leg curl', 8, 12, CM).cat === '');
 
+// --- Reprise après ≥ 3 semaines sans séance (audit Aujourd'hui T2, 01/11) ---
+d = D({ niveau: 'intermediaire', last: top, prev: top, joursSansSeance: 21 });
+check('reprise : 21 j sans séance → mode reprise, mêmes charge et reps', d.mode === 'reprise' && d.cible(1).charge === 35 && d.cible(1).reps === 12 && !d.cible(1).up);
+d = D({ niveau: 'intermediaire', last: ser([[35, 9], [35, 9], [35, 9]], 8, 120), prev: null, joursSansSeance: 20 });
+check('20 j sans séance → progression normale (+1 rep)', d.mode === 'reps' && d.cible(1).reps === 10);
+d = D({ niveau: 'debutant', last: ser([[60, 5], [60, 5], [60, 5]], 9, 120), prev: null, joursSansSeance: 30 });
+check('reprise prioritaire sur « sous la fourchette »', d.mode === 'reprise' && d.cible(1).charge === 60);
+d = D({ niveau: 'intermediaire', last: top, prev: top, joursSansSeance: null });
+check('date de dernière séance inconnue → pas de reprise inventée', d.mode !== 'reprise');
+
 // --- Utilitaires ---
 check('petit pas : « 2.5 / 5 kg » → 2,5', S._petitPas('Leg curl') === 2.5);
 check('petit pas : « 2 kg » → 2', S._petitPas('Curl haltère') === 2);

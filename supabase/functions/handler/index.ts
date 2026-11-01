@@ -3181,6 +3181,8 @@ function evaluerEtatAthlete(s: EtatInput): any {
   else if (chargeHaute && regleRessenti && s.ressentiEvaluable !== true && s.ressentiDegrade !== true) reco = 'Ta charge monte — renseigne ton état du jour pour qu\'on vérifie que tu récupères bien.'
   else if (chargeHaute) reco = 'Charge en forte hausse récemment — évite d\'empiler encore du volume ; si tu te sens frais, entraîne-toi normalement.'
   else if (niveau === 1) reco = 'Vigilance — surveiller les sensations, ne pas surcharger.'
+  // Audit Aujourd'hui T2 (01/11) : absence ≥ 7 j → plus de « maintenir la charge » (contradictoire).
+  else if (alertes.some(a => a.type === 'absence')) reco = 'Pas de séance depuis 7 jours ou plus : reprends une séance cette semaine pour relancer ta régularité.'
   else reco = 'RAS — maintenir la charge actuelle.'
 
   const donnees: string[] = []
