@@ -31,7 +31,7 @@ Légende : ✅ vérifié · ❌ défaut (vérifié contre code + données) · �
 - **Navigateur (web)** : pas de demande automatique (bouton dans les Réglages athlète) ; coach : notifications sur l'app Android uniquement.
 
 ## Réalisé (01/11, validé porteur : N1 a — même téléphone, N3, N4, reste OK)
-- **N1** Un téléphone reçoit les notifs **athlète ET coach** : jeton enregistré par (jeton, rôle) — `supabase/native_push_tokens_v2.sql` à appliquer **après** le redéploiement (le code gère l'ancienne et la nouvelle clé) ; la façade renvoie le jeton quand le rôle change ; désactiver un rôle ne coupe pas l'autre ; « envoyée » comptée seulement si un appareil l'a reçue ; carte Notifications dans les Réglages coach.
+- **N1** Un téléphone reçoit les notifs **athlète ET coach** : jeton enregistré par (jeton, rôle) — `supabase/native_push_tokens_v2.sql` **appliquée le 01/11** après le redéploiement (clé (token, athlete_id) vérifiée en base) ; la façade renvoie le jeton quand le rôle change ; désactiver un rôle ne coupe pas l'autre ; « envoyée » comptée seulement si un appareil l'a reçue ; carte Notifications dans les Réglages coach.
 - **N2** Message athlète → notification au coach (« 💬 Prénom : aperçu », coach lu en base) ; toucher → messagerie coach.
 - **N3** Absence : rappels à **J7, J10, J14, J21, J28** puis arrêt (jalons fixes : un jour de cron manqué est rattrapé le lendemain sans décaler la suite).
 - **N4** Absence = ni muscu ni cardio **hors marche** depuis 7 jours (vérifié sur le vrai backend : vélo le 05/11 → pas d'absence au 09/11 ; marche → absence).
