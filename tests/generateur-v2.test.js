@@ -16,7 +16,7 @@ const block = SRC.slice(start, end);
 
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(block + '\nthis._genProgramme2=_genProgramme2; this._genProgrammeForce=_genProgrammeForce; this._g2Reps=_g2Reps; this._g2GenDays=_g2GenDays;', sandbox);
+vm.runInContext(block + '\nthis._G2_BLOCKS=_G2_BLOCKS; this._g2VolLignes=_g2VolLignes; this._g2Mus=_g2Mus; this._genProgramme2=_genProgramme2; this._genProgrammeForce=_genProgrammeForce; this._g2Reps=_g2Reps; this._g2GenDays=_g2GenDays;', sandbox);
 const gen = sandbox._genProgramme2, force = sandbox._genProgrammeForce, reps = sandbox._g2Reps;
 
 let ok = 0, ko = 0, fails = [];
@@ -71,6 +71,25 @@ let H = seances(force(6));
 check('H: 6 séances distinctes', Object.keys(H).length === 6);
 let hRappel = force(6).filter(function (l) { return /^Rappel/.test(l.seance_id); });
 check('H: 2 rappels = lifts légers (%1RM 70/75)', hRappel.length === 2 && hRappel.every(function (l) { return l.charge_pct_1rm === 70 || l.charge_pct_1rm === 75; }));
+
+// I — Audit Programme 01/11 : P1 noms uniques (Haut/Bas 6 j), P2 abdos 10-15, P3 répartition par déficit.
+let I6 = seances(gen('masse', 'ul', 6, 60, 'intermediaire'));
+check('P1: Haut/Bas 6 j = 6 séances distinctes (A, B, C)', Object.keys(I6).length === 6 && I6['Haut C'] && I6['Bas C']);
+check('P2: abdos en 10-15 reps (plus de 0-0)', gen('masse', 'ul', 4, 90, 'intermediaire').filter(function (l) { return /crunch|relev|roulette/i.test(l.exercice); }).every(function (l) { return l.reps_mini === 10 && l.reps_max === 15; }));
+// Catalogue de test : chaque exercice des blocs avec le muscle de son bloc.
+const MUSB = { pecs: 'Pectoraux', dos: 'Dos', epaules: 'Epaule', biceps: 'Biceps', triceps: 'Triceps', quad: 'Quadriceps', ischios: 'Ischio', fessiers: 'Fessier', mollets: 'Mollets', abdos: 'Abdominaux' };
+const CAT = []; Object.keys(sandbox._G2_BLOCKS).forEach(function (bk) { sandbox._G2_BLOCKS[bk].slots.forEach(function (sl) { sl.exos.forEach(function (e) { if (!CAT.some(function (c) { return c.exercice === e; })) CAT.push({ exercice: e, muscle: MUSB[bk], muscle_secondaire: null }); }); }); });
+const TG = { _defaut: { min: 10, opt: 16 } };
+const vol = { targets: TG, cat: CAT };
+const sousMin = function (L) { const V = sandbox._g2VolLignes(L, CAT); return Object.values(MUSB).reduce(function (a, m) { return a + Math.max(0, 10 - (V[m] || 0)); }, 0); };   // manque total (séries)
+const auDela = function (L) { const V = sandbox._g2VolLignes(L, CAT); return Object.values(MUSB).filter(function (m) { return (V[m] || 0) > 24; }).length; };
+let p0 = gen('masse', 'ul', 4, 60, 'intermediaire'), p1 = gen('masse', 'ul', 4, 60, 'intermediaire', vol);
+check('P3: Haut/Bas 4 j 60 min — manque total de séries sous le minimum réduit (' + sousMin(p0) + ' → ' + sousMin(p1) + ')', sousMin(p1) < sousMin(p0));
+let q0 = gen('masse', 'ul', 4, 90, 'avance'), q1 = gen('masse', 'ul', 4, 90, 'avance', vol);
+check('P3: aucun muscle au-delà de 1,5 × optimum (avant : ' + auDela(q0) + ')', auDela(q1) === 0);
+const budget = function (L) { const s = seances(L); return Object.keys(s).every(function (k) { return s[k].reduce(function (a, l) { return a + l.series_prevues; }, 0) <= 6 * 3; }); };
+check('P3: la durée choisie est respectée (≤ 6 exos × 3 séries par séance à 60 min)', budget(p1));
+check('P3: 4 séries max par exercice (interméd.)', p1.every(function (l) { return l.series_prevues >= 3 && l.series_prevues <= 4; }));
 
 console.log((ko === 0 ? '✓' : '✗') + ' generateur-v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs:\n  ' + fails.join('\n  ')); process.exit(1); }

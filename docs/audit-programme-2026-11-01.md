@@ -23,3 +23,14 @@ Légende : ✅ vérifié · ❌ défaut (vérifié contre code + données) · �
 | **P5** ❌ | Éditeur ▸ fourchette | L'éditeur affiche la fourchette brute (« 8–12 ») alors que l'app utilise celle de la **catégorie** quand le programme est resté à 8-12 : Écarté machine affiché 8–12, mais la saisie et Aujourd'hui visent jusqu'à **20** (petit muscle). | Afficher la fourchette réellement utilisée : « 8–20 · petit muscle ». |
 | **P6** ❌ | Éditeur ▸ saisie | Aucun contrôle : reps min > reps max (12–8), champ vidé enregistré à **0**, 0 série acceptés (front et backend). | Refuser le vide, bornes (séries 1-10, reps 1-50), inverser min/max si besoin. |
 | **P7** | Code | Ancien générateur (`_genProgramme`, `_progModele`, `_GEN_*`) jamais appelé. | Supprimer. |
+
+## Réalisé (01/11, validé porteur : P3 option a, P4 avec mise à jour du programme, P1-P2, P5-P7)
+
+- **P1** Haut/Bas 6 j → Haut/Bas A, B, C (6 séances distinctes, générateur et modèle « Haut / Bas × 3 »).
+- **P2** Abdos 10-15 reps.
+- **P3 (a)** Répartition par **déficit** de volume (mêmes cibles et même comptage que les Analyses) : 1 exercice par muscle et par séance, puis les places restantes de la durée choisie vont au muscle le plus loin de son minimum (tous les angles du muscle déjà présent dans la séance), puis +1 série sur ses exercices s'il reste du temps ; ensuite complément sans dépasser 1,5 × l'optimum. Sur les 120 combinaisons (cibles réelles) : muscles « au-delà » **108 → 13**, manque sous le minimum **480 → 440** (le reste est impossible dans le temps choisi, ex. Full Body 2 j : 9 muscles × 8 séries > 2 séances). L'aperçu du générateur affiche les séries par muscle et **dit** ce qui reste sous le minimum (« Dos 9/10, Épaule 6/8 : plus de temps par séance ou un jour de plus »). Budget de temps respecté (testé).
+- **P4** Repos par défaut à l'ajout : 3 min polyarticulaire / 90 s isolation. **Ton programme mis à jour** avec la médiane de tes repos réels d'octobre (18 lignes : Traction / Pendulum / développés 180 s, tirages 150 s, isolation 120 s ; anciennes valeurs sauvegardées dans `.work/audit/backup-repos-programme-2026-11-01.txt`).
+- **P5** Éditeur : fourchette réellement utilisée (« 8–20 · léger », « 6–12 · lourd/moyen ») + note sous les champs reps.
+- **P6** Contrôles : champ obligatoire vidé → non enregistré ; bornes (séries 1-10, reps 1-50, repos 0-600 s, %1RM 1-100) ; fourchette inversée remise dans l'ordre (vérifié dans la vraie app : 15–12 → 12–15, 25 séries → 10, vide refusé).
+- **P7** Ancien générateur v1 supprimé.
+- Tests : `generateur-v2` +6 cas (28). Pas de changement backend (rien à redéployer).
