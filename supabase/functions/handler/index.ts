@@ -4651,6 +4651,301 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
   return _emailShell('Bonjour ' + (prenom || 'athlète'), sous, corps)
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIL RÉCAP v2 (maquette mockups/novalyz-mail-recap-v2.html, validée le 01/11/2026)
+// Règles : vraie période (mois civil / semaine lun→dim / trimestre ÉCOULÉS), même
+// lecture des exercices que l'app (_lectureExos porté ci-dessous à l'identique),
+// VRAIS records, volume par muscle avec les cibles de l'app (volume_obti) et les
+// muscles secondaires à 0,5 série, balance en SÉRIES, forme vs « ta normale » (les 3
+// mois avant la période), cardio, 3 recos chiffrées. TOUT est facultatif : sans
+// montre / bien-être / cardio / séance, le bloc concerné disparaît (jamais de zéro
+// inventé). Mise en page : 2 tuiles par ligne max (lisible sur mobile 360 px).
+// ═══════════════════════════════════════════════════════════════════════════════
+const _MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+// Bornes de la période ÉCOULÉE [debut, fin) en UTC + période précédente de même type.
+function _recapBornes(per: string, now: Date): { debut: Date; fin: Date; precDebut: Date; label: string; sousTitre: string; jours: number } {
+  const Y = now.getUTCFullYear(), M = now.getUTCMonth()
+  const d2 = (d: Date) => String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0')
+  if (per === 'mois') {
+    const debut = new Date(Date.UTC(Y, M - 1, 1)), fin = new Date(Date.UTC(Y, M, 1)), precDebut = new Date(Date.UTC(Y, M - 2, 1))
+    const nom = _MOIS_FR[debut.getUTCMonth()], dern = minus(fin, 1).getUTCDate()
+    return { debut, fin, precDebut, label: nom, sousTitre: `Ton bilan ${/^[aeiouéo]/.test(nom) ? "d'" : 'de '}${nom} · du 1er au ${dern} ${nom}`, jours: Math.round((fin.getTime() - debut.getTime()) / 864e5) }
+  }
+  if (per === '3mois') {
+    const q = Math.floor(M / 3), debut = new Date(Date.UTC(Y, (q - 1) * 3, 1)), fin = new Date(Date.UTC(Y, q * 3, 1)), precDebut = new Date(Date.UTC(Y, (q - 2) * 3, 1))
+    const a = _MOIS_FR[debut.getUTCMonth()], b = _MOIS_FR[minus(fin, 1).getUTCMonth()]
+    return { debut, fin, precDebut, label: `${a} → ${b}`, sousTitre: `Ton bilan du trimestre · ${a} → ${b}`, jours: Math.round((fin.getTime() - debut.getTime()) / 864e5) }
+  }
+  const lundi = getLundi(new Date(Date.UTC(Y, M, now.getUTCDate())))
+  const debut = minus(lundi, 7), fin = lundi, precDebut = minus(lundi, 14)
+  return { debut, fin, precDebut, label: 'la semaine', sousTitre: `Ton bilan de la semaine · du ${d2(debut)} au ${d2(minus(fin, 1))}`, jours: 7 }
+}
+// --- Lecture des exercices : PORT FIDÈLE de js/app.js (_exoFourchette, _cdAvgRpe,
+//     _progSecondaire, _lectureExos). Toute évolution de l'une doit suivre l'autre
+//     (test tests/recap-v2.test.js compare les deux sur les mêmes données). ---
+const _RC_CAT_R: Record<string, number[]> = { gros: [6, 12], moyen: [6, 12], petit: [8, 20] }
+function _rcFourchette(nom: string, rmin: any, rmax: any, cats: any) {
+  const k = String(nom || '').trim(), c = (cats && (cats[k] || cats[nom])) || '', r = _RC_CAT_R[c]
+  const progDefaut = (rmin == null && rmax == null) || (Number(rmin) === 8 && Number(rmax) === 12)
+  if (r && progDefaut) return { rmin: r[0], rmax: r[1] }
+  return { rmin, rmax }
+}
+function _rcAvgRpe(series: any[]): number | null {
+  if (!Array.isArray(series)) return null
+  const xs = series.map(s => Number(s && s.rpe)).filter(x => !isNaN(x) && x > 0)
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+}
+function _rcProgSecondaire(pA: any, pB: any): string | null {
+  const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
+  const c = num(pA.charge), r = num(pA.reps)
+  if (c !== num(pB.charge) || r !== num(pB.reps)) return null
+  const top = (p: any) => (Array.isArray(p.series) ? p.series : []).filter((x: any) => num(x.charge) === c && num(x.reps) >= r)
+  const tA = top(pA), tB = top(pB)
+  if (!tA.length || !tB.length) return null
+  if (tA.length > tB.length) return tA.length + ' séries à ' + r + ' reps au lieu de ' + tB.length
+  const rpe = (t: any[]) => { const v = t.map((x: any) => num(x.rpe)).filter((x: number) => x > 0); return v.length ? v.reduce((a: number, b: number) => a + b, 0) / v.length : null }
+  const rA = rpe(tA), rB = rpe(tB)
+  if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',')
+  return null
+}
+function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number): any {
+  const pd = (x: any) => { const d = parseFR(x); return d ? d.getTime() : 0 }
+  const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
+  const days = (t: number) => (nowT - t) / 864e5
+  const R: any = { records: [], progresse: [], recule: [], bloque: [], sous: [] }
+  for (const exo of Object.keys(prog || {})) {
+    const pts = prog[exo] || []; if (!pts.length) continue
+    const dt0 = pd(pts[0].date); if (!dt0) continue
+    const c0 = num(pts[0].charge), r0 = num(pts[0].reps), dj = days(dt0)
+    if (dj > 21) continue
+    let pl: any = null
+    for (const l of lignes || []) { if (l && String(l.exercice || '').trim() === String(exo).trim() && l.type !== 'cardio') { pl = l; break } }
+    const f = _rcFourchette(exo, pl && pl.reps_mini != null && pl.reps_mini !== '' ? Number(pl.reps_mini) : null, pl && pl.reps_max != null && pl.reps_max !== '' ? Number(pl.reps_max) : null, cats)
+    const ser = Array.isArray(pts[0].series) ? pts[0].series.filter((x: any) => num(x.reps) > 0) : []
+    const rpes = ser.map((x: any) => num(x.rpe)).filter((x: number) => x > 0)
+    const rpeMax = rpes.length ? Math.max(...rpes) : null
+    if (f.rmin && ser.length && rpeMax != null && rpeMax >= 9 && c0 > 0) {
+      const nSous = ser.filter((x: any) => num(x.reps) < f.rmin).length
+      if (nSous * 2 > ser.length) { R.sous.push({ exo, c: c0, r: r0, rpe: rpeMax, rmin: f.rmin, rmax: f.rmax, hist: pts.slice(0, 4).reverse().map((p: any) => ({ c: num(p.charge), r: num(p.reps) })) }); continue }
+    }
+    if (dj <= 10 && pts.length >= 2) {
+      let bestC = 0, repsAtBest = 0
+      for (let k = 1; k < pts.length; k++) { const cc = num(pts[k].charge), rr = num(pts[k].reps); if (cc > bestC) { bestC = cc; repsAtBest = rr } else if (cc === bestC && rr > repsAtBest) repsAtBest = rr }
+      if (c0 > 0 && (c0 > bestC || (c0 === bestC && r0 > repsAtBest))) { R.records.push({ exo, c: c0, r: r0 }); continue }
+    }
+    if (pts.length < 2) continue
+    const c1 = num(pts[1].charge), r1 = num(pts[1].reps)
+    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo }); continue }
+    const p2 = (dj <= 14) ? _rcProgSecondaire(pts[0], pts[1]) : null
+    if (p2) { R.progresse.push({ exo, why: p2 }); continue }
+    if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { R.recule.push({ exo, c0, c1, r0, r1 }); continue }
+    if (pts.length >= 3) {
+      const c2 = num(pts[2].charge), r2 = num(pts[2].reps)
+      if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
+        if (_rcProgSecondaire(pts[1], pts[2])) continue
+        let n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
+        R.bloque.push({ exo, c: c0, r: r0, n })
+      }
+    }
+  }
+  return R
+}
+// Bilan v2 (PUR, testable). `in_` = { perfs (brutes), appData (getAppData), secByExo
+// (exercice→muscle secondaire), musByExo (exercice→muscle) }.
+function _bilanRecapV2(in_: any, per: string, now: Date): any {
+  const B = _recapBornes(per, now)
+  const d0 = fmtYMD(B.debut), d1 = fmtYMD(B.fin), dp = fmtYMD(B.precDebut)
+  const ad = in_.appData || {}, perfsAll = (in_.perfs || []).filter((r: any) => normDate(r.date))
+  const inP = perfsAll.filter((r: any) => { const d = normDate(r.date); return d >= d0 && d < d1 })
+  const inPrev = perfsAll.filter((r: any) => { const d = normDate(r.date); return d >= dp && d < d0 })
+  const sem = B.jours / 7
+  const out: any = { per, bornes: { debut: d0, fin: d1 }, label: B.label, sousTitre: B.sousTitre }
+  // Régularité
+  const objectif = Number(ad.dashboard && ad.dashboard.regularite && ad.dashboard.regularite.seances_prevues) || 0
+  const jours = Array.from(new Set(inP.map((r: any) => normDate(r.date)))).sort()
+  out.seances = jours.length
+  out.seancesPrec = new Set(inPrev.map((r: any) => normDate(r.date))).size
+  out.objectif = objectif
+  out.prevues = objectif ? Math.round(objectif * sem) : 0
+  if (per !== 'semaine') {
+    const semaines: any[] = []
+    let lun = getLundi(B.debut)
+    while (fmtYMD(lun) < d1) {
+      const dim = minus(lun, -7), a = fmtYMD(lun) < d0 ? d0 : fmtYMD(lun), b = fmtYMD(dim) > d1 ? d1 : fmtYMD(dim)
+      const complete = fmtYMD(lun) >= d0 && fmtYMD(dim) <= d1
+      semaines.push({ du: a, au: fmtYMD(minus(parseFR(b) as Date, 1)), n: jours.filter((j: any) => j >= a && j < b).length, complete })
+      lun = dim
+    }
+    out.semaines = semaines
+    out.semainesObjectif = objectif ? semaines.filter(s => s.complete && s.n >= objectif).length : null
+    out.semainesCompletes = semaines.filter(s => s.complete).length
+  }
+  // Entraînement
+  let ton = 0, reps = 0, rs = 0, rn = 0
+  for (const r of inP) { const c = Number(r.charge) || 0, rp = Number(r.reps) || 0; ton += c * rp; reps += rp; if (Number(r.rpe) > 0) { rs += Number(r.rpe); rn++ } }
+  out.tonnage = Math.round(ton); out.series = inP.length; out.reps = reps; out.rpe = rn ? Math.round(rs / rn * 10) / 10 : null
+  out.tonnagePrec = Math.round(inPrev.reduce((s: number, r: any) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0))
+  // Vrais records : charge (ou reps à charge égale) jamais atteinte AVANT la séance.
+  const best: Record<string, number[]> = {}, recs: Record<string, any> = {}
+  const tri = perfsAll.slice().sort((a: any, b: any) => normDate(a.date).localeCompare(normDate(b.date)) || ((Number(a.serie) || 0) - (Number(b.serie) || 0)))
+  for (const r of tri) {
+    const e = String(r.exercice || ''), c = Number(r.charge) || 0, rp = Number(r.reps) || 0, d = normDate(r.date)
+    if (!e || c <= 0) continue
+    const b = best[e]
+    if (d >= d0 && d < d1 && b && (c > b[0] || (c === b[0] && rp > b[1]))) { const x = recs[e]; if (!x || c > x.c || (c === x.c && rp > x.r)) recs[e] = { exo: e, c, r: rp, date: d } }
+    if (!b || c > b[0] || (c === b[0] && rp > b[1])) best[e] = [c, rp]
+  }
+  out.records = Object.values(recs).sort((a: any, b: any) => b.c - a.c)
+  // Lecture des exercices au dernier jour de la période (mêmes règles que l'app).
+  const prog = (ad.historique && ad.historique.progression_par_exo) || {}
+  const progAvant: Record<string, any[]> = {}
+  for (const k of Object.keys(prog)) { const pts = (prog[k] || []).filter((p: any) => normDate(p.date) < d1); if (pts.length) progAvant[k] = pts }
+  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3)
+  // Volume par muscle (séries / semaine ; secondaire = 0,5) vs cibles volume_obti.
+  const vm: Record<string, number> = {}
+  for (const r of inP) {
+    const m = normMuscle(r.muscle); if (m) vm[m] = (vm[m] || 0) + 1
+    const s = normMuscle((in_.secByExo || {})[String(r.exercice || '').trim().toLowerCase()])
+    if (s && s !== m) vm[s] = (vm[s] || 0) + 0.5
+  }
+  const progMus = new Set((ad.programme || []).filter((l: any) => l && l.type !== 'cardio').map((l: any) => normMuscle((in_.musByExo || {})[String(l.exercice || '').trim().toLowerCase()])).filter(Boolean))
+  const cibles = (ad.volume_obti || []).map((v: any) => ({ muscle: normMuscle(v.muscle), min: Number(v.series_min) || 0, opt: Number(v.series_opt) || 0 }))
+  const vol: any[] = [], horsProg: string[] = []
+  for (const c of cibles) {
+    const parSem = Math.round((vm[c.muscle] || 0) / sem * 10) / 10
+    if (parSem <= 0 && !progMus.has(c.muscle)) { horsProg.push(c.muscle); continue }
+    vol.push({ muscle: c.muscle, parSem, min: c.min, opt: c.opt, statut: parSem >= c.min ? 'ok' : 'bas' })
+  }
+  out.volume = out.series ? vol.sort((a, b) => b.parSem - a.parSem) : []
+  out.horsProg = out.series ? horsProg : []
+  // Balance en séries.
+  const S = (m: string) => vm[m] || 0
+  out.balance = [['Pectoraux', 'Dos'], ['Quadriceps', 'Ischio'], ['Biceps', 'Triceps']].map(([a, b]) => {
+    const t = S(a) + S(b); if (t <= 0) return null
+    const pa = Math.round(S(a) / t * 100); return { a: a === 'Ischio' ? 'Ischios' : a, b: b === 'Ischio' ? 'Ischios' : b, pa, pb: 100 - pa }
+  }).filter(Boolean)
+  // Forme : période vs normale (les 91 jours avant la période).
+  const n0 = fmtYMD(minus(B.debut, 91))
+  const moy = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
+  const sh = Array.isArray(ad.sante_historique) ? ad.sante_historique : []
+  const shP = (k: string, a: string, b: string, minV = 0) => sh.filter((x: any) => { const d = normDate(x.date); return d >= a && d < b && Number(x[k]) > minV }).map((x: any) => Number(x[k]))
+  const montre: any = {}
+  // Nuits < 3 h = enregistrement incomplet (montre retirée) → ignorées ; normale dès 14 nuits complètes.
+  const sP = shP('sommeil_min', d0, d1, 179), sN = shP('sommeil_min', n0, d0, 179)
+  if (sP.length) montre.sommeil = { v: Math.round(moy(sP) as number), n: sP.length, normale: sN.length >= 14 ? Math.round(moy(sN) as number) : null, nN: sN.length }
+  const fP = shP('fc_repos', d0, d1), fN = shP('fc_repos', n0, d0)
+  if (fP.length) montre.fc = { v: Math.round(moy(fP) as number), normale: fN.length >= 14 ? Math.round(moy(fN) as number) : null, nN: fN.length }
+  const pP = shP('pas', d0, d1), pN = shP('pas', n0, d0)
+  if (pP.length) montre.pas = { v: Math.round(moy(pP) as number), normale: pN.length >= 14 ? Math.round(moy(pN) as number) : null, nN: pN.length }
+  out.montre = montre
+  const be = Array.isArray(ad.bien_etre) ? ad.bien_etre : []
+  const beV = (k: string, a: string, b: string) => be.filter((x: any) => { const d = normDate(x.date); return d >= a && d < b }).map((x: any) => Number(x[k])).filter((v: number) => !isNaN(v) && v > 0)
+  out.forme = [['sommeil', 'Sommeil ressenti', false], ['fatigue', 'Fatigue musculaire', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]].map(([k, lab, inv]: any) => {
+    const p = beV(k, d0, d1); if (!p.length) return null
+    const n = beV(k, n0, d0), v = Math.round((moy(p) as number) * 10) / 10, nm = n.length >= 7 ? Math.round((moy(n) as number) * 10) / 10 : null
+    const etat = nm == null ? 'nd' : (inv ? (v - nm >= 1 ? 'haut' : 'ok') : (nm - v >= 1 ? 'bas' : 'ok'))
+    return { k, lab, v, normale: nm, nN: n.length, etat }
+  }).filter(Boolean)
+  // Cardio.
+  const ch = ((ad.cardio && ad.cardio.history) || []).filter((s: any) => normDate(s.date))
+  const chP = ch.filter((s: any) => { const d = normDate(s.date); return d >= d0 && d < d1 })
+  const derniere = ch.map((s: any) => normDate(s.date)).filter((d: string) => d < d1).sort().pop() || null
+  out.cardio = { n: chP.length, duree: chP.reduce((s: number, x: any) => s + (Number(x.duree) || 0), 0), types: chP.map((s: any) => String(s.type_cardio || 'autre')), derniere }
+  // Recos (max 3) — mêmes règles que l'app, chiffres réels.
+  const recos: string[] = []
+  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0)
+  if (bas.length) {
+    const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
+    const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
+    const nm = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux' } as any)[m] || m.toLowerCase()
+    recos.push(`<b>${titre}</b> : ` + bas.map((v: any) => `${nm(v.muscle)} ${_frNum(v.parSem)} séries/sem. (min. ${v.min})`).join(', ') + '. Pour atteindre le minimum, il manque environ ' + bas.map((v: any) => `${Math.max(1, Math.round(v.min - v.parSem))} séries/sem. ${['Ischio', 'Fessier'].indexOf(v.muscle) >= 0 ? 'aux' : 'aux'} ${nm(v.muscle)}`).join(', ').replace(/, ([^,]*)$/, ' et $1') + '.')
+  }
+  const L = out.lecture
+  const sous = (L.sous || []).slice().sort((a: any, b: any) => (b.rpe - a.rpe) || (a.r - b.r))[0]
+  if (sous) {
+    const same = (sous.hist || []).filter((h: any) => h.c === sous.c).map((h: any) => h.r)
+    const desc = same.length >= 2 ? `à ${_frNum(sous.c)} kg tu es passé de ${same.slice(0, -1).join(' à ')} puis ${same[same.length - 1]} rep${same[same.length - 1] > 1 ? 's' : ''} (RPE ${_frNum(sous.rpe)})` : `${_frNum(sous.c)} kg × ${sous.r} à RPE ${_frNum(sous.rpe)}, sous ta fourchette (${sous.rmin}-${sous.rmax})`
+    recos.push(`<b>${_escHtml(sous.exo)}</b> : ${desc}. Au choix : alléger un peu pour revenir à ${sous.rmin} reps, ou garder ${_frNum(sous.c)} kg et viser +1 rep.`)
+  } else if ((L.recule || []).length) {
+    const x = L.recule[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
+  } else if ((L.bloque || []).length) {
+    const x = L.bloque[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
+  }
+  const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
+  if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')
+  else if (ilYa > 14) recos.push(`<b>Cardio</b> : aucune sortie depuis le ${fmtFR(derniere).slice(0, 5)}. 1 à 2 sorties par semaine pour ta base d'endurance.`)
+  out.recos = out.series || ch.length ? recos.slice(0, 3) : []
+  return out
+}
+function _frNum(v: any): string { const n = Number(v); if (isNaN(n)) return String(v); return (Math.round(n * 10) / 10).toLocaleString('fr-FR') }
+function _emailRecapV2HTML(prenom: string, b: any): string {
+  const td = 'background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 10px'
+  const h3 = (t: string, s = '') => `<h3 style="font-size:15px;margin:20px 0 9px;font-family:Arial,sans-serif;color:#e9eef8">${t}${s ? ` <span style="font-weight:400;font-size:12px;color:#6f7b96">${s}</span>` : ''}</h3>`
+  const grid2 = (cells: string[]) => { let h = ''; for (let i = 0; i < cells.length; i += 2) h += `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:0 8px"><tr><td width="50%" valign="top" style="padding-right:4px">${cells[i]}</td><td width="50%" valign="top" style="padding-left:4px">${cells[i + 1] || ''}</td></tr></table>`; return h }
+  const tile = (val: string, lab: string, vs = '', vsCol = '#6f7b96') => `<div style="${td};text-align:center"><div style="font-size:19px;font-weight:800;color:#e9eef8;line-height:1.1">${val}</div><div style="font-size:11px;color:#8b96b0;margin-top:4px">${lab}</div>${vs ? `<div style="font-size:10.5px;color:${vsCol};margin-top:3px">${vs}</div>` : ''}</div>`
+  const ligne = (g: string, d: string, last = false) => `<table role="presentation" width="100%" style="border-collapse:collapse"><tr><td style="font-size:13px;color:#cdd6ea;padding:6px 0;${last ? '' : 'border-bottom:1px solid #1c2740'}">${g}</td><td style="font-size:13px;text-align:right;padding:6px 0;white-space:nowrap;${last ? '' : 'border-bottom:1px solid #1c2740'}">${d}</td></tr></table>`
+  const card = (inner: string) => `<div style="${td}">${inner}</div>`
+  let h = ''
+  // Régularité
+  if (!b.seances && b.prevues) h += h3('Ta régularité', b.objectif ? `objectif ${b.objectif} séances / semaine` : '') + card(`<div style="font-size:13px;color:#cdd6ea">Aucune séance enregistrée sur la période. Ton bilan se remplira dès tes prochaines séances.</div>`)
+  else if (b.seances) {
+    const pct = b.prevues ? Math.round(100 * b.seances / b.prevues) : null
+    const roue = pct != null ? _roueImg(Math.min(100, pct), 104, 'b', pct + '%') : `<div style="font-size:30px;font-weight:800;color:#4d82ff">${b.seances}</div>`
+    let reg = `<div style="${td};text-align:center">${roue}<div style="font-size:13px;color:#e9eef8;margin-top:8px"><b>${b.seances} séance${b.seances > 1 ? 's' : ''}</b>${b.prevues ? ` <span style="color:#8b96b0">/ ${b.prevues} prévues</span>` : ''}</div>${b.per !== 'semaine' || b.seancesPrec ? `<div style="font-size:11px;color:#6f7b96;margin-top:3px">période précédente : ${b.seancesPrec}</div>` : ''}</div>`
+    if (b.semaines && b.semaines.length) {
+      const mx = Math.max(b.objectif || 1, ...b.semaines.map((s: any) => s.n), 1)
+      const cols = b.semaines.map((s: any) => { const col = !s.complete ? '#4d82ff66' : (b.objectif && s.n >= b.objectif ? '#37d39a' : '#fab219'); return `<td valign="bottom" align="center" style="padding:0 3px;font-size:10.5px;color:#8b96b0;font-family:Arial,sans-serif"><div style="font-size:11px;color:#e9eef8;font-weight:700;margin-bottom:3px">${s.n}</div><div style="height:${Math.max(4, Math.round(44 * s.n / mx))}px;background:${col};border-radius:5px 5px 2px 2px;font-size:0;line-height:0">&nbsp;</div><div style="margin-top:4px">${s.du.slice(8, 10)}/${s.du.slice(5, 7)}${s.complete ? '' : '*'}</div></td>` }).join('')
+      reg += `<div style="${td};margin-top:8px"><div style="font-size:11px;color:#8b96b0;margin-bottom:6px">Séances par semaine (début de semaine)</div><table role="presentation" width="100%" style="border-collapse:collapse;height:80px"><tr>${cols}</tr></table><div style="font-size:11px;color:#6f7b96;margin-top:6px">${b.objectif ? `${b.semainesObjectif} semaine${b.semainesObjectif > 1 ? 's' : ''} à l'objectif sur ${b.semainesCompletes} complète${b.semainesCompletes > 1 ? 's' : ''}` : ''}${b.semaines.some((s: any) => !s.complete) ? ' · *semaine incomplète' : ''}</div></div>`
+    }
+    h += h3('Ta régularité', b.objectif ? `objectif ${b.objectif} séances / semaine` : '') + reg
+  }
+  // Entraînement
+  if (b.series) {
+    h += h3('Ton entraînement', b.label) + grid2([
+      tile(_frNum(b.tonnage) + '<span style="font-size:12px;color:#8b96b0;font-weight:600"> kg</span>', 'Tonnage', b.tonnagePrec ? 'période préc. ' + _frNum(b.tonnagePrec) : ''),
+      tile(String(b.series), 'Séries'), tile(_frNum(b.reps), 'Reps'), tile(b.rpe != null ? _frNum(b.rpe) : '—', 'RPE moyen')])
+    const L = b.lecture || {}
+    h += h3('Tes exercices', 'même lecture que dans l\'app · fin de période') + card(
+      ligne('★ Records battus', `<b style="color:#37d39a">${b.records.length}</b>`) + ligne('▲ En progrès', `<b style="color:#37d39a">${(L.progresse || []).length}</b>`)
+      + ligne('! Sous ta fourchette', `<b style="color:${(L.sous || []).length ? '#fab219' : '#8b96b0'}">${(L.sous || []).length}</b>`) + ligne('▼ En recul ou bloqués', `<b style="color:${((L.recule || []).length + (L.bloque || []).length) ? '#fab219' : '#8b96b0'}">${(L.recule || []).length + (L.bloque || []).length}</b>`, true))
+    if (b.records.length) {
+      const top = b.records.slice(0, 4)
+      h += h3('Tes vrais records', 'charge (ou reps à charge égale) jamais atteinte avant') + card(top.map((r: any, i: number) => ligne(_escHtml(r.exo), `<b style="color:#37d39a">${_frNum(r.c)} kg × ${r.r}</b> <span style="color:#8b96b0">${r.date.slice(8, 10)}/${r.date.slice(5, 7)}</span>`, i === top.length - 1)).join('')
+        + (b.records.length > 4 ? `<div style="font-size:11px;color:#6f7b96;margin-top:6px">+ ${b.records.length - 4} autre${b.records.length - 4 > 1 ? 's' : ''} record${b.records.length - 4 > 1 ? 's' : ''} sur la période.</div>` : ''))
+    }
+    if (b.volume.length) {
+      const NM: any = { Ischio: 'Ischios', Fessier: 'Fessiers', Epaule: 'Épaules' }
+      h += h3('Volume par muscle', 'séries / semaine en moyenne · cibles de l\'app') + card(b.volume.map((v: any) => {
+        const col = v.statut === 'ok' ? '#37d39a' : '#ff6b6b', w = v.opt ? Math.max(3, Math.min(100, Math.round(v.parSem / v.opt * 100))) : 3
+        return `<table role="presentation" width="100%" style="border-collapse:collapse"><tr><td style="font-size:13px;color:#cdd6ea">${_escHtml(NM[v.muscle] || v.muscle)}</td><td style="text-align:right;font-size:12px;font-weight:700;color:${col};white-space:nowrap">${_frNum(v.parSem)} · ${v.statut === 'ok' ? `cible ${v.min}–${v.opt}` : `min. ${v.min}`}</td></tr></table><table role="presentation" width="100%" style="border-collapse:collapse;background:#0b111c;border-radius:7px;margin:4px 0 9px"><tr><td width="${w}%" style="background:${col};height:11px;border-radius:7px;font-size:0;line-height:0">&nbsp;</td><td style="font-size:0">&nbsp;</td></tr></table>`
+      }).join('') + `<div style="font-size:11px;color:#6f7b96;line-height:1.5">${b.horsProg.length ? `Pas dans ton programme sur la période : ${b.horsProg.map((m: string) => (NM[m] || m).toLowerCase()).join(', ')}. · ` : ''}Muscles secondaires comptés 0,5 série (comme dans l'app).</div>`)
+    }
+    if (b.balance.length) {
+      h += h3('Balance musculaire', 'en séries') + card(b.balance.map((p: any) => `<table role="presentation" width="100%" style="border-collapse:collapse"><tr><td style="font-size:12.5px;color:#cdd6ea">${p.a} <b style="color:#e9eef8">${p.pa}%</b></td><td style="text-align:right;font-size:12.5px;color:#cdd6ea"><b style="color:#e9eef8">${p.pb}%</b> ${p.b}</td></tr></table><table role="presentation" width="100%" style="border-collapse:collapse;margin:4px 0 11px"><tr><td width="${p.pa}%" style="background:#1A5FFF;height:13px;font-size:0;line-height:0">&nbsp;</td><td width="${p.pb}%" style="background:#9D5FD3;height:13px;font-size:0;line-height:0">&nbsp;</td></tr></table>`).join('')
+        + `<div style="font-size:11px;color:#6f7b96">Équilibré entre 40 et 60 %.${b.balance.every((p: any) => p.pa >= 40 && p.pa <= 60) ? ' Ici tout est équilibré.' : ''}</div>`)
+    }
+  }
+  // Forme (montre + ressenti) — chaque tuile seulement si la donnée existe.
+  const fc: string[] = [], m = b.montre || {}
+  if (m.sommeil) fc.push(tile(_fmtDuree(m.sommeil.v), 'Sommeil (montre)', m.sommeil.normale != null ? 'normale ' + _fmtDuree(m.sommeil.normale) : `normale dès 14 nuits complètes (${m.sommeil.nN})`))
+  if (m.fc) fc.push(tile(String(m.fc.v), 'FC repos (bpm)', m.fc.normale != null ? 'normale ' + m.fc.normale : `normale dès 14 mesures (${m.fc.nN})`))
+  if (m.pas) fc.push(tile(_frNum(m.pas.v), 'Pas / jour', m.pas.normale != null ? 'normale ' + _frNum(m.pas.normale) : ''))
+  for (const f of b.forme || []) fc.push(tile(_frNum(f.v) + '<span style="font-size:12px;color:#8b96b0;font-weight:600">/5</span>', f.lab, f.etat === 'nd' ? 'normale dès 7 saisies' : (f.etat === 'ok' ? `dans ta normale (${_frNum(f.normale)})` : `${f.etat === 'bas' ? 'sous' : 'au-dessus de'} ta normale (${_frNum(f.normale)})`), f.etat === 'ok' ? '#37d39a' : (f.etat === 'nd' ? '#6f7b96' : '#fab219')))
+  if (fc.length) h += h3('Ta forme', 'moyenne de la période · vs ta normale (les 3 mois d\'avant)') + grid2(fc)
+  // Cardio
+  if (b.cardio && (b.cardio.n || b.cardio.derniere)) {
+    const LB: any = { marche_normale: 'marche', velo: 'vélo', footing: 'footing', course: 'course', natation: 'natation', rameur: 'rameur', hyrox: 'Hyrox', autre: 'autre' }
+    const cnt: any = {}; (b.cardio.types || []).forEach((t: string) => { cnt[t] = (cnt[t] || 0) + 1 })
+    const txt = b.cardio.n ? Object.keys(cnt).map(t => `${cnt[t]} ${LB[t] || t}${cnt[t] > 1 && !/s$/.test(LB[t] || t) ? 's' : ''}`).join(', ') + ' · ' + _fmtDuree(b.cardio.duree) : 'Aucune sortie sur la période'
+    h += h3('Cardio', b.label) + card(`<div style="font-size:13px;color:#cdd6ea">${txt}${b.cardio.derniere ? ` · dernière sortie le ${fmtFR(b.cardio.derniere).slice(0, 5)}` : ''}.</div>`)
+  }
+  // Recos
+  if (b.recos && b.recos.length) h += h3('Ce que Novalyz retient') + `<div style="background:#13213f;border:1px solid #27407a;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:#e9eef8">${b.recos.map((r: string, i: number) => `<div style="padding:4px 0">${i + 1}. ${r}</div>`).join('')}</div>`
+  if (!h) h = `<p style="font-size:13px;color:#cdd6ea">Pas encore de séance enregistrée sur la période. Ton bilan se remplira dès tes premières séances.</p>`
+  h += `<p style="margin:18px 0 0;color:#8b96b0;font-size:12px">Ouvre Novalyz pour le détail de ${b.per === 'semaine' ? 'ta semaine' : b.per === 'mois' ? 'ton mois' : 'ton trimestre'}.</p>`
+  return _emailShell('Bonjour ' + (prenom || 'athlète'), b.sousTitre, h)
+}
+
 function _periodeLabel(periode: string): string {
   return periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
 }
@@ -4708,17 +5003,20 @@ async function handleCronResumes(body: any): Promise<Response> {
       if (!email || !per) { athletesSkip++; continue }
       const aid = String((a as any).id)
       try {
-        // Sources réelles pour le bilan (mêmes tables que la fiche athlète).
-        const [{ data: perfs }, { data: prog }, { data: be }, { data: sante }] = await Promise.all([
-          sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', aid),
-          sb().from('programme').select('seance_id,series_prevues').eq('athlete_id', aid),
-          sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', aid),
-          sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', aid).like('seance_id', 'sante_%'),
+        // Mail récap v2 (01/11) : mêmes données que l'app (getAppData) + séries brutes
+        // (records, volume) + catalogue (muscle secondaire). Voir _bilanRecapV2.
+        const [{ data: perfs }, { data: exos }, appRes] = await Promise.all([
+          sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,serie,seance_id').eq('athlete_id', aid),
+          sb().from('exercices').select('exercice,muscle,muscle_secondaire'),
+          handleGetAppData(new URLSearchParams({ athlete_id: aid })),
         ])
-        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, per, anneesEffectives((a as any).annees, (a as any).created_at, now))
+        const appData: any = await appRes.json()
+        const secByExo: Record<string, string> = {}, musByExo: Record<string, string> = {}
+        for (const e of exos || []) { const k = String((e as any).exercice || '').trim().toLowerCase(); if (!k) continue; if ((e as any).muscle_secondaire) secByExo[k] = String((e as any).muscle_secondaire); if ((e as any).muscle) musByExo[k] = String((e as any).muscle) }
+        const bilan = _bilanRecapV2({ perfs: perfs || [], appData, secByExo, musByExo }, per, now)
         const prenom = String((a as any).nom || '').split(/\s+/)[0]
-        const html = _emailBilanAthleteHTML(prenom, per, bilan)
-        const sujet = `Novalyz — Ton bilan ${_periodeLabel(per)}`
+        const html = _emailRecapV2HTML(prenom, bilan)
+        const sujet = `Novalyz — ${bilan.sousTitre.split(' · ')[0]}`
         if (await _envoyerEmail(email, sujet, html)) athletesOk++; else athletesSkip++
       } catch (_) { athletesSkip++ }
     }
