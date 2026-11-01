@@ -25,3 +25,13 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider.
 | **I7** 🟠 | Morpho : les seuils des recos d'exercices (ex. fémur/tronc ≥ 0,82, envergure ± 3 cm) ne sont **pas sourcés** dans le code. | Les étiqueter « repère indicatif » tant qu'aucune source n'est trouvée (ou les sourcer). |
 
 Non couvert : qualité réelle des réponses (impossible à tester sans clé API — rien n'a été envoyé à Anthropic pendant cet audit).
+
+## Réalisé (01/11, validé porteur : tout, I3 a, I6 « bientôt », I7 indicatif)
+- **I1 / I2** Contexte IA reconstruit (serveur) : état **affiché** par l'app (« non renseigné » sans questionnaire ≤ 7 j), chaque donnée **datée** (« le 30/10, il y a 2 j »), questionnaire réel (sommeil, fatigue, stress, courbatures, douleur), nutrition seulement si ≤ 7 j, ACWR remplacé par la fraîcheur ; ajout : lecture des exercices (même calcul que l'app et le mail), volume de la semaine vs minimum, prochaine séance (sans inventer les charges : renvoi vers « Ce que Novalyz vise »), cardio 7 j, contexte, mode vacances, poids daté. Vérifié en rejouant la vraie fonction sur tes données (01/11 et 09/11). Le bloc « Ce que je vois de toi » du fil IA suit les mêmes règles (état affiché, nuit et poids datés, plus d'ACWR).
+- **I3 (a)** Garde-fou chiffres : tout nombre > 10 absent des données / de la question → réponse **régénérée une fois**, sinon la phrase fautive est **retirée** (testé avec une API simulée).
+- **I4** Mode coach : l'IA parle au coach **de** l'athlète (3e personne) ; quota du coach, plus celui de l'athlète.
+- **I5** Politique de confidentialité + fenêtre « Confidentialité » de l'app : Anthropic (IA) et Resend (e-mails) ajoutés ; hébergeur « Google » obsolète remplacé (Supabase / Firebase) ; export mentionné.
+- **I6** IA inactive : bulle « Novalyz IA · bientôt », fil avec bandeau « arrive bientôt », saisie et suggestions désactivées (rien ne mène à une impasse).
+- **I7** Morpho : badge « Mesuré · repère indicatif » + note « seuils repères, non validés par une étude ».
+- Tests : `ia-garde-fou` (7 cas, API simulée — aucun envoi réel). 69 suites vertes.
+- Pour activer l'IA : secret Supabase `ANTHROPIC_API_KEY` (à poser par toi ; coût par question à prévoir).

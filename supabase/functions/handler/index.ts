@@ -6016,31 +6016,85 @@ async function handleSaveNutrition(body: any): Promise<Response> {
 // ===========================================================================
 const IA_QUOTA_JOUR = 2
 
-function _iaContexte(d: any): string {
+// Contexte envoyé à l'IA (audit Novalyz IA I1/I2, 01/11) : les MÊMES données que l'app,
+// chacune DATÉE (« il y a N j »), rien de périmé présenté comme actuel, rien de masqué dans l'app.
+function _iaContexte(d: any, now: Date = new Date()): string {
   if (!d || d.erreur) return '(données indisponibles pour le moment)'
   const L: string[] = []
-  const m = d.moteur || {}
-  if (m.disponibilite) L.push(`- État du jour : ${m.disponibilite.niveau || '—'} (récup ${m.recup || '—'}${m.recScore != null ? ', score ' + Math.round(m.recScore) + '/100' : ''}).`)
-  if (m.reco) L.push(`- Reco du moteur : ${m.reco}`)
-  const dash = d.dashboard || {}
-  if (dash.acwr != null) L.push(`- Charge ACWR : ${dash.acwr}${m.acwr_categorie ? ' (' + m.acwr_categorie + ')' : ''}${m.acwr_fiable === false ? ' — non fiable, historique court' : ''}.`)
-  if (dash.derniere_seance && dash.derniere_seance.date) L.push(`- Dernière séance : ${dash.derniere_seance.date}${dash.derniere_seance.nb_series ? ' · ' + dash.derniere_seance.nb_series + ' séries' : ''}${dash.derniere_seance.rpe_moyen ? ' · RPE ' + dash.derniere_seance.rpe_moyen : ''}.`)
-  const reg = dash.regularite || {}
-  if (reg.seances_prevues != null) L.push(`- Régularité : objectif ${reg.seances_prevues} séances/semaine${reg.seances_j7 != null ? ', ' + reg.seances_j7 + ' faites sur 7 j' : ''}.`)
-  if (d.objectif && d.objectif.objectif) L.push(`- Objectif : ${d.objectif.objectif}.`)
-  if (d.poids && d.poids[0] && d.poids[0].poids != null) L.push(`- Poids (dernière pesée) : ${d.poids[0].poids} kg.`)
+  const today = fmtYMD(now)
+  const iso = (x: any) => { const t = String(x || ''); if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10); const p = parseFR(t); return p ? fmtYMD(p) : null }
+  const age = (x: any) => { const i = iso(x); return i ? Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(i + 'T00:00:00Z')) / 864e5) : null }
+  const quand = (x: any) => { const a = age(x), i = iso(x); if (a == null || !i) return ''; const dm = i.slice(8, 10) + '/' + i.slice(5, 7); return a === 0 ? "aujourd'hui" : (a === 1 ? 'hier (' + dm + ')' : 'le ' + dm + ', il y a ' + a + ' j') }
+  const m = d.moteur || {}, dash = d.dashboard || {}
+  // État AFFICHÉ par l'app : « Prêt » seulement avec un questionnaire ≤ 7 j (sinon « non renseigné »).
+  const be = (d.bien_etre || [])[0], beAge = be ? age(be.date) : null
+  let etat = (m.disponibilite && m.disponibilite.niveau) || null
+  if (etat === 'Prêt' && !(beAge != null && beAge <= 6)) etat = 'non renseigné (pas de questionnaire ces 7 derniers jours)'
+  if (etat) L.push(`- État du jour (verdict de l'app) : ${etat}${m.causes && m.causes.length ? ' — cause : ' + m.causes.join(', ') : ''}.`)
+  if (m.reco) L.push(`- Reco du jour (moteur) : ${m.reco}`)
+  const cf = m.charge_fatigue
+  if (cf && cf.tsbPct != null) L.push(`- Fraîcheur (charge récente vs habituelle) : ${cf.tsbPct >= 5 ? 'frais' : cf.tsbPct >= -12 ? 'équilibré' : 'charge en hausse'}${cf.fiable ? '' : ' (indicatif, historique court)'}.`)
+  if (be && beAge != null && beAge <= 6) {
+    const v = (k: string) => (be[k] != null && be[k] !== '' && !isNaN(Number(be[k]))) ? Number(be[k]) + '/5' : null
+    const parts = [['sommeil', v('sommeil')], ['fatigue musculaire', v('fatigue')], ['stress', v('stress')], ['courbatures', v('courbatures')], ['douleur', v('douleur')]].filter((x) => x[1]).map((x) => x[0] + ' ' + x[1])
+    if (parts.length) L.push(`- Dernier questionnaire (${quand(be.date)}) : ${parts.join(', ')} (sommeil : 5 = très bien ; fatigue/stress/courbatures/douleur : 1 = aucun).`)
+  } else if (be) L.push(`- Dernier questionnaire : ${quand(be.date)} — trop ancien pour juger la forme d'aujourd'hui.`)
+  else L.push('- Aucun questionnaire de forme enregistré.')
   const al = (d.alertes_centre || []).filter((a: any) => a && !a.read).slice(0, 4)
   if (al.length) L.push(`- Alertes en cours : ${al.map((a: any) => a.title + (a.evidence ? ' (' + a.evidence + ')' : '')).join(' ; ')}.`)
-  if (d.contexte && d.contexte.etat && d.contexte.etat !== 'saison_normale') L.push(`- Contexte : ${d.contexte.etat}${d.contexte.jours_restants != null ? ' (' + d.contexte.jours_restants + ' j restants)' : ''}.`)
-  const be = (d.bien_etre || [])[0]
-  if (be) L.push(`- Dernier ressenti : sommeil ${be.sommeil ?? '—'}/5, énergie ${be.energie ?? '—'}/5, fatigue ${be.fatigue ?? '—'}/5.`)
+  if (d.contexte && d.contexte.etat && d.contexte.etat !== 'saison_normale') L.push(`- Contexte de performance déclaré : ${String(d.contexte.etat).replace(/_/g, ' ')}${d.contexte.jours_restants != null ? ' (' + d.contexte.jours_restants + ' j restants)' : ''}.`)
+  if (d.pause && d.pause.debut) L.push(`- Mode vacances actif (${d.pause.debut}${d.pause.fin ? ' → ' + d.pause.fin : ''}).`)
+  // Séances
+  if (dash.derniere_seance && dash.derniere_seance.date) L.push(`- Dernière séance muscu : ${dash.derniere_seance.seance_id || ''} ${quand(dash.derniere_seance.date)}${dash.derniere_seance.nb_series ? ' · ' + dash.derniere_seance.nb_series + ' séries' : ''}${dash.derniere_seance.rpe_moyen ? ' · RPE moyen ' + dash.derniere_seance.rpe_moyen : ''}.`)
+  const reg = dash.regularite || {}
+  if (reg.seances_prevues != null) L.push(`- Régularité : objectif ${reg.seances_prevues} séances/semaine ; ${reg.seances_semaine != null ? reg.seances_semaine : '—'} faites cette semaine (depuis lundi).`)
+  if (dash.prochaine_seance) { const ex = (d.programme || []).filter((p: any) => p && p.seance_id === dash.prochaine_seance && p.type !== 'cardio').map((p: any) => String(p.exercice).trim()); L.push(`- Prochaine séance du programme : ${dash.prochaine_seance}${ex.length ? ' (' + ex.join(', ') + ')' : ''}. Les charges/reps visées sont dans l'app (Aujourd'hui ▸ « Ce que Novalyz vise ») — ne les invente pas.`) }
+  else if ((d.programme || []).length) L.push('- Semaine du programme terminée (toutes les séances faites).')
+  // Lecture des exercices (même calcul que l'app et le mail récap).
+  try {
+    const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat)
+    const kg = (x: any) => String(x).replace('.', ',')
+    if (Lx.records.length) L.push(`- Records récents : ${Lx.records.slice(0, 4).map((x: any) => x.exo.trim() + ' ' + kg(x.c) + ' kg × ' + x.r).join(' ; ')}.`)
+    if (Lx.progresse.length) L.push(`- En progrès : ${Lx.progresse.slice(0, 4).map((x: any) => x.exo.trim()).join(', ')}.`)
+    if (Lx.bloque.length) L.push(`- Bloqués : ${Lx.bloque.slice(0, 3).map((x: any) => x.exo.trim() + ' à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances').join(' ; ')}.`)
+    if (Lx.recule.length) L.push(`- En recul : ${Lx.recule.slice(0, 3).map((x: any) => x.exo.trim()).join(', ')}.`)
+    if (Lx.sous.length) L.push(`- Sous la fourchette de reps : ${Lx.sous.slice(0, 3).map((x: any) => x.exo.trim() + ' (fourchette ' + x.rmin + '-' + x.rmax + ' reps ; dernière fois ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ')').join(' ; ')}.`)
+    if ((Lx.attendu || []).length) L.push(`- Baisse attendue (${Lx.ctx}) : ${Lx.attendu.slice(0, 3).map((x: any) => x.exo.trim()).join(', ')}.`)
+  } catch (_) {}
+  // Volume de la semaine vs minimum (séries/muscle, muscle secondaire = 0,5).
+  const vo = (d.volume_obti || []).filter((o: any) => o && o.muscle && Number(o.series_min) > 0)
+  if (vo.length) L.push(`- Volume de la semaine en cours, depuis lundi (séries faites / minimum hebdo) : ${vo.map((o: any) => o.muscle + ' ' + String(Math.round((Number(o.series_semaine) || 0) * 10) / 10).replace('.', ',') + '/' + o.series_min).join(', ')}.`)
+  // Cardio 7 jours.
+  const c7 = fmtYMD(minus(now, 6)), ch = ((d.cardio && d.cardio.history) || []).filter((h: any) => String(h.date || '') >= c7)
+  if (ch.length) L.push(`- Cardio 7 derniers jours : ${ch.length} sortie(s), ${Math.round(ch.reduce((a: number, h: any) => a + (Number(h.duree) || 0), 0))} min au total.`)
+  if (d.objectif && d.objectif.objectif) L.push(`- Objectif : ${d.objectif.objectif}.`)
+  if (d.poids && d.poids[0] && d.poids[0].poids != null) L.push(`- Poids : ${String(d.poids[0].poids).replace('.', ',')} kg (pesée ${quand(d.poids[0].date)}).`)
   const nut = (d.nutri_historique || [])[0]
-  if (nut) L.push(`- Nutrition récente (${nut.date}) : ${nut.kcal != null ? nut.kcal + ' kcal' : '—'}${nut.prot != null ? ', ' + nut.prot + ' g protéines' : ''}.`)
-  return L.length ? L.join('\n') : '(peu de données : encourage à enregistrer séances + bien-être)'
+  if (nut && age(nut.date) != null && (age(nut.date) as number) <= 7) L.push(`- Nutrition saisie ${quand(nut.date)} : ${nut.kcal != null ? nut.kcal + ' kcal' : '—'}${nut.prot != null ? ', ' + nut.prot + ' g de protéines' : ''} (peut être incomplète).`)
+  return L.length ? L.join('\n') : '(peu de données : encourage à enregistrer séances + questionnaire)'
+}
+
+// Garde-fou chiffres (audit I3, 01/11) : nombres de la réponse absents des données / de la question.
+// 0-10 tolérés (comptes, RPE, notes /5 génériques). Virgule / point équivalents.
+function _iaChiffresInconnus(reply: string, sources: string): string[] {
+  const norm = (x: string) => String(Number(x.replace(',', '.')))
+  const connus = new Set((sources.match(/\d+(?:[.,]\d+)?/g) || []).map(norm))
+  const out: string[] = []
+  for (const n of (reply.match(/\d+(?:[.,]\d+)?/g) || [])) { const v = norm(n); if (Number(v) <= 10 && Number.isInteger(Number(v))) continue; if (!connus.has(v) && out.indexOf(n) < 0) out.push(n) }
+  return out
+}
+// Retire les phrases qui contiennent un chiffre non vérifié (dernier recours).
+function _iaRetirerPhrases(reply: string, inconnus: string[]): string {
+  const ph = reply.split(/(?<=[.!?])\s+/)
+  return ph.filter((p) => !inconnus.some((n) => new RegExp('(^|[^0-9.,])' + n.replace(/[.,]/g, '[.,]') + '([^0-9]|$)').test(p))).join(' ').trim()
 }
 
 async function handleChatIA(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
+  // Mode COACH (audit I4, 01/11) : le coach interroge l'IA SUR un de ses athlètes → l'IA lui parle
+  // du joueur à la 3e personne, et le quota est celui du COACH (plus celui de l'athlète).
+  const coachMode = body.mode === 'coach' && !!body.coach_id
+  const quotaId = coachMode ? 'coach:' + String(body.coach_id) : athlete_id
   const msgs = Array.isArray(body.messages) ? body.messages : []
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
@@ -6050,30 +6104,37 @@ async function handleChatIA(body: any): Promise<Response> {
   const jour = fmtYMD(new Date())
   let used = 0
   try {
-    const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', 'ia_quota').eq('cle', jour).limit(1)
+    const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', quotaId).eq('seance_id', 'ia_quota').eq('cle', jour).limit(1)
     used = q?.length ? (Number(q[0].valeur) || 0) : 0
   } catch (_) {}
   // Au-delà du quota du jour : questions achetées avec les points (Mes points ▸ boutique).
   let bonus = false
   if (used >= IA_QUOTA_JOUR) {
-    const credits = await _iaCreditsRestants(athlete_id)
+    const credits = coachMode ? 0 : await _iaCreditsRestants(athlete_id)
+    if (credits <= 0 && coachMode) return jsonResp({ success: true, limited: true, reply: `Limite du jour atteinte (${IA_QUOTA_JOUR} questions à Novalyz IA). Reviens demain.` })
     if (credits <= 0) return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec Novalyz IA). Tu peux échanger 150 points contre 5 questions de plus (Aujourd'hui ▸ Mes points), ou revenir demain. En attendant, jette un œil à l'onglet Analyses.` })
     bonus = true
   }
 
   // Grounding : données réelles (moteur = source de vérité).
-  let ctxTxt = '(données indisponibles)'
-  try { const res = await handleGetAppData(new URLSearchParams({ athlete_id })); ctxTxt = _iaContexte(await res.json()) } catch (_) {}
+  let ctxTxt = '(données indisponibles)', prenomAth = ''
+  try { const res = await handleGetAppData(new URLSearchParams({ athlete_id })); const dd = await res.json(); ctxTxt = _iaContexte(dd, new Date()); prenomAth = String((dd && dd.athlete && dd.athlete.nom) || '').trim().split(/\s+/)[0] } catch (_) {}
+  if (coachMode && !prenomAth) { try { const { data: a } = await sb().from('athletes').select('nom').eq('id', athlete_id).single(); prenomAth = String((a as any)?.nom || '').trim().split(/\s+/)[0] } catch (_) {} }
 
-  const system = `Tu es le coach IA de Novalyz, une app d'entraînement (musculation + cardio). Tu parles à l'athlète, en français, de façon bienveillante, concrète et CONCISE (3 à 6 phrases).
+  const qui = coachMode
+    ? `Tu parles au COACH de l'athlète ${prenomAth || '(prénom inconnu)'} (pas à l'athlète) : parle de l'athlète à la 3e personne et aide le coach à décider.`
+    : `Tu parles à l'athlète (tutoiement).`
+  const system = `Tu es le coach IA de Novalyz, une app d'entraînement (musculation + cardio). ${qui} En français, bienveillant, concret et CONCIS (3 à 6 phrases).
 
 RÈGLES STRICTES :
-- Réponds UNIQUEMENT à partir des DONNÉES DE L'ATHLÈTE ci-dessous. N'invente JAMAIS un chiffre, une séance ou une valeur : si l'info n'y est pas, dis-le simplement.
+- Réponds UNIQUEMENT à partir des DONNÉES ci-dessous (ce sont celles que l'app affiche). N'invente JAMAIS un chiffre, une charge, une séance ou une valeur : si l'info n'y est pas, dis-le simplement et indique où la trouver dans l'app.
+- Chaque donnée est datée : ne présente pas une donnée ancienne comme actuelle.
+- Ne donne pas de charges ou de reps à viser : elles sont calculées par l'app (Aujourd'hui ▸ « Ce que Novalyz vise »).
 - Tu n'es pas médecin : aucun diagnostic ni prescription. En cas de douleur/blessure, invite à consulter un professionnel.
-- Appuie-toi sur le moteur d'analyse (état, ACWR, récupération, alertes, contexte) et ne contredis pas ses verdicts.
+- Ne contredis pas les verdicts de l'app (état du jour, alertes, reco, contexte).
 - Reste sur l'entraînement / la récupération / la nutrition sportive ; recentre gentiment si on te demande autre chose.
 
-DONNÉES DE L'ATHLÈTE (aujourd'hui) :
+DONNÉES (aujourd'hui) :
 ${ctxTxt}`
 
   const history = msgs
@@ -6082,25 +6143,38 @@ ${ctxTxt}`
     .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) }))
   if (!history.length || history[history.length - 1].role !== 'user') return jsonResp({ success: false, error: 'message vide' })
 
-  let reply = ''
-  try {
+  const appel = async (msgs: any[]): Promise<string | null> => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 700, system, messages: history }),
+      body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 700, system, messages: msgs }),
     })
     const j = await r.json()
-    if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." })
-    reply = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
+    if (!r.ok) return null
+    return (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
+  }
+  let reply = ''
+  try {
+    const r1 = await appel(history)
+    if (r1 == null) return jsonResp({ success: false, error: 'ia_http', reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." })
+    reply = r1
+    // Garde-fou chiffres (I3, 01/11) : tout nombre doit venir des données ou de la question.
+    const sources = ctxTxt + '\n' + history.filter((m: any) => m.role === 'user').map((m: any) => m.content).join('\n')
+    let inconnus = _iaChiffresInconnus(reply, sources)
+    if (inconnus.length) {
+      const r2 = await appel(history.concat([{ role: 'assistant', content: reply }, { role: 'user', content: `Ta réponse contient des chiffres qui ne sont PAS dans mes données (${inconnus.join(', ')}). Réécris-la sans aucun chiffre absent des données ci-dessus.` }]))
+      if (r2) { reply = r2; inconnus = _iaChiffresInconnus(reply, sources) }
+      if (inconnus.length) reply = _iaRetirerPhrases(reply, inconnus)
+    }
   } catch (_) {
     return jsonResp({ success: false, error: 'ia_reseau', reply: "Désolé, l'assistant est injoignable pour le moment." })
   }
-  if (!reply) reply = "Je n'ai pas de réponse claire là-dessus — reformule ta question ?"
+  if (!reply) reply = "Je n'ai pas cette information dans tes données — regarde les onglets Aujourd'hui et Analyses, ou reformule ta question."
 
   try {
     if (bonus) await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_bonus', cle: String(Date.now()), valeur: '1', unite: '', source: 'ia' })
-    if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'ia_quota').eq('cle', jour)
-    else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_quota', cle: jour, valeur: '1', unite: '', source: 'ia' })
+    if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', quotaId).eq('seance_id', 'ia_quota').eq('cle', jour)
+    else await sb().from('indicateurs').insert({ athlete_id: quotaId, date: jour, seance_id: 'ia_quota', cle: jour, valeur: '1', unite: '', source: 'ia' })
   } catch (_) {}
 
   return jsonResp({ success: true, reply, remaining: Math.max(0, IA_QUOTA_JOUR - (used + 1)) })
