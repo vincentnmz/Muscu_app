@@ -13754,13 +13754,21 @@ function _maFiabilite(data) {
   });
   nBE = Object.keys(beDates).length;
   var beCov = cur.seances ? Math.min(1, nBE / cur.seances) : 0;
-  var hasCible = ((data && data.programme) || []).some(function (p) { return p && (p.charge_pct_1rm != null || p.rpe_cible != null); });
+  // Critère « fourchette de reps » (audit Analyses R3) : c'est ce que la lecture et la règle de
+  // progression utilisent (fourchette du programme, ou celle de la catégorie de l'exercice).
+  var _lgM = ((data && data.programme) || []).filter(function (p) { return p && p.exercice && p.type !== 'cardio'; });
+  var _catsF = (data && data.exo_categories) || {};
+  var _nF = _lgM.filter(function (p) {
+    var mn = p.reps_mini != null && p.reps_mini !== '' ? Number(p.reps_mini) : null, mx = p.reps_max != null && p.reps_max !== '' ? Number(p.reps_max) : null;
+    var f = _exoFourchette(p.exercice, mn, mx, _catsF);
+    return f && Number(f.rmin) > 0 && Number(f.rmax) > 0;
+  }).length;
   var depthTarget = Math.max(2, Math.round(1.5 * weeks));
   var pBase = Math.round(Math.min(prev.seances, 3) / 3 * 25);
   var pDepth = Math.round(Math.min(cur.seances, depthTarget) / depthTarget * 25);
   var pRpe = Math.round(rpeCov * 20);
   var pBE = Math.round(beCov * 15);
-  var pCible = hasCible ? 15 : 0;
+  var pCible = _lgM.length ? Math.round(_nF / _lgM.length * 15) : 0;
   var pct = pBase + pDepth + pRpe + pBE + pCible;
   var st = function (g, m) { return g >= m ? 'ok' : g > 0 ? 'part' : 'ko'; };
   var rows = [
@@ -13768,13 +13776,13 @@ function _maFiabilite(data) {
     { l: 'Profondeur (' + cur.seances + ' séance' + (cur.seances > 1 ? 's' : '') + ')', g: pDepth, m: 25, s: st(pDepth, 25) },
     { l: 'RPE renseigné (' + Math.round(rpeCov * 100) + ' %)', g: pRpe, m: 20, s: st(pRpe, 20) },
     { l: 'Questionnaire bien-être', g: pBE, m: 15, s: st(pBE, 15) },
-    { l: 'Cibles de programme définies', g: pCible, m: 15, s: st(pCible, 15) }
+    { l: 'Fourchette de reps définie (' + (_lgM.length ? _nF + '/' + _lgM.length + ' exos' : 'pas de programme') + ')', g: pCible, m: 15, s: st(pCible, 15) }
   ];
   // Conseils pour atteindre 100 % (uniquement les critères non pleins).
   var tips = [];
   if (pRpe < 20) tips.push('renseigne ton RPE à chaque série (+' + (20 - pRpe) + ')');
   if (pBE < 15) tips.push('fais ton questionnaire du jour (+' + (15 - pBE) + ')');
-  if (pCible < 15) tips.push('définis des cibles dans ton programme (+15)');
+  if (pCible < 15) tips.push((_lgM.length ? 'donne une fourchette de reps (ou une catégorie) à chaque exercice du programme' : 'crée ton programme avec une fourchette de reps') + ' (+' + (15 - pCible) + ')');
   if (pDepth < 25) tips.push('enregistre plus de séances sur la période (+' + (25 - pDepth) + ')');
   return { pct: pct, rows: rows, tips: tips };
 }
@@ -14149,8 +14157,11 @@ function _maMuscuResume(data) {
   // KPI réels
   var seances = r.seances != null ? r.seances : 0;
   var tMoy = seances ? (Math.round((r.tonnage_kg || 0) / seances / 100) / 10) : null;
-  var recs = data.global && data.global.records_par_exo ? data.global.records_par_exo : {};
-  var nRec = 0;
+  // R2 : vrais records (meilleur PRÉCÉDENT battu, 1re fois exclue) = global.records_evenements,
+  // même source que le mail. Repli (backend pas encore redéployé) : ancien calcul.
+  var nRec = 0, _rev = data.global && Array.isArray(data.global.records_evenements) ? data.global.records_evenements : null;
+  var recs = (!_rev && data.global && data.global.records_par_exo) ? data.global.records_par_exo : {};
+  if (_rev) { var _rx = {}; _rev.forEach(function (e) { if (e && e.date >= w.startISO && e.date < w.endISO) _rx[e.exo] = 1; }); nRec = Object.keys(_rx).length; }
   Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= w.startISO && iso < w.endISO) nRec++; } });
   var kpi = [
     ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), 't / séance'],
@@ -14172,7 +14183,15 @@ function _maMuscuResume(data) {
   // Volume musculaire en SÉRIES sur la période + statut coloré (objectifs ou défauts).
   var spm = r.series_par_muscle || {};
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
-  var weeks = Math.max(1, Math.round(days / 7));
+  // R1 : semaines RÉELLEMENT couvertes — de max(début de période, 1re séance) à min(fin, demain).
+  var weeks = (function () {
+    var dm = (data.historique && data.historique.daily_muscu) || {}, first = Object.keys(dm).filter(function (k) { return dm[k] && (dm[k].series || 0) > 0; }).sort()[0];
+    var t = new Date(); t.setDate(t.getDate() + 1);
+    var demain = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    var a = (first && first > w.startISO) ? first : w.startISO, b = w.endISO < demain ? w.endISO : demain;
+    var nj = Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 864e5);
+    return Math.max(1, (nj > 0 ? nj : days) / 7);
+  })();
   var TGT = _maVolTargets();
   var vs = Object.keys(spm).map(function (m) { return { muscle: m, tot: spm[m] }; }).sort(function (a, b) { return b.tot - a.tot; });
   // Muscles du programme sans série sur la période (retour 31/10) → listés en bas, grisés.
@@ -14193,14 +14212,14 @@ function _maMuscuResume(data) {
   if (vs.length) {
     volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
       var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min;
-      var MEV = minW * weeks, MAV = optW * weeks, MRV = Math.round(optW * 1.5) * weeks, scale = MRV || 1, C, stat;
+      var MEV = Math.round(minW * weeks), MAV = Math.round(optW * weeks), MRV = Math.round(Math.round(optW * 1.5) * weeks), scale = MRV || 1, C, stat;
       if (v.tot < MEV) { C = '#DC3545'; stat = 'Sous-MEV'; }
       else if (v.tot < MAV) { C = '#E07800'; stat = 'Suffisant'; }
       else if (v.tot <= MRV) { C = '#00A854'; stat = 'Optimal'; }
       else { C = '#9D5FD3'; stat = 'Au-delà'; }
       var fw = Math.min(100, v.tot / scale * 100).toFixed(0);
       var mevX = Math.min(100, MEV / scale * 100).toFixed(0), mavX = Math.min(100, MAV / scale * 100).toFixed(0);
-      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.tot + ' séries · ' + stat + '</span></div>'
+      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + String(Math.round(v.tot * 10) / 10).replace('.', ',') + ' séries · ' + stat + '</span></div>'
         + '<div class="ma-vtrack" style="position:relative"><div class="ma-vfill" style="width:' + fw + '%;background:' + C + '"></div>'
         + '<span style="position:absolute;top:-1px;bottom:-1px;left:' + mevX + '%;width:2px;background:rgba(255,255,255,.3)"></span>'
         + '<span style="position:absolute;top:-1px;bottom:-1px;left:' + mavX + '%;width:2px;background:rgba(255,255,255,.6)"></span>'
@@ -14819,10 +14838,10 @@ function _maMuscuHistorique(data) {
   var html = ds.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
     var rv = rs[s.seance_id + '|' + s.date]; if (rv == null) rv = null;
-    var dot = (rv != null) ? '<div class="ma-rdot" title="RPE ' + rv + '/10" style="background:' + _maRpeCol(rv) + '">' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle)">–</div>';
+    var dot = (rv != null) ? '<div class="ma-rdot" title="RPE de séance ' + rv + '/10" style="background:' + _maRpeCol(rv) + ';width:auto;padding:0 7px;border-radius:10px;white-space:nowrap">RPE ' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle);width:auto;padding:0 7px;border-radius:10px;white-space:nowrap">RPE –</div>';
     var det = '<div class="nv-seancedet">' + _nvExoRows(s.exercices) + '</div>';
     return '<div class="ma-hcard"><div class="ma-hhd" style="cursor:pointer" onclick="maToggleHS(' + i + ')"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div>'
-      + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + (Math.round((s.tonnage || 0) / 100) / 10) + ' t</div></div>'
+      + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + String(Math.round((s.tonnage || 0) / 100) / 10).replace('.', ',') + ' t</div></div>'
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
