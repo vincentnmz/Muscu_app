@@ -963,7 +963,42 @@ function buildVolumeSemaineHisto(perfs: any[]): Record<string, number> {
 // (seances = jours distincts, series = nb de lignes, tonnage = Σ charge×reps…),
 // donc à offset 0 les chiffres coïncident avec les fenêtres glissantes du backend.
 // Valeurs NON arrondies par jour → le front arrondit la somme (cohérent avec recent).
-function buildDailyMuscu(perfs: any[]): Record<string, any> {
+// Muscle SECONDAIRE d'un exercice compté 0,5 série (décision 01/11, audit Analyses R4) :
+// partout où l'on compte des séries par muscle (Résumé, semaine, volume, mail récap).
+function _secMap(exoRows: any[]): Record<string, string> {
+  const m: Record<string, string> = {}
+  for (const e of (exoRows || [])) { const k = String((e as any).exercice || '').trim().toLowerCase(); const ms = normMuscle((e as any).muscle_secondaire); if (k && ms) m[k] = ms }
+  return m
+}
+function _addSeriesMuscle(acc: Record<string, number>, r: any, secByExo?: Record<string, string>) {
+  if (r.muscle) acc[r.muscle] = (acc[r.muscle] || 0) + 1
+  const sec = secByExo && secByExo[String(r.exercice || '').trim().toLowerCase()]
+  if (sec && sec !== normMuscle(r.muscle)) acc[sec] = (acc[sec] || 0) + 0.5
+}
+// VRAIS records (audit Analyses R2) : chaque fois qu'une série dépasse le meilleur PRÉCÉDENT de
+// l'exercice (charge, ou reps à charge égale). La 1re fois qu'un exercice est fait n'en est pas un.
+// Source unique pour l'app (Résumé « Records battus ») et le mail récap.
+function _recordsEvenements(perfs: any[]): any[] {
+  // Meilleur de la journée par exercice, comparé au meilleur des jours PRÉCÉDENTS (les séries
+  // d'une même séance ne se battent pas entre elles).
+  const jour: Record<string, Record<string, number[]>> = {}
+  for (const r of (perfs || [])) {
+    const d = normDate(r.date), e = String(r.exercice || ''), c = Number(r.charge) || 0, rp = Number(r.reps) || 0
+    if (!d || !e || c <= 0) continue
+    const j = (jour[d] = jour[d] || {}), x = j[e]
+    if (!x || c > x[0] || (c === x[0] && rp > x[1])) j[e] = [c, rp]
+  }
+  const best: Record<string, number[]> = {}, out: any[] = []
+  for (const d of Object.keys(jour).sort()) {
+    for (const e of Object.keys(jour[d])) {
+      const [c, rp] = jour[d][e], b = best[e]
+      if (b && (c > b[0] || (c === b[0] && rp > b[1]))) out.push({ exo: e, date: d, c, r: rp })
+      if (!b || c > b[0] || (c === b[0] && rp > b[1])) best[e] = [c, rp]
+    }
+  }
+  return out
+}
+function buildDailyMuscu(perfs: any[], secByExo?: Record<string, string>): Record<string, any> {
   const out: Record<string, any> = {}
   for (const r of perfs) {
     const d = normDate(r.date); if (!d) continue
@@ -974,7 +1009,8 @@ function buildDailyMuscu(perfs: any[]): Record<string, any> {
     o.reps += reps
     o.tonnage_kg += charge * reps
     if (r.rpe) { o.rpe_sum += Number(r.rpe); o.rpe_n++ }
-    if (r.muscle) { o.spm[r.muscle] = (o.spm[r.muscle] || 0) + 1; o.vpm[r.muscle] = (o.vpm[r.muscle] || 0) + charge * reps }
+    _addSeriesMuscle(o.spm, r, secByExo)
+    if (r.muscle) o.vpm[r.muscle] = (o.vpm[r.muscle] || 0) + charge * reps
   }
   return out
 }
@@ -993,11 +1029,11 @@ function buildVolumeParJour(perfs: any[]): Record<string, number> {
 // SOURCE DE VÉRITÉ UNIQUE : consommée à l'identique par le payload athlète
 // (getAppData) ET coach (getSuiviJoueur) → même forme [{ muscle, faites }],
 // le front (afficherVolumeMuscle / renderBilanBalance / cockpit E) l'attend ainsi.
-function buildVolumeSemaineParMuscle(perfs: any[], now: Date): any[] {
+function buildVolumeSemaineParMuscle(perfs: any[], now: Date, secByExo?: Record<string, string>): any[] {
   const lundiStr = fmtYMD(getLundi(now))
   const parMuscle: Record<string, number> = {}
   for (const r of perfs) {
-    if (normDate(r.date) >= lundiStr && r.muscle) parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + 1
+    if (normDate(r.date) >= lundiStr) _addSeriesMuscle(parMuscle, r, secByExo)
   }
   return Object.entries(parMuscle).map(([muscle, faites]) => ({ muscle, faites }))
 }
@@ -2136,8 +2172,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
   const lundiStr = fmtYMD(lundi)
   const perfsWeek = perfs.filter(r => normDate(r.date) >= lundiStr)
+  const _secAll = _secMap(exoCatRows || [])
   const seriesParMuscle: Record<string, number> = {}
-  for (const r of perfsWeek) if (r.muscle) seriesParMuscle[r.muscle] = (seriesParMuscle[r.muscle] || 0) + 1
+  for (const r of perfsWeek) _addSeriesMuscle(seriesParMuscle, r, _secAll)
 
   // prochaine séance = prochaine séance non faite du programme cette semaine (comme Code.gs getProchaineSeance)
   const prochaineSeance = (() => {
@@ -2253,7 +2290,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const recordsTotal = Object.keys(globalData.records || {}).length
 
   // Enrich globalData
-  const enrichedGlobal = { ...globalData, muscle_retard: muscleRetardObj, records_30j: records30j, records_total: recordsTotal }
+  const enrichedGlobal = { ...globalData, muscle_retard: muscleRetardObj, records_30j: records30j, records_total: recordsTotal, records_evenements: _recordsEvenements(perfs) }
 
   const poids = (poidsRows || []).map(r => ({ date: fmtFR(r.date), poids: Number(r.poids) }))
 
@@ -2551,9 +2588,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       dates_seances: datesSeances,
       exercices: [...new Set(perfs.map(r => r.exercice).filter(Boolean))],
       progression_par_exo: buildProgressionParExo(perfs),
-      volume_semaine: buildVolumeSemaineParMuscle(perfs, now),
+      volume_semaine: buildVolumeSemaineParMuscle(perfs, now, _secAll),
       volume_par_jour: buildVolumeParJour(perfs),
-      daily_muscu: buildDailyMuscu(perfs),
+      daily_muscu: buildDailyMuscu(perfs, _secAll),
       tendances: computeTendances(perfs, now),
     },
     poids,
@@ -4794,16 +4831,9 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   for (const r of inP) { const c = Number(r.charge) || 0, rp = Number(r.reps) || 0; ton += c * rp; reps += rp; if (Number(r.rpe) > 0) { rs += Number(r.rpe); rn++ } }
   out.tonnage = Math.round(ton); out.series = inP.length; out.reps = reps; out.rpe = rn ? Math.round(rs / rn * 10) / 10 : null
   out.tonnagePrec = Math.round(inPrev.reduce((s: number, r: any) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0))
-  // Vrais records : charge (ou reps à charge égale) jamais atteinte AVANT la séance.
-  const best: Record<string, number[]> = {}, recs: Record<string, any> = {}
-  const tri = perfsAll.slice().sort((a: any, b: any) => normDate(a.date).localeCompare(normDate(b.date)) || ((Number(a.serie) || 0) - (Number(b.serie) || 0)))
-  for (const r of tri) {
-    const e = String(r.exercice || ''), c = Number(r.charge) || 0, rp = Number(r.reps) || 0, d = normDate(r.date)
-    if (!e || c <= 0) continue
-    const b = best[e]
-    if (d >= d0 && d < d1 && b && (c > b[0] || (c === b[0] && rp > b[1]))) { const x = recs[e]; if (!x || c > x.c || (c === x.c && rp > x.r)) recs[e] = { exo: e, c, r: rp, date: d } }
-    if (!b || c > b[0] || (c === b[0] && rp > b[1])) best[e] = [c, rp]
-  }
+  // Vrais records (source unique _recordsEvenements, partagée avec l'app) : meilleur par exercice sur la période.
+  const recs: Record<string, any> = {}
+  for (const e of _recordsEvenements(perfsAll)) { if (e.date < d0 || e.date >= d1) continue; const x = recs[e.exo]; if (!x || e.c > x.c || (e.c === x.c && e.r > x.r)) recs[e.exo] = e }
   out.records = Object.values(recs).sort((a: any, b: any) => b.c - a.c)
   // Lecture des exercices au dernier jour de la période (mêmes règles que l'app).
   const prog = (ad.historique && ad.historique.progression_par_exo) || {}

@@ -17,3 +17,15 @@ Méthode : vraie app rendue (Playwright) sur la copie réelle des données (Sema
 | **R3** ❌ | Fiabilité des données | « Cibles de programme définies 0/15 » exige un %1RM ou un RPE cible dans le programme — que **rien n'utilise** dans la lecture. Ton programme a des fourchettes de reps (et des catégories) → −15 points injustifiés (84 au lieu de 99). | Critère = « fourchette de reps définie (programme ou catégorie) ». |
 | **R4** ❌ | Mail récap (mon erreur du 01/11) | Le mail compte les muscles secondaires à 0,5 série et écrit « comme dans l'app » : **faux**, le Résumé de l'app ne les compte pas (Biceps octobre : app 12 séries, mail ≈ 42 avec les secondaires des tirages). | 🟠 Décider : (a) secondaires à 0,5 aussi dans l'app (comme le « muscle en retard » du serveur) — recommandé ; ou (b) mail sans secondaires. |
 | **R5** | Historique | « 3.2 t » (point) ; la pastille de droite (RPE de séance du bilan) n'a pas de libellé — visible seulement au survol (impossible sur téléphone). | « 3,2 t » ; « RPE 6 » écrit. |
+
+## Réalisé (01/11, validé porteur : R1, R2, R3, R5 et R4 option a)
+
+| # | Correctif | Vérifié sur tes données |
+|---|---|---|
+| R1 | Cible de volume × **semaines réellement couvertes** (du début de période, ou de ta 1ʳᵉ séance si plus tard, jusqu'à aujourd'hui ; jours exacts ÷ 7). | Année = 20 semaines (15/06 → 01/11) au lieu de 52 : Dos 212 séries → « Suffisant » (10,6/sem.) ; Biceps 151,5 → « Sous-MEV » (7,6/sem. < 8, juste). |
+| R2 | « Records battus » = **vrais records** : meilleur de la journée au-dessus du meilleur des jours **précédents** ; la 1ʳᵉ fois n'en est pas un, les séries d'une même séance ne se battent pas entre elles. Calcul serveur unique (`_recordsEvenements` → `global.records_evenements`), utilisé par l'app ET le mail. Repli sur l'ancien calcul tant que `index.ts` n'est pas redéployé. | Octobre **15** (pas 16 : l'ancien calcul du mail comptait Tirage vertical uni, fait pour la 1ʳᵉ fois le 13/10, dont la série 2 « battait » la série 1) ; Année **29** (au lieu de 57). |
+| R3 | Critère de fiabilité = « Fourchette de reps définie (n/N exos) », fourchette du programme ou de la catégorie ; points au prorata. | 23/23 exos → fiabilité **99** (au lieu de 84). |
+| R4 (a) | Muscle **secondaire compté 0,5 série** dans l'app comme dans le mail : Résumé (`daily_muscu`), volume de la semaine (`volume_semaine`), objectifs (`volume_obti.series_semaine`). Affichage « 151,5 séries ». | Tests `agregats-backend`, `recap-v2` verts. |
+| R5 | Historique « 3,2 t » (virgule) ; pastille « RPE 6 » écrite (« RPE – » si pas de bilan). | Capture relue. |
+
+⚠️ `index.ts` à redéployer (R2, R4).
