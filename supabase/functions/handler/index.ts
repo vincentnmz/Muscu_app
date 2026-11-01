@@ -3957,8 +3957,16 @@ async function handleSaveTest(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
-async function handleSaveSeance(data: any[], saisiParCoach?: any): Promise<Response> {
+async function handleSaveSeance(data: any[], saisiParCoach?: any, envoiId?: any): Promise<Response> {
   if (!data?.length) return jsonResp({ erreur: 'Données manquantes' })
+  // Envoi déjà reçu (même identifiant) → on ne réécrit pas : protège d'un double enregistrement
+  // quand le réseau coupe après l'écriture et que l'app renvoie depuis sa file d'attente (01/11).
+  const _envoi = String(envoiId || '').trim()
+  const _aid0 = String((data[0] || [])[4] || '')
+  if (_envoi && _aid0) {
+    const { data: deja } = await sb().from('indicateurs').select('seance_id').eq('athlete_id', _aid0).eq('cle', 'envoi_id').eq('valeur', _envoi).limit(1)
+    if (deja && deja.length) return jsonResp({ success: true, deja_recu: true })
+  }
 
   // data = array of arrays: [date, semaine, seance_id, nom, athlete_id, exercice, muscle, exercice_id, serie, charge, reps, rpe, repos, volume]
   // colonnes numériques → coercition ('' / NaN → null) sinon Postgres rejette tout l'insert
@@ -4015,6 +4023,7 @@ async function handleSaveSeance(data: any[], saisiParCoach?: any): Promise<Respo
     }
   }
 
+  if (_envoi) { const s0 = Object.keys(seanceMap)[0]; if (s0) indicRows.push({ date: seanceMap[s0].date, athlete_id: seanceMap[s0].athlete_id, seance_id: s0, source: 'app', cle: 'envoi_id', valeur: _envoi, unite: '' }) }
   if (indicRows.length) await sb().from('indicateurs').insert(indicRows)
   if (coachSaisie) {
     const aid = String(rows[0]?.athlete_id || '')
@@ -6696,7 +6705,7 @@ Deno.serve(async (req: Request) => {
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return withSession(await handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password })), 'c')
-        case 'saveSeance':               return handleSaveSeance(body.data, body.saisi_par_coach)
+        case 'saveSeance':               return handleSaveSeance(body.data, body.saisi_par_coach, body.envoi_id)
         case 'deleteSeance':             return handleDeleteSeance(body)
         case 'updateSeance':             return handleUpdateSeance(body)
         case 'saveCommentaire':          return handleSaveCommentaire(body)

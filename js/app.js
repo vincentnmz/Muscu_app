@@ -10783,6 +10783,7 @@ function _saveBrouillon() {
       indexExoProgramme: indexExoProgramme,
       lastPerfData:      lastPerfData,
       exoEnCoursNom:     exoEnCours ? exoEnCours.exerciceNom : null,
+      envoiId:           _seanceEnvoiId,
       ts:                Date.now()
     }));
   } catch (e) {}
@@ -10827,6 +10828,7 @@ function _restaurerBrouillon() {
   programmeSeance   = b.programmeSeance || [];
   indexExoProgramme = b.indexExoProgramme || 0;
   lastPerfData      = b.lastPerfData || {};
+  _seanceEnvoiId    = b.envoiId || _nouvelEnvoiId();
   exoEnCours        = null;
 
   var di = document.getElementById('inp-date');      if (di && b.date) di.value = b.date;
@@ -10901,7 +10903,7 @@ async function demarrerSeance() {
   }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
-  _seanceEnvoyee = false; _seanceDureeMin = 0;
+  _seanceEnvoyee = false; _seanceDureeMin = 0; _seanceEnvoiId = _nouvelEnvoiId();
   try { _seanceChronoT0 = Date.now(); _seanceChronoStart(); } catch (e) {}
   _effacerBrouillon();
   { const _b=document.getElementById('brouillon-banner'); if(_b)_b.remove(); }
@@ -11845,7 +11847,9 @@ function majPlanSeries() {
   var faites = exoEnCours.series || [], done = faites.length;
   var perfHist = (typeof getPerf === 'function') ? getPerf(exoEnCours.exerciceNom) : null;
   var lastSeries = (perfHist && Array.isArray(perfHist.series) && perfHist.series.length) ? perfHist.series : null;
-  var n = Math.max(ps.length, done, pProg ? 0 : (lastSeries ? lastSeries.length : 0));
+  // Audit saisie 01/11 : si la dernière fois comptait PLUS de séries que le programme (ex. Pendulum 4 vs 3),
+  // la série en plus restait cachée → on affiche toutes les séries de la dernière fois.
+  var n = Math.max(ps.length, done, lastSeries ? lastSeries.length : 0);
   // Rien à montrer (hors programme, jamais fait, rien saisi) → pas de tableau.
   if (!n || (!pProg && !lastSeries && !done)) { el.innerHTML = ''; _majPerfLignes(false); return; }
   var rmaxP = pProg && _numOk(pProg.reps_max) ? Number(pProg.reps_max) : null;
@@ -12261,7 +12265,7 @@ async function _envoyerSeance() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(_saisieCoach ? { action: 'saveSeance', data: lignes, saisi_par_coach: String(coach && coach.coach_id || '') } : { action: 'saveSeance', data: lignes })
+      body: JSON.stringify(_saisieCoach ? { action: 'saveSeance', data: lignes, saisi_par_coach: String(coach && coach.coach_id || ''), envoi_id: _seanceEnvoiId } : { action: 'saveSeance', data: lignes, envoi_id: _seanceEnvoiId })
     });
     let j = null;
     try { j = await res.json(); } catch (_) { j = null; }
@@ -12389,7 +12393,8 @@ function _wellnessPayload(seanceId, dateSeance) {
 }
 function enregistrerSeanceOffline(lignes, wellness) {
   const q = _lireQueueOffline();
-  q.push({ lignes: lignes, wellness: wellness, ts: Date.now() });
+  if (!_seanceEnvoiId) _seanceEnvoiId = _nouvelEnvoiId();
+  q.push({ lignes: lignes, wellness: wellness, ts: Date.now(), envoi_id: _seanceEnvoiId });
   _ecrireQueueOffline(q);
 }
 var _flushingOffline = false;        // verrou anti-concurrence (online + load + resume peuvent coïncider)
@@ -12406,7 +12411,7 @@ async function flushSeancesOffline() {
       try {
         // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
         const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
+          body: JSON.stringify({ action: 'saveSeance', data: item.lignes, envoi_id: item.envoi_id || null }) });
         let j = null; try { j = await res.json(); } catch (_) { j = null; }
         const ok = res.ok && j && !j.erreur && !j.error;
         if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
@@ -18232,6 +18237,10 @@ try {
 } catch (e) {}
 
 var _seanceChronoT0 = 0, _seanceChronoIv = null, _seanceDureeMin = 0;
+// Identifiant d'envoi UNIQUE par séance (audit saisie 01/11) : si le réseau coupe APRÈS l'écriture
+// serveur, la séance part en file d'attente puis est renvoyée → le serveur ignore un envoi déjà reçu.
+var _seanceEnvoiId = '';
+function _nouvelEnvoiId() { return 'env_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10); }
 function _seanceChronoFmt(ms) { var s = Math.floor(ms / 1000), m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
 function _seanceChronoTick() { var t = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; var el = document.getElementById('seance-page-chrono'); if (el) el.textContent = t; var cc = document.getElementById('cardio-live-clock'); if (cc) cc.textContent = t || '0:00'; }
 function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); try { _nvWakeOn(); } catch (e) {} }

@@ -42,3 +42,13 @@ Garde-fous : échec 2 séances de suite sur l'exercice → tout gardé, « vise 
 Résultat sur les 16 exercices réels : **15 progressent (+1 rep série par série), 1 « sous la fourchette »** (Développé incliné Smith, 2 séances à l'échec) — avant : 12 bloqués. Tests : `surcharge-serie` 48 cas (10 nouveaux sur les seuils de chaque niveau et les garde-fous).
 
 Seuils « RPE ≤ 8 débutant » et « échec 2 séances de suite » = choix Novalyz cohérents avec ces sources (aucune ne les donne tels quels).
+
+## Suite de l'audit (01/11)
+
+| # | Point | Constat | Statut |
+|---|---|---|---|
+| S2 | Envoi de la séance | Aucune protection serveur contre un double envoi : si le réseau coupe APRÈS l'écriture, l'app met la séance en file et la renvoie → 2 enregistrements. Aucun doublon dans la base à ce jour (vérifié), mais le cas est possible. | **Corrigé** : identifiant d'envoi unique par séance (envoi, file d'attente, brouillon) ; le serveur ignore un envoi déjà reçu. Test `envoi-unique` (4 cas, ancienne app comprise). ⚠️ `index.ts` à redéployer. |
+| S3 | Tableau des séries | Si la dernière fois comptait plus de séries que le programme (Pendulum 4 vs 3), la série en plus était cachée. | **Corrigé** : toutes les séries de la dernière fois s'affichent. Vérifié en capture. |
+| S4 | Pré-remplissage | Charge et reps pré-remplies = cible de la règle, série par série (Pendulum : 60 × 9). | ✅ OK |
+| S5 | Brouillon | Un brouillon qui correspond à une séance déjà enregistrée ce jour-là est effacé en silence ; l'identifiant d'envoi est conservé dans le brouillon. | ✅ OK |
+| S6 | RPE non saisi | Ne bloque pas la progression (pas de valeur inventée) ; la saisie d'une série exige un RPE. | ✅ OK |
