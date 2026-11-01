@@ -24,3 +24,16 @@ Légende : ✅ vérifié · ❌ défaut (vérifié contre code + données) · �
 | **N6** | Toucher une alerte **coach** n'ouvre rien de précis (cible « coach » non gérée). | Ouvrir l'écran Aujourd'hui du coach. |
 | 🔍 **N7** | Notification reçue **app ouverte** (Android) : le code rafraîchit les messages mais ne montre rien ; la doc Capacitor ne dit pas clairement si Android l'affiche. | À vérifier sur ton téléphone. |
 | 🔍 N8 | John n'a reçu aucun rappel les 24-26/10 alors qu'il était absent ; cause non retrouvée (journaux du serveur expirés). | Surveiller les prochains jours (rythme attendu J+3). |
+
+## Demande d'autorisation au 1er lancement (question du porteur, 01/11)
+- **Athlète, app Android** : oui, demande système une fois au 1ᵉʳ lancement connecté ; si refusée, plus redemandée, réactivable dans Réglages ▸ Notifications.
+- **Coach, app Android** : demande système une fois à l'ouverture de l'espace coach ; désormais aussi un bouton **Réglages coach ▸ Préférences ▸ Notifications** (avant : aucun moyen de rattraper un refus).
+- **Navigateur (web)** : pas de demande automatique (bouton dans les Réglages athlète) ; coach : notifications sur l'app Android uniquement.
+
+## Réalisé (01/11, validé porteur : N1 a — même téléphone, N3, N4, reste OK)
+- **N1** Un téléphone reçoit les notifs **athlète ET coach** : jeton enregistré par (jeton, rôle) — `supabase/native_push_tokens_v2.sql` à appliquer **après** le redéploiement (le code gère l'ancienne et la nouvelle clé) ; la façade renvoie le jeton quand le rôle change ; désactiver un rôle ne coupe pas l'autre ; « envoyée » comptée seulement si un appareil l'a reçue ; carte Notifications dans les Réglages coach.
+- **N2** Message athlète → notification au coach (« 💬 Prénom : aperçu », coach lu en base) ; toucher → messagerie coach.
+- **N3** Absence : rappels à **J7, J10, J14, J21, J28** puis arrêt (jalons fixes : un jour de cron manqué est rattrapé le lendemain sans décaler la suite).
+- **N4** Absence = ni muscu ni cardio **hors marche** depuis 7 jours (vérifié sur le vrai backend : vélo le 05/11 → pas d'absence au 09/11 ; marche → absence).
+- **N5** Volume trop bas : au plus un rappel tous les 3 jours. **N6** Toucher une alerte coach → Aujourd'hui du coach.
+- Tests : `notif-roles-rythme` (8 cas) ; `fcm-notifications`, `natif-push-wiring` inchangés et verts.

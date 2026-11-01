@@ -2469,7 +2469,15 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const ctxObjM = _contexteActif(contexteRows || [], now)
     const ctxEtatM = ctxObjM ? String(ctxObjM.etat || 'saison_normale') : 'saison_normale'
     const sigM = _aggSignaux(beRows || [], now, 7)
-    const seances7M = new Set(perfs.filter(r => (normDate(r.date) || '') >= c7).map(r => normDate(r.date))).size
+    // Audit Notifications N4 (01/11) : l'ACTIVITÉ compte la muscu ET le cardio (hors marche) —
+    // une semaine de vélo / course / Hyrox n'est plus une « absence prolongée ».
+    const _cardioActif: Record<string, string> = {}   // seance_id → date, cardio hors marche
+    { const typ: Record<string, string> = {}, dt: Record<string, string> = {}
+      for (const r of (cardioRows || [])) { if (r.cle === 'type_cardio') typ[r.seance_id] = String(r.valeur || ''); if (!dt[r.seance_id]) dt[r.seance_id] = normDate(r.date) }
+      for (const sid of Object.keys(dt)) if (!/^marche/i.test(typ[sid] || '')) _cardioActif[sid] = dt[sid] }
+    const _joursActifs = new Set<string>([...perfs.map(r => normDate(r.date)), ...Object.values(_cardioActif)].filter(Boolean) as string[])
+    const seances7M = [..._joursActifs].filter(d => d >= c7).length
+    const derniereActivite = [..._joursActifs].sort().pop() || null
     const histoM = _joursDepuis(premiereP, now)
     // Modèle fitness-fatigue (Banister) sur la charge muscu (tonnage) — calculé AVANT
     // le verdict car il est désormais le SIGNAL DE CHARGE PRIMAIRE (ACWR = secondaire).
@@ -2522,6 +2530,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
       charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
+      derniere_activite: derniereActivite,   // muscu ou cardio hors marche (rythme des rappels d'absence, N3)
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
   }
@@ -3072,7 +3081,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // un nouveau (ou quelqu'un qui n'a jamais loggé de séance) recevrait « Absence
   // prolongée » (haute) + push dès le 1er jour — faux positif (fiabilité).
   if (s.seances7 === 0 && s.injStatut !== 'indispo' && !reposPrevu && s.q.hasCharge)
-    alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance depuis 7 jours' })
+    alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance (muscu ou cardio) depuis 7 jours' })
   // Messages SANS mention ACWR (repère secondaire peu fiable) : on parle de « charge
   // récente » (modèle fitness-fatigue). L'action concrète reste dans buildAlertesCentre.
   const sousCharge = ffOk ? (s.ffRatio != null && (s.ffRatio as number) < 0.80)
@@ -4088,19 +4097,22 @@ function _vapidInit(): boolean {
 
 // Envoie une notif push à tous les abonnements d'un athlète. Best-effort :
 // n'échoue jamais l'appelant, et purge les abonnements morts (404/410).
-async function sendPushToAthlete(athlete_id: string, payload: Record<string, unknown>): Promise<void> {
-  if (!_vapidInit()) return
+async function sendPushToAthlete(athlete_id: string, payload: Record<string, unknown>): Promise<number> {
+  if (!_vapidInit()) return 0
   const { data: subs } = await sb().from('push_subscriptions').select('*').eq('athlete_id', String(athlete_id))
-  if (!subs?.length) return
+  if (!subs?.length) return 0
   const body = JSON.stringify(payload)
+  let ok = 0
   await Promise.all(subs.map(async (s: any) => {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body)
+      ok++
     } catch (err: any) {
       const code = err && (err.statusCode || err.status)
       if (code === 404 || code === 410) { try { await sb().from('push_subscriptions').delete().eq('endpoint', s.endpoint) } catch (_) {} }
     }
   }))
+  return ok
 }
 
 async function handleSavePushSub(body: any): Promise<Response> {
@@ -4211,20 +4223,35 @@ async function sendFcmToAthlete(athlete_id: string, payload: Record<string, unkn
 
 // Notifie un athlète sur TOUS ses canaux (Web Push + FCM), chacun best-effort et
 // indépendant. Point d'entrée unique des notifications métier.
-async function notifyAthlete(athlete_id: string, payload: Record<string, unknown>): Promise<void> {
-  await Promise.all([
-    sendPushToAthlete(athlete_id, payload).catch(() => {}),
-    sendFcmToAthlete(athlete_id, payload).then(() => {}).catch(() => {}),
+async function notifyAthlete(athlete_id: string, payload: Record<string, unknown>): Promise<number> {
+  // Retourne le nombre d'envois ACCEPTÉS (FCM + Web Push) → le cron ne compte « envoyée » que si > 0 (N1).
+  const r = await Promise.all([
+    sendPushToAthlete(athlete_id, payload).catch(() => 0),
+    sendFcmToAthlete(athlete_id, payload).then((x) => x.sent).catch(() => 0),
   ])
+  return (Number(r[0]) || 0) + (Number(r[1]) || 0)
 }
 
 // Notifie un COACH. Les tokens du coach sont stockés dans les MÊMES tables push
 // que les athlètes, sous un identifiant namespacé `coach:<coach_id>` (athlete_id
 // est un simple text sans FK) → on réutilise toute la plomberie sans schéma dédié.
 const COACH_PUSH_PREFIX = 'coach:'
-async function notifyCoach(coach_id: string, payload: Record<string, unknown>): Promise<void> {
-  if (!coach_id) return
-  await notifyAthlete(COACH_PUSH_PREFIX + coach_id, payload)
+async function notifyCoach(coach_id: string, payload: Record<string, unknown>): Promise<number> {
+  if (!coach_id) return 0
+  return await notifyAthlete(COACH_PUSH_PREFIX + coach_id, payload)
+}
+
+// Rappel d'absence dû aujourd'hui ? (audit Notifications N3, 01/11) — J7, J10, J14, J21, J28 puis stop.
+// derniereActivite / dernierPush : 'YYYY-MM-DD' (dernierPush = dernier rappel d'absence APRÈS la dernière activité).
+function _rythmeAbsence(derniereActivite: string | null, dernierPush: string | null, now: Date): boolean {
+  if (!derniereActivite) return false
+  const j = (a: string, b: string) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5)
+  const today = fmtYMD(now), abs = j(derniereActivite, today)
+  if (abs < 7 || abs > 28) return false
+  // Jalons FIXES (jours d'absence) : un rappel est dû si un jalon est atteint depuis le dernier
+  // rappel de cet épisode. Un jour de cron manqué → envoyé le lendemain, sans décaler la suite.
+  const dejaJ = (!dernierPush || dernierPush < derniereActivite) ? -1 : j(derniereActivite, dernierPush)
+  return [7, 10, 14, 21, 28].some((m) => m <= abs && m > dejaJ)
 }
 
 // ── Notifications intelligentes (cron) — roadmap #29 ──────────────────────────
@@ -4265,9 +4292,14 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       // Clé par TYPE + JOUR (pas top.id, qui est stable → bloquerait le rappel
       // quotidien). Une alerte active re-notifie donc chaque jour.
       const key = top.type + '|' + dayKey
-      // ABSENCE / IRRÉGULARITÉ : rappel à J7 puis tous les 3 jours (plus chaque jour —
-      // validé porteur oct. 2026). On saute si un push de ce type date de < 3 jours.
-      if (top.type === 'absence' || top.type === 'irregularite') {
+      // Rythme des rappels (audit Notifications 01/11, validé porteur) :
+      //  • ABSENCE : J7, J10, J14, J21, J28 puis STOP (l'alerte reste visible dans l'app) — _rythmeAbsence ;
+      //  • IRRÉGULARITÉ et VOLUME TROP BAS (sous-charge) : au plus 1 rappel tous les 3 jours.
+      if (top.type === 'absence') {
+        const da = data && data.moteur && data.moteur.derniere_activite
+        const { data: lp } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').like('cle', 'absence|%').gte('date', da || '1970-01-01').order('date', { ascending: false }).limit(1)
+        if (!_rythmeAbsence(da || null, (lp && lp[0]) ? normDate(lp[0].date) : null, new Date())) continue
+      } else if (top.type === 'irregularite' || top.type === 'sous_charge') {
         const since = fmtYMD(minus(new Date(), 2))
         const { data: recent } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').like('cle', top.type + '|%').gte('date', since).limit(1)
         if (recent && recent.length) continue
@@ -4275,9 +4307,9 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       // 1) Notifier l'ATHLÈTE — anti-spam par (athlète, alerte, jour).
       const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').eq('cle', key).limit(1)
       if (!(deja && deja.length)) {
-        await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
-        await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push', cle: key, valeur: '1', unite: '', source: 'cron' })
-        pushed++
+        const nA = await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
+        // N1 : « envoyée » seulement si au moins un appareil l'a acceptée.
+        if (nA > 0) { await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push', cle: key, valeur: '1', unite: '', source: 'cron' }); pushed++ }
       }
       // 2) Notifier le COACH de l'athlète — anti-spam DÉDIÉ (indépendant du push athlète),
       //    pour qu'il soit prévenu même si l'athlète a déjà reçu sa notif.
@@ -4289,9 +4321,8 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
           const { data: dejaC } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push_coach').eq('cle', ckey).limit(1)
           if (!(dejaC && dejaC.length)) {
             const who = (aRow && (aRow as any).nom) ? String((aRow as any).nom).split(/\s+/)[0] : 'Un athlète'
-            await notifyCoach(coachId, { title: '⚠️ ' + who + ' · ' + (top.title || 'Alerte'), body: top.evidence || top.action || '', tag: 'novalyz-coach-alerte', target: 'coach' })
-            await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'cron' })
-            pushedCoach++
+            const nC = await notifyCoach(coachId, { title: '⚠️ ' + who + ' · ' + (top.title || 'Alerte'), body: top.evidence || top.action || '', tag: 'novalyz-coach-alerte', target: 'coach' })
+            if (nC > 0) { await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'cron' }); pushedCoach++ }
           }
         }
       } catch (_) { /* coach best-effort */ }
@@ -5093,7 +5124,10 @@ async function handleSaveNativePushToken(body: any): Promise<Response> {
   const platform = String(body.platform || '')
   if (!athlete_id || !token) return jsonResp({ success: false, error: 'Paramètres manquants' })
   const row = { token, athlete_id, platform, created_at: new Date().toISOString() }
-  const { error } = await sb().from('native_push_tokens').upsert(row, { onConflict: 'token' })
+  // N1 (01/11) : un même téléphone peut recevoir les notifs ATHLÈTE et COACH → clé (token, athlete_id).
+  let { error } = await sb().from('native_push_tokens').upsert(row, { onConflict: 'token,athlete_id' })
+  // Repli tant que la table n'a pas encore la clé (token, athlete_id) (migration native_push_tokens_v2.sql).
+  if (error) ({ error } = await sb().from('native_push_tokens').upsert(row, { onConflict: 'token' }))
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
 }
@@ -5101,7 +5135,10 @@ async function handleSaveNativePushToken(body: any): Promise<Response> {
 async function handleDeleteNativePushToken(body: any): Promise<Response> {
   const token = String(body.token || '')
   if (!token) return jsonResp({ success: false, error: 'token manquant' })
-  const { error } = await sb().from('native_push_tokens').delete().eq('token', token)
+  // Désactiver pour UN rôle ne coupe pas l'autre rôle du même téléphone (N1).
+  let q = sb().from('native_push_tokens').delete().eq('token', token)
+  if (body.athlete_id) q = q.eq('athlete_id', String(body.athlete_id))
+  const { error } = await q
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
 }
@@ -5148,7 +5185,19 @@ async function handleSaveCommentaire(body: any): Promise<Response> {
   const aut = auteur === 'athlete' ? 'athlete' : 'coach'
   const { error } = await sb().from('commentaires').insert({ comment_id: Date.now(), date: dateStr, coach_id: coach_id || '', coach_nom: coach_nom || '', athlete_id, message: msg, lu: false, auteur: aut, auteur_nom: auteur_nom || '' })
   if (error) return jsonResp({ success: false, error: error.message })
-  // Notif push : seul le message du coach → athlète déclenche une notif (Étape A).
+  // Notif push : coach → athlète (Étape A) ; athlète → SON coach (audit Notifications N2, 01/11).
+  // Le coach est lu en base (pas celui envoyé par le client).
+  if (aut === 'athlete') {
+    try {
+      const { data: aRow } = await sb().from('athletes').select('coach_id,nom').eq('id', String(athlete_id)).single()
+      const cId = aRow && (aRow as any).coach_id ? String((aRow as any).coach_id) : ''
+      if (cId) {
+        const who = (aRow && (aRow as any).nom) ? String((aRow as any).nom).trim().split(/\s+/)[0] : 'Ton athlète'
+        const apercuA = msg.length > 90 ? msg.slice(0, 87) + '…' : msg
+        await notifyCoach(cId, { title: `💬 ${who}`, body: apercuA, tag: 'novalyz-msg-coach', target: 'coach-messages' })
+      }
+    } catch (_) {}
+  }
   if (aut === 'coach') {
     const expediteur = String(coach_nom || auteur_nom || 'Ton coach')
     const apercu = msg.length > 90 ? msg.slice(0, 87) + '…' : msg

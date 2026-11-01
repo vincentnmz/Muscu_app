@@ -49,7 +49,7 @@
   var ACTION_DELETE_NATIF = 'deleteNativePushToken';
 
   // État natif (module) : garde-fous contre les doubles enregistrements.
-  var _natif = { listeners: false, dernierTokenEnvoye: null, derniereErreur: null };
+  var _natif = { listeners: false, dernierTokenEnvoye: null, dernierToken: null, envoyes: {}, opts: null, derniereErreur: null };
 
   function _platform() {
     var p = global.NovalyzPlatform;
@@ -77,9 +77,11 @@
   /* ── Transport du token FCM vers le backend (stockage séparé) ──────────── */
   async function _envoyerTokenBackend(token, opts) {
     if (!token) return { ok: false, raison: 'token-vide' };
-    // Dédoublonnage : 'registration' peut refirer avec le même token → 1 envoi.
-    if (token === _natif.dernierTokenEnvoye) return { ok: true, raison: 'token-inchange' };
+    _natif.dernierToken = token;
     var athleteId = (opts && opts.athleteId != null) ? opts.athleteId : _athleteIdCourant();
+    // Dédoublonnage par (token, identité) : 'registration' peut refirer avec le même token → 1 envoi,
+    // mais un CHANGEMENT de rôle (athlète → coach) sur le même téléphone renvoie le token (audit N1, 01/11).
+    if (athleteId && _natif.envoyes[token + '|' + athleteId]) return { ok: true, raison: 'token-inchange' };
     var scriptUrl = (opts && opts.scriptUrl) || global.SCRIPT_URL;
     var f = (opts && opts.fetchImpl) || global.fetch;
     if (!athleteId) return { ok: false, raison: 'non-connecte' };
@@ -90,6 +92,7 @@
         body: JSON.stringify({ action: ACTION_SAVE_NATIF, athlete_id: athleteId, token: token, platform: _nomPlateforme() }),
       });
       _natif.dernierTokenEnvoye = token;
+      _natif.envoyes[token + '|' + athleteId] = 1;
       return { ok: true, raison: 'envoye' };
     } catch (e) { return { ok: false, raison: 'erreur-reseau' }; }
   }
@@ -110,7 +113,8 @@
     _natif.listeners = true;
     try {
       // 'registration' porte le token, et refire au CHANGEMENT de token.
-      P.addListener('registration', function (t) { _envoyerTokenBackend(t && t.value, opts); });
+      // Identité COURANTE (dernier activer()), pas celle du 1er appel : le rôle peut changer (N1).
+      P.addListener('registration', function (t) { _envoyerTokenBackend(t && t.value, _natif.opts || opts); });
       P.addListener('registrationError', function (e) { _natif.derniereErreur = e; });
       // Notif reçue app au premier plan → rafraîchir (badge live).
       P.addListener('pushNotificationReceived', function (n) { _notifierApp('received', n); });
@@ -140,7 +144,10 @@
     if (etat !== 'granted') return { canal: CANAL_NATIVE, ok: false, raison: 'permission-refusee', etat: etat };
 
     // Écouteurs (idempotent) PUIS enregistrement auprès du service push.
+    _natif.opts = opts;
     _installerListeners(P, opts);
+    // Token déjà connu (même session, autre rôle) : l'envoyer tout de suite pour cette identité.
+    if (_natif.dernierToken) { try { await _envoyerTokenBackend(_natif.dernierToken, opts); } catch (e) {} }
     try { await P.register(); }
     catch (e) { return { canal: CANAL_NATIVE, ok: false, raison: 'registration-erreur' }; }
 
@@ -149,7 +156,7 @@
 
   async function _desactiverNatif(opts) {
     opts = opts || {};
-    var token = _natif.dernierTokenEnvoye;
+    var token = _natif.dernierTokenEnvoye || _natif.dernierToken;
     var athleteId = (opts.athleteId != null) ? opts.athleteId : _athleteIdCourant();
     var scriptUrl = opts.scriptUrl || global.SCRIPT_URL;
     var f = opts.fetchImpl || global.fetch;
@@ -164,6 +171,7 @@
       } catch (e) {}
     }
     _natif.dernierTokenEnvoye = null;
+    if (token && athleteId) delete _natif.envoyes[token + '|' + athleteId];
     return { canal: CANAL_NATIVE, ok: true, desassocie: envoye };
   }
 
@@ -189,7 +197,7 @@
   }
 
   // Réinitialise l'état natif (utile pour les tests et une future déconnexion).
-  function _reset() { _natif = { listeners: false, dernierTokenEnvoye: null, derniereErreur: null }; }
+  function _reset() { _natif = { listeners: false, dernierTokenEnvoye: null, dernierToken: null, envoyes: {}, opts: null, derniereErreur: null }; }
 
   var api = {
     CANAL_WEB: CANAL_WEB,
