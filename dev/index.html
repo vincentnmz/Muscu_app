@@ -1410,6 +1410,7 @@
              centre ; order:8 → reste en dernier sur mobile (inchangé). -->
         <!-- Points v2 (30/10) : UNE ligne sur Aujourd'hui ; le détail est dans « Mes points ». -->
         <div class="tj-card tj-reveal tj-pts-line" id="tj-pts-line" onclick="ouvrirMesPoints()" role="button">
+          <div class="tj-label" style="margin-bottom:6px">Récompenses et objectif</div>
           <div class="pl-row"><div class="pl-tx"><div class="pl-t" id="tj-pl-t">Objectif semaine</div><div class="pl-s" id="tj-pl-s">—</div></div><span class="pl-go">Voir ›</span></div>
           <div class="tj-mbar"><span id="tj-pl-bar" style="width:0%"></span></div>
         </div>
@@ -1475,7 +1476,7 @@
         </div>
 
         <div class="tj-card tj-bwrap tj-reveal">
-          <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
+          <div class="tj-brow"><span class="k" id="tj-pdj-k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
           <div class="tj-bgrid" id="tj-bgrid"></div>
         </div>
 

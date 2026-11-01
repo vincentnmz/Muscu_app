@@ -11757,7 +11757,11 @@ function _progDecision(ctx) {
   var prevR = (ctx.prev || []).map(function (x) { return Number(x.rpe); }).filter(function (x) { return x > 0; });
   var echec2 = rpe != null && rpe >= 10 && prevR.length && Math.max.apply(null, prevR) >= 10;
   var tousTenus = last.every(function (x) { var v = Number(x.rpe); return v > seuil; });
-  if (rpe != null && rpe >= 9 && chargeable && sousN * 2 > last.length) mode = 'sous';
+  // REPRISE (audit Aujourd'hui T2, 01/11) : ≥ 21 jours sans AUCUNE séance → on refait la dernière
+  // fois sans pousser (la force est en grande partie conservée ~3 semaines, puis décline :
+  // McMaster et al. 2013, Sports Med 43:367). Prioritaire sur tout le reste.
+  if (ctx.joursSansSeance != null && ctx.joursSansSeance >= 21) mode = 'reprise';
+  else if (rpe != null && rpe >= 9 && chargeable && sousN * 2 > last.length) mode = 'sous';
   else if (ctx.vigilance) mode = 'vigilance';
   else if (echec2) mode = 'echec';
   else if (chargeable && auHaut(last) && (rpe == null || rpe <= (ctx.niveau === 'debutant' ? 8 : 9))
@@ -11780,7 +11784,7 @@ function _progDecision(ctx) {
   var cible = function (k, choix) {
     var r = ref(k), ch = Number(r.charge) || 0, rp = Number(r.reps) || 0;
     var c = choix || 'charge';
-    if (mode === 'consolide' || mode === 'vigilance' || mode === 'echec') return { charge: ch, reps: rp, repos: R };
+    if (mode === 'consolide' || mode === 'vigilance' || mode === 'echec' || mode === 'reprise') return { charge: ch, reps: rp, repos: R };
     // Seules les séries SOUS le minimum descendent d'un petit pas (dégressif : la
     // série déjà dans la fourchette reste telle quelle).
     if (mode === 'sous') return (rp > 0 && rp < rmin) ? { charge: Math.max(0, _r025(ch - ctx.pas)), reps: rmin, repos: R, up: 'baisse' } : { charge: ch, reps: rp, repos: R };
@@ -11795,13 +11799,14 @@ function _progDecision(ctx) {
     return { charge: ch, reps: rp, repos: R };
   };
   var nTenues = (mode === 'reps') ? last.filter(function (x) { return Number(x.rpe) > seuil; }).length : 0;
-  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, vigilanceTxt: ctx.vigilanceTxt || '' };
+  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance };
 }
 // Phrase d'explication du mode (UNE source pour la saisie, Aujourd'hui et Par exercice).
 function _progWhy(d, f, pas) {
   var kg = function (x) { return String(x).replace('.', ','); };
   if (!d || d.mode === 'premier') return '1re fois : trouve ta charge de travail';
   if (d.mode === 'sous') return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ') · indicatif';
+  if (d.mode === 'reprise') return 'reprise après ' + Math.floor(d.joursSansSeance / 7) + ' semaines sans séance : refais ta dernière fois, sans pousser · indicatif';
   if (d.mode === 'vigilance') return 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '') + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';
   if (d.mode === 'echec') return 'échec (RPE 10) 2 séances de suite : garde ta charge et vise RPE 9 (1 rep en réserve)';
   if (d.mode === 'consolide') return 'RPE ' + d.rpe + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
@@ -11809,6 +11814,34 @@ function _progWhy(d, f, pas) {
   if (d.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
   var base = f.rmax ? '+1 rep (haut de fourchette : ' + f.rmax + ')' : '+1 rep';
   return d.nTenues ? base + ' · ' + d.nTenues + ' série' + (d.nTenues > 1 ? 's' : '') + ' à RPE ' + (d.seuil === 8 ? '9-10' : '10') + ' gardée' + (d.nTenues > 1 ? 's' : '') + ' telle' + (d.nTenues > 1 ? 's' : '') : base;
+}
+// Âge (jours) du dernier questionnaire bien-être — null s'il n'y en a pas (T1, 01/11).
+function _beAge(data, nowT) {
+  try {
+    var b = data && Array.isArray(data.bien_etre) && data.bien_etre[0]; var t = b ? _dYmd(b.date) : null; if (t == null) return null;
+    var t0 = new Date(nowT || Date.now()); t0.setHours(0, 0, 0, 0);
+    return Math.round((t0.getTime() - t) / 864e5);
+  } catch (e) { return null; }
+}
+// Niveau d'état AFFICHÉ (audit Aujourd'hui T1, 01/11) : le moteur ne lit la forme que sur les
+// questionnaires des 7 derniers jours. Sans aucun questionnaire dans cette fenêtre, « Prêt » ne
+// repose sur aucun signal de forme → on affiche « État non renseigné » (pas de faux « Prêt »).
+// Vigilance / À surveiller restent (ils viennent de signaux réels : douleur, blessure, contexte…).
+function _nivAffiche(data) {
+  var m = (data && data.moteur) || {}, niv = (m.disponibilite && m.disponibilite.niveau) || null;
+  if (niv !== 'Prêt') return niv;
+  var a = _beAge(data);
+  return (a != null && a >= 0 && a <= 6) ? niv : 'Non renseigné';
+}
+function _dateCourte(d) { var t = _dYmd(d); if (t == null) return ''; var x = new Date(t); return String(x.getDate()).padStart(2, '0') + '/' + String(x.getMonth() + 1).padStart(2, '0'); }
+// Jours depuis la dernière séance (toutes séances confondues) — règle de reprise (T2, 01/11).
+function _joursSansSeance(data, nowT) {
+  try {
+    var d = data && data.dashboard && data.dashboard.derniere_seance && data.dashboard.derniere_seance.date;
+    var t = d ? _dYmd(d) : null; if (t == null) return null;
+    var t0 = new Date(nowT || Date.now()); t0.setHours(0, 0, 0, 0);
+    return Math.round((t0.getTime() - t) / 864e5);
+  } catch (e) { return null; }
 }
 // Jour en Vigilance (verdict du moteur) → pas de progression proposée ce jour-là (01/11).
 function _vigilanceDuJour(data) {
@@ -11858,7 +11891,8 @@ function majPlanSeries() {
   var _niv = 'debutant'; try { _niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
   var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData);
-  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt,
+  var _jss = _joursSansSeance((typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData);
+  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _jss,
     nPrevues: pProg && _numOk(pProg.series_prevues) ? Number(pProg.series_prevues) : 0, pas: _petitPas(exoEnCours.exerciceNom),
     reposRef: _reposRef(lastSeries, pProg ? pProg.repos_sec : null), bornes: _reposBornes(exoEnCours.exerciceNom) });
   var choix = exoEnCours._progChoix || 'charge';
@@ -11905,7 +11939,7 @@ function majPlanSeries() {
   var sub = [resume, plan.note, prevu].filter(Boolean);
   // Message de la règle (factuel, tracé sur les données) + choix du jour (avancé / expert).
   var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
-  if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
+  if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || dec.mode === 'reprise' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
   else if (dec.mode === 'sous') msg = 'Indicatif : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + '. Au choix : un petit pas en dessous (−' + String(pas).replace('.', ',') + ' kg, déjà pré-rempli) pour revenir à ' + rminP + ' reps, ou garder la charge et viser +1 rep, ou prendre 30 s de repos en plus. À toi de choisir.';
   else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
   else if (dec.mode === 'choix') {
@@ -11924,7 +11958,7 @@ function majPlanSeries() {
       + (R0 != null ? '<div class="pc-ref">Repos de référence : ' + esc(_reposTxt(R0)) + ' (dernière fois). Bornes : ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).min)) + ' à ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).max)) + '.</div>' : '')
       + '</div>';
   }
-  if (dec.mode !== 'sous') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
+  if (dec.mode !== 'sous' && dec.mode !== 'reprise') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
   var sg = document.getElementById('exo-actuel-suggestion');
   if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
@@ -14148,12 +14182,13 @@ function _maMuscuResume(data) {
   // mêmes définitions que les fenêtres glissantes backend, donc cohérents à offset 0.
   var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), w.startISO, w.endISO);
   var mot = data.moteur || {};
-  var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
-  var VB = { 'Prêt': ['acc', 'var(--accent)', 'Prêt à performer', 'Charge et régularité au rendez-vous, le moteur te voit prêt.'],
+  var niv = _nivAffiche(data);
+  var VB = { 'Non renseigné': ['acc', 'var(--text-subtle)', 'État non renseigné', 'Pas de questionnaire ces 7 derniers jours : fais celui du jour pour que Novalyz évalue ta forme.'],
+    'Prêt': ['acc', 'var(--accent)', 'Prêt à performer', 'Charge et régularité au rendez-vous, le moteur te voit prêt.'],
     'Vigilance': ['acc', '#E07800', 'Reste vigilant', 'Ta charge monte — surveille la récupération.'],
     'À surveiller': ['acc', '#DC3545', 'À surveiller', 'Signes de fatigue : allège si besoin.'] };
   var vb = VB[niv] || ['acc', 'var(--accent)', 'Ton bilan', 'Renseigne tes séances et ton état du jour pour affiner l\'analyse.'];
-  var verdict = '<div class="ma-verdict acc" style="border-left-color:' + vb[1] + '"><span class="ma-vic" style="background:' + vb[1] + '">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 14) + '</span><div><div class="vh">' + vb[2] + '</div><div class="vd">' + _maE(mot.reco || vb[3]) + '</div></div></div>';
+  var verdict = '<div class="ma-verdict acc" style="border-left-color:' + vb[1] + '"><span class="ma-vic" style="background:' + vb[1] + '">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 14) + '</span><div><div class="vh">' + vb[2] + '</div><div class="vd">' + _maE(niv === 'Non renseigné' ? vb[3] : (mot.reco || vb[3])) + '</div></div></div>';
   // KPI réels
   var seances = r.seances != null ? r.seances : 0;
   var tMoy = seances ? (Math.round((r.tonnage_kg || 0) / seances / 100) / 10) : null;
@@ -15686,9 +15721,9 @@ function renderTjFormeRail(data) {
   var m = (data && data.moteur) || {}, dash = (data && data.dashboard) || {};
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var tiles = [];
-  var niv = m.disponibilite && m.disponibilite.niveau;
+  var niv = _nivAffiche(data);
   if (niv) {
-    var dc = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)');
+    var dc = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : niv === 'Non renseigné' ? 'var(--text-subtle)' : 'var(--danger)');
     tiles.push('<div class="rail-tile"><div class="k"><span class="dot" style="background:' + dc + '"></span>Disponibilité</div><div class="v" style="font-size:14px">' + esc(niv) + '</div></div>');
   }
   if (m.recup && m.recup !== '—') {
@@ -15703,10 +15738,11 @@ function renderTjFormeRail(data) {
     tiles.push('<div class="rail-tile"><div class="k">Fraîcheur</div><div class="v" style="font-size:14px;color:' + frC + '">' + frL + '</div></div>');
   }
   try {
-    var sh = (data && data.sante_historique || [])[0];
+    // T4 (01/11) : dernière nuit COMPLÈTE (≥ 3 h, comme la lecture), datée — pas une moyenne.
+    var sh = (data && data.sante_historique || []).filter(function (x) { return x && Number(x.sommeil_min) >= 180; })[0];
     if (sh && sh.sommeil_min != null) {
       var hh = Math.floor(sh.sommeil_min / 60), mn = Math.round(sh.sommeil_min % 60);
-      tiles.push('<div class="rail-tile"><div class="k">Sommeil (montre)</div><div class="v">' + hh + '<small> h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small></div></div>');
+      tiles.push('<div class="rail-tile"><div class="k">Dernière nuit (' + _dateCourte(sh.date) + ')</div><div class="v">' + hh + '<small> h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small></div></div>');
     }
   } catch (e) {}
   if (!tiles.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
@@ -16579,12 +16615,12 @@ function _tjCibles(data, exos) {
     if (!last || !last.length) return { exo: nom, mode: 'premier', f: f };
     var pas = _petitPas(nom);
     var _vg = _vigilanceDuJour(data);
-    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
+    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _joursSansSeance(data), nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
     // Série de référence = la plus LOURDE (puis le plus de reps) : la 1re est souvent une
     // série de mise en route plus légère (ex. 5 kg × 20 avant 7,5 kg × 10).
     var kRef = 0; last.forEach(function (x, i) { var b = last[kRef]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) kRef = i; });
     var ref = last[kRef], kNum = Number(ref.serie) || (kRef + 1), cib = dec.cible(kNum, 'charge');
-    var _bq = (dec.mode !== 'sous') ? _blocageInfo(data, nom) : null;
+    var _bq = (dec.mode !== 'sous' && dec.mode !== 'reprise') ? _blocageInfo(data, nom) : null;
     return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib, bloqueN: _bq ? _bq.n : 0, why: _progWhy(dec, f, pas) };
   });
 }
@@ -16697,8 +16733,17 @@ function _normaleBloc(data, poss) {
   if (mo) {
     var mh = '';
     if (mo.sommeil) {
-      var so = mo.sommeil, sub = so.base != null ? poss + ' normale ' + _fmtHmin(so.base) + ' (' + so.nBase + ' nuits)' : (poss + ' normale dès 14 nuits complètes (' + so.nBase + ')');
-      mh += line('#00A854', '<b>Sommeil réel</b> ' + _fmtHmin(so.moy) + ' / nuit <span style="color:var(--tj-subtle,var(--text-subtle))">(7 j, ' + so.n + ' nuit' + (so.n > 1 ? 's' : '') + ')</span>', sub);
+      // T3 (01/11, validé) : comparaison dès 3 nuits sur 7 j — orange ≥ 1 h SOUS la normale ;
+      // vert dans la normale ou au-dessus (dormir plus est bénéfique). Sinon gris (info seule).
+      var so = mo.sommeil, sCol = '#9AA3B5', sLib = '';
+      if (so.base != null && so.n >= 3) {
+        var dS = so.moy - so.base;
+        if (dS <= -60) { sCol = '#E07800'; sLib = 'sous ' + poss + ' normale'; }
+        else if (dS >= 60) { sCol = '#00A854'; sLib = 'au-dessus de ' + poss + ' normale'; }
+        else { sCol = '#00A854'; sLib = 'dans ' + poss + ' normale'; }
+      }
+      var sub = so.base != null ? (sLib ? '<b style="color:' + sCol + '">' + sLib + '</b> (' + _fmtHmin(so.base) + ', ' + so.nBase + ' nuits)' : poss + ' normale ' + _fmtHmin(so.base) + ' (' + so.nBase + ' nuits) · comparaison dès 3 nuits sur 7 j') : (poss + ' normale dès 14 nuits complètes (' + so.nBase + ')');
+      mh += line(sCol, '<b>Sommeil réel</b> ' + _fmtHmin(so.moy) + ' / nuit <span style="color:var(--tj-subtle,var(--text-subtle))">(7 j, ' + so.n + ' nuit' + (so.n > 1 ? 's' : '') + ')</span>', sub);
     }
     if (mo.fc) {
       var f = mo.fc, fcol = f.degrade ? '#E07800' : (f.evaluable ? '#00A854' : '#9AA3B5');
@@ -16709,7 +16754,7 @@ function _normaleBloc(data, poss) {
     }
     h += '<div style="margin-top:6px;padding:7px 9px;background:var(--tj-surface2,var(--surface2));border-radius:10px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle,var(--text-subtle));font-weight:800;margin-bottom:2px">Montre</div>' + mh + '</div>';
   }
-  return '<div style="margin:0 0 12px">' + h + '<div style="font-size:10.5px;color:var(--tj-subtle,var(--text-subtle));margin-top:4px;line-height:1.4">« ' + (poss === 'ta' ? 'Ta' : 'Sa') + ' normale » = moyenne des 5 semaines précédentes. Orange seulement à ±1 point (FC : +5 bpm).</div></div>';
+  return '<div style="margin:0 0 12px">' + h + '<div style="font-size:10.5px;color:var(--tj-subtle,var(--text-subtle));margin-top:4px;line-height:1.4">« ' + (poss === 'ta' ? 'Ta' : 'Sa') + ' normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).</div></div>';
 }
 function _fmtHmin(m) { m = Math.round(m); return Math.floor(m / 60) + ' h ' + ((m % 60) < 10 ? '0' : '') + (m % 60); }
 function renderChargeFatigueJour(data) {
@@ -16718,7 +16763,10 @@ function renderChargeFatigueJour(data) {
   var cf = m.charge_fatigue || null;
   var hasCf = !!(cf && cf.ratio != null);
   var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
-  var niv0 = (m.disponibilite && m.disponibilite.niveau) || null;
+  var niv0 = _nivAffiche(data);
+  // Questionnaire d'un autre jour : on DATE ce qu'on en reprend ; au-delà de 7 jours, on ne le cite plus.
+  var _bA = _beAge(data), _beDate = (be0 && _bA != null && _bA > 0) ? _dateCourte(be0.date) : '';
+  if (_bA == null || _bA > 6) be0 = null;
   var hasRecup = !!(m.recup && m.recup !== '—');
   // Bloc UNIQUE : affiché dès qu'il y a un verdict, une charge/fatigue, une récup,
   // une reco ou un point de vigilance — sinon masqué.
@@ -16808,7 +16856,8 @@ function renderChargeFatigueJour(data) {
       var _sous = _rows.filter(function (x) { return x.mode === 'sous'; });
       var _up = _rows.filter(function (x) { return x.cib && (x.cib.up === 'charge' || x.cib.up === 'reps'); });
       var bits = [];
-      if (niv0 === 'Prêt' && _up.length) bits.push(_up.length + ' exercice' + (_up.length > 1 ? 's' : '') + ' à pousser (charge ou +1 rep)');
+      var _abs = Array.isArray(m.alertes) && m.alertes.some(function (a) { return a && a.type === 'absence'; });
+      if (niv0 === 'Prêt' && !_abs && _up.length) bits.push(_up.length + ' exercice' + (_up.length > 1 ? 's' : '') + ' à pousser (charge ou +1 rep)');
       if (_sous.length) bits.push(_sous.map(function (x) { return '<b>' + _e2(x.exo.trim()) + '</b>'; }).join(', ') + ' sous ta fourchette : petit pas en dessous, ou même charge +1 rep, ou +30 s de repos (au choix, indicatif)');
       if (bits.length) recoSeance = 'Séance du jour (' + _e2(_sj.nom) + ') : ' + bits.join(' · ') + '.';
     }
@@ -16820,11 +16869,14 @@ function renderChargeFatigueJour(data) {
   if (niv0) {
     var VB = { 'Prêt': ['var(--tj-good)', 'rgba(0,168,84,.12)', 'rgba(0,168,84,.28)', 'Prêt à performer'],
       'Vigilance': ['var(--tj-warn)', 'rgba(224,120,0,.12)', 'rgba(224,120,0,.28)', 'Reste vigilant'],
-      'À surveiller': ['#DC3545', 'rgba(220,53,69,.10)', 'rgba(220,53,69,.28)', 'À surveiller'] };
+      'À surveiller': ['#DC3545', 'rgba(220,53,69,.10)', 'rgba(220,53,69,.28)', 'À surveiller'],
+      'Non renseigné': ['var(--tj-subtle)', 'var(--tj-surface2)', 'var(--tj-border)', 'État non renseigné'] };
     var vb = VB[niv0] || ['var(--tj-subtle)', 'var(--tj-surface2)', 'var(--tj-border)', 'Ton état du jour'];
     var sp = [];
     try {
-      if (be0) {
+      if (niv0 === 'Non renseigné') sp.push(_bA != null ? 'Pas de questionnaire depuis le ' + _dateCourte(data.bien_etre[0].date) + ' : fais celui du jour pour que Novalyz évalue ta forme' : 'Fais ton questionnaire du jour pour que Novalyz évalue ta forme');
+      else if (be0) {
+        if (_beDate) sp.push('Questionnaire du ' + _beDate);
         if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
         if (be0.fatigue != null && !isNaN(Number(be0.fatigue))) sp.push('fatigue ' + String(WQ_ANSWERS.fatigue[Number(be0.fatigue)] || '').toLowerCase());
       }
@@ -16926,7 +16978,7 @@ function renderAujourdhui(data) {
     var _bg = (data && data.global) || {}, _bd = (data && data.dashboard) || {};
     var _tS = Number(_bg.total_seances || 0);
     var _stk = (_bd.regularite && _bd.regularite.streak != null) ? Number(_bd.regularite.streak) : ((_bd.streak && _bd.streak.semaines != null) ? Number(_bd.streak.semaines) : 0);
-    var _hasRec = _bg.records_par_exo && Object.keys(_bg.records_par_exo).length > 0;
+    var _hasRec = Array.isArray(_bg.records_evenements) ? _bg.records_evenements.length > 0 : (_bg.records_par_exo && Object.keys(_bg.records_par_exo).length > 0);   // T6 : vrais records (1re fois exclue)
     var SVGf = '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>', SVGm = '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>', SVGb = '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>', SVGs = '<path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/>', SVGc = '<path d="M20 6 9 17l-5-5"/>';
     // Du plus prestigieux au plus simple : on prend le 1er atteint.
     var _cand = [
@@ -17025,8 +17077,12 @@ function renderAujourdhui(data) {
         { key: 'stress', nm: 'Stress', invert: true }
       ];
       var escB = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+      // T1 (01/11) : un questionnaire d'un autre jour est DATÉ ; au-delà de 7 jours, plus affiché.
+      var _ag = _beAge(data), beG = (_ag != null && _ag >= 0 && _ag <= 6) ? be0 : null;
+      var elK = document.getElementById('tj-pdj-k');
+      if (elK) elK.textContent = (beG && _ag > 0) ? 'Ton dernier point (' + _dateCourte(beG.date) + ')' : 'Ton point du jour';
       elG.innerHTML = CELLS.map(function (c) {
-        var raw = be0 ? be0[c.key] : null;
+        var raw = beG ? beG[c.key] : null;
         var has = !(raw == null || raw === '' || isNaN(Number(raw)));
         var nn = has ? Number(raw) : 0;
         var pos = has ? wqPositif({ invert: c.invert }, raw) : null;
@@ -17124,7 +17180,7 @@ function renderAujourdhui(data) {
     var reg2 = dashb.regularite || {};
     var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : 0);
     var recsObj = g.records_par_exo || {};
-    var hasRecords = Object.keys(recsObj).length > 0;
+    var hasRecords = Array.isArray(g.records_evenements) ? g.records_evenements.length > 0 : Object.keys(recsObj).length > 0;   // T6 : vrais records
 
     // Niveau = points GAGNÉS à vie (ne baisse jamais, même après un achat).
     var lv = _rewLevel(gagnes);
@@ -17141,6 +17197,8 @@ function renderAujourdhui(data) {
       var t = 0; try { var pp = String(r.date || '').split('/'); t = pp.length === 3 ? new Date(+pp[2], +pp[1] - 1, +pp[0]).getTime() : 0; } catch (e3) { t = 0; }
       if (!best || t > best.t) best = { exo: exo, charge: r.charge, t: t };
     });
+    // T6 : « Ton dernier record » = dernier VRAI record (meilleur précédent battu), pas la 1re fois.
+    if (Array.isArray(g.records_evenements)) { var _ev = g.records_evenements.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); })[0]; best = _ev ? { exo: String(_ev.exo).trim(), charge: _ev.c } : null; }
     var elNa = document.getElementById('tj-newpr-a'), elNb = document.getElementById('tj-newpr-b');
     if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton dernier record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
     else { if (elNa) elNa.textContent = 'Records'; if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records'; }
@@ -20065,6 +20123,9 @@ function _appliquerAppData(data) {
     // ne doit pas empêcher le rendu du cardio ni la récupération de brouillon)
     // =========================================================================
     _safe('dashboard', () => {
+    // Audit Aujourd'hui T7 (01/11) : ancien tableau de bord retiré de la page — ce rendu
+    // plantait à chaque chargement (éléments absents). On ne l'exécute plus sans sa page.
+    if (!document.getElementById('dash-seances-faites')) return;
     const dash       = data.dashboard;
     const recent     = data.recent     || {};   // Charge récente
     const globalEng  = data.global     || {};   // Historique global
@@ -20387,6 +20448,10 @@ function _nvcGrille() {
   var svg = document.getElementById('nv-comb'); if (!svg) return;
   var r0 = svg.getBoundingClientRect(), W = Math.round(r0.width), H = Math.round(r0.height); if (!W || !H) return;
   _NVC.w = W; _NVC.h = H;
+  // Grille construite pour la plus grande hauteur possible de l'écran (barre d'adresse / clavier
+  // masqués) et recadrée en haut à gauche sans mise à l'échelle → rien ne saute quand la hauteur varie.
+  try { H = Math.max(H, Math.round((screen && screen.height) || 0), Math.round(innerHeight || 0)); _NVC.h = H; } catch (e) {}
+  svg.setAttribute('preserveAspectRatio', 'xMinYMin slice');
   var R = W < 600 ? 34 : 44, w = Math.sqrt(3) * R, hh = 1.5 * R, keys = _nvcSuite(), out = '', n = 0;
   _NVC.cells = [];
   for (var row = -1; row * hh < H + R; row++) {
@@ -20405,6 +20470,12 @@ function _nvcGrille() {
 }
 // Couleurs du fond qui suivent le pointeur : variables CSS lues par #nv-aurora (parallaxe + lueur).
 function _nvcAurora(x, y) {
+  // Une mise à jour par image au plus (01/11 : sur téléphone, chaque touchmove relançait les transitions).
+  _nvcAurora.x = x; _nvcAurora.y = y;
+  if (_nvcAurora.pend) return; _nvcAurora.pend = true;
+  requestAnimationFrame(function () { _nvcAurora.pend = false; _nvcAuroraMaj(_nvcAurora.x, _nvcAurora.y); });
+}
+function _nvcAuroraMaj(x, y) {
   var a = document.getElementById('nv-aurora'), v = document.getElementById('view-login');
   if (!a || !v || !v.classList.contains('active')) return;
   try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
@@ -20427,12 +20498,15 @@ function _nvComb() {
     var _nvcTouch = function (e) { var s = document.getElementById('nv-comb'), t = e.touches && e.touches[0]; if (!s || !t) return; var r = s.getBoundingClientRect(); _NVC.mx = t.clientX - r.left; _NVC.my = t.clientY - r.top; _NVC.act = performance.now(); _NVC.touch = true; _nvcAurora(t.clientX, t.clientY); };
     addEventListener('touchstart', _nvcTouch, { passive: true });
     addEventListener('touchmove', _nvcTouch, { passive: true });
-    addEventListener('resize', function () { _NVC.w = 0; });
+    addEventListener('resize', function () { var s = document.getElementById('nv-comb'); if (s && Math.round(s.getBoundingClientRect().width) !== _NVC.w) _NVC.w = 0; });
   }
   (function frame(t) {
     if (!login || !login.classList.contains('active') || document.hidden) { _NVC.raf = setTimeout(function () { frame(performance.now()); }, 800); return; }
     var s = document.getElementById('nv-comb'), rr = s && s.getBoundingClientRect();
-    if (s && (!_NVC.cells.length || Math.round(rr.width) !== _NVC.w || Math.round(rr.height) !== _NVC.h)) _nvcGrille();
+    // Reconstruire la grille seulement si la LARGEUR change ou si la hauteur grandit nettement :
+    // sur téléphone, la barre d'adresse et le clavier changent la hauteur sans arrêt → la grille
+    // était reconstruite (toutes les alvéoles éteintes d'un coup = clignotement, 01/11).
+    if (s && (!_NVC.cells.length || Math.round(rr.width) !== _NVC.w || Math.round(rr.height) > _NVC.h + 150)) _nvcGrille();
     if (t - _NVC.tick > 140 && _NVC.cells.length) {
       _NVC.tick = t;
       var R1 = _NVC.w < 600 ? 120 : 170, bouge = (t - _NVC.act) < (_NVC.touch ? 900 : 400), pr = _NVC.touch ? .12 : .045;
@@ -24156,7 +24230,7 @@ function _renderPasWeb(hostId, pfx) {
   el.style.display = '';
   el.classList.add('in');   // #dash-steps a la classe tj-reveal (opacity:0) → forcer l'affichage
   el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;">'
-    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:16px;"></span>'
+    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;color:var(--accent);"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="8" cy="7" rx="2.6" ry="4"/><ellipse cx="16" cy="11" rx="2.6" ry="4"/><rect x="5.6" y="12.4" width="4.8" height="3" rx="1.5"/><rect x="13.6" y="16.4" width="4.8" height="3" rx="1.5"/></svg></span>'
     + '<span style="font-weight:800;font-size:13.5px;color:var(--text);">Mes pas</span></div>'
     // Honnêteté : sur le web, les pas ne sont PAS en direct (Health Connect =
     // téléphone uniquement). On affiche le dernier relevé poussé par l'app mobile ;
@@ -25083,7 +25157,7 @@ function _actRange(gran, offset) {
     start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + offset * 7);
     end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
     var last = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
-    label = start.getDate() + ' – ' + last.getDate() + ' ' + last.toLocaleDateString('fr-FR', { month: 'short' });
+    label = (start.getMonth() === last.getMonth() ? start.getDate() : start.getDate() + ' ' + start.toLocaleDateString('fr-FR', { month: 'short' })) + ' – ' + last.getDate() + ' ' + last.toLocaleDateString('fr-FR', { month: 'short' });
   } else if (gran === 'M') {
     start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
     end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
