@@ -120,6 +120,12 @@ check('reprise prioritaire sur « sous la fourchette »', d.mode === 'reprise' &
 d = D({ niveau: 'intermediaire', last: top, prev: top, joursSansSeance: null });
 check('date de dernière séance inconnue → pas de reprise inventée', d.mode !== 'reprise');
 
+// --- Déload (contexte, audit X2 01/11) : même charge, mêmes reps, pas de progression ---
+d = D({ niveau: 'intermediaire', last: ser([[35, 9], [35, 9], [35, 9]], 8, 120), prev: null, deload: true });
+check('déload : mode déload, même charge et mêmes reps (pas de +1 rep)', d.mode === 'deload' && d.cible(1).charge === 35 && d.cible(1).reps === 9 && !d.cible(1).up);
+d = D({ niveau: 'intermediaire', last: top, prev: top, deload: true, joursSansSeance: 30 });
+check('reprise (≥ 21 j) prioritaire sur déload', d.mode === 'reprise');
+
 // --- Utilitaires ---
 check('petit pas : « 2.5 / 5 kg » → 2,5', S._petitPas('Leg curl') === 2.5);
 check('petit pas : « 2 kg » → 2', S._petitPas('Curl haltère') === 2);

@@ -27,3 +27,16 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider.
 | **X6** | Suggestion « Aucune séance depuis X jours » : ne compte que la muscu (le vélo / la course ne comptent pas, contrairement à l'absence depuis N4). | Utiliser la dernière activité (muscu ou cardio hors marche). |
 | **X7** | Base réelle : **6 lignes identiques** « retour de vacances » pour Alizé (même dates) — chaque appui sur « Appliquer » ajoute une ligne. Sans effet sur le calcul (le plus récent gagne) mais l'historique est faux. | Poser un état remplace l'état en cours ; nettoyer les 5 doublons (avec ton accord). |
 | **X8** | Libellé déload : « abaisse le seuil de surcharge » dit l'inverse de ce qui se passe (le niveau de surcharge signalé est **réduit**). | « Novalyz signale moins vite la surcharge ». |
+
+## Constat supplémentaire
+| **X9** ❌ | « Terminer » ne clôturait que les états **sans date de fin** ; or chaque état reçoit une fin par défaut (7 / 14 / 21 j) → « Contexte introuvable », l'état continuait. |
+
+## Réalisé (01/11, validé porteur : tout + doublons d'Alizé)
+- **Base** : 5 doublons « retour de vacances » d'Alizé supprimés (ligne `ctx_1785941989848` conservée).
+- **X1** Déload / retour : « recule » et « bloqué » → **« Baisse attendue (déload / reprise) »** (neutre) — même règle dans l'app et le serveur (mail) ; volume sous le minimum → **« Réduit (déload) »** gris ; pas de reco « priorise ces muscles ».
+- **X2** Règle de progression en déload : même charge, mêmes reps, **1 série de moins**, RPE ≤ 7 (saisie + Aujourd'hui) ; vérifié sur tes données : Développé machine → 90 × 7.
+- **X3** Intensification : la hausse de RPE ne compte plus comme « ressenti dégradé » ; fatigue → Vigilance seulement à 5/5.
+- **X4 / X8** Textes de la carte exacts (déload, vacances, blessure, intensification).
+- **X5** Fin du mode vacances (≤ 7 j) → carte « De retour de vacances ? » (proposée, jamais posée d'office). **X6** Suggestion après coupure : muscu ou cardio hors marche.
+- **X7** Poser un état remplace celui en cours (6 appuis → 1 ligne). **X9** « Terminer » clôt l'état actif (fin = hier).
+- Tests : `contexte-performance` (4), `surcharge-serie` (+2), `recap-v2` (+1 : serveur = app en déload).

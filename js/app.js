@@ -5601,15 +5601,21 @@ function _progSecondaire(pA, pB) {
   if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',');
   return null;
 }
+// Contexte où une BAISSE est attendue (audit Contexte X1, 01/11) → libellé, sinon null.
+function _ctxAttendu(data) {
+  var e = data && data.contexte && data.contexte.etat;
+  return e === 'deload' ? 'déload' : (e === 'retour_vacances' || e === 'retour_blessure') ? 'reprise' : null;
+}
 function _lectureExos(data, nowT) {
   var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
+  var _ctxA = _ctxAttendu(data);   // déload / reprise : « recule » et « bloqué » = attendus (X1)
   var lignes = (data && Array.isArray(data.programme)) ? data.programme : [];
   var cats = (data && data.exo_categories) || {};
   nowT = nowT || Date.now();
   var pd = function (x) { try { return parseChatDate(x); } catch (_) { return 0; } };
   var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
   var days = function (t) { return (nowT - t) / 864e5; };
-  var R = { records: [], progresse: [], recule: [], bloque: [], sous: [] };
+  var R = { records: [], progresse: [], recule: [], bloque: [], sous: [], attendu: [], ctx: _ctxA };
   Object.keys(prog).forEach(function (exo) {
     var pts = prog[exo] || []; if (!pts.length) return;
     var dt0 = pd(pts[0].date); if (!dt0) return;
@@ -5634,7 +5640,7 @@ function _lectureExos(data, nowT) {
     if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
     var _p2 = (dj <= 14) ? _progSecondaire(pts[0], pts[1]) : null;
     if (_p2) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1, why: _p2 }); return; }
-    if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { R.recule.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+    if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (_ctxA ? R.attendu : R.recule).push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
     if (pts.length >= 3) {
       var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
       if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
@@ -5642,7 +5648,7 @@ function _lectureExos(data, nowT) {
         if (_progSecondaire(pts[1], pts[2])) return;
         var n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_progSecondaire(pts[n - 1], pts[n])) n++;
         var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
-        R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+        if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
       }
     }
   });
@@ -11787,6 +11793,10 @@ function _progDecision(ctx) {
   // fois sans pousser (la force est en grande partie conservée ~3 semaines, puis décline :
   // McMaster et al. 2013, Sports Med 43:367). Prioritaire sur tout le reste.
   if (ctx.joursSansSeance != null && ctx.joursSansSeance >= 21) mode = 'reprise';
+  // DÉLOAD (contexte déclaré, audit Contexte X2 01/11) : on RÉDUIT le stress d'entraînement
+  // (volume, proximité de l'échec — Bell et al. 2023, consensus Delphi) : même charge, mêmes reps,
+  // 1 série de moins, viser RPE ≤ 7. Chiffres = choix Novalyz (le consensus n'en fixe pas).
+  else if (ctx.deload) mode = 'deload';
   else if (rpe != null && rpe >= 9 && chargeable && sousN * 2 > last.length) mode = 'sous';
   else if (ctx.vigilance) mode = 'vigilance';
   else if (echec2) mode = 'echec';
@@ -11810,7 +11820,7 @@ function _progDecision(ctx) {
   var cible = function (k, choix) {
     var r = ref(k), ch = Number(r.charge) || 0, rp = Number(r.reps) || 0;
     var c = choix || 'charge';
-    if (mode === 'consolide' || mode === 'vigilance' || mode === 'echec' || mode === 'reprise') return { charge: ch, reps: rp, repos: R };
+    if (mode === 'consolide' || mode === 'vigilance' || mode === 'echec' || mode === 'reprise' || mode === 'deload') return { charge: ch, reps: rp, repos: R };
     // Seules les séries SOUS le minimum descendent d'un petit pas (dégressif : la
     // série déjà dans la fourchette reste telle quelle).
     if (mode === 'sous') return (rp > 0 && rp < rmin) ? { charge: Math.max(0, _r025(ch - ctx.pas)), reps: rmin, repos: R, up: 'baisse' } : { charge: ch, reps: rp, repos: R };
@@ -11832,6 +11842,7 @@ function _progWhy(d, f, pas) {
   var kg = function (x) { return String(x).replace('.', ','); };
   if (!d || d.mode === 'premier') return '1re fois : trouve ta charge de travail';
   if (d.mode === 'sous') return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ') · indicatif';
+  if (d.mode === 'deload') return 'déload : même charge, 1 série de moins, garde 3 reps en réserve (RPE ≤ 7)';
   if (d.mode === 'reprise') return 'reprise après ' + Math.floor(d.joursSansSeance / 7) + ' semaines sans séance : refais ta dernière fois, sans pousser · indicatif';
   if (d.mode === 'vigilance') return 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '') + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';
   if (d.mode === 'echec') return 'échec (RPE 10) 2 séances de suite : garde ta charge et vise RPE 9 (1 rep en réserve)';
@@ -11918,9 +11929,11 @@ function majPlanSeries() {
   var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
   var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData);
   var _jss = _joursSansSeance((typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData);
-  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _jss,
+  var _dlData = (typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData;
+  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _jss, deload: _ctxAttendu(_dlData) === 'déload',
     nPrevues: pProg && _numOk(pProg.series_prevues) ? Number(pProg.series_prevues) : 0, pas: _petitPas(exoEnCours.exerciceNom),
     reposRef: _reposRef(lastSeries, pProg ? pProg.repos_sec : null), bornes: _reposBornes(exoEnCours.exerciceNom) });
+  if (dec.mode === 'deload') n = Math.max(done, 1, n - 1);   // X2 : 1 série de moins en déload
   var choix = exoEnCours._progChoix || 'charge';
   if (dec.options && !dec.options.some(function (o) { return o.id === choix && o.ok; })) choix = 'charge';
   var dRef = (lastSeries && perfHist.date) ? String(perfHist.date).slice(0, 10) : '';
@@ -11965,7 +11978,7 @@ function majPlanSeries() {
   var sub = [resume, plan.note, prevu].filter(Boolean);
   // Message de la règle (factuel, tracé sur les données) + choix du jour (avancé / expert).
   var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
-  if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || dec.mode === 'reprise' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
+  if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || dec.mode === 'reprise' || dec.mode === 'deload' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
   else if (dec.mode === 'sous') msg = 'Indicatif : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + '. Au choix : un petit pas en dessous (−' + String(pas).replace('.', ',') + ' kg, déjà pré-rempli) pour revenir à ' + rminP + ' reps, ou garder la charge et viser +1 rep, ou prendre 30 s de repos en plus. À toi de choisir.';
   else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
   else if (dec.mode === 'choix') {
@@ -11984,7 +11997,7 @@ function majPlanSeries() {
       + (R0 != null ? '<div class="pc-ref">Repos de référence : ' + esc(_reposTxt(R0)) + ' (dernière fois). Bornes : ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).min)) + ' à ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).max)) + '.</div>' : '')
       + '</div>';
   }
-  if (dec.mode !== 'sous' && dec.mode !== 'reprise') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
+  if (dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
   var sg = document.getElementById('exo-actuel-suggestion');
   if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
@@ -14093,7 +14106,7 @@ function _lxRecos(L, V, niveau, data) {
     out.push('<b>' + _maE(b.exo) + '</b> : ' + kg(b.c) + ' kg × ' + b.r + ' depuis ' + b.n + ' séances. Pour débloquer, ' + _leviersBlocage(data, b.exo));
   }
   // 4) Volume en retard, sinon régularité.
-  var ret = V.rows.filter(function (r) { return r.retard; });
+  var ret = _ctxAttendu(data) ? [] : V.rows.filter(function (r) { return r.retard; });   // X1 : pas de « priorise » en déload / reprise
   if (ret.length && out.length < 3) {
     var noms = ret.slice(0, 3).map(function (r) { return _maE(r.muscle) + ' ' + r.fait + '/' + r.min; }).join(', ');
     out.push('<b>Volume</b> : ' + noms + ' séries cette semaine (' + V.faites + '/' + V.prevues + ' séances faites) — ' + ((V.prevues > 0 && V.faites >= V.prevues) ? 'semaine complète : priorise ces muscles la semaine prochaine.' : 'à compléter sur les séances qui restent.'));
@@ -14123,6 +14136,7 @@ function _maLectureNovalyzBloc(data) {
   L.sous.slice(0, 3).forEach(function (x) { cls.push({ ic: '!', col: '#DC3545', html: '<b>Sous ta fourchette</b> : ' + _maE(x.exo) + ' ' + x.hist.map(function (h) { return kg(h.c) + ' × ' + h.r; }).join(' → ') + ' (RPE ' + x.rpe + ')', src: 'cible ' + x.rmin + '-' + x.rmax + ' reps · majorité des séries en dessous' }); });
   if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>Bloqué</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r + ' depuis ' + x.n + ' séances'; }).join(' · '), src: 'même charge, reps qui ne montent plus' });
   if (L.recule.length) cls.push({ ic: '▼', col: '#E07800', html: '<b>Recule</b> : ' + L.recule.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c1) + ' × ' + x.r1 + ' → ' + kg(x.c0) + ' × ' + x.r0; }).join(' · '), src: 'charge et reps en baisse' });
+  if ((L.attendu || []).length) cls.push({ ic: '•', col: '#8B96B0', html: '<b>Baisse attendue (' + _maE(L.ctx) + ')</b> : ' + L.attendu.slice(0, 3).map(function (x) { return _maE(x.exo); }).join(' · ') + plus(L.attendu, 3), src: 'contexte de performance déclaré : pas compté comme une régression' });
   var nProg = L.records.length + L.progresse.length;
   var niveauXp = 'debutant'; try { niveauXp = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var recos = []; try { recos = _lxRecos(L, V, niveauXp, data); } catch (e) {}
@@ -14274,7 +14288,8 @@ function _maMuscuResume(data) {
     volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
       var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min;
       var MEV = Math.round(minW * weeks), MAV = Math.round(optW * weeks), MRV = Math.round(Math.round(optW * 1.5) * weeks), scale = MRV || 1, C, stat;
-      if (v.tot < MEV) { C = '#DC3545'; stat = 'Sous-MEV'; }
+      if (v.tot < MEV && _ctxAttendu(data)) { C = '#8B96B0'; stat = 'Réduit (' + _ctxAttendu(data) + ')'; }   // X1
+      else if (v.tot < MEV) { C = '#DC3545'; stat = 'Sous-MEV'; }
       else if (v.tot < MAV) { C = '#E07800'; stat = 'Suffisant'; }
       else if (v.tot <= MRV) { C = '#00A854'; stat = 'Optimal'; }
       else { C = '#9D5FD3'; stat = 'Au-delà'; }
@@ -16641,12 +16656,12 @@ function _tjCibles(data, exos) {
     if (!last || !last.length) return { exo: nom, mode: 'premier', f: f };
     var pas = _petitPas(nom);
     var _vg = _vigilanceDuJour(data);
-    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _joursSansSeance(data), nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
+    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _joursSansSeance(data), deload: _ctxAttendu(data) === 'déload', nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
     // Série de référence = la plus LOURDE (puis le plus de reps) : la 1re est souvent une
     // série de mise en route plus légère (ex. 5 kg × 20 avant 7,5 kg × 10).
     var kRef = 0; last.forEach(function (x, i) { var b = last[kRef]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) kRef = i; });
     var ref = last[kRef], kNum = Number(ref.serie) || (kRef + 1), cib = dec.cible(kNum, 'charge');
-    var _bq = (dec.mode !== 'sous' && dec.mode !== 'reprise') ? _blocageInfo(data, nom) : null;
+    var _bq = (dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') ? _blocageInfo(data, nom) : null;
     return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib, bloqueN: _bq ? _bq.n : 0, why: _progWhy(dec, f, pas) };
   });
 }
@@ -21518,10 +21533,10 @@ function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.e
 // Effet CONCRET de chaque contexte sur l'analyse (langage clair) — explique
 // « pourquoi Novalyz interprète différemment aujourd'hui » (roadmap #11).
 var _CTX_EFFET = {
-  deload: 'Novalyz met en veille les alertes « absence » et « sous-charge » et abaisse le seuil de surcharge : une baisse de volume est attendue et n\'est pas signalée comme une régression.',
-  retour_vacances: 'Reprise : l\'ACWR est mis en pause le temps de reconstruire ~4 semaines d\'historique, et les alertes « absence » / « sous-charge » sont en veille pendant que tu remontes.',
-  retour_blessure: 'Prudence renforcée : Novalyz relève ton niveau de risque et te garde au moins en « Vigilance » tant que tu reprends.',
-  intensification: 'Phase de charge assumée : une hausse de l\'effort perçu (RPE) est attendue et n\'est pas traitée comme une alerte.'
+  deload: 'Novalyz met en veille les alertes « absence » et « volume trop bas », signale moins vite la surcharge, et compte une baisse de charge ou de volume comme « attendue » (pas une régression). Tes cibles : même charge, 1 série de moins, RPE ≤ 7.',
+  retour_vacances: 'Reprise : les alertes « absence » et « volume trop bas » sont en veille et une baisse est « attendue » pendant cet état ; le ratio de charge (ACWR) n\'est pas interprété tant que l\'état dure. Novalyz surveille la surcharge plus tôt : une remontée trop rapide est signalée.',
+  retour_blessure: 'Prudence renforcée : Novalyz relève ton niveau de risque et te garde au moins en « Vigilance » tant que tu reprends — pas de progression proposée (mêmes charges que la dernière fois) ; une baisse est « attendue ».',
+  intensification: 'Phase de charge assumée : une hausse de l\'effort perçu (RPE) n\'est pas traitée comme un signe de mauvaise récupération, et la fatigue ne déclenche « Vigilance » qu\'à 5/5. Sommeil, douleur et récupération faible restent surveillés.'
 };
 function carteContexteHTML(contexte, athlete_id, source) {
   var actif = _ctxActif(contexte);
@@ -21591,8 +21606,11 @@ function renderCarteContexte(contexte, athlete_id, containerId, source, pause) {
   // Auto-détection (athlète solo) : coupure d'entraînement + aucun contexte actif
   // → on SUGGÈRE de poser un retour (confirmation requise, jamais posé d'office).
   if (source === 'athlete' && !_ctxActif(contexte) && !_ctxSuggestDismissed(athlete_id)) {
-    var gap = _ctxGapJours();
-    if (gap != null && gap >= 14) html = _ctxSuggestionHTML(gap, athlete_id) + html;
+    // X5 (01/11) : fin du mode vacances il y a ≤ 7 j → proposer « Retour de vacances » (jamais posé d'office).
+    var pf = null; try { pf = dernierAppData && dernierAppData.moteur && dernierAppData.moteur.pause_fin; } catch (e) {}
+    var pfJ = pf ? Math.round((new Date().setHours(0, 0, 0, 0) - _dYmd(pf)) / 864e5) : null;
+    if (pfJ != null && pfJ >= 0 && pfJ <= 7) html = _ctxSuggestionHTML(null, athlete_id, _dateCourte(pf)) + html;
+    else { var gap = _ctxGapJours(); if (gap != null && gap >= 14) html = _ctxSuggestionHTML(gap, athlete_id) + html; }
   }
   el.innerHTML = html;
 }
@@ -21600,6 +21618,9 @@ function renderCarteContexte(contexte, athlete_id, containerId, source, pause) {
 function _ctxGapJours() {
   try {
     var dash = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.dashboard : null;
+    // X6 (01/11) : dernière ACTIVITÉ (muscu ou cardio hors marche, comme l'absence) si le serveur la donne.
+    var da = dernierAppData && dernierAppData.moteur && dernierAppData.moteur.derniere_activite;
+    if (da) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); var tda = _dYmd(da); if (tda != null) return Math.round((t0 - tda) / 86400000); }
     var ds = dash && dash.derniere_seance && dash.derniere_seance.date;
     if (!ds) return null;
     var ts = parseChatDate(ds); if (!ts) return null;
@@ -21611,11 +21632,14 @@ function _ctxGapJours() {
 function _ctxSuggestKey(aid) { return 'nvz_ctx_suggest_off_' + (aid || '') + '_' + _ymdLocal(new Date()); }
 function _ctxSuggestDismissed(aid) { try { return localStorage.getItem(_ctxSuggestKey(aid)) === '1'; } catch (e) { return false; } }
 function _ctxSuggestDismiss(aid) { try { localStorage.setItem(_ctxSuggestKey(aid), '1'); } catch (e) {} try { if (typeof dernierAppData !== 'undefined' && dernierAppData) renderCarteContexte(dernierAppData.contexte, aid, 'et-contexte', 'athlete', dernierAppData.pause); } catch (e) {} }
-function _ctxSuggestionHTML(gap, aid) {
+function _ctxSuggestionHTML(gap, aid, finVacances) {
   var a = String(aid || '');
+  var txt = finVacances
+    ? 'Ton mode vacances s\'est terminé le <b>' + finVacances + '</b>. Déclare un retour de vacances pour que Novalyz adapte ses analyses (baisse « attendue », pas de « régression » le temps de remonter).'
+    : 'Aucune séance (muscu ou cardio) depuis <b>' + gap + ' jours</b>. Déclare un retour pour que Novalyz adapte ses analyses (pas de « régression » injustifiée le temps de remonter).';
   return '<div class="dash-card" style="padding:13px 14px;margin-bottom:12px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.09));">'
-    + '<div style="font-size:13.5px;font-weight:800;">Tu reprends après une coupure ?</div>'
-    + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.45;">Aucune séance enregistrée depuis <b>' + gap + ' jours</b>. Déclare un retour pour que Novalyz adapte ses analyses (pas de « régression » injustifiée le temps de remonter).</div>'
+    + '<div style="font-size:13.5px;font-weight:800;">' + (finVacances ? 'De retour de vacances ?' : 'Tu reprends après une coupure ?') + '</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.45;">' + txt + '</div>'
     + '<div style="display:flex;gap:8px;margin-top:11px;">'
     + '<button onclick="_ctxSuggererReprise(\'' + a + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Poser un retour</button>'
     + '<button onclick="_ctxSuggestDismiss(\'' + a + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Plus tard</button>'

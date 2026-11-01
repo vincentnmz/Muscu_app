@@ -49,7 +49,7 @@ const S = {
   _maSemaineType: function () { return 'calendaire'; },
 };
 vm.createContext(S);
-const FFN = ['parseChatDate', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos', '_normTxt', '_musKey', '_seancesFaites', '_lxVolume', '_fmtRepos', '_reposExo', '_levierRepos', '_leviersBlocage'];
+const FFN = ['parseChatDate', '_ctxAttendu', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos', '_normTxt', '_musKey', '_seancesFaites', '_lxVolume', '_fmtRepos', '_reposExo', '_levierRepos', '_leviersBlocage'];
 vm.runInContext((SRC.match(/var _EXO_CAT_R = \{[^}]*\};/) || [''])[0] + '\n' + FFN.map(n => extractFrom(SRC, n)).join('\n') + '\n' + FFN.map(n => `this.${n}=${n};`).join(''), S);
 
 const ser = (arr, rpe) => arr.map((x, i) => ({ serie: i + 1, charge: x[0], reps: x[1], rpe: Array.isArray(rpe) ? rpe[i] : rpe }));
@@ -74,7 +74,7 @@ const DATA = {
 };
 const NOW = new Date(2026, 9, 29, 12).getTime();
 let L = S._lectureExos(DATA, NOW);
-const names = k => L[k].map(x => x.exo);
+const names = k => (Array.isArray(L[k]) ? L[k] : []).map(x => x.exo);
 check('Smith (80×2, 70×5 à RPE 10) → sous la fourchette', names('sous').includes('Développé incliné à la Smith'));
 check('Smith : historique chiffré du plus ancien au plus récent', JSON.stringify(L.sous[0].hist.map(h => h.c + 'x' + h.r)) === JSON.stringify(['60x8', '70x5', '80x3', '80x2']));
 check('Smith : petit pas du catalogue (2,5 kg)', L.sous[0].pas === 2.5);

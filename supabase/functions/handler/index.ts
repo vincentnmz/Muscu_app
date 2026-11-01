@@ -639,7 +639,7 @@ function sousChargeSoutenue(chargeParJour: Record<string, number>, now: Date): b
 //      (≥ 2 mesures) ≥ ta normale + 5 bpm (normale = 4 semaines avant, ≥ 14 mesures). Signe
 //      d'appoint (Buchheit 2014 : la FC complète le questionnaire, pas seule) : il ne compte que
 //      dans cette règle, donc seulement si la charge est élevée en même temps.
-function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[] = []): { degrade: boolean; evaluable: boolean; rpeExos: string[]; rpeDetails: any[]; rpeEvalues: number; fc: any; raisons: string[] } {
+function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[] = [], ignorerRpe = false): { degrade: boolean; evaluable: boolean; rpeExos: string[]; rpeDetails: any[]; rpeEvalues: number; fc: any; raisons: string[] } {
   const c7 = fmtYMD(minus(now, 6)), c35 = fmtYMD(minus(now, 34))
   const rows = (beRows || []).map((r: any) => ({ d: normDate(r.date), fat: (r.fatigue_musculaire == null || r.fatigue_musculaire === '') ? null : Number(r.fatigue_musculaire), som: (r.sommeil == null || r.sommeil === '') ? null : Number(r.sommeil) }))
     .filter((r: any) => r.d && r.d >= c35).sort((a: any, b: any) => b.d.localeCompare(a.d))
@@ -673,7 +673,8 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[
     rpeEvalues++
     if (rpeAp - rpeAv >= 1 && chPct <= 2.5) { rpeExos.push(exo); rpeDetails.push({ exo, charge: Math.round(chAp * 10) / 10, rpeAvant: rpeAv, rpeApres: rpeAp }) }
   }
-  const rpeDeg = rpeExos.length >= 2
+  // Intensification (contexte, audit X3 01/11) : la hausse de RPE est ATTENDUE → pas un signal.
+  const rpeDeg = !ignorerRpe && rpeExos.length >= 2
   // (3) FC de repos (montre).
   const c3 = fmtYMD(minus(now, 2)), c30 = fmtYMD(minus(now, 30))
   const fcRec: number[] = [], fcBase: number[] = []
@@ -2560,7 +2561,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Règle « charge + ressenti » : mêmes données de charge que la fraîcheur affichée.
     const chargeSrcM = useSRPE ? srpeParJour : chSportA.chargeParJour
     const joursHautsM = chargeSoutenueJours(chargeSrcM, now)
-    const ressM = ressentiConcordant(beRows || [], perfs, now, sante_historique)
+    const ressM = ressentiConcordant(beRows || [], perfs, now, sante_historique, ctxEtatM === 'intensification')
     const etatM = evaluerEtatAthlete({
       chargeSoutenue: ffFiable && joursHautsM >= 3,
       ressentiDegrade: ressM.degrade, ressentiEvaluable: ressM.evaluable,
@@ -2586,6 +2587,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
       derniere_activite: derniereActivite,   // muscu ou cardio hors marche (rythme des rappels d'absence, N3)
+      pause_fin: (_pauseFin && _pauseFin <= fmtYMD(now)) ? _pauseFin : null,   // fin du mode vacances (suggestion « retour de vacances », X5)
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
   }
@@ -3128,7 +3130,8 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const doul = s.douleur ?? 0, fat = s.fatigue ?? 0, som = s.sommeil, courb = s.courbatures ?? 0, str = s.stress ?? 0
   const chargeHaute = surchargeN >= 1
   const sommeilBas = som != null && som <= CORE_SEUILS.sommeil.bas
-  const fatigueHaute = fat >= CORE_SEUILS.fatigue.haute
+  // Intensification (X3, 01/11) : fatigue élevée ATTENDUE → Vigilance seulement à 5/5 (même seuil que l'app).
+  const fatigueHaute = fat >= (s.ctxEtat === 'intensification' ? 5 : CORE_SEUILS.fatigue.haute)
   const douleurGene = doul >= CORE_SEUILS.douleur.gene, douleurForte = doul >= CORE_SEUILS.douleur.forte
   const douleurLegere = !douleurGene && doul >= CORE_SEUILS.douleur.attention   // point d'attention, sans Vigilance
 
@@ -4852,11 +4855,13 @@ function _rcProgSecondaire(pA: any, pB: any): string | null {
   if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',')
   return null
 }
-function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number): any {
+function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null): any {
+  // Audit Contexte X1 (01/11) — même règle que l'app : en déload / reprise, « recule » et « bloqué » sont attendus.
+  const ctxA = ctxEtat === 'deload' ? 'déload' : (ctxEtat === 'retour_vacances' || ctxEtat === 'retour_blessure') ? 'reprise' : null
   const pd = (x: any) => { const d = parseFR(x); return d ? d.getTime() : 0 }
   const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
   const days = (t: number) => (nowT - t) / 864e5
-  const R: any = { records: [], progresse: [], recule: [], bloque: [], sous: [] }
+  const R: any = { records: [], progresse: [], recule: [], bloque: [], sous: [], attendu: [], ctx: ctxA }
   for (const exo of Object.keys(prog || {})) {
     const pts = prog[exo] || []; if (!pts.length) continue
     const dt0 = pd(pts[0].date); if (!dt0) continue
@@ -4882,13 +4887,13 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo }); continue }
     const p2 = (dj <= 14) ? _rcProgSecondaire(pts[0], pts[1]) : null
     if (p2) { R.progresse.push({ exo, why: p2 }); continue }
-    if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { R.recule.push({ exo, c0, c1, r0, r1 }); continue }
+    if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
     if (pts.length >= 3) {
       const c2 = num(pts[2].charge), r2 = num(pts[2].reps)
       if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
         if (_rcProgSecondaire(pts[1], pts[2])) continue
         let n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
-        R.bloque.push({ exo, c: c0, r: r0, n })
+        if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
       }
     }
   }
@@ -4937,7 +4942,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const prog = (ad.historique && ad.historique.progression_par_exo) || {}
   const progAvant: Record<string, any[]> = {}
   for (const k of Object.keys(prog)) { const pts = (prog[k] || []).filter((p: any) => normDate(p.date) < d1); if (pts.length) progAvant[k] = pts }
-  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3)
+  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3, ad.contexte && ad.contexte.etat)
   // Volume par muscle (séries / semaine ; secondaire = 0,5) vs cibles volume_obti.
   const vm: Record<string, number> = {}
   for (const r of inP) {
@@ -6451,15 +6456,23 @@ async function handleSaveContexte(body: any): Promise<Response> {
   const fin = body.date_fin ? normDate(body.date_fin) : null
   const source = String(body.source || 'manuel')
   const note = String(body.note || body.description || '')
-  // Clôt les périodes ouvertes débutant avant le nouveau début (veille du nouveau début)
-  const { data: openRows } = await sb().from('contexte_athlete').select('*').eq('athlete_id', athlete_id).is('date_fin', null)
+  // Audit Contexte X7 (01/11) : poser un état REMPLACE celui en cours.
+  //  • même état aux mêmes dates déjà enregistré → rien à ajouter (double appui) ;
+  //  • toute période qui chevauche le nouveau début (sans fin OU fin ≥ début) est close la veille ;
+  //    si elle commençait le même jour (ou après), elle est remplacée (supprimée).
+  const { data: rowsAth } = await sb().from('contexte_athlete').select('*').eq('athlete_id', athlete_id)
+  if ((rowsAth || []).some((r: any) => String(r.etat) === etat && normDate(r.date_debut) === debut && (normDate(r.date_fin) || null) === (fin || null))) {
+    return jsonResp({ success: true, deja: true, actif: _contexteActif(rowsAth || [], new Date()) })
+  }
   const newD = parseFR(debut)
-  if (openRows?.length && newD) {
+  if (newD) {
     const veille = new Date(newD.getTime()); veille.setUTCDate(veille.getUTCDate() - 1)
     const veilleStr = fmtYMD(veille)
-    for (const r of openRows) {
-      const rowD = r.date_debut ? parseFR(r.date_debut) : null
-      if (rowD && rowD <= newD) await sb().from('contexte_athlete').update({ date_fin: veilleStr }).eq('id', r.id)
+    for (const r of (rowsAth || [])) {
+      const rd = normDate(r.date_debut), rf = r.date_fin ? normDate(r.date_fin) : null
+      if (rf && rf < debut) continue                       // période déjà finie avant le nouveau début
+      if (rd && rd >= debut) await sb().from('contexte_athlete').delete().eq('id', r.id)
+      else await sb().from('contexte_athlete').update({ date_fin: veilleStr }).eq('id', r.id)
     }
   }
   const { error } = await sb().from('contexte_athlete').insert({ id: `ctx_${Date.now()}`, athlete_id, etat, date_debut: debut, date_fin: fin, source, note })
@@ -6478,13 +6491,21 @@ async function handleCloreContexte(body: any): Promise<Response> {
     if (error) return jsonResp({ success: false, error: error.message })
     return jsonResp({ success: true })
   }
-  const { data: openRows } = await sb().from('contexte_athlete').select('id').eq('athlete_id', athlete_id).is('date_fin', null).limit(1)
-  if (openRows?.length) {
-    const { error } = await sb().from('contexte_athlete').update({ date_fin: fin }).eq('id', openRows[0].id)
+  // Audit Contexte X9 (01/11) : « Terminer » clôt l'état ACTIF, qu'il ait une date de fin ou non
+  // (avant : seulement les états sans fin → « Contexte introuvable » pour tous les états à durée).
+  // Fin = hier (l'état ne s'applique plus aujourd'hui) ; commencé aujourd'hui → supprimé.
+  const { data: rowsC } = await sb().from('contexte_athlete').select('*').eq('athlete_id', athlete_id)
+  const act = _contexteActif(rowsC || [], new Date())
+  if (act && act.id) {
+    const hier = fmtYMD(minus(new Date(), 1))
+    const r = (rowsC || []).find((x: any) => x.id === act.id)
+    const rd = r ? normDate(r.date_debut) : null
+    const q = (rd && rd > hier) ? sb().from('contexte_athlete').delete().eq('id', act.id) : sb().from('contexte_athlete').update({ date_fin: body.date_fin ? fin : hier }).eq('id', act.id)
+    const { error } = await q
     if (error) return jsonResp({ success: false, error: error.message })
     return jsonResp({ success: true })
   }
-  return jsonResp({ success: false, error: 'Contexte introuvable' })
+  return jsonResp({ success: false, error: 'Aucun état en cours' })
 }
 
 async function handleSaveCardio(body: any): Promise<Response> {

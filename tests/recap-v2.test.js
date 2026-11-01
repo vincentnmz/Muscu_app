@@ -29,7 +29,7 @@ function extractFrom(name) {
   for (; j < SRC.length; j++) { const c = SRC[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
   return SRC.slice(m.index, j);
 }
-const FF = ['parseChatDate', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos'];
+const FF = ['parseChatDate', '_ctxAttendu', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos'];
 const F = { exercicesData: [] }; vm.createContext(F);
 vm.runInContext((SRC.match(/var _EXO_CAT_R = \{[^}]*\};/) || [''])[0] + '\n' + FF.map(extractFrom).join('\n') + '\n' + FF.map(n => `this.${n}=${n};`).join(''), F);
 
@@ -62,6 +62,10 @@ const ymd = (d) => A.fmtYMD(d);
   const front = F._lectureExos({ historique: { progression_par_exo: prog }, programme: lignes, exo_categories: cats }, nowT);
   const sig = (L) => ['records', 'progresse', 'recule', 'bloque', 'sous'].map(k => k + ':' + L[k].map(x => x.exo).sort().join(',')).join(' | ');
   eq(sig(back) === sig(front), 'lecture serveur identique à celle de l\'app', [sig(back), sig(front)]);
+  // Déload (audit Contexte X1) : « recule » / « bloqué » deviennent « attendus », côté serveur ET app.
+  const backD = A._rcLectureExos(prog, lignes, cats, nowT, 'deload');
+  const frontD = F._lectureExos({ historique: { progression_par_exo: prog }, programme: lignes, exo_categories: cats, contexte: { etat: 'deload' } }, nowT);
+  eq(backD.recule.length === 0 && backD.bloque.length === 0 && backD.attendu.length === 2 && frontD.attendu.length === 2 && frontD.recule.length === 0, 'déload : recul et blocage = baisse attendue (serveur = app)', [backD.attendu, frontD.attendu]);
   eq(back.sous.length === 1 && back.records.length === 1 && back.progresse.length === 1 && back.bloque.length === 1 && back.recule.length === 1, '5 catégories couvertes', sig(back)); }
 
 // 3) Bilan complet sur un mois synthétique.
