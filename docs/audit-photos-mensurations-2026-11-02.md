@@ -21,3 +21,14 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider.
 | **P8** | Pas d'**historique** : seules 2 valeurs sont comparées, aucune courbe. | 🟠 (a) toucher une mesure → son historique (liste datée + mini-courbe) ; (b) plus tard. |
 
 Non vérifié : envoi réel d'une photo depuis le téléphone (aucune photo en base) — à tester après correction.
+
+## Réalisé (02/11, validé porteur : tout, P3 a, P7 a, P8 a)
+- **P1** Chaque mesure affiche **sa** dernière valeur, sa date et son nombre de relevés ; tendance vs **sa** valeur précédente (athlète et coach, même rendu).
+- **P2** Le serveur ne remplace que les mesures envoyées ; formulaire prérempli avec les mesures du jour.
+- **P3 (a)** Flèches neutres (grises), plus de vert / rouge.
+- **P4** Bornes app + serveur : tours 10-250 cm, masse grasse 2-60 %.
+- **P5** Champs à la largeur de leur colonne (vérifié en capture).
+- **P6** Politique de confidentialité et fenêtre « Confidentialité » : photos de suivi, mensurations, nutrition, médias envoyés au coach ; Health Connect au lieu de Google Health.
+- **P7 (a)** Date de la photo au choix (jamais future, contrôlé aussi par le serveur) ; l'ancienne photo se range à sa date (avant / après juste).
+- **P8 (a)** Toucher une mesure → historique (mini-courbe + liste datée avec l'écart).
+- Test `mensurations` (7 cas) ; 74 suites vertes.

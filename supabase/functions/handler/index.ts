@@ -5605,11 +5605,16 @@ async function handleSaveMensuration(body: any): Promise<Response> {
   for (const k of MENSU_KEYS) {
     const v = mesures[k]
     if (v === '' || v == null || isNaN(Number(v))) continue
-    rows.push({ date: dateYMD, athlete_id, seance_id: 'mensuration', cle: k, valeur: String(Number(v)), unite: (k === 'masse_grasse' ? '%' : 'cm'), source: 'athlete' })
+    // P4 (audit 02/11) : valeurs plausibles uniquement.
+    const n = Number(v), [mn, mx] = (k === 'masse_grasse') ? [2, 60] : [10, 250]
+    if (n < mn || n > mx) return jsonResp({ success: false, error: (k === 'masse_grasse' ? 'Masse grasse : 2 à 60 %' : 'Tour : 10 à 250 cm') })
+    rows.push({ date: dateYMD, athlete_id, seance_id: 'mensuration', cle: k, valeur: String(n), unite: (k === 'masse_grasse' ? '%' : 'cm'), source: 'athlete' })
   }
-  // Ré-enregistrer une date = mise à jour → on remplace les mesures de cette date.
-  await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'mensuration').eq('date', dateYMD)
-  if (rows.length) { const { error } = await sb().from('indicateurs').insert(rows); if (error) return jsonResp({ success: false, error: error.message }) }
+  if (!rows.length) return jsonResp({ success: false, error: 'Aucune mesure' })
+  // P2 (audit 02/11) : on ne remplace QUE les mesures envoyées (avant : toute la date était
+  // effacée → ajouter le mollet le soir effaçait la taille du matin).
+  await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'mensuration').eq('date', dateYMD).in('cle', rows.map((r) => r.cle))
+  { const { error } = await sb().from('indicateurs').insert(rows); if (error) return jsonResp({ success: false, error: error.message }) }
   return jsonResp({ success: true, date: fmtFR(dateYMD), n: rows.length })
 }
 
@@ -5632,6 +5637,8 @@ async function handleSaveSuiviPhoto(body: any): Promise<Response> {
   if (!athlete_id || !photo_path) return jsonResp({ success: false, error: 'Paramètres manquants' })
   if (!photo_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
   const dateYMD = body.date ? fmtYMD(new Date(String(body.date))) : fmtYMD(new Date())
+  // P7 (audit 02/11) : date choisie par l'athlète (photo « avant » ancienne), jamais future.
+  { const dm = new Date(); dm.setUTCDate(dm.getUTCDate() + 1); if (dateYMD > fmtYMD(dm)) return jsonResp({ success: false, error: 'La date ne peut pas être dans le futur.' }) }
   const { error } = await sb().from('indicateurs').insert({ date: dateYMD, athlete_id, seance_id: 'suivi_photo', cle: angle, valeur: photo_path, unite: '', source: 'athlete' })
   if (error) return jsonResp({ success: false, error: error.message })
   let url: string | null = null
