@@ -898,7 +898,10 @@ function _nvzSessionExpiree() {
       // Connexion / inscription : on attend d'avoir rangé le jeton AVANT de rendre la
       // réponse (sinon le 1er appel qui suit partirait sans jeton).
       if (AUTH[action] || JETON_NEUF[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
-      if (r.status === 401) r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
+      // H1 (audit hors-ligne 02/11) : un 401 reçu en renvoyant la file hors-ligne ne déconnecte
+      // pas (sinon boucle de rechargement infinie quand une séance attend et la session est finie).
+      if (r.status === 401 && action !== 'saveSeance') r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
+      else if (r.status === 401 && action === 'saveSeance' && !_flushingOffline) r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
       return r;
     });
   };
@@ -9526,7 +9529,7 @@ async function envoyerCommentaireCoach() {
   _msgEnvoiEnCours = true; input.value = '';
   setTimeout(function () { _msgEnvoiEnCours = false; }, 1500);
   try {
-    await fetch(SCRIPT_URL, {
+    const _rC = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -9539,11 +9542,14 @@ async function envoyerCommentaireCoach() {
         message: message
       })
     });
-    input.value = '';
+    let _jC = null; try { _jC = await _rC.json(); } catch (_) {}
+    if (!_rC.ok || !_jC || _jC.success === false || _jC.error) throw new Error((_jC && _jC.error) || 'refus');
     showToast('Message envoyé !');
     setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
   } catch(e) {
-    showToast('Erreur envoi', '#ff4444');
+    // H3 : le texte n'est pas perdu (le champ avait été vidé par l'anti-doublon M5).
+    if (!input.value) input.value = message;
+    showToast(navigator.onLine === false ? 'Pas de réseau — message non envoyé' : 'Message non envoyé : ' + ((e && e.message) || 'erreur'), '#ff4444');
   }
 }
 
@@ -9557,7 +9563,7 @@ async function envoyerMessageAthleteCoach() {
   _msgEnvoiEnCours = true; input.value = '';
   setTimeout(function () { _msgEnvoiEnCours = false; }, 1500);
   try {
-    await fetch(SCRIPT_URL, {
+    const _rA = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -9568,7 +9574,8 @@ async function envoyerMessageAthleteCoach() {
         message: message
       })
     });
-    input.value = '';
+    let _jA = null; try { _jA = await _rA.json(); } catch (_) {}
+    if (!_rA.ok || !_jA || _jA.success === false || _jA.error) throw new Error((_jA && _jA.error) || 'refus');
     showToast('Message envoyé !');
     // Affichage immédiat (optimiste) dans la conversation de l'athlète
     messagesCoach.push({ id: 'tmp-' + Date.now(), date: formatChatDate(new Date()), message: message, auteur: 'athlete', lu: false });
@@ -9576,7 +9583,8 @@ async function envoyerMessageAthleteCoach() {
     // Puis resynchronisation avec le serveur
     setTimeout(async () => { await chargerMessagesCoach(); cvRenderCoachMsgs(); }, 800);
   } catch(e) {
-    showToast('Erreur envoi', '#ff4444');
+    if (!input.value) input.value = message;   // H3
+    showToast(navigator.onLine === false ? 'Pas de réseau — message non envoyé' : 'Message non envoyé : ' + ((e && e.message) || 'erreur'), '#ff4444');
   }
 }
 
@@ -10537,6 +10545,7 @@ async function ouvrirApp() {
   }
   document.getElementById('view-app').classList.add('active');
   try { _majBandeauEmail(); } catch (e) {}
+  try { _majBandeauHorsLigne(); setTimeout(function () { try { flushSeancesOffline(); } catch (e) {} }, 1500); } catch (e) {}
   document.getElementById('tabs-bar').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
@@ -12448,7 +12457,12 @@ async function _envoyerSeance(bilanEnFile) {
   // La séance n'est JAMAIS perdue : en cas d'échec/incertitude → file d'attente + resync auto.
   function _miseEnFile(msg, couleur) {
     if (_saisieCoach) { _validationEnCours = false; showToast('Envoi impossible pour le moment : réessaie (la séance n\'est pas perdue tant que tu ne quittes pas).', '#f59f00'); var b0 = document.getElementById('btn-valider'); if (b0) { b0.style.display = 'block'; b0.disabled = false; b0.textContent = 'Valider la séance'; } return; }
-    enregistrerSeanceOffline(lignes, bilanEnFile || null);
+    if (!enregistrerSeanceOffline(lignes, bilanEnFile || null)) {
+      _validationEnCours = false;
+      showToast('Mémoire du téléphone pleine : séance NON mise en file. Garde l\'app ouverte et réessaie quand le réseau revient.', 'var(--danger)');
+      var b1 = document.getElementById('btn-valider'); if (b1) { b1.style.display = 'block'; b1.disabled = false; b1.textContent = 'Valider la séance'; }
+      return;
+    }
     afficherRecap();
     showToast(msg, couleur || '#f59f00');
   }
@@ -12573,7 +12587,17 @@ function _bloquerBoutonsValidation() {
 // ===== File d'attente hors-ligne (séances) =====
 const OFFLINE_SEANCES_KEY = 'novalyz_offline_seances';
 function _lireQueueOffline() { try { return JSON.parse(localStorage.getItem(OFFLINE_SEANCES_KEY) || '[]'); } catch (e) { return []; } }
-function _ecrireQueueOffline(q) { try { localStorage.setItem(OFFLINE_SEANCES_KEY, JSON.stringify(q)); } catch (e) {} }
+// H5 : si la mémoire de l'app est pleine, on libère le cache des données (rechargeable depuis le
+// serveur) puis on réessaie ; renvoie false si la file n'a VRAIMENT pas pu être écrite.
+function _ecrireQueueOffline(q) {
+  var txt = JSON.stringify(q);
+  try { localStorage.setItem(OFFLINE_SEANCES_KEY, txt); return true; } catch (e) {}
+  try { Object.keys(localStorage).forEach(function (k) { if (/^nv_cache_/.test(k)) localStorage.removeItem(k); }); localStorage.setItem(OFFLINE_SEANCES_KEY, txt); return true; } catch (e2) {}
+  return false;
+}
+// Athlète d'un élément de la file (les anciens éléments n'ont que les lignes : athlete_id en [4]).
+function _queueAthlete(item) { try { return String(item.athlete_id || (item.lignes && item.lignes[0] && item.lignes[0][4]) || ''); } catch (e) { return ''; } }
+function _nbSeancesEnAttente() { try { var id = athlete ? String(athlete.athlete_id) : ''; return id ? _lireQueueOffline().filter(function (it) { return _queueAthlete(it) === id; }).length : 0; } catch (e) { return 0; } }
 function _construireLignesSeance() {
   const lignes = [];
   seance.forEach(exo => exo.series.forEach(s => {
@@ -12592,25 +12616,33 @@ function _wellnessPayload(seanceId, dateSeance) {
 function enregistrerSeanceOffline(lignes, wellness) {
   const q = _lireQueueOffline();
   if (!_seanceEnvoiId) _seanceEnvoiId = _nouvelEnvoiId();
-  q.push({ lignes: lignes, wellness: wellness, ts: Date.now(), envoi_id: _seanceEnvoiId });
-  _ecrireQueueOffline(q);
+  q.push({ lignes: lignes, wellness: wellness, ts: Date.now(), envoi_id: _seanceEnvoiId, athlete_id: athlete ? String(athlete.athlete_id) : '' });
+  var ok = _ecrireQueueOffline(q);
+  try { _majBandeauHorsLigne(); } catch (e) {}
+  return ok;
 }
 var _flushingOffline = false;        // verrou anti-concurrence (online + load + resume peuvent coïncider)
 var _lastPendingToast = 0;           // throttle de la notice « en attente »
 async function flushSeancesOffline() {
   if (!navigator.onLine) return;
   if (_flushingOffline) return;      // un flush est déjà en cours → on ne renvoie pas en double
+  // H1 : seulement pour l'athlète CONNECTÉ (avec une session) et seulement SES séances.
+  if (!athlete || !_nvzTok()) return;
+  const moi = String(athlete.athlete_id);
   let q = _lireQueueOffline();
-  if (!q.length) return;
+  if (!q.some(function (it) { return _queueAthlete(it) === moi; })) return;
   _flushingOffline = true;
+  let sessionRefusee = false;
   try {
     const restantes = [];
     for (const item of q) {
+      if (_queueAthlete(item) !== moi || sessionRefusee) { restantes.push(item); continue; }
       try {
         // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
         const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'saveSeance', data: item.lignes, envoi_id: item.envoi_id || null }) });
         let j = null; try { j = await res.json(); } catch (_) { j = null; }
+        if (res.status === 401) { sessionRefusee = true; restantes.push(item); continue; }   // H1 : on garde, sans déconnecter
         const ok = res.ok && j && !j.erreur && !j.error;
         if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
         if (item.wellness) {
@@ -12620,6 +12652,8 @@ async function flushSeancesOffline() {
       } catch (e) { restantes.push(item); }
     }
     _ecrireQueueOffline(restantes);
+    if (sessionRefusee) showToast('Reconnecte-toi pour envoyer ta séance en attente.', 'var(--warn)');
+    try { _majBandeauHorsLigne(); } catch (e) {}
     const envoyees = q.length - restantes.length;
     if (envoyees > 0) { showToast(`${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`); try { if (typeof athlete !== 'undefined' && athlete && typeof chargerAppData === 'function') chargerAppData(); } catch (e) {} }
     else if (restantes.length > 0 && (Date.now() - _lastPendingToast > 30000)) {
@@ -12630,13 +12664,39 @@ async function flushSeancesOffline() {
     }
   } finally { _flushingOffline = false; }
 }
-window.addEventListener('online', () => { flushSeancesOffline(); });
+window.addEventListener('online', () => { flushSeancesOffline(); try { _majBandeauHorsLigne(); } catch (e) {} if (_horsLigneDepuis && athlete) { try { chargerAppData(); } catch (e) {} } });
+window.addEventListener('offline', () => { _horsLigneDepuis = _horsLigneDepuis || Date.now(); try { _majBandeauHorsLigne(); } catch (e) {} });
+// H4 (audit hors-ligne 02/11) : bandeau discret « Hors-ligne · données du … » + séances en attente.
+var _horsLigneDepuis = 0;
+function _majBandeauHorsLigne() {
+  var el = document.getElementById('nv-offline-bar');
+  var hl = !!athlete && (_horsLigneDepuis > 0 || navigator.onLine === false);
+  var n = _nbSeancesEnAttente();
+  if (!athlete || (!hl && !n)) { if (el) el.style.display = 'none'; return; }
+  if (!el) { el = document.createElement('div'); el.id = 'nv-offline-bar'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  var parts = [];
+  if (hl) {
+    var ts = 0; try { ts = Number(localStorage.getItem('nv_cache_' + athlete.athlete_id + '_ts')) || 0; } catch (e) {}
+    var d = ts ? new Date(ts) : null;
+    parts.push('Hors-ligne' + (d ? ' · données du ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' à ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : ''));
+  }
+  if (n) parts.push(n + ' séance' + (n > 1 ? 's' : '') + ' en attente d\'envoi');
+  el.textContent = parts.join(' · ');
+  // Juste SOUS l'en-tête (sans le masquer) ; passe sur 2 lignes si besoin.
+  var hb = 56; try { var hd = document.getElementById('app-header'); if (hd && hd.offsetHeight) hb = hd.getBoundingClientRect().bottom; } catch (e) {}
+  el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:' + Math.round(hb + 6) + 'px;z-index:1200;width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;background:var(--surface);color:var(--text);border:1px solid var(--warn);border-radius:14px;padding:6px 12px;font-size:11.5px;font-weight:700;line-height:1.35;text-align:center;box-shadow:0 4px 14px rgba(7,11,20,.15);pointer-events:none';
+}
 // Traite une validation hors-ligne : met en file + affiche le récap. Renvoie true si géré hors-ligne.
 // bilanPayload : payload saveBilanSeance à rejouer au retour du réseau (ou null).
 function _gererValidationHorsLigne(bilanPayload) {
   if (navigator.onLine) return false;
   const lignes = _construireLignesSeance();
-  enregistrerSeanceOffline(lignes, bilanPayload || null);
+  if (!enregistrerSeanceOffline(lignes, bilanPayload || null)) {
+    _validationEnCours = false;
+    showToast('Mémoire du téléphone pleine : séance NON mise en file. Garde l\'app ouverte et réessaie avec du réseau.', 'var(--danger)');
+    var b2 = document.getElementById('btn-valider'); if (b2) { b2.style.display = 'block'; b2.disabled = false; b2.textContent = 'Valider la séance'; }
+    return true;
+  }
   afficherRecap();
   showToast('Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
   return true;
@@ -16680,11 +16740,17 @@ function renderCorrelationBienEtre(bienEtreArr, volumeParJour) {
 
 // ==================== UTILS ====================
 async function chargerExercices() {
+  // H2 (audit hors-ligne 02/11) : catalogue gardé sur le téléphone — sans réseau au démarrage,
+  // les séries partaient sans muscle (volume par muscle faux).
   try {
     const res = await fetch(`${SCRIPT_URL}?action=exercices`);
     const data = await res.json();
     exercicesData = data.exercices || [];
-  } catch(e) { exercicesData = []; }
+    if (exercicesData.length) { try { localStorage.setItem('nv_exercices', JSON.stringify(exercicesData)); } catch (e) {} }
+    else throw new Error('vide');
+  } catch(e) {
+    try { exercicesData = JSON.parse(localStorage.getItem('nv_exercices') || '[]') || []; } catch (e2) { exercicesData = []; }
+  }
 }
 
 function formatDateDisplay(d) {
@@ -20932,7 +20998,8 @@ async function chargerAppData() {
       showToast('Erreur serveur : ' + msg + ' — réessaie dans un instant', 'var(--danger)');
       return;
     }
-    try { localStorage.setItem(_cacheKey, JSON.stringify(data)); } catch (_) {}
+    try { localStorage.setItem(_cacheKey, JSON.stringify(data)); localStorage.setItem(_cacheKey + '_ts', String(Date.now())); } catch (_) {}
+    _horsLigneDepuis = 0; try { _majBandeauHorsLigne(); } catch (e) {}
     // On isole l'AFFICHAGE de la partie réseau : si une donnée fait planter le rendu,
     // on veut le vrai message JS (et savoir que c'est côté affichage), pas le toast
     // générique "Erreur de connexion" qui laisse croire à un problème réseau.
@@ -20947,7 +21014,10 @@ async function chargerAppData() {
     if (e.name === 'AbortError') {
       showToast('Serveur trop lent (90 s dépassés). Rafraîchis dans quelques secondes.', 'var(--danger)');
     } else {
-      showToast('Erreur de connexion. Réessaie dans quelques secondes.', 'var(--danger)');
+      // H4 : sans réseau, les données du téléphone restent affichées → bandeau, pas de toast rouge.
+      _horsLigneDepuis = Date.now();
+      try { _majBandeauHorsLigne(); } catch (e2) {}
+      if (!localStorage.getItem(_cacheKey)) showToast('Erreur de connexion. Réessaie dans quelques secondes.', 'var(--danger)');
     }
     console.error('chargerAppData error:', e);
   } finally {
