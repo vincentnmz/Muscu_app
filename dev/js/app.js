@@ -14356,29 +14356,11 @@ function _maMuscuResume(data) {
   var spm = r.series_par_muscle || {};
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
   // R1 : semaines RÉELLEMENT couvertes — de max(début de période, 1re séance) à min(fin, demain).
-  var weeks = (function () {
-    var dm = (data.historique && data.historique.daily_muscu) || {}, first = Object.keys(dm).filter(function (k) { return dm[k] && (dm[k].series || 0) > 0; }).sort()[0];
-    var t = new Date(); t.setDate(t.getDate() + 1);
-    var demain = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
-    var a = (first && first > w.startISO) ? first : w.startISO, b = w.endISO < demain ? w.endISO : demain;
-    var nj = Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 864e5);
-    return Math.max(1, (nj > 0 ? nj : days) / 7);
-  })();
+  var weeks = _maSemCouvertes(data, w);
   var TGT = _maVolTargets();
   var vs = Object.keys(spm).map(function (m) { return { muscle: m, tot: spm[m] }; }).sort(function (a, b) { return b.tot - a.tot; });
   // Muscles du programme sans série sur la période (retour 31/10) → listés en bas, grisés.
-  var _vsZero = [];
-  try {
-    var _have = {}; vs.forEach(function (v) { _have[_musKey(v.muscle)] = 1; });
-    var _seenZ = {};
-    (Array.isArray(data.programme) ? data.programme : []).forEach(function (l) {
-      if (!l || l.type === 'cardio') return;
-      var e = (typeof exercicesData !== 'undefined' && exercicesData) ? exercicesData.find(function (x) { return x.exercice === l.exercice; }) : null;
-      var m = e && e.muscle; if (!m) return; var k = _musKey(m);
-      if (!_have[k] && !_seenZ[k]) { _seenZ[k] = 1; _vsZero.push(m); }
-    });
-    (data.volume_obti || []).forEach(function (o) { var k = o && _musKey(o.muscle); if (k && !_have[k] && !_seenZ[k]) { _seenZ[k] = 1; _vsZero.push(o.muscle + ' (hors programme)'); } });
-  } catch (e) {}
+  var _vsZero = _maMusNonTravailles(data, vs.map(function (v) { return v.muscle; }));
   // Repères MEV (mini efficace) / MAV (cible optimale) / MRV (max récupérable).
   var volHtml;
   if (vs.length) {
@@ -14685,17 +14667,70 @@ function _musKey(s) { return _normTxt(s).replace(/s$/, ''); }
 function _musCap(s) { s = String(s || '').trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 // PAR GROUPE : séries/sem vs cible + fréquence + tonnage + tendance. Le volume
 // INDIRECT (muscle secondaire d'un exercice, via le catalogue) compte 0,5 série.
+// Audit Évolution E1 (02/11) : semaines RÉELLEMENT couvertes par la période — de max(début, 1re
+// séance) à min(fin, demain). Source unique Résumé + Par groupe (avant : Par groupe divisait par la
+// durée totale → novembre au 2 = ÷4, année = ÷52).
+function _maSemCouvertes(data, w) {
+  var dm = (data && data.historique && data.historique.daily_muscu) || {}, first = Object.keys(dm).filter(function (k) { return dm[k] && (dm[k].series || 0) > 0; }).sort()[0];
+  var t = new Date(); t.setDate(t.getDate() + 1);
+  var demain = _ymdLocal(t);
+  var a = (first && first > w.startISO) ? first : w.startISO, b = w.endISO < demain ? w.endISO : demain;
+  var nj = Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 864e5);
+  return Math.max(1, (nj > 0 ? nj : w.days) / 7);
+}
+// E6 : muscles du programme (ou des objectifs de volume) SANS série sur la période → listés en gris.
+function _maMusNonTravailles(data, musclesVus) {
+  var out = [];
+  try {
+    var have = {}; (musclesVus || []).forEach(function (m) { have[_musKey(m)] = 1; });
+    var seen = {};
+    (Array.isArray(data.programme) ? data.programme : []).forEach(function (l) {
+      if (!l || l.type === 'cardio') return;
+      var e = (typeof exercicesData !== 'undefined' && exercicesData) ? exercicesData.find(function (x) { return x.exercice === l.exercice; }) : null;
+      var m = e && e.muscle; if (!m) return; var k = _musKey(m);
+      if (!have[k] && !seen[k]) { seen[k] = 1; out.push(m); }
+    });
+    (data.volume_obti || []).forEach(function (o) { var k = o && _musKey(o.muscle); if (k && !have[k] && !seen[k]) { seen[k] = 1; out.push(o.muscle + ' (hors programme)'); } });
+  } catch (e) {}
+  return out;
+}
+// E5 : mêmes 4 statuts que le Résumé (séries/sem vs mini / optimal / max récupérable = 1,5 × optimal).
+function _maVolStatut(spw, minW, optW, ctx) {
+  var mrv = Math.round(optW * 1.5);
+  if (spw < minW && ctx) return { c: '#8B96B0', t: 'Réduit (' + ctx + ')' };   // E4 = X1
+  if (spw < minW) return { c: '#DC3545', t: 'Sous-MEV' };
+  if (spw < optW) return { c: '#E07800', t: 'Suffisant' };
+  if (spw <= mrv) return { c: '#00A854', t: 'Optimal' };
+  return { c: '#9D5FD3', t: 'Au-delà' };
+}
+function _maNum1(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }   // E9 : virgule
+function _maPctBadge(pct, label) {
+  if (pct == null) return '<span class="t" style="color:var(--text-subtle)">' + label + ' —</span>';
+  return '<span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">' + label + ' ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>';
+}
+// PAR GROUPE : séries/sem vs cible (4 statuts du Résumé) + fréquence + tonnage direct + tendance.
+// Le volume INDIRECT (muscle secondaire d'un exercice, via le catalogue) compte 0,5 série.
 function _maProgGrp(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
-  var _w = _maWin(), days = _w.days, cut = _w.startISO, cutEnd = _w.endISO, weeks = Math.max(1, Math.round(days / 7));
-  var inP = sd.filter(function (s) { return (s.date || '') >= cut && (s.date || '') < cutEnd; }); if (!inP.length) inP = sd.slice(0, 12);
-  var prevCut = cut; try { var _pc = new Date(cut + 'T00:00:00'); _pc.setDate(_pc.getDate() - days); prevCut = _pc.getFullYear() + '-' + String(_pc.getMonth() + 1).padStart(2, '0') + '-' + String(_pc.getDate()).padStart(2, '0'); } catch (e) {}
-  // Muscle secondaire par exercice (catalogue) → volume indirect.
+  var _w = _maWin(), cut = _w.startISO, cutEnd = _w.endISO;
+  var inP = sd.filter(function (s) { return (s.date || '') >= cut && (s.date || '') < cutEnd; });
+  // E2 : période vide → on le dit (avant : les 12 dernières séances étaient affichées à la place).
+  if (!inP.length) return _maEmpty('Aucune séance sur cette période.');
+  var weeks = _maSemCouvertes(data, _w);   // E1
+  // E3 (a) : période EN COURS → comparée au même nombre de jours au début de la période précédente.
+  var pr = _actRange(_maGran, _maOffset - 1), prevCut = _ymdLocal(pr.start), prevEnd = _ymdLocal(pr.end), cmpPartiel = false;
+  if (_w.isCurrent) {
+    var t = new Date(); t.setDate(t.getDate() + 1);
+    var ecoules = Math.round((new Date(_ymdLocal(t) + 'T00:00:00') - _w.start) / 864e5);
+    var pe = new Date(pr.start); pe.setDate(pe.getDate() + ecoules);
+    if (pe < pr.end) { prevEnd = _ymdLocal(pe); cmpPartiel = true; }
+  }
   var secOf = {}; try { (exercicesData || []).forEach(function (x) { if (x && x.exercice && x.muscle_secondaire) secOf[_normTxt(x.exercice)] = x.muscle_secondaire; }); } catch (e) {}
   var TGT = _maVolTargets(), obti = {}; (data.volume_obti || []).forEach(function (o) { obti[_musKey(o.muscle)] = o; });
-  // Agrège par muscle (clé normalisée) : direct = 1 série ; indirect = 0,5 série
-  // + 0,5× tonnage pour le muscle secondaire de l'exercice.
+  var ctx = _ctxAttendu(data);
+  // Agrège par muscle : direct = 1 série + son tonnage ; indirect = 0,5 série, SANS tonnage (E7 a :
+  // le tonnage d'un développé n'est pas une charge de triceps).
   function _aggregate(sessions) {
     var a = {};
     function add(mus, kind, sets, ton, date) {
@@ -14709,27 +14744,33 @@ function _maProgGrp(data) {
         var ns = (e.series || []).length, t = (e.series || []).reduce(function (x, y) { return x + ((y.charge || 0) * (y.reps || 0)); }, 0);
         add(e.muscle || '—', 'direct', ns, t, s.date);
         var sec = secOf[_normTxt(e.nom)];
-        if (sec && _musKey(sec) !== _musKey(e.muscle || '')) add(sec, 'indirect', ns * 0.5, t * 0.5, s.date);
+        if (sec && _musKey(sec) !== _musKey(e.muscle || '')) add(sec, 'indirect', ns * 0.5, 0, s.date);
       });
     });
     return a;
   }
   var agg = _aggregate(inP.slice().reverse());
-  var aggPrev = _aggregate(sd.filter(function (s) { return (s.date || '') >= prevCut && (s.date || '') < cut; }));
+  var aggPrev = _aggregate(sd.filter(function (s) { return (s.date || '') >= prevCut && (s.date || '') < prevEnd; }));
   var rows = Object.keys(agg).map(function (k) {
-    var a = agg[k], sets = a.direct + a.indirect, pv = aggPrev[k] ? aggPrev[k].ton : 0, tp = pv > 0 ? Math.round((a.ton - pv) / pv * 100) : null;
-    return { key: k, label: a.label, spw: Math.round(sets / weeks * 10) / 10, ind: Math.round(a.indirect / weeks * 10) / 10, freq: Math.round(Object.keys(a.days).length / weeks * 10) / 10, ton: Math.round(a.ton / 100) / 10, trendPct: tp };
+    var a = agg[k], sets = a.direct + a.indirect, pv = aggPrev[k] ? aggPrev[k].ton : 0, tp = (pv > 0 && a.ton > 0) ? Math.round((a.ton - pv) / pv * 100) : null;
+    return { key: k, label: a.label, spw: Math.round(sets / weeks * 10) / 10, ind: Math.round(a.indirect / weeks * 10) / 10, freq: Math.round(Object.keys(a.days).length / weeks * 10) / 10, ton: a.ton / 1000, trendPct: tp };
   }).sort(function (x, y) { return y.spw - x.spw; });
+  var zero = _maMusNonTravailles(data, rows.map(function (r) { return r.label; }));
   var html = '<div class="ma-card">' + rows.map(function (rw) {
-    var o = obti[rw.key], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min, scale = optW * 1.3;
-    var C = rw.spw >= optW ? '#00A854' : rw.spw >= minW ? '#E07800' : '#DC3545';
-    var tb = _maTrendBadgeVs(rw.trendPct);
-    var indTxt = rw.ind > 0 ? ' <span style="color:var(--text-subtle);font-weight:600">· dont ' + String(rw.ind).replace('.', ',') + ' indir.</span>' : '';
-    return '<div class="ma-grow"><div class="ma-grh"><span class="n">' + _maE(rw.label) + '</span>' + tb + '</div>'
-      + '<div class="ma-gbar"><div class="ma-gfill" style="width:' + Math.min(100, rw.spw / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-gmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div>'
-      + '<div class="ma-gmet"><span>Séries <b>' + String(rw.spw).replace('.', ',') + '/' + optW + '</b>/sem' + indTxt + '</span><span>Fréq. <b>' + String(rw.freq).replace('.', ',') + '×</b>/sem</span><span>Tonnage <b>' + rw.ton + ' t</b></span></div></div>';
-  }).join('') + '</div>';
-  return html + _maCap('Par muscle : séries/sem vs ta cible (trait noir = optimal). Le volume <b>indirect</b> (muscle secondaire d\'un exercice) compte pour <b>½ série</b> et apparaît en « dont X indir. » (convention volume direct/indirect). Fréquence = séances/sem touchant le muscle ; à droite, l\'évolution du tonnage <b>vs la période précédente</b>. Les séries/sem sont le marqueur n°1 pour l\'hypertrophie.');
+    var o = obti[rw.key], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min, scale = Math.round(optW * 1.5) * 1.1;
+    var st = _maVolStatut(rw.spw, minW, optW, ctx);
+    var tb = rw.ton > 0 ? _maPctBadge(rw.trendPct, 'tonnage') : '';
+    var indTxt = rw.ind > 0 ? ' <span style="color:var(--text-subtle);font-weight:600">· dont ' + _maNum1(rw.ind) + ' indir.</span>' : '';
+    return '<div class="ma-grow"><div class="ma-grh"><span class="n">' + _maE(rw.label) + ' <span style="font-size:11px;font-weight:800;color:' + st.c + '">· ' + st.t + '</span></span>' + tb + '</div>'
+      + '<div class="ma-gbar"><div class="ma-gfill" style="width:' + Math.min(100, rw.spw / scale * 100).toFixed(0) + '%;background:' + st.c + '"></div><div class="ma-gmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div>'
+      + '<div class="ma-gmet"><span>Séries <b>' + _maNum1(rw.spw) + '/' + optW + '</b>/sem' + indTxt + '</span><span>Fréq. <b>' + _maNum1(rw.freq) + '×</b>/sem</span>' + (rw.ton > 0 ? '<span>Tonnage <b>' + _maNum1(rw.ton) + ' t</b></span>' : '') + '</div></div>';
+  }).join('')
+    + (zero.length ? '<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:800;margin:0;padding:12px 14px 2px;border-top:1px solid var(--border)">' + ((_maGran === 'S' && _w.isCurrent) ? 'Pas encore travaillés cette semaine' : 'Pas travaillés sur la période') + '</div>'
+      + zero.map(function (m) { return '<div class="ma-grow" style="padding-top:6px;padding-bottom:6px"><div class="ma-grh"><span class="n" style="color:var(--text-muted)">' + _maE(m) + '</span><span class="t" style="color:var(--text-subtle)">0 série</span></div></div>'; }).join('') : '')
+    + '<div class="ma-rsleg" style="margin:0;padding:10px 14px 12px;border-top:1px solid var(--border)">' + [['#DC3545', 'Sous-MEV'], ['#E07800', 'Suffisant'], ['#00A854', 'Optimal'], ['#9D5FD3', 'Au-delà']].map(function (x) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + x[0] + '"></span>' + x[1] + '</span>'; }).join('') + '</div>'
+    + '</div>';
+  return html + _maCap('Par muscle : séries/sem vs ta cible (trait noir = optimal), mêmes statuts que le Résumé. Le volume <b>indirect</b> (muscle secondaire d\'un exercice) compte pour <b>½ série</b> (« dont X indir. ») mais pas dans le tonnage. Fréquence = séances/sem touchant le muscle. À droite, l\'évolution du tonnage '
+    + (cmpPartiel ? 'vs <b>le même nombre de jours</b> de la période précédente (période en cours).' : 'vs <b>la période précédente</b>.'));
 }
 
 // Meilleure série d'un exercice (charge max, puis reps max) → base de comparaison.
@@ -14766,6 +14807,9 @@ function _maProgSea(data) {
   function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
   function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
   var esc = _maE;
+  // E4 : déload / reprise → une baisse des séances faites PENDANT le contexte est « attendue » (X1).
+  var _ctxA = _ctxAttendu(data), _ctxDeb = '';
+  try { var _cd = data.contexte && data.contexte.date_debut; if (_cd) { var _p = String(_cd).split('/'); _ctxDeb = _p.length === 3 ? _p[2] + '-' + _p[1] + '-' + _p[0] : String(_cd).slice(0, 10); } } catch (e) {}
   var allSorted = sd.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
   var nSea = Math.min(_maSeaMore || 5, allSorted.length);
   var sorted = allSorted.slice(0, nSea);
@@ -14773,12 +14817,15 @@ function _maProgSea(data) {
     var sid = s.seance_id || 'Séance';
     var libre = /libre|^séance$/i.test(sid);
     var nSeries = (s.exercices || []).reduce(function (a, e) { return a + ((e.series || []).length); }, 0);
-    var ton = Math.round((s.tonnage || 0) / 100) / 10, dur = _maEstDuree(s);
+    var ton = _maNum1((s.tonnage || 0) / 1000), dur = _maEstDuree(s);
     var rv = rs[sid + '|' + s.date]; if (rv == null) rv = rsByDate[s.date];
     var dd = new Date((s.date || '') + 'T00:00:00');
     var day = isNaN(dd.getTime()) ? '' : String(dd.getDate()), mon = isNaN(dd.getTime()) ? '' : _MA_MON[dd.getMonth()];
-    var badge = '';
-    if (!libre) { var pt = prevTonSameType(sid, s.date); if (pt && pt > 0) { var pct = Math.round(((s.tonnage || 0) - pt) / pt * 100); badge = '<span style="font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none;color:' + (pct >= 0 ? 'var(--good)' : 'var(--danger)') + ';background:' + (pct >= 0 ? 'var(--good-a,rgba(0,168,84,.12))' : 'var(--bad-a,rgba(220,53,69,.12))') + '">tonnage ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>'; } }
+    // E8 (a) : tonnage vs même séance précédente en GRIS neutre (une séance plus courte n'est pas une régression).
+    var tonCmp = '';
+    if (!libre) { var pt = prevTonSameType(sid, s.date); if (pt && pt > 0) { var pct = Math.round(((s.tonnage || 0) - pt) / pt * 100); tonCmp = ' (' + (pct >= 0 ? '+' : '−') + Math.abs(pct) + ' % vs la précédente)'; } }
+    var attendu = !!(_ctxA && _ctxDeb && (s.date || '') >= _ctxDeb);
+    var nUp = 0, nDn = 0, nEq = 0, nAtt = 0;
     var exos = (s.exercices || []).map(function (e) {
       var cur = _maBestSet(e); if (!cur) return '';
       var pv = prevOcc(e.nom, s.date), _whyE = null;
@@ -14798,6 +14845,8 @@ function _maProgSea(data) {
         }
         col = up ? 'var(--good)' : dn ? 'var(--danger)' : 'var(--text-muted)';
         deltaSub = up ? 'progression' : dn ? 'régression' : 'maintien';
+        if (dn && attendu) { col = 'var(--text-muted)'; deltaSub = 'baisse attendue'; nAtt++; }
+        else if (up) nUp++; else if (dn) nDn++; else nEq++;
       }
       var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' + (_whyE ? '<br><span style="color:var(--good)">' + esc(_whyE) + '</span>' : '') : '';
       return '<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--border)">'
@@ -14808,10 +14857,16 @@ function _maProgSea(data) {
         + '</div>';
     }).join('');
     var open = idx === 0;
+    var bilan = [];
+    if (nUp) bilan.push('<span style="color:var(--good)">' + nUp + ' ↑</span>');
+    if (nDn) bilan.push('<span style="color:var(--danger)">' + nDn + ' ↓</span>');
+    if (nEq) bilan.push('<span style="color:var(--text-muted)">' + nEq + ' =</span>');
+    if (nAtt) bilan.push('<span style="color:var(--text-muted)">' + nAtt + ' attendue' + (nAtt > 1 ? 's' : '') + '</span>');
+    var badge = bilan.length ? '<span title="Exercices en progrès / en baisse / stables vs la dernière fois" style="font-size:11px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none;background:var(--surface2)">' + bilan.join(' · ') + '</span>' : '';
     return '<div class="ma-card" id="ma-sea-' + idx + '" data-open="' + (open ? '1' : '0') + '" style="padding:0;overflow:hidden;margin-bottom:10px">'
       + '<div onclick="_maSeaToggle(' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:13px 14px;cursor:pointer">'
       + '<div style="width:42px;flex:none;text-align:center;background:var(--surface2);border-radius:10px;padding:5px 0"><div style="font-size:15px;font-weight:800;line-height:1">' + day + '</div><div style="font-size:8px;text-transform:uppercase;color:var(--text-subtle);margin-top:1px">' + mon + '</div></div>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + (s.saisi_par_coach ? '<br><span style="display:inline-block;white-space:nowrap;font-size:10px;font-weight:800;color:#6D4BFF;background:rgba(109,75,255,.12);border-radius:6px;padding:2px 6px;margin-top:3px">saisie par ton coach</span>' : '') + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv != null ? ' · RPE ' + rv + '/10' : '') + '</div></div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + (s.saisi_par_coach ? '<br><span style="display:inline-block;white-space:nowrap;font-size:10px;font-weight:800;color:#6D4BFF;background:rgba(109,75,255,.12);border-radius:6px;padding:2px 6px;margin-top:3px">saisie par ton coach</span>' : '') + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t' + tonCmp + ' · ~' + dur + ' min · ' + nSeries + ' séries' + (rv != null ? ' · RPE ' + String(rv).replace('.', ',') + '/10' : '') + '</div></div>'
       + badge
       + '<span id="ma-sea-ch-' + idx + '" style="color:var(--text-subtle);transition:transform .2s;flex:none' + (open ? ';transform:rotate(180deg)' : '') + '">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span>'
       + '</div>'
@@ -14819,7 +14874,7 @@ function _maProgSea(data) {
       + '</div>';
   }).join('');
   var moreBtn = (nSea < allSorted.length) ? '<button onclick="maLoadMoreSea()" style="width:100%;margin-top:2px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (allSorted.length - nSea) + ' restantes)</button>' : '';
-  return cards + moreBtn + _maCap('Tes dernières séances, dépliables. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête compare le tonnage à la même séance précédente.');
+  return cards + moreBtn + _maCap('Tes dernières séances, dépliables. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête résume tes exercices : <b>↑</b> en progrès, <b>↓</b> en baisse, <b>=</b> stables (les nouveaux ne comptent pas). Le tonnage est comparé, à titre indicatif, à la même séance précédente.');
 }
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
