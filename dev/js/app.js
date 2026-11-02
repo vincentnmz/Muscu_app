@@ -9447,11 +9447,16 @@ function repondreAlerte(contexte) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Verrou d'envoi (audit Messagerie M5, 01/11) : touche Entrée maintenue / double appui → 1 seul envoi.
+var _msgEnvoiEnCours = false;
 async function envoyerCommentaireCoach() {
   const input = document.getElementById('cd-comment-input');
   const message = input.value.trim();
   if (!message) { showToast('Écris un message', '#ff4444'); return; }
   if (!coachAthleteCourant || !coach) return;
+  if (_msgEnvoiEnCours) return;
+  _msgEnvoiEnCours = true; input.value = '';
+  setTimeout(function () { _msgEnvoiEnCours = false; }, 1500);
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -9480,6 +9485,9 @@ async function envoyerMessageAthleteCoach() {
   const message = input.value.trim();
   if (!message) { showToast('Écris un message', '#ff4444'); return; }
   if (!athlete) return;
+  if (_msgEnvoiEnCours) return;   // M5 : verrou d'envoi
+  _msgEnvoiEnCours = true; input.value = '';
+  setTimeout(function () { _msgEnvoiEnCours = false; }, 1500);
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -10409,7 +10417,9 @@ function _mediaPlein(url) {
 function cvRenderCoachMsgs() {
   var el = document.getElementById('conseils-content');
   if (!el) return;
-  var msgs = (messagesCoach || []).slice().sort(function (a, b) { return parseChatDate(a.date) - parseChatDate(b.date); });
+  // Tri par horodatage exact (id = ms) quand il existe ; sinon par la date affichée.
+  var _ts = function (c) { var n = Number(c.id); return (isFinite(n) && n > 1e12) ? n : parseChatDate(c.date); };
+  var msgs = (messagesCoach || []).slice().sort(function (a, b) { return _ts(a) - _ts(b); });
   if (!msgs.length) {
     el.innerHTML = '<div style="text-align:center;padding:28px 16px;"><div style="font-size:28px;margin-bottom:10px;"></div><div style="font-size:14px;font-weight:700;margin-bottom:6px;">Écris à ton coach</div><div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Une question, une douleur, un feedback ?<br>Ton coach te répondra ici.</div></div>';
     return;
@@ -10417,8 +10427,9 @@ function cvRenderCoachMsgs() {
   var init = _cvInit(_cvCoachNom());
   el.innerHTML = msgs.map(function (c) {
     var mine = c.auteur === 'athlete', sel = !!_cvSel[c.id], heure = _cvHeure(c.date);
-    var box = _cvSelMode ? '<span style="width:20px;height:20px;border-radius:999px;border:2px solid ' + (sel ? 'var(--accent)' : 'var(--border)') + ';background:' + (sel ? 'var(--accent)' : 'transparent') + ';display:grid;place-items:center;flex:none;">' + (sel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '') + '</span>' : '';
-    var click = _cvSelMode ? ' onclick="cvToggleMsg(\'' + c.id + '\')" style="cursor:pointer;display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"' : ' style="display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"';
+    var _selOk = _cvSelMode && mine;   // M4 (01/11) : seuls TES messages sont sélectionnables
+    var box = _selOk ? '<span style="width:20px;height:20px;border-radius:999px;border:2px solid ' + (sel ? 'var(--accent)' : 'var(--border)') + ';background:' + (sel ? 'var(--accent)' : 'transparent') + ';display:grid;place-items:center;flex:none;">' + (sel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '') + '</span>' : '';
+    var click = _selOk ? ' onclick="cvToggleMsg(\'' + c.id + '\')" style="cursor:pointer;display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"' : ' style="display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"';
     var media = _mediaBulleHTML(c);
     var corps = media || escapeHtml(c.message);
     if (mine) {
