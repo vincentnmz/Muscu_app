@@ -1220,16 +1220,143 @@ function agregerEquipe(items: any[]) {
 }
 
 // ── GET handlers ──────────────────────────────────────────────────────────────
+// C7 (02/11) : même traitement du mot de passe PARTOUT (espaces retirés aux deux bouts, comme
+// la connexion le faisait déjà). Avant : changement / reset gardaient les espaces → connexion impossible.
+function _mdp(v: unknown): string { return String(v ?? '').trim() }
+const MDP_MIN = 6
+
+// C5 (02/11) : limite d'essais de connexion — 5 échecs sur un même login en 15 min → bloqué
+// jusqu'à ce que le plus ancien de ces 5 échecs ait 15 min. Comptés aussi pour un login inexistant
+// (même réponse, pas d'énumération). Table login_echecs (clé 'a:<login>' / 'c:<login>').
+const LOGIN_MAX_ECHECS = 5, LOGIN_FENETRE_MS = 15 * 60 * 1000
+async function _loginBloqueMin(cle: string): Promise<number> {
+  try {
+    const depuis = new Date(Date.now() - LOGIN_FENETRE_MS).toISOString()
+    const { data } = await sb().from('login_echecs').select('created_at').eq('cle', cle).gte('created_at', depuis).order('created_at', { ascending: true })
+    if (!data || data.length < LOGIN_MAX_ECHECS) return 0
+    const t = new Date(data[data.length - LOGIN_MAX_ECHECS].created_at).getTime()
+    return Math.max(1, Math.ceil((t + LOGIN_FENETRE_MS - Date.now()) / 60000))
+  } catch (_) { return 0 }
+}
+async function _loginEchec(cle: string): Promise<void> {
+  try {
+    await sb().from('login_echecs').insert({ cle, created_at: new Date().toISOString() })
+    await sb().from('login_echecs').delete().lt('created_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+  } catch (_) {}
+}
+async function _loginReussi(cle: string): Promise<void> { try { await sb().from('login_echecs').delete().eq('cle', cle) } catch (_) {} }
+function _msgBloque(min: number): string { return `Trop d'essais. Réessaie dans ${min} min.` }
+
+// C8 (02/11) : changer / réinitialiser le mot de passe déconnecte les AUTRES appareils.
+// sess_depuis (secondes) : toute session émise avant est refusée. Renvoie un jeton neuf pour
+// l'appareil qui fait le changement (il reste connecté).
+const _sessDepuisCache = new Map<string, { v: number; t: number }>()
+async function _revoquerSessions(role: 'a' | 'c', id: string): Promise<string | null> {
+  const nowS = Math.floor(Date.now() / 1000)
+  try {
+    if (role === 'a') await sb().from('athletes').update({ sess_depuis: nowS }).eq('id', id)
+    else await sb().from('coachs').update({ sess_depuis: nowS }).eq('coach_id', id)
+    _sessDepuisCache.set(role + ':' + id, { v: nowS, t: Date.now() })
+  } catch (_) {}
+  return await signSession(role, id, nowS)
+}
+async function _sessDepuis(role: 'a' | 'c', id: string): Promise<number> {
+  const k = role + ':' + id, c = _sessDepuisCache.get(k)
+  if (c && Date.now() - c.t < 30000) return c.v
+  let v = 0
+  try {
+    const { data } = role === 'a'
+      ? await sb().from('athletes').select('sess_depuis').eq('id', id).single()
+      : await sb().from('coachs').select('sess_depuis').eq('coach_id', id).single()
+    v = Number(data && (data as any).sess_depuis) || 0
+  } catch (_) {}
+  _sessDepuisCache.set(k, { v, t: Date.now() })
+  return v
+}
+
+// C9 (02/11) : mail de bienvenue (login, jamais le mot de passe) + lien « Confirmer mon adresse ».
+// Jeton de confirmation signé (HMAC, même clé que les sessions), valable 7 jours, lié à l'adresse.
+async function _jetonEmail(role: 'a' | 'c', id: string, email: string): Promise<string | null> {
+  const key = await _sessKey(); if (!key) return null
+  const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 3600
+  const payload = `e1.${role}.${_b64uStr(id)}.${_b64uStr(email.toLowerCase())}.${exp}`
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload)))
+  return payload + '.' + _b64u(sig)
+}
+async function _lireJetonEmail(tok: string): Promise<{ role: 'a' | 'c'; id: string; email: string } | null> {
+  try {
+    const key = await _sessKey(); if (!key || !tok) return null
+    const p = String(tok).split('.'); if (p.length !== 6 || p[0] !== 'e1' || (p[1] !== 'a' && p[1] !== 'c')) return null
+    const sigB = Uint8Array.from(atob(p[5].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((p[5].length + 3) % 4)), c => c.charCodeAt(0))
+    const ok = await crypto.subtle.verify('HMAC', key, sigB, new TextEncoder().encode(p.slice(0, 5).join('.'))); if (!ok) return null
+    if (Number(p[4]) < Math.floor(Date.now() / 1000)) return null
+    return { role: p[1] as 'a' | 'c', id: _unb64uStr(p[2]), email: _unb64uStr(p[3]) }
+  } catch (_) { return null }
+}
+async function _envoyerMailCompte(role: 'a' | 'c', id: string, email: string, login: string, nom: string, bienvenue: boolean): Promise<boolean> {
+  const tok = await _jetonEmail(role, id, email); if (!tok) return false
+  const lien = _appLien('confirm_email', tok)
+  const prenom = String(nom || '').trim().split(/\s+/)[0] || ''
+  const blocLogin = `<div style="background:#0f1525;border:1px solid #263050;border-radius:12px;padding:14px 16px;margin:0 0 6px">
+      <div style="font-size:12px;color:#8b96b0;text-transform:uppercase;letter-spacing:.08em">Ton login${role === 'c' ? ' coach' : ''}</div>
+      <div style="font-size:28px;font-weight:800;letter-spacing:.2em;color:#fff;margin-top:4px">${_escHtml(login)}</div></div>`
+  const html = bienvenue
+    ? _mailCompte(`Bienvenue sur Novalyz${prenom ? ', ' + _escHtml(prenom) : ''} 👋`, `
+      <p style="color:#a9b4cc;line-height:1.55;margin:0 0 16px">Ton compte est créé. Garde ce mail : il contient ton identifiant de connexion.</p>
+      ${blocLogin}
+      <p style="color:#a9b4cc;line-height:1.55;margin:16px 0 0">Confirme ton adresse : c'est elle qui te permettra de récupérer ton mot de passe.</p>
+      ${_mailBouton(lien, 'Confirmer mon adresse')}
+      <p style="color:#8b96b0;font-size:13px;line-height:1.5;margin:0">Mot de passe oublié ? Sur l'écran de connexion, touche « Mot de passe oublié ? » et saisis cette adresse : tu recevras un lien pour en choisir un nouveau. Par sécurité, Novalyz n'envoie jamais ton mot de passe.</p>
+      <p style="color:#5f6b86;font-size:12px;line-height:1.5;margin:14px 0 0">Tu n'as pas créé de compte Novalyz ? Ignore ce mail.</p>`)
+    : _mailCompte('Confirme ton adresse e-mail', `
+      <p style="color:#a9b4cc;line-height:1.55;margin:0 0 6px">Cette adresse vient d'être associée à ton compte Novalyz (login <b>${_escHtml(login)}</b>). Confirme-la : c'est elle qui te permettra de récupérer ton mot de passe.</p>
+      ${_mailBouton(lien, 'Confirmer mon adresse')}
+      <p style="color:#5f6b86;font-size:12px;line-height:1.5;margin:0">Lien valable 7 jours. Ce n'est pas toi ? Ignore ce mail.</p>`)
+  return _envoyerEmail(email, bienvenue ? 'Bienvenue sur Novalyz — ton login' : 'Confirme ton adresse e-mail Novalyz', html)
+}
+async function handleConfirmerEmail(body: any): Promise<Response> {
+  const j = await _lireJetonEmail(String(body.token || ''))
+  if (!j) return jsonResp({ success: false, error: 'Lien invalide ou expiré.' })
+  // L'adresse doit être TOUJOURS celle du compte (sinon le lien d'une ancienne adresse confirmerait la nouvelle).
+  const { data } = j.role === 'a'
+    ? await sb().from('athletes').select('email').eq('id', j.id).single()
+    : await sb().from('coachs').select('email').eq('coach_id', j.id).single()
+  if (!data || String((data as any).email || '').trim().toLowerCase() !== j.email) return jsonResp({ success: false, error: 'Cette adresse n\'est plus celle de ton compte.' })
+  const r = j.role === 'a'
+    ? await sb().from('athletes').update({ email_verifie: true }).eq('id', j.id)
+    : await sb().from('coachs').update({ email_verifie: true }).eq('coach_id', j.id)
+  if (r.error) return jsonResp({ success: false, error: r.error.message })
+  return jsonResp({ success: true })
+}
+// Renvoyer le lien de confirmation (compte de la session).
+async function handleRenvoyerConfirmationEmail(body: any): Promise<Response> {
+  const role = body._sessRole === 'c' ? 'c' : 'a', id = String(body._sessId || '')
+  if (!id) return jsonResp({ success: false, error: 'Session requise' })
+  const { data } = role === 'a'
+    ? await sb().from('athletes').select('email,login,nom,email_verifie').eq('id', id).single()
+    : await sb().from('coachs').select('email,login,nom,email_verifie').eq('coach_id', id).single()
+  const d: any = data || {}
+  if (!d.email) return jsonResp({ success: false, error: 'Aucune adresse e-mail sur ton compte.' })
+  if (d.email_verifie) return jsonResp({ success: true, deja: true })
+  const ok = await _envoyerMailCompte(role, id, String(d.email).trim(), String(d.login || ''), String(d.nom || ''), false)
+  return jsonResp(ok ? { success: true } : { success: false, error: 'Envoi impossible pour le moment.' })
+}
+
 async function handleLogin(params: URLSearchParams): Promise<Response> {
   const login = params.get('login')?.trim()
   const pwd = params.get('password')?.trim()
   if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
 
+  const cleL = 'a:' + login
+  const bloqueMin = await _loginBloqueMin(cleL)
+  if (bloqueMin) return jsonResp({ erreur: _msgBloque(bloqueMin), error: _msgBloque(bloqueMin), bloque: true })
+
   const { data: ath } = await sb().from('athletes').select('*').eq('login', login).single()
-  if (!ath) return jsonResp({ erreur: 'Identifiants incorrects' })
+  if (!ath) { await _loginEchec(cleL); return jsonResp({ erreur: 'Identifiants incorrects', error: 'Identifiants incorrects' }) }
 
   const { ok, upgrade } = await verifyPwd(pwd, ath.password_hash || '', ath.login)
-  if (!ok) return jsonResp({ erreur: 'Identifiants incorrects', error: 'Identifiants incorrects' })
+  if (!ok) { await _loginEchec(cleL); return jsonResp({ erreur: 'Identifiants incorrects', error: 'Identifiants incorrects' }) }
+  await _loginReussi(cleL)
   if (upgrade) await sb().from('athletes').update({ password_hash: upgrade }).eq('id', ath.id)
 
   // objectif (chaîne) + poids courant depuis la table objectif (comme Code.gs athleteFromRow)
@@ -1261,6 +1388,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
     ddn: ath.ddn ? fmtFR(ath.ddn) : '',
     sexe: (ath.sexe === 'H' || ath.sexe === 'F') ? ath.sexe : '',
     email: ath.email || '',
+    email_verifie: !!ath.email_verifie,
     recap_freq: ath.recap_freq || 'off',
   }})
 }
@@ -1282,6 +1410,7 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const sport = params.get('sport') || 'muscu'
   const email = (params.get('email') || '').trim()
   if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
+  if (pwd.length < MDP_MIN) return jsonResp({ erreur: 'Mot de passe : 6 caractères minimum.', message: 'Mot de passe : 6 caractères minimum.' })   // C6
   if (email && !_emailValide(email)) return jsonResp({ erreur: 'Email invalide', message: 'Email invalide' })
 
   // Accès bêta par code d'invitation : si le secret BETA_INVITE_CODE est défini,
@@ -1298,6 +1427,8 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const newId = await nextAthleteId()
   const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null }).select().single()
   if (error) return jsonResp({ erreur: error.message, message: error.message })
+  // C9 : mail de bienvenue (login + confirmer l'adresse). Un échec d'envoi ne bloque pas l'inscription.
+  if (email) { try { await _envoyerMailCompte('a', String(data.id), email, String(data.login), String(data.nom || ''), true) } catch (_) {} }
   return jsonResp({ success: true, athlete: {
     athlete_id: data.id,
     login: data.login,
@@ -1311,6 +1442,7 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
     strategie_progression: sport === 'muscu' ? getStrategieFromAnnees(Number(annees) || 0) : '',
     annees_pratique: Number(annees) || 0,
     email: email || '',
+    email_verifie: false,
   }})
 }
 
@@ -1319,8 +1451,8 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
 // hashSalted (salt = login). Ne touche qu'à password_hash.
 async function handleChangePassword(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
-  const ancien = String(body.ancien_mdp || '')
-  const nouveau = String(body.nouveau_mdp || '')
+  const ancien = _mdp(body.ancien_mdp)
+  const nouveau = _mdp(body.nouveau_mdp)
   if (!athlete_id || !ancien || !nouveau) return jsonResp({ success: false, error: 'Paramètres manquants' })
   if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
   const { data: ath } = await sb().from('athletes').select('id,login,password_hash').eq('id', athlete_id).single()
@@ -1331,7 +1463,8 @@ async function handleChangePassword(body: any): Promise<Response> {
   const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
   if (error) return jsonResp({ success: false, error: error.message })
   await _invaliderTokensReset(String(ath.id))   // sécurité : plus aucun lien de reset actif
-  return jsonResp({ success: true })
+  const token = await _revoquerSessions('a', String(ath.id))   // C8 : autres appareils déconnectés, celui-ci reste connecté
+  return jsonResp(token ? { success: true, token } : { success: true })
 }
 
 // Ajout / mise à jour / effacement de l'email d'un athlète (compte existant).
@@ -1342,9 +1475,16 @@ async function handleSaveEmail(body: any): Promise<Response> {
   const email = String(body.email || '').trim()
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   if (email && !_emailValide(email)) return jsonResp({ success: false, error: 'Email invalide' })
-  const { error } = await sb().from('athletes').update({ email: email || null }).eq('id', athlete_id)
+  const { data: avant } = await sb().from('athletes').select('email,login,nom,email_verifie').eq('id', athlete_id).single()
+  const change = String((avant as any)?.email || '').trim().toLowerCase() !== email.toLowerCase()
+  const patch: any = { email: email || null }
+  if (change) patch.email_verifie = false
+  const { error } = await sb().from('athletes').update(patch).eq('id', athlete_id)
   if (error) return jsonResp({ success: false, error: error.message })
-  return jsonResp({ success: true, email })
+  // C9 : nouvelle adresse → lien de confirmation.
+  let confirmationEnvoyee = false
+  if (change && email) { try { confirmationEnvoyee = await _envoyerMailCompte('a', athlete_id, email, String((avant as any)?.login || ''), String((avant as any)?.nom || ''), false) } catch (_) {} }
+  return jsonResp({ success: true, email, email_verifie: change ? false : !!(avant as any)?.email_verifie, confirmation_envoyee: confirmationEnvoyee })
 }
 
 // L'athlète met à jour son profil (nom, taille, poids, années, ddn). Ne touche
@@ -1381,22 +1521,28 @@ async function handleSaveCoachProfil(body: any): Promise<Response> {
   if (!coach_id) return jsonResp({ success: false, error: 'coach_id manquant' })
   const patch: any = {}
   if (body.nom != null && String(body.nom).trim()) patch.nom = String(body.nom).trim()
+  let nouvelEmail = '', avantC: any = null
   if (body.email != null) {
     const e = String(body.email).trim()
     if (e && !_emailValide(e)) return jsonResp({ success: false, error: 'Email invalide' })
     patch.email = e || null
+    const { data: av } = await sb().from('coachs').select('email,login,nom,email_verifie').eq('coach_id', coach_id).single()
+    avantC = av || {}
+    if (String(avantC.email || '').trim().toLowerCase() !== e.toLowerCase()) { patch.email_verifie = false; nouvelEmail = e }
   }
   if (!Object.keys(patch).length) return jsonResp({ success: false, error: 'Rien à enregistrer' })
   const { error } = await sb().from('coachs').update(patch).eq('coach_id', coach_id)
   if (error) return jsonResp({ success: false, error: error.message })
-  return jsonResp({ success: true })
+  let confirmationEnvoyee = false
+  if (nouvelEmail) { try { confirmationEnvoyee = await _envoyerMailCompte('c', coach_id, nouvelEmail, String(avantC.login || ''), String(patch.nom || avantC.nom || ''), false) } catch (_) {} }
+  return jsonResp({ success: true, confirmation_envoyee: confirmationEnvoyee, email_verifie: avantC ? (nouvelEmail ? false : !!avantC.email_verifie) : undefined })
 }
 
 // Le coach change LUI-MÊME son mot de passe (preuve de possession : ancien mdp).
 async function handleChangePasswordCoach(body: any): Promise<Response> {
   const coach_id = String(body.coach_id || '')
-  const ancien = String(body.ancien_mdp || '')
-  const nouveau = String(body.nouveau_mdp || '')
+  const ancien = _mdp(body.ancien_mdp)
+  const nouveau = _mdp(body.nouveau_mdp)
   if (!coach_id || !ancien || !nouveau) return jsonResp({ success: false, error: 'Paramètres manquants' })
   if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
   const { data: coach } = await sb().from('coachs').select('coach_id,login,password_hash').eq('coach_id', coach_id).single()
@@ -1406,7 +1552,9 @@ async function handleChangePasswordCoach(body: any): Promise<Response> {
   const hash = await hashSalted(nouveau, coach.login)
   const { error } = await sb().from('coachs').update({ password_hash: hash }).eq('coach_id', coach_id)
   if (error) return jsonResp({ success: false, error: error.message })
-  return jsonResp({ success: true })
+  await _invaliderTokensReset('coach:' + coach_id)
+  const token = await _revoquerSessions('c', coach_id)   // C8
+  return jsonResp(token ? { success: true, token } : { success: true })
 }
 
 // Club et catégorie par défaut du coach (préférence d'équipe). Stockage simple.
@@ -1603,11 +1751,13 @@ async function _invaliderTokensReset(athlete_id: string): Promise<void> {
 //    onboarding@resend.dev), Resend ne délivre QU'À l'adresse du compte
 //    propriétaire. Les autres destinataires ne reçoivent rien (cf. roadmap P0-1).
 // En-tête e-mail : logo Novalyz + nom (image absolue, compatible clients mail).
-const MAIL_LOGO_URL = Deno.env.get('MAIL_LOGO_URL') || 'https://vincentnmz.github.io/Muscu_app/logo%20novalyz.png'
+// Audit connexion C10 (02/11) : bandeau unique (logo + logotype NOVALYZ sur bloc noir, nid d'abeille
+// bleu) — une image plutôt qu'un fond CSS, ignoré par certains logiciels de mail. Hébergé sous /dev/
+// (conservé par le déploiement de main) ; secret MAIL_LOGO_URL pour pointer ailleurs sans redéployer.
+const MAIL_LOGO_URL = Deno.env.get('MAIL_LOGO_URL') || 'https://vincentnmz.github.io/Muscu_app/dev/assets/mail-header.png'
 function _mailHeader(): string {
-  return `<div style="max-width:620px;margin:0 auto 18px;text-align:center">
-    <img src="${MAIL_LOGO_URL}" width="96" height="96" alt="Novalyz" style="display:inline-block;border:0;border-radius:22px;vertical-align:middle">
-    <div style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:800;letter-spacing:.1em;color:#eaf0fa;margin-top:10px">NOVALYZ</div>
+  return `<div style="max-width:620px;margin:0 auto 14px">
+    <img src="${MAIL_LOGO_URL}" width="620" alt="Novalyz — Analyze · Plan · Perform" style="display:block;width:100%;max-width:620px;height:auto;border:0;border-radius:14px">
   </div>`
 }
 async function _envoyerEmail(to: string, subject: string, html: string, attachments?: { filename: string; content: string }[]): Promise<boolean> {
@@ -1638,23 +1788,37 @@ function _csvRows(rows: any[]): string {
   return [cols.join(',')].concat(rows.map((r: any) => cols.map((c) => esc(r[c])).join(','))).join('\n')
 }
 
-async function _envoyerEmailReset(email: string, rawToken: string): Promise<boolean> {
-  const key = Deno.env.get('RESEND_API_KEY')
-  if (!key) { console.error('reset: RESEND_API_KEY absente'); return false }
-  const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://vincentnmz.github.io/Muscu_app/dev/'
-  const lien = baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + 'reset_token=' + rawToken
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:Arial,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:16px">
+// C2 (02/11) : liens des mails vers la PROD par défaut (avant : préprod /dev/). Secret APP_BASE_URL prioritaire.
+function _appLien(param: string, val: string): string {
+  const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://vincentnmz.github.io/Muscu_app/'
+  return baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + param + '=' + encodeURIComponent(val)
+}
+// Coquille simple des mails de compte (reset, bienvenue, confirmation).
+function _mailCompte(titre: string, corps: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:Arial,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:16px">
     ${_mailHeader()}
-    <div style="max-width:480px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:20px 16px">
-      <h2 style="margin:0 0 12px">Réinitialisation de votre mot de passe</h2>
-      <p style="color:#8b96b0;line-height:1.5">Une demande de réinitialisation de votre mot de passe Novalyz a été effectuée. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.</p>
-      <p style="text-align:center;margin:24px 0">
-        <a href="${lien}" style="display:inline-block;background:#37d3b5;color:#052b25;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">Réinitialiser mon mot de passe</a>
-      </p>
-      <p style="color:#8b96b0;font-size:13px;line-height:1.5">Ce lien est valable <b>1 heure</b>. Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email — votre mot de passe reste inchangé.</p>
+    <div style="max-width:620px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:20px 16px">
+      <h2 style="margin:0 0 12px;font-size:20px">${titre}</h2>
+      ${corps}
     </div></body></html>`
+}
+function _mailBouton(lien: string, txt: string): string {
+  return `<p style="text-align:center;margin:20px 0"><a href="${lien}" style="display:inline-block;background:#1A5FFF;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">${txt}</a></p>`
+}
+// comptes = [{ type: 'athlète' | 'coach', login, token }]
+async function _envoyerEmailReset(email: string, comptes: { type: string; login: string; token: string }[]): Promise<boolean> {
+  const plusieurs = comptes.length > 1
+  const blocs = comptes.map((c) => (plusieurs ? `<p style="margin:16px 0 0;color:#e9eef8">Compte ${_escHtml(c.type)} — login <b>${_escHtml(c.login)}</b></p>` : '')
+    + _mailBouton(_appLien('reset_token', c.token), 'Réinitialiser mon mot de passe')).join('')
+  const html = _mailCompte('Réinitialisation de votre mot de passe', `
+      <p style="color:#a9b4cc;line-height:1.5">Une demande de réinitialisation de mot de passe Novalyz a été faite pour cette adresse${plusieurs ? ', qui est liée à plusieurs comptes. Choisissez le compte concerné' : ''}. Le lien s'ouvre dans votre navigateur ; reconnectez-vous ensuite dans l'app avec le nouveau mot de passe.</p>
+      ${blocs}
+      <p style="color:#8b96b0;font-size:13px;line-height:1.5">Lien valable <b>1 heure</b>. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email — votre mot de passe reste inchangé.</p>`)
   return _envoyerEmail(email, 'Réinitialisation de votre mot de passe Novalyz', html)
 }
+
+// Recherche sans casse d'une adresse (ilike, jokers % et _ neutralisés).
+function _ilikeExact(v: string): string { return v.replace(/[\\%_]/g, (m) => '\\' + m) }
 
 async function handleRequestPasswordReset(body: any): Promise<Response> {
   const email = String(body.email || '').trim()
@@ -1664,38 +1828,45 @@ async function handleRequestPasswordReset(body: any): Promise<Response> {
   // Réponse identique dans tous les cas valides (anti-énumération).
   const generique = () => jsonResp({ success: true, message: RESET_MSG_GENERIQUE })
 
-  // Étape B/C — compte inexistant (ou sans email) : rien créé, rien envoyé.
-  const { data: ath } = await sb().from('athletes').select('id').eq('email', email).single()
-  if (!ath) return generique()
+  // C3/C4 (02/11) : sans casse, TOUS les comptes de l'adresse (athlètes ET coachs). Avant : un seul
+  // athlète attendu (.single) → aucune adresse partagée ne recevait rien, et les coachs jamais.
+  const motif = _ilikeExact(email)
+  const [{ data: aths }, { data: chs }] = await Promise.all([
+    sb().from('athletes').select('id,login').ilike('email', motif),
+    sb().from('coachs').select('coach_id,login').ilike('email', motif),
+  ])
+  const cibles = [
+    ...(aths || []).map((a: any) => ({ cle: String(a.id), type: 'athlète', login: String(a.login || '') })),
+    ...(chs || []).map((c: any) => ({ cle: 'coach:' + String(c.coach_id), type: 'coach', login: String(c.login || '') })),
+  ]
+  if (!cibles.length) return generique()
 
-  // Rate limiting DURABLE (en base) : au-delà de N demandes sur la fenêtre, on
-  // renvoie la MÊME réponse générique (anti-énumération préservée) sans créer de
-  // token ni envoyer d'email — limite le spam Resend. NB : limite par COMPTE ;
-  // une protection par IP au niveau edge/proxy reste recommandée en production.
-  try {
-    const { data: recents } = await sb().from('password_reset_tokens').select('created_at').eq('athlete_id', String(ath.id))
-    const seuil = Date.now() - RESET_FENETRE_MS
-    const nb = (recents || []).filter((r: any) => new Date(r.created_at).getTime() > seuil).length
-    if (nb >= RESET_MAX_PAR_FENETRE) { console.error('reset: rate limit atteint'); return generique() }
-  } catch (_) {}
+  const comptes: { type: string; login: string; token: string; hash: string }[] = []
+  for (const c of cibles) {
+    // Rate limiting DURABLE (en base), par compte : au-delà, même réponse générique, rien envoyé.
+    try {
+      const { data: recents } = await sb().from('password_reset_tokens').select('created_at').eq('athlete_id', c.cle)
+      const seuil = Date.now() - RESET_FENETRE_MS
+      const nb = (recents || []).filter((r: any) => new Date(r.created_at).getTime() > seuil).length
+      if (nb >= RESET_MAX_PAR_FENETRE) { console.error('reset: rate limit atteint'); continue }
+    } catch (_) {}
+    // Un seul lien actif par compte.
+    await _invaliderTokensReset(c.cle)
+    // Jeton aléatoire (32 octets → 64 hex) ; seul son hash est stocké ; expiration +1 h.
+    const rawBytes = new Uint8Array(32); crypto.getRandomValues(rawBytes)
+    const rawToken = Array.from(rawBytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const token_hash = await sha256hex(rawToken)
+    const expires_at = new Date(Date.now() + 3600 * 1000).toISOString()
+    const { error } = await sb().from('password_reset_tokens').insert({ athlete_id: c.cle, token_hash, expires_at, used: false, created_at: new Date().toISOString() })
+    if (error) { console.error('reset: échec insertion token'); continue }
+    comptes.push({ type: c.type, login: c.login, token: rawToken, hash: token_hash })
+  }
+  if (!comptes.length) return generique()
 
-  // Étape F — invalider les anciens tokens actifs de cet athlète (1 seul actif).
-  await _invaliderTokensReset(String(ath.id))
-
-  // Étape D — token aléatoire cryptographiquement sûr (32 octets → 64 hex).
-  const rawBytes = new Uint8Array(32); crypto.getRandomValues(rawBytes)
-  const rawToken = Array.from(rawBytes).map(b => b.toString(16).padStart(2, '0')).join('')
-  const token_hash = await sha256hex(rawToken)   // on ne stocke QUE le hash
-  // Étape E — expiration à +1 h.
-  const expires_at = new Date(Date.now() + 3600 * 1000).toISOString()
-
-  const { error } = await sb().from('password_reset_tokens').insert({ athlete_id: String(ath.id), token_hash, expires_at, used: false, created_at: new Date().toISOString() })
-  if (error) { console.error('reset: échec insertion token'); return generique() }
-
-  // Envoi. En cas d'échec Resend : invalider le token (pas de reset actif inutilisable).
-  const envoye = await _envoyerEmailReset(email, rawToken)
+  // Envoi. En cas d'échec Resend : invalider les tokens (pas de reset actif inutilisable).
+  const envoye = await _envoyerEmailReset(email, comptes)
   if (!envoye) {
-    try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', token_hash) } catch (_) {}
+    for (const c of comptes) { try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', c.hash) } catch (_) {} }
   }
   // Anti-énumération : on renvoie toujours la même réponse générique.
   return generique()
@@ -1706,7 +1877,7 @@ async function handleRequestPasswordReset(body: any): Promise<Response> {
 // on le compare par son hash. Usage unique (token marqué used après succès).
 async function handleResetPassword(body: any): Promise<Response> {
   const token = String(body.token || '').trim()
-  const nouveau = String(body.nouveau_mdp || '')
+  const nouveau = _mdp(body.nouveau_mdp)
   if (!token || !nouveau) return jsonResp({ success: false, error: 'Paramètres manquants' })
   if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
 
@@ -1720,7 +1891,20 @@ async function handleResetPassword(body: any): Promise<Response> {
     return jsonResp({ success: false, error: RESET_TOKEN_MSG })
   }
 
-  const { data: ath } = await sb().from('athletes').select('id,login').eq('id', String(row.athlete_id)).single()
+  // C4 (02/11) : jeton d'un compte coach = « coach:<coach_id> ».
+  const cle = String(row.athlete_id)
+  if (cle.startsWith('coach:')) {
+    const cid = cle.slice(6)
+    const { data: co } = await sb().from('coachs').select('coach_id,login').eq('coach_id', cid).single()
+    if (!co) return jsonResp({ success: false, error: RESET_TOKEN_MSG })
+    const hashC = await hashSalted(nouveau, co.login)
+    const { error: eC } = await sb().from('coachs').update({ password_hash: hashC }).eq('coach_id', cid)
+    if (eC) return jsonResp({ success: false, error: eC.message })
+    await _invaliderTokensReset(cle)
+    await _revoquerSessions('c', cid)   // C8 : les autres appareils sont déconnectés
+    return jsonResp({ success: true })
+  }
+  const { data: ath } = await sb().from('athletes').select('id,login').eq('id', cle).single()
   if (!ath) return jsonResp({ success: false, error: RESET_TOKEN_MSG })
 
   const hash = await hashSalted(nouveau, ath.login)
@@ -1728,6 +1912,7 @@ async function handleResetPassword(body: any): Promise<Response> {
   if (error) return jsonResp({ success: false, error: error.message })
   // Succès : invalider TOUS les tokens de reset actifs de l'athlète (dont celui-ci).
   await _invaliderTokensReset(String(ath.id))
+  await _revoquerSessions('a', String(ath.id))   // C8
   return jsonResp({ success: true })
 }
 
@@ -2776,14 +2961,19 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
   const pwd = params.get('password')?.trim()
   if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
 
+  const cleC = 'c:' + login
+  const bloqueMin = await _loginBloqueMin(cleC)
+  if (bloqueMin) return jsonResp({ success: false, error: _msgBloque(bloqueMin), bloque: true })
+
   const { data: coach } = await sb().from('coachs').select('*').eq('login', login).single()
-  if (!coach) return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' })
+  if (!coach) { await _loginEchec(cleC); return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' }) }
 
   const { ok, upgrade } = await verifyPwd(pwd, coach.password_hash || '', coach.login)
-  if (!ok) return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' })
+  if (!ok) { await _loginEchec(cleC); return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' }) }
+  await _loginReussi(cleC)
   if (upgrade) await sb().from('coachs').update({ password_hash: upgrade }).eq('coach_id', coach.coach_id)
 
-  return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', club: coach.club || '', categorie_defaut: coach.categorie_defaut || '', recap_freq: coach.recap_freq || 'off' } })
+  return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', email_verifie: !!coach.email_verifie, club: coach.club || '', categorie_defaut: coach.categorie_defaut || '', recap_freq: coach.recap_freq || 'off' } })
 }
 
 async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response> {
@@ -3958,6 +4148,8 @@ async function handleRegisterCoach(body: any): Promise<Response> {
   const role = STAFF_ROLES.includes(String(body.role || '')) ? String(body.role) : 'coach'
   const email = String(body.email || '').trim() || null
   if (!login || !pwd) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (pwd.length < MDP_MIN) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })   // C6
+  if (email && !_emailValide(email)) return jsonResp({ success: false, error: 'Email invalide' })
   const { data: existing } = await sb().from('coachs').select('coach_id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Cet identifiant coach est déjà utilisé.' })
   const hash = await hashSalted(pwd, login)
@@ -3967,7 +4159,8 @@ async function handleRegisterCoach(body: any): Promise<Response> {
   const newId = String(maxCoach + 1)
   const { data, error } = await sb().from('coachs').insert({ coach_id: newId, login, nom, email, password_hash: hash, sport, role }).select().single()
   if (error) return jsonResp({ success: false, error: error.message })
-  return jsonResp({ success: true, coach: { coach_id: data.coach_id, nom: data.nom, email: data.email || '', sport: String(sport || '').trim() || 'muscu', role } })
+  if (email) { try { await _envoyerMailCompte('c', String(data.coach_id), email, String(data.login), String(data.nom || ''), true) } catch (_) {} }   // C9
+  return jsonResp({ success: true, coach: { coach_id: data.coach_id, nom: data.nom, email: data.email || '', email_verifie: false, sport: String(sport || '').trim() || 'muscu', role } })
 }
 
 async function handleSupprimerCompte(body: any): Promise<Response> {
@@ -3975,7 +4168,7 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
   if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
   // Audit Réglages R2 (01/11) : preuve que c'est bien l'athlète — ressaisie de SON mot de passe
   // (vérifié avec verifyPwd existant, hachage inchangé). La session coach est refusée dans authCheck.
-  const mdp = String(body.mdp || '')
+  const mdp = _mdp(body.mdp)
   if (!mdp) return jsonResp({ success: false, error: 'Mot de passe requis pour supprimer le compte.' })
   const { data: athPwd } = await sb().from('athletes').select('login,password_hash').eq('id', athleteId).single()
   if (!athPwd) return jsonResp({ success: false, error: 'Compte introuvable' })
@@ -4048,7 +4241,7 @@ async function handleCoachCreerAthlete(body: any): Promise<Response> {
 async function handleCoachResetAthlete(body: any): Promise<Response> {
   const coach_id = String(body.coach_id || '')
   const athlete_id = String(body.athlete_id || '')
-  const nouveau_mdp = String(body.nouveau_mdp || '')
+  const nouveau_mdp = _mdp(body.nouveau_mdp)
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
   if (!nouveau_mdp || nouveau_mdp.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
 
@@ -4062,6 +4255,7 @@ async function handleCoachResetAthlete(body: any): Promise<Response> {
   const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
   if (error) return jsonResp({ success: false, error: error.message })
   await _invaliderTokensReset(String(ath.id))   // le reset coach annule les liens email actifs de l'athlète
+  await _revoquerSessions('a', String(ath.id))   // C8 : l'athlète est déconnecté de ses appareils
   return jsonResp({ success: true })
 }
 
@@ -6792,7 +6986,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -6809,7 +7003,7 @@ async function signSession(role: 'a' | 'c', id: string, nowS?: number): Promise<
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload)))
   return payload + '.' + _b64u(sig)
 }
-async function verifySession(tok: string, nowS?: number): Promise<{ role: 'a' | 'c'; id: string } | null> {
+async function verifySession(tok: string, nowS?: number): Promise<{ role: 'a' | 'c'; id: string; iat: number } | null> {
   try {
     const key = await _sessKey(); if (!key || !tok) return null
     const parts = String(tok).split('.'); if (parts.length !== 5 || parts[0] !== 'v1' || (parts[1] !== 'a' && parts[1] !== 'c')) return null
@@ -6817,7 +7011,7 @@ async function verifySession(tok: string, nowS?: number): Promise<{ role: 'a' | 
     const sigB = Uint8Array.from(atob(parts[4].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((parts[4].length + 3) % 4)), c => c.charCodeAt(0))
     const ok = await crypto.subtle.verify('HMAC', key, sigB, new TextEncoder().encode(payload)); if (!ok) return null
     if (Number(parts[3]) < Math.floor(nowS != null ? nowS : Date.now() / 1000)) return null
-    return { role: parts[1] as 'a' | 'c', id: _unb64uStr(parts[2]) }
+    return { role: parts[1] as 'a' | 'c', id: _unb64uStr(parts[2]), iat: Number(parts[3]) - SESSION_TTL_S }
   } catch (_) { return null }
 }
 // Vérifie qu'un appel a le droit de toucher les ids qu'il vise.
@@ -6871,6 +7065,9 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   const tok = params.get('_t') || (body && body._t) || ''
   const sess = tok ? await verifySession(String(tok)) : null
   if (!sess) return { ok: false, reason: tok ? 'jeton invalide ou expiré' : 'jeton absent' }
+  // C8 : session émise avant le dernier changement de mot de passe → refusée.
+  const depuis = await _sessDepuis(sess.role, sess.id)
+  if (depuis && sess.iat < depuis) return { ok: false, reason: 'session révoquée (mot de passe changé)' }
   // Messagerie (audit 01/11, M2/M3/M4) : le rôle de la SESSION est transmis aux handlers
   // (jamais celui déclaré par l'app). Les clés _sess* venues du client sont écrasées ici.
   if (body && typeof body === 'object') { body._sessRole = sess.role; body._sessId = sess.id }
@@ -6992,6 +7189,8 @@ Deno.serve(async (req: Request) => {
         case 'saveRecapFreq':            return handleSaveRecapFreq(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
+        case 'confirmerEmail':           return handleConfirmerEmail(body)
+        case 'renvoyerConfirmationEmail': return handleRenvoyerConfirmationEmail(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return withSession(await handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password })), 'c')

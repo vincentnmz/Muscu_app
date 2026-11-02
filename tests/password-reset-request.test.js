@@ -25,6 +25,8 @@ function makeEngine(store) {
       update(p) { op = 'update'; payload = p; return self; },
       delete() { op = 'delete'; return self; },
       eq(c, v) { filters.push(r => String(r[c]) === String(v)); return self; },
+      ilike(c, v) { const t = String(v).replace(/\\([\\%_])/g, '$1').toLowerCase(); filters.push(r => String(r[c] == null ? '' : r[c]).toLowerCase() === t); return self; },
+      gte(c, v) { filters.push(r => String(r[c]) >= String(v)); return self; }, lt(c, v) { filters.push(r => String(r[c]) < String(v)); return self; },
       limit() { return self; }, order() { return self; },
       single() { single = true; return self; }, maybeSingle() { single = true; return self; },
       then(res, rej) { try { res(resolve()); } catch (e) { rej ? rej(e) : res({ data: null, error: { message: String(e) } }); } },
