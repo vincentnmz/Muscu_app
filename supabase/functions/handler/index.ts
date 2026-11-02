@@ -4318,6 +4318,21 @@ async function handleSaveSeance(data: any[], saisiParCoach?: any, envoiId?: any)
     exercice: r[5], muscle: r[6], exercice_id: r[7] != null ? String(r[7]) : null, serie: num(r[8]),
     charge: num(r[9]), reps: num(r[10]), rpe: num(r[11]), repos: num(r[12]), volume: num(r[13]),
   }))
+  // H2 (audit hors-ligne 02/11) : séance saisie sans catalogue (app démarrée hors-ligne) → muscle
+  // et identifiant d'exercice complétés depuis le catalogue (sinon volume par muscle faux).
+  const sansMuscle = [...new Set(rows.filter((r: any) => !String(r.muscle || '').trim() && r.exercice).map((r: any) => String(r.exercice)))]
+  if (sansMuscle.length) {
+    try {
+      const { data: cat } = await sb().from('exercices').select('exercice,muscle,exercice_id')
+      const key = (t: any) => String(t || '').trim().toLowerCase()
+      const byNom: Record<string, any> = {}; for (const c of (cat || [])) byNom[key((c as any).exercice)] = c
+      for (const r of rows as any[]) {
+        if (String(r.muscle || '').trim()) continue
+        const c = byNom[key(r.exercice)]
+        if (c) { r.muscle = c.muscle; if (!r.exercice_id || r.exercice_id === String(r.exercice)) r.exercice_id = String(c.exercice_id) }
+      }
+    } catch (_) {}
+  }
 
   const { error: perfError } = await sb().from('performances').insert(rows)
   if (perfError) return jsonResp({ erreur: perfError.message })

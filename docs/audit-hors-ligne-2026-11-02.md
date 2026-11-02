@@ -19,3 +19,11 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider · 🔍 à vérifier
 | **H5** | Si la mémoire du téléphone pour l'app était pleine, l'écriture de la file échouerait **sans prévenir**. Peu probable (≈ 220 Ko utilisés), mais la séance serait perdue en silence. | Si l'écriture échoue : on libère le cache des données (rechargeable) et on réessaie ; sinon message clair. |
 
 🔍 À vérifier sur téléphone après correction : mode avion pendant une séance → validation → réseau rétabli → séance visible dans Analyses.
+
+## Réalisé (02/11, validé porteur : tout)
+- **H1** File d'attente **liée à l'athlète** et renvoyée seulement quand il est connecté avec une session ; un refus de session pendant le renvoi garde la séance en file **sans déconnecter ni recharger** (« Reconnecte-toi pour envoyer ta séance en attente »). Simulation navigateur (`scripts/sim-hors-ligne.mjs`) : déconnecté + séance en file → **1 chargement** (avant : 6 en 9 s) ; session refusée → séance gardée, bandeau ; connecté → envoyée, la séance d'un autre athlète reste en file.
+- **H2** Catalogue d'exercices gardé sur le téléphone ; le serveur complète muscle + identifiant si une série arrive sans (test `hors-ligne`).
+- **H3** Message (athlète et coach) : texte **remis dans le champ** si l'envoi échoue, réponse du serveur vérifiée (vérifié en simulation hors-ligne).
+- **H4** Bandeau sous l'en-tête : « Hors-ligne · données du 02/11 à 18:40 · 1 séance en attente d'envoi » (plus de toast rouge quand des données sont affichées) ; données rechargées au retour du réseau.
+- **H5** File impossible à écrire → cache des données libéré puis nouvel essai ; sinon message clair et la séance reste à l'écran (non perdue).
+- 75 suites vertes.
