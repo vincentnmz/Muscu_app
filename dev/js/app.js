@@ -13810,15 +13810,9 @@ function _maSuiviHtml(data) {
     return _maSec('Photos · ' + a[1], String(list.length)) + '<div class="ma-card" style="padding:11px">' + body + '</div>';
   }).join('');
   out += anyPhoto ? blocks : (_maSec('Photos') + _maEmpty('Aucune photo de suivi pour l\'instant.'));
-  var last = mens[0] || {}, prev = mens[1] || {};
-  var cells = _MENSU_DEF.map(function (m) {
-    var v = last[m.k]; if (v == null) return '';
-    var p = prev[m.k], tr = '';
-    if (p != null) { var d = Math.round((v - p) * 10) / 10; tr = (Math.abs(d) < 0.05) ? '<span style="color:var(--text-subtle)">– 0</span>' : '<span style="color:' + (d > 0 ? '#00A854' : '#DC3545') + '">' + (d > 0 ? '▲ +' : '▼ ') + Math.abs(d) + '</span>'; }
-    return '<div class="ma-card" style="padding:9px 11px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:17px;font-weight:900">' + String(v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal">' + m.u + '</u>' + (tr ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + tr + '</em>' : '') + '</div></div>';
-  }).filter(Boolean).join('');
+  var cells = _svCellsHtml(mens, false);   // P1/P3 : même rendu que l'athlète
   out += cells
-    ? (_maSec('Mensurations', last.date ? esc(last.date) : '') + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
+    ? (_maSec('Mensurations') + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
     : (_maSec('Mensurations') + _maEmpty('Aucune mesure saisie par l\'athlète.'));
   return out;
 }
@@ -18211,11 +18205,17 @@ function _svPhotosHtml(phs) {
   var add = '<div style="display:flex;gap:8px;margin-top:12px">'
     + '<button onclick="_svPhotoPick(\'cam\')" style="flex:1;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">📷 Prendre en direct</button>'
     + '<button onclick="_svPhotoPick(\'gal\')" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--accent);border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">🖼 Galerie</button>'
-    + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:7px">Photo privée (toi + ton coach). Angle : <b>' + esc(_svAngle) + '</b>.</div>';
+    + '</div><div style="display:flex;align-items:center;gap:8px;margin-top:9px;font-size:11.5px;color:var(--text-muted)"><label for="sv-photo-date" style="font-weight:700">Date de la photo</label>'
+    + '<input type="date" id="sv-photo-date" value="' + _ymdLocal(new Date()) + '" max="' + _ymdLocal(new Date()) + '" style="flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 9px;font:inherit;font-size:12.5px"></div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:7px">Photo privée (toi + ton coach). Angle : <b>' + esc(_svAngle) + '</b>. Une ancienne photo ? Choisis sa date avant de l\'ajouter.</div>';
   return at + cmp + tl + add;
 }
+var _svPhotoDate = null;
 function _svPhotoPick(src) {
   if (_svPhotoBusy) { try { showToast('⏳ Envoi en cours…'); } catch (e) {} return; }
+  var dEl = document.getElementById('sv-photo-date'), dv = dEl && dEl.value ? dEl.value : _ymdLocal(new Date());
+  if (dv > _ymdLocal(new Date())) { showToast('La date ne peut pas être dans le futur', '#ff4444'); return; }
+  _svPhotoDate = dv;
   var inp = document.getElementById(src === 'cam' ? 'suivi-photo-input' : 'suivi-photo-input-gal');
   if (inp) { inp.value = ''; inp.click(); }
 }
@@ -18236,12 +18236,13 @@ async function _svPhotoEnvoyer(fileOrBlob, ext) {
     if (!d1 || !d1.success || !d1.signedUrl) throw new Error('upload-url');
     var put = await fetch(d1.signedUrl, { method: 'PUT', headers: { 'Content-Type': (fileOrBlob.type || 'image/jpeg') }, body: fileOrBlob });
     if (!put.ok) throw new Error('put-' + put.status);
-    var r3 = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSuiviPhoto', athlete_id: athlete.athlete_id, path: d1.path, angle: _svAngle, date: _ymdLocal(new Date()) }) });
+    var r3 = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSuiviPhoto', athlete_id: athlete.athlete_id, path: d1.path, angle: _svAngle, date: _svPhotoDate || _ymdLocal(new Date()) }) });
     var d3 = await r3.json();
     if (!d3 || !d3.success) throw new Error('save');
     showToast('Photo ajoutée');
     if (!dernierAppData.suivi_photos) dernierAppData.suivi_photos = [];
     dernierAppData.suivi_photos.unshift({ date: d3.date, angle: _svAngle, path: d3.path, url: d3.url || null });
+    dernierAppData.suivi_photos.sort(function (a, b) { return _svDdmm(b.date) < _svDdmm(a.date) ? -1 : 1; });   // P7 : ancienne photo → à sa place
     renderSuiviCorps(dernierAppData);
     try { _etRenderSuivis(dernierAppData); } catch (e) {}
   } catch (e) { showToast('Échec de l\'envoi', '#ff4444'); }
@@ -18255,31 +18256,84 @@ function svSupprPhoto(path) {
       else showToast('Suppression impossible', '#ff4444');
     }).catch(function () { showToast('Erreur réseau', '#ff4444'); });
 }
+// Audit photos & mensurations (02/11) — P1 : chaque mesure garde SA dernière valeur (et sa date),
+// tendance vs SA valeur précédente ; P3 : flèches neutres (Novalyz ne juge pas une mensuration) ;
+// P8 : toucher une mesure → son historique.
+var _svHist = null;
+function svSetHist(k) { _svHist = (_svHist === k) ? null : k; try { renderSuiviCorps(dernierAppData); } catch (e) {} }
+function _svDdmm(d) { var m = String(d || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? m[3] + m[2] + m[1] : String(d || ''); }
+function _svParMesure(mens) {
+  var out = {}, tri = (mens || []).slice().sort(function (a, b) { return _svDdmm(b.date) < _svDdmm(a.date) ? -1 : 1; });
+  _MENSU_DEF.forEach(function (m) {
+    var pts = tri.filter(function (e) { return e && e[m.k] != null && !isNaN(Number(e[m.k])); }).map(function (e) { return { date: e.date, v: Number(e[m.k]) }; });
+    if (pts.length) out[m.k] = pts;   // récent → ancien
+  });
+  return out;
+}
+function _svTrend(v, p) {
+  if (p == null) return '';
+  var d = Math.round((v - p) * 10) / 10;
+  return '<span style="color:var(--text-muted)">' + (Math.abs(d) < 0.05 ? '= 0' : (d > 0 ? '▲ +' : '▼ ') + String(Math.abs(d)).replace('.', ',')) + '</span>';
+}
+function _svCellsHtml(mens, clic) {
+  var esc = escapeHtml, pm = _svParMesure(mens);
+  return _MENSU_DEF.map(function (m) {
+    var pts = pm[m.k]; if (!pts) return '';
+    var on = clic && _svHist === m.k;
+    var base = 'background:var(--surface);border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';border-radius:14px;padding:10px 12px;';   // style porté (vue coach hors #tab-suivi)
+    return '<div class="sv-card"' + (clic ? ' onclick="svSetHist(\'' + m.k + '\')" style="' + base + 'cursor:pointer"' : ' style="' + base + '"') + '>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div>'
+      + '<div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:18px;font-weight:900">' + String(pts[0].v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal;text-decoration:none">' + m.u + '</u>'
+      + (pts[1] ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + _svTrend(pts[0].v, pts[1].v) + '</em>' : '') + '</div>'
+      + '<div style="font-size:9.5px;color:var(--text-subtle);margin-top:2px">le ' + esc(String(pts[0].date || '').slice(0, 5)) + (pts.length > 1 ? ' · ' + pts.length + ' mesures' : '') + '</div></div>';
+  }).filter(Boolean).join('');
+}
+function _svHistHtml(mens) {
+  if (!_svHist) return '';
+  var esc = escapeHtml, def = _MENSU_DEF.filter(function (m) { return m.k === _svHist; })[0], pts = (_svParMesure(mens)[_svHist] || []);
+  if (!def || !pts.length) return '';
+  var chrono = pts.slice().reverse(), vals = chrono.map(function (p) { return p.v; });
+  var spark = '';
+  if (vals.length >= 2) {
+    var W = 300, H = 70, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = (mx - mn) || 1;
+    var X = function (i) { return 8 + i * (W - 16) / (vals.length - 1); }, Y = function (v) { return 10 + (1 - (v - mn) / rg) * (H - 20); };
+    spark = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;margin:4px 0 6px"><path d="' + vals.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      + vals.map(function (v, i) { return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="3.5" fill="var(--accent)"/>'; }).join('') + '</svg>';
+  }
+  var lignes = pts.map(function (p, i) {
+    var pr = pts[i + 1];
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px"><span style="color:var(--text-muted)">' + esc(p.date) + '</span><span><b>' + String(p.v).replace('.', ',') + ' ' + def.u + '</b>' + (pr ? ' <span style="font-size:11px;margin-left:6px">' + _svTrend(p.v, pr.v) + '</span>' : '') + '</span></div>';
+  }).join('');
+  return '<div class="sv-card" style="margin-top:8px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">' + esc(def.l) + ' — historique</b><span onclick="svSetHist(\'' + def.k + '\')" style="cursor:pointer;color:var(--text-subtle);font-size:18px;line-height:1">×</span></div>' + spark + lignes + '</div>';
+}
+function _svAujFR() { var t = new Date(); return String(t.getDate()).padStart(2, '0') + '/' + String(t.getMonth() + 1).padStart(2, '0') + '/' + t.getFullYear(); }
 function _svMesuresHtml(mens, data) {
   var esc = escapeHtml;
-  var last = mens[0] || {}, prev = mens[1] || {};
-  var cells = _MENSU_DEF.map(function (m) {
-    var v = last[m.k]; if (v == null) return '';
-    var p = prev[m.k], trend = '';
-    if (p != null) { var d = Math.round((v - p) * 10) / 10; trend = (Math.abs(d) < 0.05) ? '<span style="color:var(--text-subtle)">– 0</span>' : '<span style="color:' + (d > 0 ? 'var(--good)' : 'var(--danger)') + '">' + (d > 0 ? '▲ +' : '▼ ') + Math.abs(d) + '</span>'; }
-    return '<div class="sv-card" style="padding:10px 12px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:18px;font-weight:900">' + String(v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal">' + m.u + '</u>' + (trend ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + trend + '</em>' : '') + '</div></div>';
-  }).filter(Boolean).join('');
+  var cells = _svCellsHtml(mens, true);
   var grid = cells
-    ? ('<div class="sv-sec">Dernières mesures<span class="r">' + (last.date ? esc(last.date) : '') + '</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
+    ? ('<div class="sv-sec">Dernières mesures<span class="r">touche une mesure → historique</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>' + _svHistHtml(mens))
     : '<div class="sv-card" style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:18px">Aucune mesure enregistrée. Saisis tes premières mensurations ci-dessous.</div>';
+  // P2 : formulaire prérempli avec les mesures DÉJÀ saisies aujourd'hui (rien n'est effacé).
+  var auj = (mens || []).filter(function (e) { return e && e.date === _svAujFR(); })[0] || {};
   var fields = _MENSU_DEF.map(function (m) {
-    return '<div style="display:flex;flex-direction:column;gap:3px"><label style="font-size:10.5px;color:var(--text-subtle);font-weight:700">' + esc(m.l) + '</label><input id="sv-in-' + m.k + '" inputmode="decimal" placeholder="' + m.u + '" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px;font:inherit;font-size:13px"></div>';
+    var v = auj[m.k] != null ? String(auj[m.k]).replace('.', ',') : '';
+    return '<div style="display:flex;flex-direction:column;gap:3px;min-width:0"><label style="font-size:10.5px;color:var(--text-subtle);font-weight:700">' + esc(m.l) + '</label><input id="sv-in-' + m.k + '" inputmode="decimal" value="' + esc(v) + '" placeholder="' + m.u + '" style="width:100%;min-width:0;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px;font:inherit;font-size:13px"></div>';
   }).join('');
   var form = '<div class="sv-sec">Ajouter des mesures<span class="r">aujourd\'hui</span></div>'
-    + '<div class="sv-card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">' + fields + '</div>'
+    + '<div class="sv-card"><div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px">' + fields + '</div>'
     + '<button onclick="_svSaveMesures()" style="width:100%;margin-top:11px;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">Enregistrer les mesures</button>'
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Le poids se saisit dans « Mes tendances » (pesée). Ré-enregistrer une date écrase ses mesures.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Le poids se saisit dans « Mes tendances » (pesée). Seules les mesures remplies sont enregistrées ; celles déjà saisies aujourd\'hui sont conservées.</div></div>';
   return grid + form;
 }
 function _svSaveMesures() {
   if (!athlete) return;
   var mesures = {}, any = false;
-  _MENSU_DEF.forEach(function (m) { var el = document.getElementById('sv-in-' + m.k); if (el) { var v = String(el.value || '').trim().replace(',', '.'); if (v !== '' && !isNaN(Number(v)) && Number(v) > 0) { mesures[m.k] = Number(v); any = true; } } });
+  var horsBorne = null;
+  _MENSU_DEF.forEach(function (m) { var el = document.getElementById('sv-in-' + m.k); if (el) { var v = String(el.value || '').trim().replace(',', '.'); if (v !== '' && !isNaN(Number(v)) && Number(v) > 0) {
+    var n = Number(v), mn = m.k === 'masse_grasse' ? 2 : 10, mx = m.k === 'masse_grasse' ? 60 : 250;
+    if (n < mn || n > mx) { if (!horsBorne) horsBorne = m.l + ' : ' + mn + ' à ' + mx + ' ' + m.u; return; }
+    mesures[m.k] = n; any = true; } } });
+  if (horsBorne) { showToast(horsBorne, '#ff4444'); return; }
   if (!any) { showToast('Saisis au moins une mesure', '#ff4444'); return; }
   fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveMensuration', athlete_id: athlete.athlete_id, date: _ymdLocal(new Date()), mesures: mesures }) })
     .then(function (x) { return x.json(); }).then(function (r) {
