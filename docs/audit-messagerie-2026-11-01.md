@@ -20,3 +20,13 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider.
 | **M5** ❌ | **Doublons** : aucun verrou d'envoi, le champ n'est vidé qu'après la réponse → touche Entrée maintenue = envois en rafale. Base réelle : **6 copies du même message en 56 ms** (12/09) + 2 autres paires. | Verrou d'envoi + champ vidé tout de suite ; le serveur ignore le même message du même auteur reçu dans les 5 s. 🟠 Nettoyer les doublons existants (garder 1 exemplaire). |
 | **M6** | Longueur de message illimitée. | 4 000 caractères maximum. |
 | **M7** | Seuls les **200 derniers** messages sont chargés (tous athlètes confondus côté requête coach) : les plus anciens disparaissent sans le dire. | Charger la conversation complète (lecture paginée, comme pour les séances). |
+
+## Réalisé (02/11, validé porteur : tout, M2 rattachement au coach actuel, doublons supprimés)
+- **Base** : 7 doublons supprimés (même auteur, même texte, < 60 s, sans média) ; 11 messages sans coach rattachés au coach actuel de l'athlète ; heure recalculée en heure de Paris sur les 26 messages. Contrôle final : 26 messages, 0 sans coach, 0 heure fausse.
+- **M1** Heure enregistrée en heure de Paris (heure d'été / d'hiver gérées par le fuseau Europe/Paris), messages et médias.
+- **M2** Chaque message porte le coach du moment (lu en base) ; l'athlète ne voit que la conversation avec son coach actuel, un coach ne lit que la sienne.
+- **M3** Auteur déduit de la session vérifiée (athlète / coach) ; noms lus en base ; les valeurs envoyées par l'app sont ignorées.
+- **M4** Suppression : seulement ses propres messages (serveur + écran — cases seulement sur ses messages, vérifié en capture).
+- **M5** Verrou d'envoi + champ vidé tout de suite ; le serveur ignore le même message du même auteur reçu dans les 5 s.
+- **M6** 4 000 caractères maximum (serveur). **M7** Conversation chargée en entier (lecture paginée), triée à la milliseconde.
+- Tests : `messagerie` (9 cas, vrai backend). 70 suites vertes.

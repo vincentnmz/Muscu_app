@@ -2842,12 +2842,20 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
 }
 
 async function handleGetCommentaires(params: URLSearchParams): Promise<Response> {
-  const coachId = params.get('coach_id')
+  let coachId = params.get('coach_id')
   const athleteId = params.get('athlete_id')
-  let query = sb().from('commentaires').select('*').order('comment_id', { ascending: false }).limit(200)
-  if (coachId) query = query.eq('coach_id', coachId)
-  if (athleteId) query = query.eq('athlete_id', athleteId)
-  const { data } = await query
+  // M2 (01/11) : un fil = la conversation avec UN coach. Côté athlète (session athlète) → son coach
+  // actuel ; côté coach → ce coach (posé par authCheck depuis la session). M7 : conversation complète.
+  if (!coachId && athleteId && params.get('_sess_role') === 'a') {
+    const { data: a } = await sb().from('athletes').select('coach_id').eq('id', athleteId).single()
+    coachId = String((a as any)?.coach_id || '') || '__aucun__'
+  }
+  const { data } = await _toutLire(() => {
+    let q = sb().from('commentaires').select('*')
+    if (coachId) q = q.eq('coach_id', coachId)
+    if (athleteId) q = q.eq('athlete_id', athleteId)
+    return q.order('comment_id', { ascending: false })
+  })
   // Média (photo/vidéo athlète → coach) : on renvoie une URL de LECTURE signée
   // (bucket privé coach-media), TTL 2 h, régénérée à chaque chargement du fil.
   const rows = data || []
@@ -5246,15 +5254,36 @@ async function handleTestPush(body: any): Promise<Response> {
   return jsonResp({ success: true, vapid, subsFound: subs?.length || 0, sent: results.filter(r => r.ok).length, results, fcm })
 }
 
+// Heure d'un message en heure de PARIS (audit Messagerie M1, 01/11 : avant, heure UTC → −1 / −2 h).
+function _dateParis(d: Date): string {
+  try {
+    const p: Record<string, string> = {}
+    for (const x of new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d)) p[x.type] = x.value
+    return `${p.day}/${p.month}/${p.year} ${p.hour === '24' ? '00' : p.hour}:${p.minute}`
+  } catch (_) { return `${fmtFR(fmtYMD(d))} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
+}
+const MSG_MAX = 4000
 async function handleSaveCommentaire(body: any): Promise<Response> {
-  const { athlete_id, coach_id, texte, message, auteur, auteur_nom, coach_nom } = body
-  const msg = message || texte
+  const { athlete_id, texte, message } = body
+  const msg = String(message || texte || '').trim()
   if (!athlete_id || !msg) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const d = new Date()
-  const dateStr = `${fmtFR(fmtYMD(d))} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-  const aut = auteur === 'athlete' ? 'athlete' : 'coach'
-  const { error } = await sb().from('commentaires').insert({ comment_id: Date.now(), date: dateStr, coach_id: coach_id || '', coach_nom: coach_nom || '', athlete_id, message: msg, lu: false, auteur: aut, auteur_nom: auteur_nom || '' })
+  if (msg.length > MSG_MAX) return jsonResp({ success: false, error: `Message trop long (${MSG_MAX} caractères maximum).` })
+  // Audit Messagerie (01/11) — M3 : l'auteur vient de la SESSION (posée par authCheck), pas de l'app ;
+  // M2 : le coach destinataire et les noms viennent de la base.
+  const roleSess = body._sessRole
+  const aut = roleSess === 'a' ? 'athlete' : roleSess === 'c' ? 'coach' : (body.auteur === 'athlete' ? 'athlete' : 'coach')
+  const { data: aRow } = await sb().from('athletes').select('coach_id,nom').eq('id', String(athlete_id)).single()
+  const coachIdMsg = aut === 'coach' ? String(body.coach_id || (aRow as any)?.coach_id || '') : String((aRow as any)?.coach_id || '')
+  let coachNom = ''
+  if (coachIdMsg) { try { const { data: c } = await sb().from('coachs').select('nom').eq('coach_id', coachIdMsg).single(); coachNom = String((c as any)?.nom || '') } catch (_) {} }
+  const auteurNom = aut === 'athlete' ? String((aRow as any)?.nom || '').trim().split(/\s+/)[0] : coachNom
+  // M5 : même message du même auteur reçu il y a < 5 s → doublon (double envoi), ignoré.
+  const now = Date.now()
+  const { data: rec } = await sb().from('commentaires').select('comment_id,message').eq('athlete_id', String(athlete_id)).eq('auteur', aut).gte('comment_id', now - 5000)
+  if ((rec || []).some((r: any) => String(r.message) === msg)) return jsonResp({ success: true, deja: true })
+  const { error } = await sb().from('commentaires').insert({ comment_id: now, date: _dateParis(new Date(now)), coach_id: coachIdMsg, coach_nom: coachNom, athlete_id, message: msg, lu: false, auteur: aut, auteur_nom: auteurNom })
   if (error) return jsonResp({ success: false, error: error.message })
+  const coach_nom = coachNom, auteur_nom = auteurNom
   // Notif push : coach → athlète (Étape A) ; athlète → SON coach (audit Notifications N2, 01/11).
   // Le coach est lu en base (pas celui envoyé par le client).
   if (aut === 'athlete') {
@@ -5288,6 +5317,12 @@ async function handleMarquerCommentairesLus(body: any): Promise<Response> {
 async function handleSupprimerCommentaire(body: any): Promise<Response> {
   const { id } = body
   if (!id) return jsonResp({ success: false, error: 'id manquant' })
+  // M4 (01/11) : chacun ne supprime que SES messages (auteur = rôle de la session).
+  if (body._sessRole === 'a' || body._sessRole === 'c') {
+    const { data: rowA } = await sb().from('commentaires').select('auteur').eq('comment_id', id).limit(1).single()
+    const estAth = String((rowA as any)?.auteur || '') === 'athlete'
+    if (rowA && (body._sessRole === 'a') !== estAth) return jsonResp({ success: false, error: 'Tu ne peux supprimer que tes propres messages.' })
+  }
   // Si le message portait un média (photo/vidéo), on supprime aussi le fichier
   // du bucket privé (pas d'orphelin qui traîne).
   try {
@@ -5325,11 +5360,14 @@ async function handleEnvoyerMediaCoach(body: any): Promise<Response> {
   if (body.consent !== true) return jsonResp({ success: false, error: 'Consentement requis' })
   // Le chemin doit appartenir à cet athlète (préfixe <athlete_id>/) — anti-usurpation.
   if (!media_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
-  const legende = String(body.message || '').trim() || (media_type === 'video' ? '🎥 Vidéo' : '📷 Photo')
-  const d = new Date()
-  const dateStr = `${fmtFR(fmtYMD(d))} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+  const legende = (String(body.message || '').trim() || (media_type === 'video' ? '🎥 Vidéo' : '📷 Photo')).slice(0, MSG_MAX)
   const comment_id = Date.now()
-  const { error } = await sb().from('commentaires').insert({ comment_id, date: dateStr, coach_id: body.coach_id || '', coach_nom: body.coach_nom || '', athlete_id, message: legende, lu: false, auteur: 'athlete', auteur_nom: body.auteur_nom || '', media_path, media_type })
+  // M1 heure de Paris ; M2 coach destinataire + noms lus en base.
+  const { data: aRowM } = await sb().from('athletes').select('coach_id,nom').eq('id', athlete_id).single()
+  const cIdM = String((aRowM as any)?.coach_id || '')
+  let cNomM = ''
+  if (cIdM) { try { const { data: c } = await sb().from('coachs').select('nom').eq('coach_id', cIdM).single(); cNomM = String((c as any)?.nom || '') } catch (_) {} }
+  const { error } = await sb().from('commentaires').insert({ comment_id, date: _dateParis(new Date(comment_id)), coach_id: cIdM, coach_nom: cNomM, athlete_id, message: legende, lu: false, auteur: 'athlete', auteur_nom: String((aRowM as any)?.nom || '').trim().split(/\s+/)[0], media_path, media_type })
   if (error) return jsonResp({ success: false, error: error.message })
   let media_url: string | null = null
   try { const { data: s } = await sb().storage.from('coach-media').createSignedUrl(media_path, 7200); media_url = (s && s.signedUrl) || null } catch (_) {}
@@ -6826,10 +6864,18 @@ async function _checkLignes(action: string, body: any, sess: { role: string; id:
   return null
 }
 async function authCheck(action: string, params: URLSearchParams, body: any): Promise<{ ok: boolean; reason?: string }> {
+  // Champs de session réservés au serveur : jamais acceptés depuis l'app.
+  if (body && typeof body === 'object') { delete body._sessRole; delete body._sessId }
+  try { params.delete('_sess_role') } catch (_) {}
   if (AUTH_PUBLIC.has(action)) return { ok: true }
   const tok = params.get('_t') || (body && body._t) || ''
   const sess = tok ? await verifySession(String(tok)) : null
   if (!sess) return { ok: false, reason: tok ? 'jeton invalide ou expiré' : 'jeton absent' }
+  // Messagerie (audit 01/11, M2/M3/M4) : le rôle de la SESSION est transmis aux handlers
+  // (jamais celui déclaré par l'app). Les clés _sess* venues du client sont écrasées ici.
+  if (body && typeof body === 'object') { body._sessRole = sess.role; body._sessId = sess.id }
+  params.set('_sess_role', sess.role)
+  if (action === 'getCommentaires' && sess.role === 'c') params.set('coach_id', sess.id)
   const aid = String(params.get('athlete_id') || (body && (body.athlete_id || (body.data && body.data.athlete_id))) || '')
   const cid = String(params.get('coach_id') || (body && body.coach_id) || '')
   // saveSeance : data = lignes [date, semaine, seance_id, nom, athlete_id, …] → athlete_id en [4].
