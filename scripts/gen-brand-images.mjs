@@ -10,11 +10,11 @@ const font=`<link href="https://fonts.googleapis.com/css2?family=Michroma&family
 const b=await chromium.launch();
 // 1) Bandeau d'en-tête mail (PNG 1200x400, affiché à 600x200)
 let p=await b.newPage({viewport:{width:1200,height:400}});
-await p.setContent(`${font}<body style="margin:0"><div style="width:1200px;height:400px;background:#000;position:relative;overflow:hidden">
-<div style="position:absolute;inset:0;background-image:${pat(.5)};background-size:auto;-webkit-mask-image:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 0%,rgba(0,0,0,0) 32%,rgba(0,0,0,.6) 55%,#000 85%);mask-image:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 0%,rgba(0,0,0,0) 32%,rgba(0,0,0,.6) 55%,#000 85%)"></div>
-<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px">
-<img src="${svg('logo-blanc-bleu.svg')}" style="height:150px;">
-<img src="${wm}" style="width:520px"></div></div></body>`);
+await p.setContent(`${font}<body style="margin:0"><div style="width:1200px;height:400px;background:radial-gradient(ellipse at 50% 45%,#13204a 0%,#0a1020 55%,#070B14 100%);position:relative;overflow:hidden">
+<div style="position:absolute;inset:0;background-image:${pat(.5)};background-size:auto;-webkit-mask-image:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5) 0%,#000 70%);mask-image:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5) 0%,#000 70%)"></div>
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="background:#000;border-radius:28px;padding:34px 56px;display:flex;flex-direction:column;align-items:center;gap:26px;box-shadow:0 0 0 1px rgba(26,95,255,.35),0 10px 40px rgba(0,0,0,.6)">
+<img src="${svg('logo-blanc-bleu.svg')}" style="height:135px;">
+<img src="${wm}" style="width:480px"></div></div></div></body>`);
 await p.waitForTimeout(1200); await p.screenshot({path:'assets/mail-header.png'});
 // 2) Icône Play Store 512x512 plein cadre (Google applique lui-même l'arrondi)
 p=await b.newPage({viewport:{width:512,height:512}});
