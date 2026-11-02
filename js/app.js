@@ -12229,7 +12229,18 @@ function ouvrirEtatDuJour(opts) {
     '<button onclick="_etatSkip()" style="' + _BTN_SEC + '">' + (_wqThen ? 'Passer' : 'Fermer') + '</button>'
     + '<button onclick="enregistrerEtatDuJour()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">Enregistrer</button>';
   _wqPrefillEtat();
+  _wqMajBoutonEtat();
   _wqOpen();
+}
+// S3 (audit saisies 02/11) : les 4 réponses sont nécessaires (indice Hooper = somme des 4).
+var _WQ_ETAT_KEYS = ['sommeil', 'fatigue', 'stress', 'courbatures'];
+function _wqEtatComplet() { return _WQ_ETAT_KEYS.every(function (k) { return wellnessState[k] != null && !isNaN(Number(wellnessState[k])); }); }
+function _wqMajBoutonEtat() {
+  if (_wqMode !== 'etat') return;
+  var b = document.getElementById('btn-wellness-valider'); if (!b) return;
+  var n = _WQ_ETAT_KEYS.filter(function (k) { return wellnessState[k] != null; }).length, ok = n === 4;
+  b.disabled = !ok; b.style.opacity = ok ? '1' : '.5'; b.style.cursor = ok ? 'pointer' : 'not-allowed';
+  b.textContent = ok ? 'Enregistrer' : 'Enregistrer (' + n + '/4)';
 }
 // Alias : « Mettre à jour » de l'accueil ouvre l'état du jour (sans démarrage).
 function ouvrirPointDuJour(dateOverride) { ouvrirEtatDuJour({ date: dateOverride || null }); }
@@ -12256,11 +12267,12 @@ function _wqPrefillEtat() {
 
 async function enregistrerEtatDuJour() {
   if (!athlete) { _etatSkip(); return; }
+  if (!_wqEtatComplet()) { showToast('Réponds aux 4 questions', 'var(--warn)'); return; }
   var btn = document.getElementById('btn-wellness-valider');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement...'; }
   var dateEnvoi = _wqDate || _todayLocalStr();
   try {
-    await fetch(SCRIPT_URL, {
+    var _rE = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateEnvoi, seance_id: null,
@@ -12268,9 +12280,11 @@ async function enregistrerEtatDuJour() {
         stress: wellnessState.stress, courbatures: wellnessState.courbatures
       })
     });
+    var _jE = null; try { _jE = await _rE.json(); } catch (_) {}
+    if (!_rE.ok || !_jE || _jE.success === false || _jE.error) throw new Error((_jE && _jE.error) || 'refusé');
     showToast('État du jour enregistré');
   } catch (e) {
-    showToast('Réseau instable — réessaie', '#f59f00');
+    showToast((e && e.message && e.message !== 'Failed to fetch') ? 'Non enregistré : ' + e.message : 'Réseau instable — réessaie', '#f59f00');
     if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
     return;
   }
@@ -12290,6 +12304,7 @@ function ouvrirBilanSeance(type, seanceId, date) {
   _wqShow(['wqb-rpe', 'wqb-douleur', 'wqb-note']); // zone conditionnelle
   var zb = document.getElementById('wq-zone-block'); if (zb) zb.style.display = 'none';
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Bilan de ta séance';
+  var _wn = document.getElementById('wq-note'); if (_wn) _wn.placeholder = (athlete && athlete.coach_id) ? 'Douleurs, ressenti, contexte… (gardé avec ta séance et envoyé à ton coach)' : 'Douleurs, ressenti, contexte… (gardé avec ta séance)';
   var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'À quel point c’était dur ? · échelle 0-10';
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
@@ -12316,20 +12331,25 @@ function _bilanPayload(type, seanceId, dateSeance) {
     seance_id: seanceId || null, date: dateSeance,
     // Durée mesurée par le chrono de séance (muscu) → charge interne sRPE = RPE × durée.
     rpe: wellnessState.rpe, duree: (type === 'muscu') ? _seanceDureeMesuree() : null,
-    douleur: wellnessState.douleur, zone: zone
+    douleur: wellnessState.douleur, zone: zone,
+    note: (document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '')
   };
 }
 
 async function _envoyerBilan(type, seanceId, dateSeance) {
+  var okB = false;
   try {
-    await fetch(SCRIPT_URL, {
+    var rB = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(_bilanPayload(type, seanceId, dateSeance))
     });
-  } catch (e) { /* non bloquant */ }
-  // Note libre → message coach (comme avant).
+    var jB = null; try { jB = await rB.json(); } catch (_) {}
+    okB = !!(rB.ok && jB && jB.success !== false && !jB.error);
+  } catch (e) { okB = false; }
+  // Note libre → AUSSI en message au coach, seulement s'il y en a un (S2 : sinon le message
+  // partait vers personne ; la note est désormais gardée avec la séance dans tous les cas).
   var noteTxt = document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '';
-  if (noteTxt) {
+  if (noteTxt && okB && athlete && (athlete.coach_id || (dernierAppData && dernierAppData.coach_lie))) {
     try {
       await fetch(SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -12341,6 +12361,7 @@ async function _envoyerBilan(type, seanceId, dateSeance) {
       });
     } catch (e) {}
   }
+  return okB;
 }
 
 // « Enregistrer » du bilan. Cardio : la séance est déjà enregistrée → on ajoute
@@ -12350,8 +12371,8 @@ async function validerBilanSeance() {
     var btn = document.getElementById('btn-wellness-valider'); if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
     var sid = _wqSeanceId, dt = _wqDate;
     fermerWellnessModal();
-    await _envoyerBilan('cardio', sid, dt);
-    showToast('Bilan enregistré');
+    var okC = await _envoyerBilan('cardio', sid, dt);
+    showToast(okC ? 'Bilan enregistré' : 'Bilan non enregistré — vérifie ta connexion', okC ? undefined : '#f59f00');
     if (typeof chargerAppData === 'function') chargerAppData();
     return;
   }
@@ -12362,8 +12383,10 @@ async function validerBilanSeance() {
   var payloadOffline = fs ? _bilanPayload('muscu', fs.seanceId, fs.date) : null;
   fermerWellnessModal();
   if (_gererValidationHorsLigne(payloadOffline)) return;
-  if (fs) await _envoyerBilan('muscu', fs.seanceId, fs.date);
-  await _envoyerSeance();
+  // S4 (audit saisies 02/11) : la séance d'abord ; le bilan seulement si elle est enregistrée
+  // (sinon il part en file AVEC elle). Avant : bilan envoyé avant → doublon au renvoi.
+  var etat = await _envoyerSeance(payloadOffline);
+  if (etat === 'ok' && fs) await _envoyerBilan('muscu', fs.seanceId, fs.date);
 }
 
 // « Passer » du bilan. Cardio : rien de plus. Muscu : enregistre la séance seule.
@@ -12386,6 +12409,7 @@ function selectWQ(question, btn) {
   const container = document.getElementById('wq-' + question);
   container.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
   btn.classList.add('selected');
+  setTimeout(function () { try { _wqMajBoutonEtat(); } catch (e) {} }, 0);
   // Réponses chiffrées → nombre ; la ZONE de douleur est un texte (« epaule »…) : la
   // convertir en nombre l'enregistrait « NaN » et la zone était perdue (audit Forme 29/10 #1).
   wellnessState[question] = (question === 'zone') ? String(btn.dataset.val || '') : Number(btn.dataset.val);
@@ -12416,7 +12440,7 @@ function selectRPE(btn) {
   }
 }
 
-async function _envoyerSeance() {
+async function _envoyerSeance(bilanEnFile) {
   const btn = document.getElementById('btn-valider');
   if (btn) { btn.textContent = '⏳ Envoi...'; btn.disabled = true; }
   const lignes = _construireLignesSeance();
@@ -12424,7 +12448,7 @@ async function _envoyerSeance() {
   // La séance n'est JAMAIS perdue : en cas d'échec/incertitude → file d'attente + resync auto.
   function _miseEnFile(msg, couleur) {
     if (_saisieCoach) { _validationEnCours = false; showToast('Envoi impossible pour le moment : réessaie (la séance n\'est pas perdue tant que tu ne quittes pas).', '#f59f00'); var b0 = document.getElementById('btn-valider'); if (b0) { b0.style.display = 'block'; b0.disabled = false; b0.textContent = 'Valider la séance'; } return; }
-    enregistrerSeanceOffline(lignes, null);
+    enregistrerSeanceOffline(lignes, bilanEnFile || null);
     afficherRecap();
     showToast(msg, couleur || '#f59f00');
   }
@@ -12445,21 +12469,25 @@ async function _envoyerSeance() {
       showToast('Séance de ' + (_saisieCoach.a.nom || 'ton athlète') + ' enregistrée');
       try { _validationEnCours = false; } catch (e) {}
       coachQuitterSaisie(true);
-      return;
+      return 'coach';
     }
     if (ok) {
       afficherRecap();
       showToast('Séance enregistrée !');
       // Lectures / recos à jour TOUT DE SUITE (Aujourd'hui, Analyses, Forme) : avant, seul un
       // passage par Aujourd'hui rechargeait — Analyses montrait l'ancienne lecture (30/10).
-      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
+      // (rechargées après le bilan, qui part juste après.)
+      setTimeout(function () { try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {} }, 600);
+      return 'ok';
     } else {
       // Le serveur a répondu mais a refusé l'écriture → on met en file plutôt que de perdre.
       _miseEnFile('Enregistrement refusé côté serveur — mis en file, resync auto', '#f59f00');
+      return 'file';
     }
   } catch (e) {
     // Réseau instable / requête non aboutie → file d'attente (aucune perte).
     _miseEnFile('📴 Réseau instable : séance mise en file, elle se synchronisera');
+    return 'file';
   }
 }
 
@@ -14807,6 +14835,8 @@ function _maProgSea(data) {
   function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
   function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
   var esc = _maE;
+  // S2 (audit saisies 02/11) : note du bilan gardée avec la séance.
+  var notes = {}; (((data.analyses || {}).notes_muscu) || []).forEach(function (n) { if (n && n.note) notes[n.seance_id + '|' + n.date] = n.note; });
   // E4 : déload / reprise → une baisse des séances faites PENDANT le contexte est « attendue » (X1).
   var _ctxA = _ctxAttendu(data), _ctxDeb = '';
   try { var _cd = data.contexte && data.contexte.date_debut; if (_cd) { var _p = String(_cd).split('/'); _ctxDeb = _p.length === 3 ? _p[2] + '-' + _p[1] + '-' + _p[0] : String(_cd).slice(0, 10); } } catch (e) {}
@@ -14870,7 +14900,9 @@ function _maProgSea(data) {
       + badge
       + '<span id="ma-sea-ch-' + idx + '" style="color:var(--text-subtle);transition:transform .2s;flex:none' + (open ? ';transform:rotate(180deg)' : '') + '">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span>'
       + '</div>'
-      + '<div id="ma-sea-bd-' + idx + '" style="display:' + (open ? 'block' : 'none') + '">' + exos + '</div>'
+      + '<div id="ma-sea-bd-' + idx + '" style="display:' + (open ? 'block' : 'none') + '">'
+      + (notes[sid + '|' + s.date] ? '<div style="padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);line-height:1.45"><b style="color:var(--text)">Ta note :</b> ' + esc(notes[sid + '|' + s.date]) + '</div>' : '')
+      + exos + '</div>'
       + '</div>';
   }).join('');
   var moreBtn = (nSea < allSorted.length) ? '<button onclick="maLoadMoreSea()" style="width:100%;margin-top:2px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (allSorted.length - nSea) + ' restantes)</button>' : '';
@@ -23173,9 +23205,7 @@ function _hyroxFormHtml() {
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--accent-a08,rgba(26,95,255,.08))">'
     + '<div><div style="font-size:11px;color:var(--text-muted);font-weight:700">TEMPS TOTAL</div><div id="hx-split" style="font-size:10.5px;color:var(--text-subtle)">16 segments · m:ss</div></div>'
     + '<div id="hx-total" style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:22px;color:var(--accent)">—</div></div>'
-    + '<div style="margin-top:14px"><label>RPE (intensité ressentie)</label><div class="chip-row" id="cardio-rpe-chips">'
-    + [6, 7, 8, 9, 10].map(function (v) { return '<button type="button" class="saisie-chip" onclick="pickCardioRpe(this,\'' + v + '\')">' + v + '</button>'; }).join('')
-    + '</div><input type="hidden" id="cardio-rpe" value=""></div></div>';
+    + '<div style="margin-top:12px;font-size:11.5px;color:var(--text-subtle);line-height:1.4">L\'intensité ressentie (RPE) te sera demandée juste après, dans le bilan de séance.</div></div>';
 }
 async function sauvegarderHyrox() {
   if (!athlete) return;
@@ -23188,7 +23218,7 @@ async function sauvegarderHyrox() {
   _HYROX_SEG.forEach(function (sg) { var el = document.getElementById('hx-' + sg.k); var v = el ? _hyroxParse(el.value) : 0; if (v > 0) { segs[sg.k] = v; tot += v; n++; } });
   if (n === 0) { showToast('Renseigne au moins un segment', 'var(--warn)'); return; }
   var poids = {}; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { var el = document.getElementById('hxw-' + k); var v = el ? parseFloat(el.value) : 0; if (v > 0) poids[k] = v; });
-  var rpe = (document.getElementById('cardio-rpe') || {}).value || '';
+  var rpe = '';   // S1 : RPE demandé dans le bilan (une seule fois)
   var btnSave = document.getElementById('hx-manuel-save') || document.getElementById('btn-save-cardio');
   if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi…'; }
   var savedSid = null;
@@ -23678,13 +23708,7 @@ function renderCardioFields() {
       </div>
       ${(type === 'marche_normale' || type === 'marche_inclinee') ? '<div><label>Pas <span style="font-size:9px;color:var(--accent);font-weight:600;" id="cardio-pas-hint"></span></label><div id="cardio-pas-preview" style="padding:10px 12px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text-muted);font-size:13px;line-height:1.3;">— entrer la distance</div></div>' : '<div></div>'}
     </div>
-    <div style="margin-top:14px;">
-      <label>RPE (intensité ressentie)</label>
-      <div class="chip-row" id="cardio-rpe-chips">
-        ${[6,7,8,9,10].map(function(v){ return '<button type="button" class="saisie-chip" onclick="pickCardioRpe(this,\''+v+'\')">' + v + '</button>'; }).join('')}
-      </div>
-      <input type="hidden" id="cardio-rpe" value="">
-    </div>`;
+    <div style="margin-top:12px;font-size:11.5px;color:var(--text-subtle);line-height:1.4;">L'intensité ressentie (RPE) te sera demandée juste après, dans le bilan de séance.</div>`;
 }
 
 function calcAutoCardio() {
@@ -23780,6 +23804,9 @@ async function sauvegarderCardio() {
   var duree = (document.getElementById('cardio-duree') || {}).value;
   if (!date)  { showToast('Choisis une date', 'var(--warn)'); return; }
   if (!duree) { showToast('Durée obligatoire', 'var(--warn)'); return; }
+  // S5 (audit saisies 02/11) : pas de date future ; alerte doublon comme le cardio prévu et l'import.
+  if (date > _todayLocalStr()) { showToast('La date ne peut pas être dans le futur', 'var(--warn)'); return; }
+  if (_cardioDoublonProbable(date, duree).length && !confirm('Une séance de durée proche existe déjà ce jour-là.\nEnregistrer quand même ? (doublon possible)')) return;
 
   var btnSave = document.getElementById('btn-save-cardio');
   if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi en cours…'; }
@@ -23805,15 +23832,12 @@ async function sauvegarderCardio() {
     cadence:     gv('cardio-cadence'),
     pas:         pasCalc,
     calories:    gv('cardio-calories'),
-    fc_moy:      gv('cardio-fc_moy'),
-    rpe:         gv('cardio-rpe')
+    fc_moy:      gv('cardio-fc_moy')
   };
   // Lire les valeurs avant d'envoyer (pour le récap)
   var dist    = parseFloat(gv('cardio-distance'))  || 0;
   var cal     = parseFloat(gv('cardio-calories'))  || 0;
-  var rpe     = parseFloat(gv('cardio-rpe'))       || 0;
   var fc      = parseFloat(gv('cardio-fc_moy'))    || 0;
-  var charge  = (rpe && parseFloat(duree)) ? Math.round(rpe * parseFloat(duree)) : 0;
   try {
     var r = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -23821,7 +23845,7 @@ async function sauvegarderCardio() {
       body: JSON.stringify(body)
     });
     var res = await r.json();
-    if (res && res.error) throw new Error(res.error);
+    if (res && (res.error || res.success === false)) throw new Error(res.error || 'refusé');
   } catch (err) {
     showToast('Erreur : ' + (err.message || 'réseau'), 'var(--bad)');
     if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Terminer & enregistrer'; }
@@ -23834,7 +23858,6 @@ async function sauvegarderCardio() {
   if (dist)     stats.push({ n: dist + ' km',   k: 'Distance' });
   if (pasCalc)  stats.push({ n: Number(pasCalc).toLocaleString('fr-FR') + ' pas', k: 'Pas' });
   if (cal)      stats.push({ n: cal + ' kcal',  k: 'Calories' });
-  if (charge)   stats.push({ n: charge + ' UA', k: 'Charge interne' });
   if (fc)       stats.push({ n: fc + ' bpm',    k: 'FC moy.' });
   var statsHtml = stats.map(function(s) {
     return '<div class="dash-stat"><div class="dash-stat-num" style="color:var(--accent);">' + s.n + '</div><div class="dash-stat-label">' + s.k + '</div></div>';
@@ -23898,7 +23921,7 @@ function ouvrirSaisieCardioPrevu(idx) {
     + '<label style="font-size:11px;color:var(--text-muted);font-weight:700">Date</label>'
     + '<input type="date" id="scp-date" value="' + _todayLocalStr() + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;margin:5px 0 12px">'
     + '<div style="display:flex;gap:10px">' + fld('scp-duree', dureeVal, '20', 'Durée (min)') + fld('scp-distance', distVal, '5', 'Distance (km)') + '</div>'
-    + '<div style="margin-top:12px">' + fld('scp-rpe', '', '7', 'RPE (intensité, 1-10)') + '</div>'
+    + '<div style="margin-top:10px;font-size:11.5px;color:var(--text-subtle);line-height:1.4">L\'intensité ressentie (RPE) te sera demandée juste après, dans le bilan.</div>'
     + '<button id="scp-save" onclick="_saveCardioPrevu(' + idx + ')" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px;background:#9D5FD3">Enregistrer le cardio</button>'
     + '</div>';
 }
@@ -23907,22 +23930,25 @@ async function _saveCardioPrevu(idx) {
   var r = _seanceCardioRep[idx]; if (!r) return;
   var type = _CARDIO_LBL2KEY[r.exercice] || 'footing';
   var gv = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
-  var date = gv('scp-date') || _todayLocalStr(), duree = gv('scp-duree'), distance = gv('scp-distance'), rpe = gv('scp-rpe');
+  var date = gv('scp-date') || _todayLocalStr(), duree = gv('scp-duree'), distance = gv('scp-distance');
   if (!duree && !distance) { showToast('Renseigne au moins la durée', 'var(--warn)'); return; }
+  if (date > _todayLocalStr()) { showToast('La date ne peut pas être dans le futur', 'var(--warn)'); return; }
   // Prévention doublon (#18) : séance de durée proche déjà enregistrée ce jour-là ?
   if (duree && _cardioDoublonProbable(date, duree).length) {
     if (!confirm('Une séance de durée proche existe déjà ce jour-là.\nEnregistrer quand même ? (doublon possible)')) return;
   }
   var btn = document.getElementById('scp-save'); if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
   try {
-    var resp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: date, type_cardio: type, duree: duree, distance: distance, rpe: rpe }) });
-    var res = await resp.json(); if (res && res.error) throw new Error(res.error);
+    var resp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: date, type_cardio: type, duree: duree, distance: distance }) });
+    var res = await resp.json(); if (res && (res.error || res.success === false)) throw new Error(res.error || 'refusé');
   } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer le cardio'; } return; }
   _cardioRepDone[r.seance_id + '|' + r.exercice] = true;
   fermerSaisieCardioPrevu();
   showToast('Cardio enregistré · ' + r.exercice);
   try { _renderSeanceCardioReperes(r.seance_id, _seanceCardioRep); } catch (e) {}
   if (typeof chargerAppData === 'function') chargerAppData();
+  // S1 : comme le cardio seul, bilan juste après (RPE + douleur + note) → visible dans « Effort ».
+  try { var _sidP = (res && res.seance_id) || null; setTimeout(function () { ouvrirBilanSeance('cardio', _sidP, date); }, 350); } catch (e) {}
 }
 
 function nouvelleSeanceCardio() {

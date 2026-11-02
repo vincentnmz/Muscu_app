@@ -830,6 +830,21 @@ function _cardioNumify(ind: Record<string, any>): Record<string, any> {
 }
 
 // Champs cardio "plats" envoyés par le front → lignes Indicateurs (comme Code.gs saveCardio)
+// S5 (audit saisies 02/11) : valeurs plausibles uniquement (une durée négative passait).
+const CARDIO_LIMITES: Record<string, [number, number, string]> = {
+  duree: [1, 600, 'Durée : 1 à 600 min'], distance: [0, 300, 'Distance : 0 à 300 km'], fc_moy: [30, 230, 'FC moyenne : 30 à 230 bpm'],
+  calories: [0, 5000, 'Calories : 0 à 5 000 kcal'], vitesse_moy: [0, 100, 'Vitesse : 0 à 100 km/h'], deniv: [0, 10000, 'Dénivelé : 0 à 10 000 m'],
+}
+function _cardioHorsLimites(body: any, d: string): string | null {
+  for (const k of Object.keys(CARDIO_LIMITES)) {
+    const v = body[k]; if (v === '' || v == null) continue
+    const n = Number(v); const [mn, mx, msg] = CARDIO_LIMITES[k]
+    if (isNaN(n) || n < mn || n > mx) return msg
+  }
+  const demain = new Date(); demain.setUTCDate(demain.getUTCDate() + 1)   // marge fuseau horaire
+  if (d > fmtYMD(demain)) return 'La date ne peut pas être dans le futur.'
+  return null
+}
 function _buildCardioRows(body: any, athlete_id: string, sid: string, date: string): any[] {
   const rows: any[] = []
   const addNum = (cle: string, val: unknown, unite = '') => {
@@ -2605,13 +2620,18 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // pour la douleur, unite = zone). Triés récent → ancien.
   // rpe_muscu/rpe_cardio = RPE de séance CR-10 (0..10, nouveau). ressenti_* = legacy
   // (difficulté 1..4) conservé pour l'historique. Le front préfère rpe_* si présent.
-  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], rpe_muscu: [], rpe_cardio: [], duree_muscu: [], duree_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
+  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], rpe_muscu: [], rpe_cardio: [], duree_muscu: [], duree_cardio: [], douleurs_muscu: [], douleurs_cardio: [], notes_muscu: [], notes_cardio: [] }
   {
-    const { data: bilanRows } = await sb().from('indicateurs').select('*')
+    // Lecture complète (avant : 400 lignes max, tous types confondus).
+    const { data: bilanRows } = await _toutLire(() => sb().from('indicateurs').select('*')
       .eq('athlete_id', athleteId)
-      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'rpe_muscu', 'rpe_cardio', 'duree_muscu', 'duree_cardio', 'douleur_muscu', 'douleur_cardio'])
-      .order('date', { ascending: false }).limit(400)
+      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'rpe_muscu', 'rpe_cardio', 'duree_muscu', 'duree_cardio', 'douleur_muscu', 'douleur_cardio', 'note_muscu', 'note_cardio', 'rpe'])
+      .order('date', { ascending: false }).order('id', { ascending: true }))
+    const rpeForm: any[] = []
     for (const r of (bilanRows || [])) {
+      if (r.cle === 'note_muscu' || r.cle === 'note_cardio') { (r.cle === 'note_muscu' ? analyses.notes_muscu : analyses.notes_cardio).push({ date: normDate(r.date), seance_id: r.seance_id, note: String(r.valeur || '') }); continue }
+      // S1 : RPE saisi dans l'ancien formulaire cardio (« rpe » sur une séance cardio_…).
+      if (r.cle === 'rpe') { if (/^cardio_/.test(String(r.seance_id || ''))) rpeForm.push({ date: normDate(r.date), seance_id: r.seance_id, valeur: Number(r.valeur) || null }); continue }
       const base = { date: normDate(r.date), seance_id: r.seance_id, valeur: Number(r.valeur) || null }
       if (r.cle === 'ressenti_muscu') analyses.ressenti_muscu.push(base)
       else if (r.cle === 'ressenti_cardio') analyses.ressenti_cardio.push(base)
@@ -2622,6 +2642,10 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       else if (r.cle === 'douleur_muscu') analyses.douleurs_muscu.push({ ...base, zone: r.unite || '' })
       else if (r.cle === 'douleur_cardio') analyses.douleurs_cardio.push({ ...base, zone: r.unite || '' })
     }
+    // S1 : une séance cardio sans bilan garde le RPE de son formulaire → visible dans « Effort ».
+    const avecBilan = new Set([...analyses.rpe_cardio, ...analyses.ressenti_cardio].map((x: any) => String(x.seance_id)))
+    for (const x of rpeForm) if (x.valeur != null && !avecBilan.has(String(x.seance_id))) analyses.rpe_cardio.push(x)
+    analyses.rpe_cardio.sort((a: any, b: any) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
   }
 
   // Pas quotidiens ambiants (Fitbit) : [{date, pas}] triés récent → ancien.
@@ -5916,6 +5940,12 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
   const ressenti = num(body.ressenti)   // LEGACY 1..4 (1 = Facile … 4 = Très dur)
   const douleur = num(body.douleur)     // 1..4 (1 = aucune)
   const zone = (body.zone != null && body.zone !== '') ? String(body.zone) : ''
+  // S2 (audit saisies 02/11) : la note du bilan est rangée AVEC la séance (avant : seulement un
+  // message au coach → perdue sans coach).
+  const note = String(body.note || '').trim().slice(0, 2000)
+
+  // S4 : un bilan REMPLACE le précédent de la même séance (renvoi après échec réseau, double appui).
+  try { await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('date', d).eq('seance_id', sid).in('cle', [`rpe_${type}`, `ressenti_${type}`, `duree_${type}`, `douleur_${type}`, `note_${type}`]) } catch (_) {}
 
   const rows: any[] = []
   // Nouveau : RPE CR-10 (cle rpe_<type>). Repli legacy : ancien ressenti 1..4.
@@ -5924,6 +5954,18 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
   // Durée de séance (pour le sRPE = charge interne). Stockée même si RPE absent.
   if (duree != null && duree > 0) rows.push({ date: d, athlete_id, seance_id: sid, cle: `duree_${type}`, valeur: String(duree), unite: 'min', source: 'saisie' })
   if (douleur != null && douleur > 1) rows.push({ date: d, athlete_id, seance_id: sid, cle: `douleur_${type}`, valeur: String(douleur), unite: zone, source: 'saisie' })
+  if (note) rows.push({ date: d, athlete_id, seance_id: sid, cle: `note_${type}`, valeur: note, unite: '', source: 'saisie' })
+  // S1 : cardio — le RPE n'est plus demandé dans le formulaire, seulement ici. On le recopie sur la
+  // séance (« rpe ») + charge interne = RPE × durée de la séance (lue en base), comme avant.
+  if (type === 'cardio' && rpe != null && body.seance_id) {
+    try {
+      const { data: dr } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', sid).eq('cle', 'duree').limit(1)
+      const dureeSea = Number(dr && dr[0] && (dr[0] as any).valeur) || 0
+      await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', sid).in('cle', ['rpe', 'charge_interne'])
+      rows.push({ date: d, athlete_id, seance_id: sid, cle: 'rpe', valeur: String(rpe), unite: '1-10', source: 'saisie' })
+      if (dureeSea > 0 && rpe > 0) rows.push({ date: d, athlete_id, seance_id: sid, cle: 'charge_interne', valeur: String(dureeSea * rpe), unite: 'UA', source: 'calculé' })
+    } catch (_) {}
+  }
   if (rows.length) {
     const { error } = await sb().from('indicateurs').insert(rows)
     if (error) return jsonResp({ success: false, error: error.message })
@@ -6819,6 +6861,8 @@ async function handleSaveCardio(body: any): Promise<Response> {
   if (!athlete_id) return jsonResp({ success: false, error: 'Athlète manquant' })
   const sid = `cardio_${Date.now()}_${Math.floor(Math.random() * 1000)}`
   const d = normDate(body.date) || fmtYMD(new Date())
+  const pb = _cardioHorsLimites(body, d)
+  if (pb) return jsonResp({ success: false, error: pb })
   const rows = _buildCardioRows(body, athlete_id, sid, d)
   if (rows.length) {
     const { error } = await sb().from('indicateurs').insert(rows)

@@ -18,3 +18,11 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider.
 | **S5** | **Cardio manuel** : pas d'alerte « doublon possible » (le cardio prévu et l'import montre l'ont) ; date **future** acceptée ; valeurs non bornées côté serveur (une durée négative passerait). | Même alerte doublon ; date ≤ aujourd'hui ; bornes serveur : durée 1-600 min, distance 0-300 km, FC 30-230, calories 0-5 000. |
 
 Non vérifié en capture : le formulaire cardio (il n'apparaît qu'après le chrono « Démarrer la séance ») — S1 et S5 sont vérifiés dans le code.
+
+## Réalisé (02/11, validé porteur : tout, S3 a)
+- **S1** RPE cardio demandé **une seule fois**, dans le bilan (cardio manuel, Hyrox et cardio prévu d'une séance muscu, qui ouvre maintenant le bilan) ; le serveur recopie ce RPE sur la séance et calcule la charge interne (RPE × durée de la séance) ; les anciens RPE du formulaire sont lus par « Effort » quand la séance n'a pas de bilan (tes 18 séances), un RPE de match n'est pas pris pour du cardio. Lecture des bilans complète (avant : 400 lignes max).
+- **S2** Note du bilan **gardée avec la séance** (affichée dans Évolution ▸ Par séance) ; envoyée en plus au coach seulement s'il y en a un ; libellé adapté.
+- **S3 (a)** Questionnaire du jour : « Enregistrer (n/4) » grisé tant que les 4 réponses ne sont pas données ; erreur affichée si le serveur refuse.
+- **S4** Séance muscu envoyée **d'abord**, bilan ensuite (ou mis en file avec elle si l'envoi échoue) ; le serveur **remplace** le bilan d'une même séance au lieu de l'ajouter ; « Bilan non enregistré » si l'envoi cardio échoue.
+- **S5** Cardio manuel : alerte « doublon possible », date future refusée ; serveur : durée 1-600 min, distance 0-300 km, FC 30-230, calories 0-5 000, vitesse 0-100 km/h, D+ 0-10 000 m.
+- Test `saisies` (11 cas, vrai backend). Captures relues : questionnaire 2/4, cardio prévu sans RPE, note dans Par séance.
