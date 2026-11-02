@@ -12409,7 +12409,6 @@ function selectWQ(question, btn) {
   const container = document.getElementById('wq-' + question);
   container.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
   btn.classList.add('selected');
-  setTimeout(function () { try { _wqMajBoutonEtat(); } catch (e) {} }, 0);
   // Réponses chiffrées → nombre ; la ZONE de douleur est un texte (« epaule »…) : la
   // convertir en nombre l'enregistrait « NaN » et la zone était perdue (audit Forme 29/10 #1).
   wellnessState[question] = (question === 'zone') ? String(btn.dataset.val || '') : Number(btn.dataset.val);
@@ -12422,6 +12421,7 @@ function selectWQ(question, btn) {
       var zt = document.getElementById('wq-zone-text'); if (zt) zt.value = '';
     }
   }
+  try { if (typeof _wqMajBoutonEtat === 'function') _wqMajBoutonEtat(); } catch (e) {}   // S3 : compteur n/4
 }
 
 // RPE de séance — échelle CR-10 de Foster (0 = repos, 10 = effort maximal).
