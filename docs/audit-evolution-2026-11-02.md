@@ -22,3 +22,14 @@ Légende : ✅ vérifié · ❌ défaut · 🟠 à décider.
 | **E9** | Décimales anglaises : « Tonnage 3.9 t », « 4.6 t ». | Virgule (3,9 t). |
 
 Écarté après vérification : « Trapéze » (faute) vu en capture venait de ma copie locale du catalogue ; ta base dit bien « Trapèze ».
+
+## Réalisé (02/11, validé porteur : tout, E3 a, E7 a, E8 a)
+- **E1** Par groupe et Résumé partagent le même calcul des semaines couvertes (`_maSemCouvertes`) : au 02/11, Pectoraux 9/14 « Suffisant » (avant 2,3 rouge en Mois) ; année = depuis le 15/06.
+- **E2** Période sans séance → « Aucune séance sur cette période. » (vérifié semaine du 21-27 sept.).
+- **E3 (a)** Période en cours comparée au même nombre de jours de la période précédente (lundi vs lundi : Pectoraux +12 % au lieu de ▼ 44 %).
+- **E4** Déload / reprise : « Réduit (déload) » gris (Par groupe), « baisse attendue » pour les séances faites pendant le contexte (Par séance).
+- **E5** Mêmes 4 statuts que le Résumé, avec le mot, + légende. **E6** Muscles non travaillés listés en gris.
+- **E7 (a)** Tonnage = exercices directs seulement (l'indirect reste à ½ série).
+- **E8 (a)** Badge de séance = bilan des exercices « 3 ↑ · 2 = · 1 ↓ » ; tonnage vs la précédente en gris (30/10 : « 3 ↑ », −65 % en gris).
+- **E9** Virgule décimale (3,9 t, RPE).
+- Test `evolution-groupe` (6 cas) ; 72 suites vertes. Captures relues : semaine, mois, année, semaine vide, Par séance, déload simulé.
