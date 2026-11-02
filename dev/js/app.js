@@ -883,6 +883,9 @@ function _nvzSessionExpiree() {
   window.__nvzFetchWrapped = true;
   var _f = window.fetch.bind(window);
   var AUTH = { login: 1, register: 1, loginCoach: 1, registerCoach: 1 };
+  // C8 (02/11) : changer son mot de passe déconnecte les autres appareils ; le serveur renvoie
+  // un jeton neuf pour CET appareil (le jeton actuel est envoyé, puis remplacé).
+  var JETON_NEUF = { changePassword: 1, changePasswordCoach: 1 };
   window.fetch = function (input, init) {
     var url = (typeof input === 'string') ? input : '';
     if (!url || url.indexOf(SCRIPT_URL) !== 0) return _f(input, init);
@@ -894,7 +897,7 @@ function _nvzSessionExpiree() {
     return _f(url, init).then(function (r) {
       // Connexion / inscription : on attend d'avoir rangé le jeton AVANT de rendre la
       // réponse (sinon le 1er appel qui suit partirait sans jeton).
-      if (AUTH[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
+      if (AUTH[action] || JETON_NEUF[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
       if (r.status === 401) r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
       return r;
     });
@@ -1847,6 +1850,7 @@ window.addEventListener('load', async () => {
   _checkNotifCache();
   // Lien "mot de passe oublié" reçu par email (?reset_token=…) → écran nouveau mdp.
   try { _detecterResetToken(); } catch (e) {}
+  try { _detecterConfirmEmail(); } catch (e) {}
   // Synchronise les séances enregistrées hors-ligne, si connexion revenue
   if (typeof flushSeancesOffline === 'function') { try { flushSeancesOffline(); } catch (e) {} }
   const savedCoach = localStorage.getItem('muscu_coach');
@@ -2268,6 +2272,7 @@ async function ouvrirEspaceCoach() {
   document.body.classList.add('coach-active');
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
+  try { _majBandeauEmail(); } catch (e) {}
   document.body.classList.remove('has-bottom-nav');
   document.getElementById('tabs-bar').style.display = 'none';
   // Thème clair/sombre disponible aussi côté coach (bouton dans le header coach)
@@ -2446,8 +2451,10 @@ async function enregistrerEmailAthlete() {
     const data = await res.json();
     if (data && data.success) {
       athlete.email = email;
+      if (data.email_verifie != null) athlete.email_verifie = !!data.email_verifie;
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
-      setMsg(email ? 'Email enregistré.' : 'Email retiré.', 'var(--good)');
+      setMsg(email ? (data.confirmation_envoyee ? 'Email enregistré. Un lien de confirmation vient de t\'être envoyé.' : 'Email enregistré.') : 'Email retiré.', 'var(--good)');
+      try { _majStatutEmail('reglages-email-statut', athlete); _majBandeauEmail(); } catch (e) {}
       showToast('Email enregistré');
       // Le message de confirmation s'efface tout seul (sinon il « reste » et laisse
       // croire qu'une action est en attente).
@@ -2462,6 +2469,7 @@ async function enregistrerEmailAthlete() {
 function prefillEmailReglages() {
   const inp = document.getElementById('reglages-email');
   if (inp && athlete) inp.value = athlete.email || '';
+  try { _majStatutEmail('reglages-email-statut', athlete); } catch (e) {}
   const sel = document.getElementById('reglages-recap-freq');
   if (sel && athlete) sel.value = athlete.recap_freq || 'off';
 }
@@ -2623,6 +2631,7 @@ function prefillCoachReglages() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
   set('coach-prof-nom', coach.nom);
   set('coach-prof-email', coach.email);
+  try { _majStatutEmail('coach-email-statut', coach); } catch (e) {}
   set('coach-club', coach.club);
   set('coach-cat', coach.categorie_defaut);
   var rf = document.getElementById('coach-recap-freq'); if (rf) rf.value = coach.recap_freq || 'off';
@@ -2649,9 +2658,11 @@ async function enregistrerProfilCoach() {
     if (data && data.success) {
       if (nom) coach.nom = nom;
       coach.email = email;
+      if (data.email_verifie != null) coach.email_verifie = !!data.email_verifie;
       try { localStorage.setItem('muscu_coach', JSON.stringify(coach)); } catch (e) {}
+      try { _majStatutEmail('coach-email-statut', coach); _majBandeauEmail(); } catch (e) {}
       var nEl = document.getElementById('coach-reglages-nom'); if (nEl && coach.nom) nEl.textContent = coach.nom;
-      setMsg('Profil enregistré.', 'var(--good)');
+      setMsg(data.confirmation_envoyee ? 'Profil enregistré. Un lien de confirmation vient de t\'être envoyé.' : 'Profil enregistré.', 'var(--good)');
       showToast('Profil enregistré');
     } else { setMsg('' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
   } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
@@ -2861,6 +2872,63 @@ async function envoyerMdpOublie() {
     setMsg('Erreur réseau. Réessaie.');
     if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
   }
+}
+
+/* Audit connexion C3 / C9 (02/11) — e-mail du compte : statut (confirmé ou non), renvoi du
+ * lien de confirmation, bandeau « ajoute ton e-mail » quand il manque, lien ?confirm_email=… */
+function _majStatutEmail(elId, compte) {
+  var el = document.getElementById(elId); if (!el) return;
+  var mail = compte && compte.email ? String(compte.email) : '';
+  if (!mail) { el.innerHTML = '<span style="color:var(--warn)">Aucune adresse : tu ne pourras pas récupérer ton mot de passe si tu l\'oublies.</span>'; return; }
+  if (compte.email_verifie) { el.innerHTML = '<span style="color:var(--good);font-weight:700">✓ Adresse confirmée</span>'; return; }
+  el.innerHTML = '<span style="color:var(--text-muted)">Adresse non confirmée.</span> <a href="#" onclick="renvoyerConfirmationEmail(event,\'' + elId + '\')" style="color:var(--accent);font-weight:700;text-decoration:none">Renvoyer le lien</a>';
+}
+async function renvoyerConfirmationEmail(e, elId) {
+  if (e && e.preventDefault) e.preventDefault();
+  var el = document.getElementById(elId);
+  var compte = (elId === 'coach-email-statut') ? coach : athlete;
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'renvoyerConfirmationEmail' }) });
+    var d = await r.json();
+    if (d && d.success && d.deja) { if (compte) compte.email_verifie = true; _majStatutEmail(elId, compte); return; }
+    if (el) el.innerHTML = (d && d.success) ? '<span style="color:var(--good)">Lien envoyé. Ouvre le mail et touche « Confirmer mon adresse ».</span>' : '<span style="color:var(--danger)">' + ((d && d.error) || 'Envoi impossible.') + '</span>';
+  } catch (_) { if (el) el.innerHTML = '<span style="color:var(--danger)">Erreur réseau. Réessaie.</span>'; }
+}
+function _majBandeauEmail() {
+  var estCoach = !!(coach && document.body.classList.contains('coach-active'));
+  var compte = estCoach ? coach : athlete;
+  var el = document.getElementById(estCoach ? 'ch-email-manquant' : 'tj-email-manquant'); if (!el) return;
+  if (!compte || compte.email) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--warn);border-radius:14px;padding:12px 14px;margin:0 0 12px">'
+    + '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>'
+    + '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">Ajoute ton e-mail</div><div style="font-size:12px;color:var(--text-muted);line-height:1.4">Sans e-mail, impossible de récupérer ton mot de passe si tu l\'oublies.</div></div>'
+    + '<button onclick="_allerEmailCompte()" style="flex:none;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer">Ajouter</button></div>';
+  el.style.display = 'block';
+}
+function _allerEmailCompte() {
+  if (coach && document.body.classList.contains('coach-active')) {
+    try { ouvrirReglagesCoach(); switchCoachReglagesTab('compte'); } catch (e) {}
+    setTimeout(function () { var i = document.getElementById('coach-prof-email'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); } }, 250);
+    return;
+  }
+  try { switchTab('reglages'); switchReglagesTab('compte'); } catch (e) {}
+  setTimeout(function () { var i = document.getElementById('reglages-email'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); } }, 250);
+}
+async function _detecterConfirmEmail() {
+  var tok = null;
+  try { tok = new URLSearchParams(location.search).get('confirm_email'); } catch (e) { return; }
+  if (!tok) return;
+  try { if (history.replaceState) history.replaceState(null, '', location.pathname); } catch (e) {}
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'confirmerEmail', token: tok }) });
+    var d = await r.json();
+    if (d && d.success) {
+      ['muscu_athlete', 'muscu_coach'].forEach(function (k) { try { var o = JSON.parse(localStorage.getItem(k) || 'null'); if (o) { o.email_verifie = true; localStorage.setItem(k, JSON.stringify(o)); } } catch (e) {} });
+      if (athlete) athlete.email_verifie = true;
+      if (coach) coach.email_verifie = true;
+      showToast('✓ Adresse e-mail confirmée');
+    } else showToast((d && d.error) || 'Lien invalide ou expiré.');
+  } catch (e) { showToast('Erreur réseau : la confirmation n\'a pas abouti.'); }
 }
 
 // Au chargement : si l'URL contient ?reset_token=…, ouvre l'écran nouveau mdp
@@ -10468,6 +10536,7 @@ async function ouvrirApp() {
     return;
   }
   document.getElementById('view-app').classList.add('active');
+  try { _majBandeauEmail(); } catch (e) {}
   document.getElementById('tabs-bar').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
