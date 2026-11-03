@@ -31,3 +31,14 @@ Légende : ✅ à garder tel quel · ⬆ à améliorer · ➕ nouveau · ⏳ pas
 Fourchettes : celles de l'app (catégorie d'exercice — gros / moyen 6-12, léger 8-20 — ou fourchette personnalisée du programme), confirmé par le porteur : « sur les gros exercices je descends à 6 reps minimum ».
 
 Maquette : `mockups/lecture-novalyz-v3.html` (chiffres réels de tes données).
+
+
+## Réalisé (03/11, validé porteur : tout ; coach = même calcul ; plan coché automatiquement)
+- Nouveau fichier **`js/lecture-v3.js`** (fonctions partagées athlète / coach), chargé après `app.js` ; l'existant est conservé et enrichi.
+- **A** Force estimée avec le RPE : liste « Ta force estimée · 6 semaines » dans Analyses (exercices en baisse toujours visibles) ; l'onglet Évolution ▸ Par exercice « 1RM estimé » devient **« Force estimée »** (même place, texte d'explication mis à jour). Tes données : Arrière épaule +26 %, Développé machine +16 %, Écarté +15 %, Élévation frontale +9,3 %, Élévation latérale +2,5 % (+6,6 % sans le RPE), Smith incliné −2,3 %.
+- **B** « Pourquoi » + levier : sous les lignes *Sous ta fourchette / Bloqué / Recule / Effort en hausse* d'Analyses, dans « Depuis ta dernière séance » (Aujourd'hui), dans le coup d'œil coach, et carte complète « Pourquoi ça bloque » dans Évolution (lien « Voir le détail → », ouverture en vue Année ; la carte s'affiche même si la période est vide). Le levier remplace les conseils génériques dans « Ce que Novalyz vise ».
+- **Correction de fond** : en « sous la fourchette », la charge proposée (saisie, Aujourd'hui, Évolution) ne dépasse plus ce que permet la force estimée — Smith 80 × 1 : **65 kg × 6** (avant 77,5 kg × 6, irréaliste) ; le « Pourquoi » et la cible disent la même chose.
+- **C** Plan de la semaine (3 actions, calculé sur les séances jusqu'à dimanche → identique athlète / coach, stable toute la semaine, coché automatiquement) : remplace les recos dans Analyses (repli sur les recos s'il n'y a rien), version compacte sur Aujourd'hui, rappel « Plan de la semaine : +3 séries » sur l'exercice dans la séance du jour, ligne dans le coup d'œil coach. Cette semaine pour toi : Smith incliné à 65 kg · Quadriceps +3 séries (5,5 → 8) · Ischios +2 séries de leg curl (4,3 → 6).
+- **D** « En apprentissage : sommeil → performance (11 / 20 séances avec nuit mesurée) » dans la fiabilité ; chaque force estimée et chaque diagnostic indiquent sur combien de séances ils reposent.
+- Écart avec la maquette (le moteur a raison) : le leg curl n'est pas « bloqué » (refait à RPE 8 au lieu de 9 = progrès selon la règle existante) ; il entre dans le plan par le volume des ischios.
+- Test `lecture-v3` (12 cas) ; 76 suites vertes. Captures relues : Analyses, Aujourd'hui, Évolution (Smith incliné). Coup d'œil coach vérifié dans le code, pas en capture.
