@@ -89,6 +89,7 @@
 - ✅ Écran **conversation** — **messagerie pleine page** (athlète lié). Volet **IA** = lié à A5 (en veille tant que `ANTHROPIC_API_KEY` absente).
 - ✅ Écran **État / Nutrition** — intégré à la **fiche « hub »** : volume par muscle, dernières séances inline, **macros/nutrition**. Vue coach des données santé (pas/sommeil/FC) **dépend de Health Connect alimenté** côté athlète.
 - ✅ **Fiche athlète = hub** — un seul écran : boutons d'action (Message / Entraînement / Analyses / Programme / Son état), alerte, **repères en tuiles** (Régularité / ACWR / Dernière séance / Progression), volume, séances, macros.
+- ⏳ **Photo de profil des athlètes** (souhait porteur 03/11) — remplacer les initiales des carrés (accueil coach, Équipe, messagerie) par une photo ; envoi depuis Réglages athlète (et/ou par le coach), stockage comme les photos de suivi (URL signée). Les carrés sont déjà prêts (photo si dispo, sinon initiales — audit coach A3).
 
 ---
 

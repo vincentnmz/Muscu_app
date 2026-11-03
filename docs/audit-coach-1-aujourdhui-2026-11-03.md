@@ -21,3 +21,8 @@ Capture : `mockups/audit-coach-aujourdhui-avant.png`.
 | **A6** | **« relancer → » ne relance pas** : il ouvre seulement la fiche. | Au choix : **a** renommer en « voir → » ; **b** vraie relance : ouvrir la conversation avec un message prérempli, « Petit rappel : remplis ton ressenti du jour 🙂 », que le coach envoie lui-même. |
 | **A7** | **Ordre des blocs** : les messages non lus sont en bas, après les questionnaires. Alizé apparaît 3 fois (priorité, questionnaire, message). | Monter « Messages non lus » juste sous « À traiter ». Sur la ligne prioritaire, ajouter une pastille « 💬 1 » quand l'athlète a écrit. |
 | **A8** | **Coût réseau** : `getCoachAthletes` calcule déjà les données de chaque athlète côté serveur, puis le front redemande `getAppData` et `getCommentaires` pour chacun, soit 3 appels lourds par athlète. Ça passe à 4 athlètes, pas à 25 (club). | Pas pour ce lot : à traiter avec la montée en charge (une seule action « accueil coach »). Noté dans la roadmap bêta. |
+
+## Décisions porteur (03/11)
+Validé : tout ; **A6 = b** (conversation ouverte avec message prérempli, envoyé par le coach) ; **A8 plus tard**.
+Souhait : **photos des athlètes** dans les carrés à terme → A3 fait un avatar « photo si disponible, sinon initiales » ; l'envoi de la photo (Réglages athlète ou coach) = lot à part (backlog).
+Maquette : `mockups/coach-aujourdhui-v2.html` (+ `-1.png`, `-2.png`).
