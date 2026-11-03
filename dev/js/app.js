@@ -5712,12 +5712,14 @@ function _lectureExos(data, nowT) {
     var _p2 = (dj <= 14) ? _progSecondaire(pts[0], pts[1]) : null;
     if (_p2) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1, why: _p2 }); return; }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (_ctxA ? R.attendu : R.recule).push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
-    if (pts.length >= 3) {
-      var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
-      if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
+    // Séances identiques avant « bloqué » selon le niveau (03/11) : débutant 2 · intermédiaire 3 · avancé 4.
+    var _NB = (typeof LV3_BLOQUE_N !== 'undefined' && typeof _lv3Niveau === 'function') ? (LV3_BLOQUE_N[_lv3Niveau(data)] || 3) : 3;
+    var _memes = pts.length >= _NB; for (var q = 1; _memes && q < _NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) _memes = false; }
+    if (_memes) {
+      if (c0 === c1 && r0 <= r1) {
         // Bloqué seulement si AUCUN progrès secondaire (plus de séries au top / RPE plus bas) dans la chaîne.
-        if (_progSecondaire(pts[1], pts[2])) return;
-        var n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_progSecondaire(pts[n - 1], pts[n])) n++;
+        for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
+        var n = _NB; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_progSecondaire(pts[n - 1], pts[n])) n++;
         var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
         if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
       }
@@ -6997,7 +6999,7 @@ function _chargeAViser(prog) {
   var rmax = (prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
   var rpe = (prog.rpe_cible != null && prog.rpe_cible !== '') ? Number(prog.rpe_cible) : null;
   if (kg == null && rmin == null && rmax == null && rpe == null) return null;
-  var niv = 'debutant'; try { niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var niv = 'debutant'; try { niv = (typeof _lv3Niveau === 'function') ? _lv3Niveau(data) : getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var strat = (niv === 'debutant') ? 'Progression linéaire' : (niv === 'intermediaire') ? 'Double progression' : 'Progression avancée';
   var bas = rmin || 'le bas de ta fourchette', haut = rmax;
   var txt;
@@ -11914,7 +11916,8 @@ function _progDecision(ctx) {
   else if (rpe != null && rpe >= 9 && chargeable && sousN * 2 > last.length) mode = 'sous';
   else if (ctx.vigilance) mode = 'vigilance';
   else if (echec2) mode = 'echec';
-  else if (chargeable && auHaut(last) && (rpe == null || rpe <= (ctx.niveau === 'debutant' ? 8 : 9))
+  // Décision porteur 03/11 (C b) : la charge monte seulement à RPE ≤ 8, comme les reps (tous niveaux).
+  else if (chargeable && auHaut(last) && (rpe == null || rpe <= 8)
     && (ctx.niveau === 'debutant' || auHaut(ctx.prev) || (rpe != null && rpe <= 7))) mode = 'charge';
   else if (tousTenus) mode = 'consolide';
   else mode = 'reps';
@@ -12064,7 +12067,7 @@ function majPlanSeries() {
   var rmaxP = pProg && _numOk(pProg.reps_max) ? Number(pProg.reps_max) : null;
   var rminP = pProg && _numOk(pProg.reps_mini) ? Number(pProg.reps_mini) : null;
   var _fch = _exoFourchette(exoEnCours.exerciceNom, rminP, rmaxP); rminP = _fch.rmin; rmaxP = _fch.rmax;
-  var _niv = 'debutant'; try { _niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var _niv = 'debutant'; try { _niv = (typeof _lv3Niveau === 'function') ? _lv3Niveau(_saisieCoach && typeof coachAthleteData !== 'undefined' ? coachAthleteData : dernierAppData) : getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
   var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData);
   var _jss = _joursSansSeance((typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData);
@@ -12118,7 +12121,7 @@ function majPlanSeries() {
   // Message de la règle (factuel, tracé sur les données) + choix du jour (avancé / expert).
   var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
   if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || dec.mode === 'reprise' || dec.mode === 'deload' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
-  else if (dec.mode === 'sous') msg = 'Indicatif : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + '. Au choix : un petit pas en dessous (−' + String(pas).replace('.', ',') + ' kg, déjà pré-rempli) pour revenir à ' + rminP + ' reps, ou garder la charge et viser +1 rep, ou prendre 30 s de repos en plus. À toi de choisir.';
+  else if (dec.mode === 'sous') { var _c1s = dec.cible(1) || {}; msg = 'Proposition : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + '. Au choix : un petit pas en dessous (' + _kgTxt(_c1s.charge) + ' kg, déjà pré-rempli' + (dec.alt ? ', attends-toi à ≈ ' + dec.alt.repsAuPetitPas + ' reps' : '') + ')' + (dec.alt ? ', ' + _kgTxt(dec.alt.charge) + ' kg pour assurer ' + rminP + ' reps' : '') + ', ou garder la charge et viser +1 rep. C\'est toi qui choisis.'; }
   else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
   else if (dec.mode === 'choix') {
     var R0 = dec.reposRef;
@@ -12138,7 +12141,7 @@ function majPlanSeries() {
   }
   if (dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
   var sg = document.getElementById('exo-actuel-suggestion');
-  if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + '</div>' : '';
+  if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
   var kCur = done + 1, cCur = (lastSeries && _refSerie(lastSeries, kCur)) ? dec.cible(kCur, choix) : null;
   if (cCur && exoEnCours._prefillK !== kCur) {
@@ -14217,7 +14220,7 @@ function ouvrirInfoLectureAnalyses() {
     + 'Les propositions de charge sont indicatives : c\'est toi qui décides. La « fiabilité » dit à quel point ces constats reposent sur assez de données '
     + '(plus tu renseignes RPE, bien-être et cibles, plus elle monte). '
     + 'Pour ton état du jour (récup, charge, fatigue), vois le bloc « Lecture Novalyz » de l\'écran Aujourd\'hui.';
-  try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Lecture Novalyz · Analyses', txt); } catch (e) {}
+  try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Lecture Novalyz · Analyses', escapeHtml(txt) + '<div style="margin-top:12px"><a href="#" onclick="event.preventDefault();ouvrirInfoProgression()" style="color:var(--accent);font-weight:800;text-decoration:none">Comment Novalyz te fait progresser →</a></div>', true); } catch (e) {}
   try { alert(txt); } catch (e) {}
 }
 // Volume par muscle CETTE SEMAINE vs cibles du moteur (volume_obti), comparé au
@@ -14793,7 +14796,7 @@ function _maProgExo(data) {
       if (_tc) {
         var _why = _tc.mode === 'premier' ? '1re fois : trouve ta charge de travail' : ((_tc.why || '').charAt(0).toUpperCase() + (_tc.why || '').slice(1) + '.');
         aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
-          + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
+          + '<div style="font-size:13px;font-weight:800;display:flex;align-items:center">Ce que Novalyz vise la prochaine fois' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>'
           + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
           + '<div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.45">' + _maE(_why) + '</div>'
           + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>Bloqué depuis ' + b.n + ' séances</b> — ' + _maE(_leviersBlocage(data, sel)) + '</div>' : ''; })()
@@ -16954,7 +16957,7 @@ function _tjSeanceDuJour(data) {
 function _tjCibles(data, exos) {
   var prog = (data && data.historique && data.historique.progression_par_exo) || {};
   var cats = (data && data.exo_categories) || {};
-  var niv = 'debutant'; try { niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var niv = 'debutant'; try { niv = (typeof _lv3Niveau === 'function') ? _lv3Niveau(data) : getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   return (exos || []).filter(function (p) { return p && p.type !== 'cardio' && p.exercice; }).map(function (p) {
     var nom = String(p.exercice), pts = prog[nom] || prog[nom.trim()] || [];
     var last = pts[0] && Array.isArray(pts[0].series) ? pts[0].series : null;
@@ -16998,7 +17001,7 @@ function _tjCiblesHtml(rows) {
       + '<td style="padding:7px 0 7px 10px;border-top:1px solid var(--tj-border);text-align:right;white-space:nowrap;font-size:12.5px;font-weight:800;color:' + col + ';vertical-align:top">' + goTxt + '</td></tr>';
   }).join('');
   return '<div style="margin:10px 0 12px;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:10px 12px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px"><span>Ce que Novalyz vise</span><span style="letter-spacing:0;text-transform:none;font-weight:600">dernière fois → aujourd\'hui</span></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px"><span style="display:inline-flex;align-items:center">Ce que Novalyz vise' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</span><span style="letter-spacing:0;text-transform:none;font-weight:600">dernière fois → aujourd\'hui</span></div>'
     + '<table style="width:100%;border-collapse:collapse"><tbody>' + tr + '</tbody></table>'
     + '<div style="font-size:10.5px;color:var(--tj-subtle);margin-top:6px;line-height:1.4">Sur ta série la plus lourde (même calcul que l\'écran de saisie). Propositions indicatives : c\'est toi qui décides.</div></div>';
 }
