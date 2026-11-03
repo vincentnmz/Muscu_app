@@ -177,6 +177,19 @@ function _lv3Plan(data, nowT) {
   if (!data || !data.historique) return null;
   if (typeof _ctxAttendu === 'function' && _ctxAttendu(data)) return null;   // déload / reprise : pas de plan de progression
   var lundi = _lv3Lundi(nowT), isoL = _lv3Ymd(lundi), tL = lundi.getTime() - 1;
+  // A5 (audit coach 03/11) : après un arrêt (aucune séance muscu dans les 14 jours avant lundi), le plan
+  // de volume n'a pas de sens (le volume est « bas » parce que l'athlète ne vient plus) → une seule action.
+  try { if (typeof estEnPause === 'function' && estEnPause(data.pause)) return null; } catch (_) {}
+  var _dmA = (data.historique.daily_muscu) || {}, _jours = Object.keys(_dmA).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); }).sort();
+  var _avant = _jours.filter(function (d) { return d < isoL; }), _derA = _avant.length ? _avant[_avant.length - 1] : null;
+  if (_derA) {
+    var _l14 = new Date(lundi.getTime()); _l14.setDate(_l14.getDate() - 14);
+    if (_derA < _lv3Ymd(_l14)) {
+      var _fait = _jours.some(function (d) { return d >= isoL; });
+      var _p = _derA.split('-');
+      return { actions: [{ exo: null, type: 'reprise', titre: 'Reprendre : 1 séance de muscu cette semaine', raison: 'Dernière séance le ' + _p[2] + '/' + _p[1] + '. On reprend à ton rythme ; le plan habituel revient la semaine suivante.', fait: _fait, derniere: _derA }], ok: [], lundi: isoL, faits: _fait ? 1 : 0, reprise: true };
+    }
+  }
   var D = _lv3DataAvant(data, isoL), acts = [], vuExo = {}, vuMus = {};
   var push = function (a) { if (!a || acts.length >= 3 || vuExo[a.exo]) return; vuExo[a.exo] = 1; if (a.muscle) vuMus[_musKey(a.muscle)] = 1; a.seance = _lv3SeanceDe(data, a.exo); acts.push(a); };
   var diags = _lv3Diags(D, tL);

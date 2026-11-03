@@ -4516,7 +4516,69 @@ function labelAlerteCourt(a) {
   if (alertes.length === 0) return null;
   const map = { fatigue: 'Fatigue', surcharge: 'Surcharge', irregularite: 'Absence', stagnation: 'Stagnation', regression: 'Régression' };
   const principale = alertes.find(al => al.severite === 'haute') || alertes[0];
-  return map[principale.type] || (principale.type || 'Alerte');
+  const t = map[principale.type] || principale.type || 'Alerte';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+// ===== Audit coach écran 1 (03/11) — helpers partagés =====
+// A1 : absence = muscu ET cardio hors marche (moteur.derniere_activite, comme l'athlète et les rappels push).
+function _coachIsoTs(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : 0; }
+function _coachAbsence(d, m) {
+  var ds = (m && m.derniere && m.derniere.date) ? (parseChatDate(m.derniere.date) || 0)
+         : ((d && d.dashboard && d.dashboard.derniere_seance && d.dashboard.derniere_seance.date) ? (parseChatDate(d.dashboard.derniere_seance.date) || 0) : 0);
+  var da = _coachIsoTs(d && d.moteur && d.moteur.derniere_activite);
+  var now = Date.now(), act = Math.max(ds, da);
+  return { muscuConnue: ds > 0, connue: act > 0, muscuAge: ds ? (now - ds) / 864e5 : Infinity, actAge: act ? (now - act) / 864e5 : Infinity, autreRecente: da > ds };
+}
+// A2 : libellé lisible d'une alerte (titre du moteur + date), au lieu du type brut (« douleur »).
+function _coachAlerteTxt(a, d) {
+  var al = alertesActives(a); if (!al.length) return null;
+  var p = al.find(function (x) { return x.severite === 'haute'; }) || al[0];
+  var c = ((d && d.alertes_centre) || []).filter(function (x) { return x && x.type === p.type; })[0];
+  if (c && c.title) {
+    var dt = String(c.id || '').split('|')[1] || '', mm = dt.match(/^\d{4}-(\d{2})-(\d{2})$/);
+    return c.title + (mm ? ' · ' + mm[2] + '/' + mm[1] : '');
+  }
+  return labelAlerteCourt(a);
+}
+// A3 : carré d'athlète = photo si disponible (à venir), sinon initiales.
+function _coachAv(a, bg, col, size) {
+  size = size || 34;
+  var ini = String((a && a.nom) || '?').split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+  var box = 'width:' + size + 'px;height:' + size + 'px;border-radius:' + Math.round(size * 0.3) + 'px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-weight:800;font-size:' + Math.round(size * 0.36) + 'px;background:' + bg + ';color:' + col + ';';
+  if (a && a.photo_url) return '<div style="' + box + '"><img src="' + escapeHtml(a.photo_url) + '" alt="" style="width:100%;height:100%;object-fit:cover"></div>';
+  return '<div style="' + box + '">' + escapeHtml(ini) + '</div>';
+}
+// A6 : vraie relance — conversation ouverte avec un message prérempli (envoyé par le coach lui-même).
+const RELANCE_RESSENTI_MSG = 'Petit rappel : remplis ton ressenti du jour 🙂 (2 min, ça m\'aide à adapter tes séances)';
+function coachRelancerRessenti(idx) {
+  ouvrirConversationDepuisMessagerie(idx);
+  var n = 0, t = setInterval(function () {
+    var el = document.getElementById('cd-comment-input');
+    if ((el && el.offsetParent !== null) || ++n > 40) {
+      clearInterval(t);
+      if (el && !el.value) { el.value = RELANCE_RESSENTI_MSG; try { el.dispatchEvent(new Event('input')); el.focus(); } catch (e) {} }
+    }
+  }, 100);
+}
+// A4 : « Entraînement à regarder » — une ligne par athlète (même calcul que sa Lecture Novalyz).
+function _coachEntrLigne(d) {
+  if (!d || typeof _lv3Plan !== 'function') return null;
+  var P = null, D = []; try { P = _lv3Plan(d); } catch (e) {}
+  if (P && P.reprise) { var a0 = P.actions[0], pp = String(a0.derniere || '').split('-'); return { txt: '<b>Reprendre</b> : 1 séance de muscu cette semaine' + (pp.length === 3 ? ' (dernière le ' + pp[2] + '/' + pp[1] + ')' : ''), P: P }; }
+  try { D = _lv3Diags(d) || []; } catch (e) {}
+  var KIND = { sous: 'sous la fourchette', recule: 'recule', bloque: 'bloqué', effort: 'effort en hausse' };
+  var g = D[0], txt = '';
+  if (g) {
+    var pt = (((d.historique || {}).progression_par_exo || {})[g.exo] || [])[0];
+    var der = pt ? ' (' + _cdFmtKg(pt.charge) + ' kg × ' + pt.reps + ')' : '';
+    var act = g.action && g.action.titre ? String(g.action.titre).split(' : ').slice(1).join(' : ') : '';
+    txt = '<b>' + escapeHtml(g.exo) + '</b> : ' + (KIND[g.kind] || g.kind) + (g.kind === 'sous' ? der : '') + (act ? ' · ' + escapeHtml(act) : '');
+  } else if (P) {
+    var a1 = P.actions.filter(function (x) { return !x.fait; })[0] || P.actions[0];
+    txt = escapeHtml(a1.titre);
+  }
+  return txt ? { txt: txt, P: P, exo: g ? g.exo : null } : null;
 }
 
 async function renderCoachSynthese(athletes) {
@@ -4580,13 +4642,7 @@ async function renderCoachSynthese(athletes) {
   // KPIs — les athlètes en vacances ne comptent ni dans "à surveiller" ni "action".
   document.getElementById('coach-stat-surveiller').textContent = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank >= 1).length;
   document.getElementById('coach-stat-action').textContent = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 2).length;
-  const absents = enrich.filter(e => {
-    const dt = e.m && e.m.derniere ? e.m.derniere.date : null;
-    if (!dt) return true; // aucune séance connue = absent
-    const ts = parseChatDate(dt);
-    if (!ts) return false;
-    return (Date.now() - ts) / 86400000 > 7;
-  }).length;
+  const absents = enrich.filter(e => _coachAbsence(datas[e.i], e.m).actAge > 7).length;   // A1 : muscu + cardio
   const absEl = document.getElementById('coach-stat-absents');
   if (absEl) { absEl.textContent = absents; absEl.style.color = absents > 0 ? 'var(--warn)' : 'var(--good)'; }
 
@@ -4607,22 +4663,23 @@ async function renderCoachSynthese(athletes) {
   // Détermine la raison de priorité d'un athlète (null = pas prioritaire)
   const infoPrio = (e) => {
     const { a, m } = e;
-    const connue = !!(m && m.derniere && m.derniere.date);   // a-t-on une dernière séance connue ?
-    const dsAge = connue ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
+    const ab = _coachAbsence(datas[e.i], m);   // A1 (03/11) : muscu ET cardio, comme côté athlète
     // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône du header)
     // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
     if (e.enPause) return null;
-    if (dsAge > 7) {
-      // Arrêt prolongé (>14 j, séance connue) = intervention ; sinon surveillance.
-      // « Aucune séance » (jamais entraîné / pas de programme) reste surveillance,
-      // pas une urgence — le coach voit le détail dans la liste.
-      const col = (connue && dsAge > 14) ? PRIO_BAD : PRIO_WARN;
-      return { icon:'', txt: connue ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: col };
+    if (!ab.connue) return { txt: 'Aucune séance', color: PRIO_WARN };
+    if (ab.actAge > 7 || ab.muscuAge > 7) {
+      // Rouge seulement si AUCUNE activité (muscu ou cardio) depuis plus de 14 j ; sinon surveillance.
+      const col = ab.actAge > 14 ? PRIO_BAD : PRIO_WARN;
+      const txt = (ab.autreRecente && ab.muscuConnue)
+        ? `${Math.floor(ab.muscuAge)} j sans muscu · cardio il y a ${Math.floor(ab.actAge)} j`
+        : `${Math.floor(ab.actAge)} jours sans séance`;
+      return { txt, color: col };
     }
-    const al = labelAlerteCourt(a);
-    if (al) return { icon:'', txt: al, color: (m && m.statut.rank===2) ? PRIO_BAD : PRIO_WARN };
+    const al = _coachAlerteTxt(a, datas[e.i]);   // A2 : titre du moteur + date
+    if (al) return { txt: al, color: (m && m.statut.rank===2) ? PRIO_BAD : PRIO_WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
-    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'', txt:'Intervention conseillée', color: PRIO_BAD };
+    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { txt:'Intervention conseillée', color: PRIO_BAD };
     return null;
   };
 
@@ -4633,8 +4690,8 @@ async function renderCoachSynthese(athletes) {
     prioHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>À traiter en priorité</div></div>` +
       prioritaires.map(({ e, p }) => `
         <div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:${p.color}14;border:1px solid ${p.color}44;">
-          <div style="width:34px;height:34px;border-radius:10px;background:${p.color}22;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${p.icon}</div>
-          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div><div style="font-size:11.5px;color:var(--text-muted);">${p.txt}</div></div>
+          ${_coachAv(e.a, p.color + '22', p.color === PRIO_BAD ? '#c0303a' : '#b86e00', 34)}
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}${e.msgNonLus > 0 ? ` <span style="font-size:10.5px;font-weight:800;background:var(--accent);color:#fff;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px;">💬 ${e.msgNonLus}</span>` : ''}</div><div style="font-size:11.5px;color:var(--text-muted);">${escapeHtml(p.txt)}</div></div>
           <span style="color:var(--text-muted);font-size:18px;">›</span>
         </div>`).join('');
   }
@@ -4691,7 +4748,7 @@ async function renderCoachSynthese(athletes) {
     const dsAge = (m && m.derniere && m.derniere.date) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     let cat;
     if (enPause) cat = 'pause';
-    else if (dsAge > 7) cat = 'inactifs';
+    else if (_coachAbsence(datas[i], m).actAge > 7) cat = 'inactifs';   // A1 : muscu + cardio
     else if (s.rank >= 1) cat = 'surveiller';
     else cat = 'prets';
     if (cat === 'prets') nbPrets++; else if (cat === 'surveiller') nbSurvCat++; else if (cat === 'inactifs') nbInactifsCat++;
@@ -4974,7 +5031,7 @@ async function renderCoachSynthese(athletes) {
         </div>`).join('') : `<div style="color:var(--text-muted);font-size:12.5px;padding:2px 2px 8px;">Aucun questionnaire sur 7 jours.</div>`;
   const _qNonHead = _qNon.length ? `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:6px 2px 7px;">À relancer · ${_qNon.length}</div>` : '';
   const _qNonRows = _qNon.slice(0, 8).map(e => `
-        <div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:10px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px dashed var(--border);">
+        <div onclick="coachRelancerRessenti('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:10px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px dashed var(--border);">
           <span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${initPf(e.a.nom)}</span>
           <div style="flex:1;min-width:0;font-size:12.5px;"><b>${escapeHtml(e.a.nom)}</b> <span style="color:var(--text-subtle);">pas de ressenti · <span style="color:var(--accent);font-weight:700;">relancer →</span></span></div>
         </div>`).join('');
@@ -4982,10 +5039,23 @@ async function renderCoachSynthese(athletes) {
     + _qRepRows + _qNonHead + _qNonRows;
 
   // Sections pilotées par le bandeau : Aujourd'hui (action, SANS liste) · Équipe (annuaire) · Analyses
-  // Ordre unifié avec le desktop : Briefing → À traiter en priorité → Questionnaires → Messages → Lecture Novalyz.
+  // ---- A4 (03/11) : « Entraînement à regarder » (plan de la semaine + Pourquoi, même calcul que l'athlète) ----
+  const _entr = enrich.filter(e => !e.enPause).map(e => ({ e, L: _coachEntrLigne(datas[e.i]) })).filter(x => x.L);
+  const entrHtml = !_entr.length ? '' : `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Entraînement à regarder<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">plan de la semaine</span></div></div>`
+    + _entr.map(({ e, L }) => {
+      const P = L.P, n = P ? P.actions.length : 0;
+      const tag = P ? `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--surface2);color:var(--text-muted);">Plan ${P.faits}/${n} fait${n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : ''}</span>` : '';
+      const _ex = L.exo ? String(L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+      return `<div onclick="coachOuvrirProgression('${e.i}'${_ex ? `,'${_ex}'` : ''})" style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);">
+          ${_coachAv(e.a, 'var(--accent-a12)', 'var(--accent-strong)', 36)}
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div><div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:1px;">${L.txt}</div>${tag}</div>
+          <span style="color:var(--text-muted);font-size:18px;flex-shrink:0;">›</span>
+        </div>`;
+    }).join('');
+  // Ordre (audit coach A7, 03/11) : À traiter → Messages → Entraînement à regarder → Questionnaires → Analyse Novalyz.
   // (« Résumé équipe » retiré d'ici : l'info de répartition reste dans l'onglet Analyses.)
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + questHtml + messagesHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + messagesHtml + entrHtml + questHtml + briefingHtml}</div>` +
     `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
   coachBandeauApply();
@@ -5038,6 +5108,13 @@ function coachBandeauGo(tab) {
   try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { try { window.scrollTo(0, 0); } catch (__) {} }
 }
 
+var _coachProgApres = null;   // action à jouer une fois les données de la fiche chargées
+function coachOuvrirProgression(idx, exo) {
+  const a = athletesCoach[Number(idx)];
+  if (!a) return;
+  _coachProgApres = exo ? function () { try { maVoirPourquoi(exo); } catch (e) {} } : null;
+  ouvrirDetailAthleteCoach(a, 'prog');
+}
 function ouvrirAthleteDepuisSelect(idx) {
   if (idx === '' || idx === null || idx === undefined) return;
   const a = athletesCoach[Number(idx)];
@@ -5567,6 +5644,9 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachSeances(data);
     chargerSeancesDetailCoach(a.athlete_id, data);
     renderACWR(data);
+    // Fiche ouverte directement sur Analyses (accueil coach « Entraînement à regarder », rechargement) :
+    // l'onglet a été affiché AVANT l'arrivée des données → on le rattache maintenant (avant : vide).
+    try { var _cp = document.getElementById('cdtab-prog'); if (_cp && _cp.style.display === 'block' && coachAthleteCourant === a) { _maCoachAttach(data); if (typeof _coachProgApres === 'function') { var f = _coachProgApres; _coachProgApres = null; f(); } } } catch (_) {}
     try { appliquerMasquageCockpit(); } catch (_) {}   // Étape 8 — masquage réversible des doublons coach (no-op si COCKPIT_ON=false)
   } catch(e) {
     console.error('ouvrirDetailAthleteCoach KO', e);
@@ -6632,8 +6712,8 @@ function computeMarqueursCoach(data, a) {
   if (!_dsObj) {
     // Jamais aucune séance : à programmer (pas de programme) ou à relancer.
     assid = { rank: 1, color: '#f5a623', label: prevues === 0 ? 'À programmer' : 'À relancer' };
-  } else if (_dsAge > 14) {
-    // Arrêt prolongé (> 14 j) : inactif, le coach doit intervenir.
+  } else if (Math.min(_dsAge, (typeof _coachIsoTs === 'function' && M && M.derniere_activite) ? (Date.now() - _coachIsoTs(M.derniere_activite)) / 86400000 : Infinity) > 14) {
+    // Arrêt prolongé (> 14 j sans muscu NI cardio — audit coach A1) : inactif, le coach doit intervenir.
     assid = { rank: 2, color: '#e5484d', label: 'Inactif' };
   } else if (regColor === '#e5484d') {
     // Régularité très insuffisante cette semaine (prorata jours écoulés) → relancer.
@@ -7621,7 +7701,7 @@ function _coachDeskAujourdhui() {
     + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_av === 0 ? 'tout le monde est à jour' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
     + '<div class="cs-brief-pills">' + bpill(k.surveiller, 'à surveiller') + bpill(k.intervention, 'intervention') + '</div>'
     + '</div></div>';
-  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + p.icon + ' ' + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour</div>';
+  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + (p.icon ? p.icon + ' ' : '') + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour</div>';
   var msgs = (d.enrich || []).filter(function (e) { return e.msgNonLus > 0; }).map(function (e) { return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--accent)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>' + e.msgNonLus + ' message' + (e.msgNonLus > 1 ? 's' : '') + ' non lu' + (e.msgNonLus > 1 ? 's' : '') + '</span></div></div>'; }).join('') || '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun message non lu.</span></div></div>';
   // Questionnaires bien-être récents (qui a répondu, quand, + signal fatigue).
   var quest = (d.enrich || []).map(function (e) {
@@ -7639,11 +7719,18 @@ function _coachDeskAujourdhui() {
   var repSet = {}; quest.forEach(function (q) { repSet[q.e.i] = true; });
   var nonRep = (d.enrich || []).filter(function (e) { return !e.enPause && !repSet[e.i]; });
   var nonRows = nonRep.slice(0, 8).map(function (e) {
-    return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--text-muted)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>pas de ressenti · <span style="color:var(--accent);font-weight:700">relancer →</span></span></div></div>';
+    return '<div class="cs-act" onclick="coachRelancerRessenti(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--text-muted)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>pas de ressenti · <span style="color:var(--accent);font-weight:700">relancer →</span></span></div></div>';
   }).join('');
   var nonBloc = nonRep.length ? '<div class="cs-subh">À relancer · ' + nonRep.length + '</div>' + nonRows : '';
   var questPanel = '<div class="cs-panel" data-tour="co-quest"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
-  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div></div>'
+  // A4 (audit coach 03/11) : « Entraînement à regarder » — mêmes lignes que le mobile.
+  var entr = (d.enrich || []).filter(function (e) { return !e.enPause; }).map(function (e) { var L = null; try { L = _coachEntrLigne(d.datas[e.i]); } catch (_) {} return L ? { e: e, L: L } : null; }).filter(Boolean);
+  var entrHtml = !entr.length ? '' : '<div class="cs-sec" style="margin-top:18px">Entraînement à regarder</div><div class="cs-watch">' + entr.map(function (x) {
+    var P = x.L.P, n = P ? P.actions.length : 0, ex = x.L.exo ? String(x.L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+    return '<div class="cs-wrow" onclick="coachOuvrirProgression(\'' + x.e.i + '\'' + (ex ? ',\'' + ex + '\'' : '') + ')"><span class="cs-av2">' + _coachDeskInit(x.e.a.nom) + '</span><div class="cs-wn"><b>' + escapeHtml(x.e.a.nom) + '</b><div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px">' + x.L.txt.replace(/<b>/g, '<strong style="font-weight:700;color:var(--text)">').replace(/<\/b>/g, '</strong>') + '</div>'
+      + (P ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">Plan ' + P.faits + '/' + n + ' fait' + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
+  }).join('') + '</div>';
+  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div>' + entrHtml + '</div>'
     + '<aside>' + questPanel
     + '<div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
     + '<div class="cs-panel"><div class="cs-pt">Lecture Novalyz · équipe</div>' + _coachDeskLecture() + '</div></aside></div>';
@@ -14573,7 +14660,7 @@ var _maExoSel = null, _maExoMetric = 'cr';
 // Échappe une chaîne pour un littéral JS entre apostrophes DANS un attribut onclick à guillemets.
 function _maOnc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 function maVoirPourquoi(exo) {
-  try { if (typeof _maCoach !== 'undefined' && _maCoach) { if (typeof switchCoachDetailTab === 'function') switchCoachDetailTab('progression'); } else switchTab('historique'); } catch (e) {}
+  try { if (typeof _maCoach !== 'undefined' && _maCoach) { if (typeof switchCoachDetailTab === 'function') switchCoachDetailTab('prog'); } else switchTab('historique'); } catch (e) {}
   try { if (typeof maSetDisc === 'function' && _maDisc !== 'muscu') maSetDisc('muscu'); } catch (e) {}
   // Vue Année : le diagnostic porte sur les 6 dernières semaines, souvent à cheval sur 2 mois.
   try { _maGran = 'A'; _maOffset = 0; _maPeriodeTouched = true; _maSyncPeriode(); } catch (e) {}
