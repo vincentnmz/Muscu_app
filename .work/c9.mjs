@@ -1,0 +1,10 @@
+import { open } from './harness.mjs'; import fs from 'fs';
+const data = JSON.parse(fs.readFileSync(new URL('./audit/out_vinc.json', import.meta.url)));
+const db = JSON.parse(fs.readFileSync(new URL('./audit/db_v7.json', import.meta.url)));
+const { pg, close } = await open({ programme: data.programme, onboarding_vu: true, tourVu: true }, { width: 390, height: 844 });
+await pg.evaluate(([d, ex]) => { athlete.nom = 'Vincent'; _onbChecked = true; _etatAutoChecked = true; exercicesData = ex; _appliquerAppData(d); try { _etatSkip(); } catch (e) {} switchTab('historique'); maSetTab('tendances'); }, [data, db.exercices]);
+await pg.waitForTimeout(900);
+const t = await pg.evaluate(() => document.getElementById('tab-historique').innerText);
+const i = t.indexOf('FRÉQUENCE PAR MUSCLE'); console.log('ATHLETE fréquence:', t.slice(i, i + 220).replace(/\n/g, ' | '));
+console.log('ATHLETE ton conservé (ta/tes):', /tes séries|ta meilleure/.test(t), '| bouton import visible:', await pg.evaluate(() => { const b = document.getElementById('btn-hc-analyses'); return b ? b.style.display !== 'none' : 'absent'; }));
+await close();

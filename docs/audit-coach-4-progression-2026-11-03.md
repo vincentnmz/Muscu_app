@@ -21,3 +21,13 @@ Données : Vincent (copie 02/11), rejoué au 03/11. Captures : `mockups/audit-co
 | **G7** | **Planning de la semaine** (« Glisse une séance sur un jour ») en bas d'Évolution — il existe déjà dans l'onglet Programme. | Retiré d'Analyses (reste dans Programme). |
 
 À noter (pas un défaut) : avec les nouvelles cibles intermédiaire (redéployées), le plan de Vincent propose maintenant « Quadriceps +4 séries de Pendulum · Ischio +4 séries de Leg curl ».
+
+## Réalisé (03/11, validé porteur)
+- **G1** Bouton « Importer mes séances (montre) » masqué dans la fiche coach (rendu à l'athlète en sortant).
+- **G2** Ton coach : les phrases adressées à l'athlète sont réécrites dans la fiche (« sa fourchette », « sa meilleure série », « Proposé à l'athlète : … », « on voit s'il monte… », « Activité » ; « C'est toi qui choisis / décides » retiré). L'athlète garde ses textes (vérifié).
+- **G3** Fréquence par muscle : divisée par les jours écoulés de la période en cours ; moins de 7 jours → « Pas encore assez de recul (3 jours) » au lieu de « 0,3×/sem » en rouge. **Vaut aussi pour l'athlète** (vérifié).
+- **G4** Côté coach : Année par défaut (Évolution et Tendances) — la maquette disait « 4 dernières semaines » pour Tendances, mais l'app n'a que Semaine / Mois / Année ; Année retenu (tonnage par semaine sur l'année).
+- **G5** Exercice ouvert par défaut = celui du 1er point « À décider » (Smith incliné pour Vincent).
+- **G6** Colonne « Force est. » (avec le RPE, avant : formule sans RPE sous l'étiquette « 1RM ») ; virgule dans les charges (« 7,5×10 »).
+- **G7** Planning retiré d'Analyses (reste dans l'onglet Programme).
+- Tests : 77 suites vertes. Captures relues : `mockups/coach-progression-apres-evolution.png`, `…-tendances.png`.
