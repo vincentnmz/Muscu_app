@@ -4,13 +4,14 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v509';
+const CACHE = 'novalyz-shell-v510';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './logo novalyz.png',
   './js/app.js',
+  './js/lecture-v3.js',
   './css/tokens.css',
   './css/base.css',
   './css/components.css',
