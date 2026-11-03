@@ -7,6 +7,8 @@ const sb = { Date, Math, Object, String, Number, Array, JSON, console,
   _exoFourchette: (n) => /curl/i.test(n) ? { rmin: 8, rmax: 20 } : { rmin: 6, rmax: 12 }, _ctxAttendu: () => null, exercicesData: [],
   _lectureExos: () => ({ sous: [{ exo: 'Smith incliné' }], bloque: [], recule: [], records: [], progresse: [] }), _tjCibles: () => [null] };
 vm.createContext(sb); vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', 'lecture-v3.js'), 'utf8'), sb);
+{ const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8'), pick = (n) => { const i = src.indexOf('function ' + n + '('); let d = 0; for (let k = src.indexOf('{', i); k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && --d === 0) return src.slice(i, k + 1); } };
+  vm.runInContext(pick('_sousPetitPas') + '\n' + pick('_sousAlt'), sb); }
 const S = (c, r, rpe) => ({ charge: c, reps: r, rpe });
 // A — à charge/reps égales, un RPE plus bas = plus de force estimée ; reps en réserve plafonnées à 4.
 eq(sb._lv3ForceSerie(S(80, 8, 7)) > sb._lv3ForceSerie(S(80, 8, 9)), 'A : 80×8 à RPE 7 > 80×8 à RPE 9');
@@ -27,18 +29,18 @@ const data = { historique: { progression_par_exo: {
 const F = sb._lv3Forces(data, now), fs1 = F.filter((x) => x.exo === 'Smith incliné')[0];
 eq(fs1 && fs1.pct < 0, 'A : Smith incliné en baisse de force estimée', fs1);
 const d = sb._lv3Diag(data, 'Smith incliné', 'sous', now);
-eq(d && d.cause === 'charge' && /^65 kg/.test(d.levier), 'B : charge trop lourde → 65 kg pour 6 reps', d && d.levier);
+eq(d && d.cause === 'charge' && /75 kg \(petit pas, attends-toi à ≈ 5 reps/.test(d.levier) && /ou 70 kg/.test(d.levier) && /C'est toi qui choisis/.test(d.levier), 'B : au choix 75 kg (petit pas, ≈ 5 reps) ou 70 kg (6 reps assurées)', d && d.levier);
 eq(d && d.checks.some((c) => /Saut de <b>70 à 80 kg/.test(c.t)), 'B : saut de charge 70 → 80 kg détecté');
 eq(d && d.checks.some((c) => c.s === 'ok' && /Volume pectoraux/.test(c.t)), 'B : volume pectoraux « pas en cause »');
 const d2 = sb._lv3Diag(data, 'Leg curl', 'bloque', now);
 eq(d2 && d2.cause === 'volume' && /\+2 séries/.test(d2.levier), 'B : ischios sous le minimum → +2 séries', d2 && d2.levier);
 // C — plan calculé sur les données d'avant lundi ; action cochée quand la séance la réalise.
 const P = sb._lv3Plan(data, now);
-eq(P && P.actions[0].type === 'charge' && P.actions[0].charge === 65 && P.actions[0].seance === 'pec epaule 2', 'C : 1re action = Smith à 65 kg (séance « pec epaule 2 »)', P && P.actions);
+eq(P && P.actions[0].type === 'charge' && P.actions[0].charge === 75 && P.actions[0].alt === 70 && P.actions[0].seance === 'pec epaule 2', 'C : 1re action = Smith proposé 75 kg (ou 70 kg), séance « pec epaule 2 »', P && P.actions);
 eq(P && !P.actions[0].fait, 'C : pas encore faite');
-data.historique.progression_par_exo['Smith incliné'].unshift(pt('2026-11-02', 65, 6, 8, 'pec'));
+data.historique.progression_par_exo['Smith incliné'].unshift(pt('2026-11-02', 72.5, 6, 9, 'pec'));
 const P2 = sb._lv3Plan(data, now);
-eq(P2 && P2.actions[0].fait === true && P2.actions[0].charge === 65, 'C : 65 kg × 6 fait lundi → cochée (plan inchangé)', P2 && P2.actions[0]);
+eq(P2 && P2.actions[0].fait === true && P2.actions[0].charge === 75, 'C : 72,5 kg × 6 fait lundi (entre 70 et 75) → cochée, plan inchangé', P2 && P2.actions[0]);
 // D — sommeil → performance en apprentissage.
 data.sante_historique = [{ date: '2026-10-29', sommeil_min: 450 }];
 const A = sb._lv3Apprentissage(data);

@@ -16,7 +16,7 @@ function extractFn(name) {
 }
 const sandbox = { exercicesData: [{ exercice: 'Leg curl', increment_kg: '2.5 / 5 kg' }, { exercice: 'Curl haltère', increment_kg: '2 kg' }, { exercice: 'Pompe', increment_kg: null }] };
 vm.createContext(sandbox);
-const FN = ['_refSerie', '_r025', '_progDecision', '_estPoly', '_reposBornes', '_reposRef', '_petitPas', '_exoCat', '_exoFourchette'];
+const FN = ['_refSerie', '_r025', '_progDecision', '_sousPetitPas', '_sousAlt', '_estPoly', '_reposBornes', '_reposRef', '_petitPas', '_exoCat', '_exoFourchette'];
 vm.runInContext((SRC.match(/var _EXO_CAT_R = \{[^}]*\};/) || [''])[0] + "\nvar _POLY_KW = ['squat', 'pendulum', 'presse', 'soulev', 'rdl', 'hip thrust', 'fente', 'developpe', 'dips', 'traction', 'rowing', 't-bar', 'tirage']; var _POLY_EXCL = ['mollet', ' uni', 'trapeze'];\n"
   + FN.map(extractFn).join('\n') + '\n' + FN.map(f => 'this.' + f + '=' + f + ';').join(''), sandbox);
 const S = sandbox;
@@ -56,8 +56,11 @@ check('intermédiaire : haut de fourchette 2 séances de suite, RPE 9 → charge
 d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 10, 120), prev: top });
 check('intermédiaire : haut atteint mais à l\'échec (RPE 10) → pas de charge, tout gardé (consolide)', d.mode === 'consolide' && d.cible(1).charge === 35 && d.cible(1).reps === 12);
 d = D({ niveau: 'intermediaire', last: [{ serie: 1, charge: 90, reps: 7, rpe: 9 }, { serie: 2, charge: 90, reps: 6, rpe: 10 }, { serie: 3, charge: 75, reps: 10, rpe: 8 }], prev: null, rmin: 6, rmax: 12 });
-check('série par série (cas réel Développé machine) : RPE 9 → +1 rep, RPE 10 gardée, RPE 8 → +1 rep',
-  d.mode === 'reps' && d.cible(1).reps === 8 && d.cible(2).reps === 6 && d.cible(2).tenue === true && d.cible(3).reps === 11 && d.nTenues === 1);
+// Décision porteur 03/11 : une série à RPE 9 garde ses reps (consolide jusqu'à RPE ≤ 8), tous niveaux.
+check('série par série (cas réel Développé machine) : RPE 9 gardée, RPE 10 gardée, RPE 8 → +1 rep',
+  d.mode === 'reps' && d.cible(1).reps === 7 && d.cible(1).tenue === true && d.cible(2).reps === 6 && d.cible(2).tenue === true && d.cible(3).reps === 11 && d.nTenues === 2);
+d = D({ niveau: 'intermediaire', last: [{ serie: 1, charge: 60, reps: 8, rpe: 9 }, { serie: 2, charge: 60, reps: 8, rpe: 9 }], prev: null, rmin: 6, rmax: 12 });
+check('intermédiaire : 8 reps à RPE 9 → on garde 8 reps (pas +1 rep tout de suite)', d.mode === 'consolide' && d.cible(1).reps === 8);
 d = D({ niveau: 'debutant', last: [{ serie: 1, charge: 30, reps: 10, rpe: 9 }, { serie: 2, charge: 30, reps: 9, rpe: 8 }], prev: null });
 check('débutant : seuil 8 → la série à RPE 9 est gardée, celle à RPE 8 vise +1 rep', d.mode === 'reps' && d.cible(1).reps === 10 && d.cible(2).reps === 10);
 d = D({ niveau: 'debutant', last: ser([[35, 12], [35, 12], [35, 12]], 9, 120), prev: null });
@@ -93,15 +96,15 @@ check('jamais fait → premier essai', D({ niveau: 'debutant', last: [] }).mode 
 
 // --- Sous la fourchette (décision 29/10) : majorité des séries < rmin à RPE ≥ 9 → −1 petit pas, indicatif ---
 d = D({ niveau: 'avance', last: ser([[80, 2], [80, 2], [80, 1]], 10, 120), prev: ser([[80, 3], [80, 3], [80, 2]], 10), rmin: 6, rmax: 8 });
-check('sous la fourchette à RPE 10 → −1 petit pas, retour au bas de fourchette', d.mode === 'sous' && d.cible(1).charge === 77.5 && d.cible(1).reps === 6);
+check('sous la fourchette à RPE 10 → petit pas ≈ −5 % (80 → 75 kg, décision 03/11), retour au bas de fourchette', d.mode === 'sous' && d.cible(1).charge === 75 && d.cible(1).reps === 6);
 d = D({ niveau: 'avance', last: ser([[80, 8], [80, 7], [80, 5]], 9, 120), rmin: 6, rmax: 8 });
-check('1 série sur 3 sous le min → pas « sous » (+1 rep série par série, RPE 9)', d.mode === 'reps');
+check('1 série sur 3 sous le min → pas « sous » ; séries à RPE 9 gardées (décision 03/11) → consolide', d.mode === 'consolide');
 d = D({ niveau: 'avance', last: ser([[80, 4], [80, 4], [80, 4]], 8, 120), rmin: 6, rmax: 8 });
 check('sous le min mais RPE 8 → pas de baisse (+1 rep)', d.mode === 'reps');
 d = D({ niveau: 'avance', last: ser([[0, 4], [0, 4], [0, 4]], 10, 120), rmin: 6, rmax: 8, pas: 0 });
 check('poids du corps sous le min → jamais de baisse de charge', d.mode === 'consolide');
 d = D({ niveau: 'avance', last: [{ serie: 1, charge: 80, reps: 2, rpe: 10 }, { serie: 2, charge: 70, reps: 5, rpe: 10 }, { serie: 3, charge: 60, reps: 8, rpe: 9 }], rmin: 8, rmax: 12 });
-check('dégressif réel (80×2, 70×5, 60×8) : S1/S2 −1 pas, S3 dans la fourchette inchangée', d.mode === 'sous' && d.cible(1).charge === 77.5 && d.cible(2).charge === 67.5 && d.cible(3).charge === 60 && d.cible(3).reps === 8);
+check('dégressif réel (80×2, 70×5, 60×8) : S1 75 kg, S2 65 kg (≈ −5 %), S3 dans la fourchette inchangée', d.mode === 'sous' && d.cible(1).charge === 75 && d.cible(2).charge === 65 && d.cible(3).charge === 60 && d.cible(3).reps === 8);
 // --- Catégories d'exercice → fourchette ---
 const CM = { 'Développé incliné à la Smith': 'gros', 'Curl': 'petit' };
 check('catégorie gros (= lourd/moyen) + programme par défaut 8-12 → 6-12', JSON.stringify([S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmin, S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmax]) === '[6,12]');

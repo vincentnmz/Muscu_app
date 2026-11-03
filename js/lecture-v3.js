@@ -89,13 +89,19 @@ function _lv3Diag(data, exo, kind, nowT) {
   if (lourd) {
     var cPrev = 0; for (var i = 1; i < pts.length; i++) { if (_lv3Num(pts[i].charge) !== c0) { cPrev = _lv3Num(pts[i].charge); break; } }
     var saut = cPrev > 0 && (c0 - cPrev) / cPrev >= 0.08 && cPrev < c0;
-    var force = (_lv3ForcePoint(p0) + _lv3ForcePoint(p1)) / 2;
-    var cible = Math.floor(force / (1 + (rmin + 1.5) / 30) / pas) * pas;
-    if (cible >= c0) cible = c0 - pas;
+    // Décision porteur 03/11 : on PROPOSE un petit pas (≈ −5 %, 80 → 75 kg) ; la charge « sûre » (rmin reps à
+    // RPE 9 d'après la meilleure force estimée récente, jamais plus de −12,5 %) est donnée au choix.
+    var recent = []; pts.slice(0, 3).forEach(function (p) { (p.series || []).forEach(function (x) { recent.push(x); }); });
+    var pp = (typeof _sousPetitPas === 'function') ? _sousPetitPas(c0, pas) : c0 - pas;
+    var alt = (typeof _sousAlt === 'function') ? _sousAlt(c0, recent, rmin, pas) : null;
+    var Fb = 0; recent.forEach(function (x) { var f = _lv3ForceSerie(x); if (f > Fb) Fb = f; });
     checks.push({ s: 'ko', t: '<b>Charge : ' + kg(c0) + ' kg pour ' + r0 + ' rep' + (r0 > 1 ? 's' : '') + '</b>, ta fourchette est ' + rmin + '-' + rmax });
     if (saut) checks.push({ s: 'ko', t: 'Saut de <b>' + kg(cPrev) + ' à ' + kg(c0) + ' kg</b> (+' + Math.round((c0 - cPrev) / cPrev * 100) + ' %)' });
-    cause = 'charge'; levier = kg(cible) + ' kg, vise ' + rmin + ' reps à RPE 8-9, puis +1 rep par séance jusqu\'à ' + rmax + '.';
-    action = { exo: exo, type: 'charge', charge: cible, reps: rmin, titre: exo + ' : redescends à ' + kg(cible) + ' kg', raison: 'Pour revenir à ' + rmin + ' reps à RPE 8-9 (fourchette ' + rmin + '-' + rmax + '). Calcul : ta force estimée actuelle (≈ ' + Math.round(force) + ' kg).' };
+    cause = 'charge';
+    levier = 'au choix — ' + kg(pp) + ' kg (petit pas' + (alt ? ', attends-toi à ≈ ' + alt.repsAuPetitPas + ' reps au début' : '') + ')'
+      + (alt ? ' ou ' + kg(alt.charge) + ' kg (pour assurer ' + rmin + ' reps à RPE 9, d\'après ta meilleure série récente)' : '') + ', puis +1 rep par séance jusqu\'à ' + rmax + '. C\'est toi qui choisis.';
+    action = { exo: exo, type: 'charge', charge: pp, alt: alt ? alt.charge : null, reps: rmin, titre: exo + ' : proposé ' + kg(pp) + ' kg' + (alt ? ' (ou ' + kg(alt.charge) + ' kg)' : ''),
+      raison: 'Pour revenir dans ta fourchette ' + rmin + '-' + rmax + '. Petit pas de ≈ 5 %' + (alt ? ' ; ' + kg(alt.charge) + ' kg si tu veux être sûr de faire ' + rmin + ' reps (force estimée ≈ ' + Math.round(Fb) + ' kg)' : '') + '.' };
   }
   // 2) À l'échec répété.
   var nEchec = 0; for (var e = 0; e < Math.min(3, pts.length); e++) { if ((rpeMax(pts[e]) || 0) >= 10) nEchec++; }
@@ -213,7 +219,7 @@ function _lv3Plan(data, nowT) {
   acts.forEach(function (a) {
     var pts = (prog[a.exo] || []).filter(function (p) { return _lv3Iso(p.date) >= isoL; });
     var sets = []; pts.forEach(function (p) { (p.series || []).forEach(function (s) { sets.push(s); }); });
-    if (a.type === 'charge') a.fait = sets.some(function (s) { return Math.abs(_lv3Num(s.charge) - a.charge) <= 2.5 && _lv3Num(s.reps) >= a.reps; });
+    if (a.type === 'charge') a.fait = sets.some(function (s) { var c = _lv3Num(s.charge); return c <= a.charge + 0.01 && c >= (a.alt != null ? a.alt : a.charge) - 2.5 && _lv3Num(s.reps) >= a.reps; });
     else if (a.type === 'cible') a.fait = sets.some(function (s) { return _lv3Num(s.charge) >= a.charge && _lv3Num(s.reps) >= a.reps; });
     else if (a.type === 'rpe') a.fait = sets.some(function (s) { return _lv3Num(s.charge) >= a.charge && _lv3Num(s.rpe) > 0 && _lv3Num(s.rpe) <= 8; });
     else if (a.type === 'series') { var k = _musKey(a.muscle), tot = 0; Object.keys(dm).forEach(function (d) { if (d >= isoL) { var spm = (dm[d] && dm[d].spm) || {}; Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) tot += _lv3Num(spm[mm]); }); } }); a.fait = tot >= a.min; a.cetteSem = tot; }
@@ -274,7 +280,7 @@ function _lv3PlanHtml(data, compact) {
       return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:' + (a.fait ? '#00A854' : 'var(--accent)') + ';color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none">' + (a.fait ? '✓' : (i + 1)) + '</span>'
         + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
     }).join('')
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Calculé sur tes séances jusqu\'à dimanche ; chaque action se coche toute seule quand ta séance la réalise.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div></div>';
 }
 function _lv3PourquoiHtml(d) {
   if (!d) return '';

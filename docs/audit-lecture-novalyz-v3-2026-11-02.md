@@ -42,3 +42,9 @@ Maquette : `mockups/lecture-novalyz-v3.html` (chiffres réels de tes données).
 - **D** « En apprentissage : sommeil → performance (11 / 20 séances avec nuit mesurée) » dans la fiabilité ; chaque force estimée et chaque diagnostic indiquent sur combien de séances ils reposent.
 - Écart avec la maquette (le moteur a raison) : le leg curl n'est pas « bloqué » (refait à RPE 8 au lieu de 9 = progrès selon la règle existante) ; il entre dans le plan par le volume des ischios.
 - Test `lecture-v3` (12 cas) ; 76 suites vertes. Captures relues : Analyses, Aujourd'hui, Évolution (Smith incliné). Coup d'œil coach vérifié dans le code, pas en capture.
+
+## Ajustements porteur (03/11)
+- **« Sous la fourchette » : −15 kg, c'est trop.** Proposition = **petit pas ≈ −5 %** arrondi au pas de l'appareil (80 → 75 kg) ; la charge « sûre » est donnée **au choix** : rmin reps à RPE 9 d'après la **meilleure** force estimée des 3 dernières séances, jamais plus de −12,5 % (Smith : 75 kg — « attends-toi à ≈ 5 reps au début » — ou 70 kg). Même chose dans la saisie, Aujourd'hui, Évolution, le « Pourquoi » et le plan (« proposé 75 kg (ou 70 kg) », coché dès qu'une série entre 70 et 75 kg atteint 6 reps).
+- **RPE 9 = on garde les reps** : une série à RPE 9 n'est plus poussée à +1 rep ; on consolide jusqu'à RPE ≤ 8, puis +1 rep — **tous niveaux** (avant : intermédiaire et + à +1 rep dès RPE 9). Ex. 8 reps à RPE 9 → 8 reps visées.
+- **Le choix reste à l'athlète** : formulations « proposé / au choix / c'est toi qui choisis » (plan, leviers, cibles).
+- Tests mis à jour (`surcharge-serie`, `lecture-v3`) ; 76 suites vertes.
