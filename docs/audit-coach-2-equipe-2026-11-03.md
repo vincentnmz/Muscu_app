@@ -18,3 +18,8 @@ Captures : `mockups/audit-coach-equipe-avant.png`, `mockups/audit-coach-equipe-a
 | **E5** | **Bureau** : pas de filtres (recherche seule) ; « Dernière séance » = muscu seule (Alizé « il y a 27 j » alors que cardio il y a 9 j) ; pas de colonne Plan. | Mêmes filtres que le mobile ; colonne « Dernière activité » (« 27 j · cardio 9 j ») ; colonne « Plan x/n » ; même étiquette (E2). |
 | **E6** | Carrés : initiales (mobile et bureau) via du code séparé. | Même carré que l'accueil (`_coachAv`) → la photo apparaîtra partout d'un coup quand elle existera. |
 | **E7** | Bouton : « Lier un athlète » (mobile) / « + Inviter » (bureau). | Un seul mot : « + Lier un athlète » sur les deux. |
+
+## Décisions porteur (03/11)
+Validé : tout (E1-E7). Maquette : `mockups/coach-equipe-v2.html` (+ `-mobile.png`, `-desk.png`).
+Précision : « Pas de programme » (aucune séance et aucun programme) remplace aussi « Aucune séance » sur l'accueil, pour garder le même mot partout.
+Lier un athlète : audité le 30/10 (`docs/audit-lier-athlete-2026-10-30.md`, 6 défauts corrigés, 16 tests) ; seul le libellé change (E7).
