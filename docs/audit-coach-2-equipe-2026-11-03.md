@@ -23,3 +23,12 @@ Captures : `mockups/audit-coach-equipe-avant.png`, `mockups/audit-coach-equipe-a
 Validé : tout (E1-E7). Maquette : `mockups/coach-equipe-v2.html` (+ `-mobile.png`, `-desk.png`).
 Précision : « Pas de programme » (aucune séance et aucun programme) remplace aussi « Aucune séance » sur l'accueil, pour garder le même mot partout.
 Lier un athlète : audité le 30/10 (`docs/audit-lier-athlete-2026-10-30.md`, 6 défauts corrigés, 16 tests) ; seul le libellé change (E7).
+
+## Réalisé (03/11)
+- **E1/E2** Une seule règle (`_coachPrio`) pour l'accueil, la liste Équipe et le tableau bureau : filtres *Inactifs* (absence, pas de programme), *À surveiller* (gêne, alerte, intervention), *Prêts* ; l'étiquette dit la raison (« 47 j sans séance », « 27 j sans muscu », « Pas de programme », « Gêne légère · 02/11 »), sinon « Prêt ». Cas rare : moteur encore en vigilance alors que le coach a traité l'alerte → « Vigilance », filtre À surveiller (l'accueil ne le liste pas, comme avant).
+- **E3** 4ᵉ chiffre = Plan x/n (même plan que l'accueil et l'athlète).
+- **E4** « 8,4 », « 12 t · −41 % », « — » sans programme.
+- **E5** Bureau : filtres, « Dernière activité » avec le cardio, colonne Plan, mêmes étiquettes.
+- **E6** Carrés communs (`_coachAv`) mobile + bureau. **E7** « + Lier un athlète » partout (bouton visible dans Équipe mobile ; bureau ; texte d'aide mis à jour).
+- Accueil : « Aucune séance » devient « Pas de programme » quand l'athlète n'a ni séance ni programme.
+- Tests : `coach-accueil` (12 cas) ; 77 suites vertes. Captures relues : `mockups/coach-equipe-apres.png`, `mockups/coach-equipe-apres-desk.png` ; filtres bureau testés (À surveiller = Vincent ; Inactifs = John, Alizé, Yann).

@@ -37,4 +37,5 @@ for (const f of ['surveiller','prets','inactifs']) { await pg.evaluate((f)=>{con
 await pg.setViewportSize({width:1280,height:900}); await pg.waitForTimeout(800);
 await pg.evaluate(()=>{ try{coachDeskGo('equipe')}catch(e){console.log(e)} }); await pg.waitForTimeout(800);
 await pg.screenshot({path:ROOT+'/.work/shots/coach-equipe-desk.png'});
+for (const k of ['surveiller','prets','inactifs','all']) { await pg.evaluate((k)=>coachDeskSetCat(k),k); console.log('DESK',k, await pg.evaluate(()=>[...document.querySelectorAll('#cs-tbody .cs-trow')].filter(r=>r.style.display!=='none').map(r=>r.dataset.nom).join(','))); }
 await b.close(); srv.close();
