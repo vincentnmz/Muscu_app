@@ -91,5 +91,19 @@ const budget = function (L) { const s = seances(L); return Object.keys(s).every(
 check('P3: la durée choisie est respectée (≤ 6 exos × 3 séries par séance à 60 min)', budget(p1));
 check('P3: 4 séries max par exercice (interméd.)', p1.every(function (l) { return l.series_prevues >= 3 && l.series_prevues <= 4; }));
 
+// Volume par niveau (03/11, décision porteur) : débutant 6-12 pour tous les muscles + option A
+// (fessiers, mollets, abdos complétés jusqu'à 6) → les 5 programmes débutant atteignent le minimum partout.
+{ const Td = {}; Object.values(MUSB).forEach(function (m) { Td[m] = { min: 6, opt: 12 }; });
+  [['fb', 2], ['fb', 3], ['ppl', 3], ['ul', 4], ['split', 5]].forEach(function (c) {
+    const L = gen('masse', c[0], c[1], 75, 'debutant', { targets: Td, cat: CAT }), V = sandbox._g2VolLignes(L, CAT);
+    const manque = Object.values(MUSB).filter(function (m) { return (V[m] || 0) < 6; });
+    check('Volume débutant ' + c[0] + ' ' + c[1] + ' j : chaque muscle ≥ 6 séries/sem (manque : ' + manque.join(', ') + ')', manque.length === 0);
+    check('Volume débutant ' + c[0] + ' ' + c[1] + ' j : au plus 6 séries par exercice', L.every(function (l) { return l.series_prevues <= 6; }));
+  });
+  // L'option A ne touche pas les autres niveaux (intermédiaire : pas d'exercice ajouté hors blocs).
+  const Li = gen('masse', 'fb', 3, 60, 'intermediaire', { targets: Td, cat: CAT });
+  check('Option A réservée au débutant (intermédiaire FB 3 j 60 min : pas de Hip thrust ajouté)', !Li.some(function (l) { return /Hip thrust/i.test(l.exercice); }));
+}
+
 console.log((ko === 0 ? '✓' : '✗') + ' generateur-v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs:\n  ' + fails.join('\n  ')); process.exit(1); }

@@ -50,3 +50,15 @@ Avec « 6-12 partout » pour le débutant : pecs / dos / épaules / bras / quadr
 - **Débutant : 6-12 pour tous les muscles.** Intermédiaire / avancé / expert : la proposition ci-dessus.
 - **Option A** : le générateur ajoute fessiers, mollets, abdos jusqu'au minimum (6) dans les programmes débutant.
 - À faire : une seule table serveur par niveau (migration `volume_obti`), lue partout (athlète, coach, mail, plan, générateur) → redéploiement `index.ts`.
+
+## Réalisé (03/11)
+- **Serveur** (`index.ts`) : table unique `VOLUME_CIBLES_NIVEAU` (débutant 6-12 partout · intermédiaire 10-16 / 8-14 / abdos 6-12 · avancé et expert 12-20 / 10-18 / 8-14). `getAppData.volume_obti` = cibles du niveau de l'athlète (même format qu'avant → athlète, coach, mail, plan, « muscle en retard » suivent sans autre changement) ; `getAppData.volume_niveaux` = tous les niveaux (générateur). La table Supabase `volume_obti` n'est plus lue (aucune migration). **À redéployer.**
+- **App** : les anciennes tables (coach par niveau, Analyses « débutant 8-12 ») lisent d'abord le serveur ; elles ne servent plus que de secours hors ligne, alignées sur les mêmes valeurs.
+- **Générateur** : cibles du niveau choisi dans l'assistant. **Option A (débutant)** : fessiers / mollets / abdos ajoutés là où c'est logique (jambes ; abdos partout), jusqu'à 2 exercices au-delà de la durée choisie, sinon +1 série sur l'exercice prévu (6 max). Résultat : les 5 programmes débutant ≥ 6 séries sur chaque muscle. Contrepartie : Full Body 2 j = 10 exercices / 30 séries par séance (avant 8 / 24) ; Full Body 3 j = 9 / 27 ; PPL jambes = 7 exos / 25 séries.
+- Tests : `generateur-v2` +11 cas (39) ; 77 suites vertes.
+
+## Constat ouvert (vérifié 03/11) : intermédiaire / avancé
+Avec les nouvelles cibles, les programmes **générés** intermédiaire / avancé restent souvent **sous le minimum** dès la 1re semaine (`.work/gen-mat.cjs`) :
+- intermédiaire : seul Upper/Lower 4 j · 90 min est complet ; ex. Full Body 3 j · 60 min → pecs / dos / quadriceps 9/10, fessiers 0/10, mollets 0/8, abdos 0/6 ; PPL 3 j · 60 min → pecs 6/10…
+- avancé : seul Upper/Lower 4 j · 90 min est complet ; fessiers, mollets, abdos manquent presque partout.
+À trancher par le porteur (voir message du 03/11).

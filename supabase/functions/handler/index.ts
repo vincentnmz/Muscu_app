@@ -41,6 +41,32 @@ function getStrategieFromAnnees(annees: number): string {
 // N2 — Années de pratique EFFECTIVES = ancienneté saisie à la création + années
 // écoulées depuis la création du compte. Sans ça l'ancienneté reste FIGÉE (un « 3 ans »
 // le resterait à vie) et le niveau (débutant→expert) n'évolue jamais dans le temps.
+// ── Volume cible PAR NIVEAU (décision porteur 03/11, docs/proposition-volume-par-niveau-2026-11-03.md) ──
+// SOURCE UNIQUE des cibles (séries/muscle/semaine, séries indirectes = 0,5) : l'athlète, le coach, le mail,
+// le plan de la semaine et le générateur lisent tous `volume_obti` renvoyé par getAppData (= cette table,
+// au niveau de l'athlète). La table Supabase `volume_obti` n'est plus lue.
+// Sources : Schoenfeld 2017 (≥ 10 séries), Baz-Valle 2022 (12-20 entraînés), ACSM 2009 (débutant : peu suffit).
+const _VOL_GRANDS = ['Pectoraux', 'Dos', 'Quadriceps', 'Fessier', 'Ischio']
+const _VOL_PETITS = ['Epaule', 'Biceps', 'Triceps', 'Mollets']
+const VOLUME_CIBLES_NIVEAU: Record<string, Record<string, [number, number]>> = (() => {
+  const t = (g: [number, number], p: [number, number], ab: [number, number]) => {
+    const o: Record<string, [number, number]> = {}
+    _VOL_GRANDS.forEach(m => { o[m] = g }); _VOL_PETITS.forEach(m => { o[m] = p }); o['Abdominaux'] = ab
+    return o
+  }
+  return {
+    debutant: t([6, 12], [6, 12], [6, 12]),          // porteur : 6-12 pour tous les muscles
+    intermediaire: t([10, 16], [8, 14], [6, 12]),
+    avance: t([12, 20], [10, 18], [8, 14]),
+    expert: t([12, 20], [10, 18], [8, 14]),        // aucune étude ne distingue avancé et expert
+  }
+})()
+// Lignes au format de l'ancienne table (muscle, series_min_semaine, series_opt_semaine) pour un niveau.
+function volumeCiblesRows(niveau: string): any[] {
+  const T = VOLUME_CIBLES_NIVEAU[niveau] || VOLUME_CIBLES_NIVEAU.intermediaire
+  return Object.keys(T).map(m => ({ muscle: m, series_min_semaine: T[m][0], series_opt_semaine: T[m][1], series_max_semaine: Math.round(T[m][1] * 1.5) }))
+}
+
 function anneesEffectives(base: any, created_at: any, now: Date): number {
   const b = Number(base) || 0
   if (!created_at) return b
@@ -2341,7 +2367,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: progRows },
     { data: poidsRows },
     { data: beRows },
-    { data: volObtiRows },
+    { data: _volObtiDb },   // plus utilisée (03/11) : cibles = VOLUME_CIBLES_NIVEAU
     { data: contexteRows },
     { data: pauseRows },
     { data: cardioRows },
@@ -2392,7 +2418,10 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
   // Audit #2 : muscle canonique (sinon « Moletts » ≠ « Mollets » → séries jamais comptées).
   const perfs = (perfsAll || []).map((r: any) => ({ ...r, muscle: normMuscle(r.muscle) }))
-  for (const v of (volObtiRows || [])) (v as any).muscle = normMuscle((v as any).muscle)
+  // Cibles de volume du NIVEAU de l'athlète (ancienneté effective) — source unique (03/11).
+  const niveauAth = getNiveauExperience(anneesEffectives(athData?.annees, athData?.created_at, now))
+  const volObtiRows = volumeCiblesRows(niveauAth)
+  void _volObtiDb
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
   const pauseRow = pauseRows?.[0]
@@ -2896,7 +2925,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
-    niveau_experience: getNiveauExperience(anneesEffectives(athData?.annees, athData?.created_at, now)),
+    niveau_experience: niveauAth,
+    // Cibles de volume de TOUS les niveaux (générateur : niveau choisi dans l'assistant) — même table que volume_obti.
+    volume_niveaux: Object.fromEntries(Object.keys(VOLUME_CIBLES_NIVEAU).map(k => [k, volumeCiblesRows(k).map(r => ({ muscle: r.muscle, series_min: r.series_min_semaine, series_opt: r.series_opt_semaine }))])),
     exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la

@@ -7381,7 +7381,7 @@ function marqueurRecap(data, a) {
   } else if (volTrainedV.length > 0) {
     let below = false, allMav = true;
     volTrainedV.forEach(v => {
-      const cArr = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKeyV] : [10, 14];
+      const cArr = _volCible(v.muscle, niveauKeyV, data); if (!cArr) return;
       const mev = cArr[0] || 0, mav = cArr[1] || 0;
       const faites = v.faites || 0;
       if (faites < mev) below = true;
@@ -8327,7 +8327,7 @@ function _modeleLignes(org, n) {
     : ((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.annees_pratique != null) ? coachAthleteCourant.annees_pratique : null);
   var niv = (ann != null && typeof getNiveauExperience === 'function') ? getNiveauExperience(ann) : 'intermediaire';
   if (niv === 'expert') niv = 'avance';
-  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv, _g2VolCtx()));
+  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv, _g2VolCtx(niv)));
 }
 async function _psModele(org) {
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
@@ -14011,9 +14011,15 @@ function _maVolTargets() {
   var yrs = 0; try { yrs = Number(typeof athlete !== 'undefined' && athlete && athlete.annees_pratique) || 0; } catch (e) {}
   // Cibles de volume par niveau (séries/muscle/semaine) : MÊMES seuils que getNiveauExperience —
   // débutant 0-3, intermédiaire 4-7, avancé 8+ (avancé 8-10 et expert 11+ partagent les cibles hautes).
+  // 03/11 : cibles du serveur (niveau de l'athlète, table unique) — repère « grands muscles » (pectoraux).
+  try {
+    var _d = (typeof dernierAppData !== 'undefined') ? dernierAppData : null, _o = ((_d && _d.volume_obti) || []).filter(function (x) { return x && x.muscle === 'Pectoraux'; })[0];
+    var _nv = _d && _d.niveau_experience, _lb = { debutant: 'débutant', intermediaire: 'intermédiaire', avance: 'avancé', expert: 'expert' }[_nv];
+    if (_o && Number(_o.series_min) > 0) return { min: Number(_o.series_min), opt: Number(_o.series_opt), label: _lb || '', yrs: yrs };
+  } catch (e) {}
   var T = (yrs >= 8) ? { min: 12, opt: 20, label: 'avancé' }
     : (yrs >= 4) ? { min: 10, opt: 16, label: 'intermédiaire' }
-    : { min: 8, opt: 12, label: 'débutant' };
+    : { min: 6, opt: 12, label: 'débutant' };
   T.yrs = yrs; return T;
 }
 // Nombre de semaines des graphes de tendance, piloté par la période choisie
@@ -16289,7 +16295,7 @@ function renderDashVolumeBars(volumes, targetId) {
   }
   const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
   const rows = volumes.slice().sort((a,b) => (b.faites||0)-(a.faites||0)).map(v => {
-    const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10,14];
+    const cible = _volCible(v.muscle, niveauKey) || [10, 14];
     const optimal = cible[1], faites = v.faites || 0;
     const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
     const col = faites >= optimal ? 'var(--good)' : faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
@@ -16739,20 +16745,23 @@ function dessinerProgChartExo(mode) {
 }
 
 // Volume cible par muscle selon niveau
-const VOLUME_CIBLE = {
-  'Pectoraux':   { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
-  'Dos':         { debutant: [8,12],  intermediaire: [14,18], experimente: [18,22] },
-  'Epaule':      { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
-  'Biceps':      { debutant: [6,10],  intermediaire: [10,14], experimente: [14,20] },
-  'Triceps':     { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
-  'Quadriceps':  { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
-  'Ischio':      { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
-  'Fessier':     { debutant: [8,12],  intermediaire: [12,16], experimente: [14,20] },
-  'Mollets':     { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
-  'Abdominaux':  { debutant: [6,10],  intermediaire: [10,14], experimente: [14,20] },
-  'Jambe':       { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
-  'Aducteur':    { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
-};
+// Volume cible (03/11) : la SOURCE est le serveur (getAppData.volume_obti = cibles du niveau de l'athlète,
+// table VOLUME_CIBLES_NIVEAU d'index.ts). Cette table n'est qu'un SECOURS hors ligne, alignée sur la même décision
+// (débutant 6-12 partout · intermédiaire grands 10-16 / petits 8-14 / abdos 6-12 · avancé-expert 12-20 / 10-18 / 8-14).
+const VOLUME_CIBLE = (function () {
+  var o = {}, G = ['Pectoraux', 'Dos', 'Quadriceps', 'Fessier', 'Ischio'], P = ['Epaule', 'Biceps', 'Triceps', 'Mollets'];
+  G.forEach(function (m) { o[m] = { debutant: [6, 12], intermediaire: [10, 16], experimente: [12, 20] }; });
+  P.forEach(function (m) { o[m] = { debutant: [6, 12], intermediaire: [8, 14], experimente: [10, 18] }; });
+  o['Abdominaux'] = { debutant: [6, 12], intermediaire: [6, 12], experimente: [8, 14] };
+  return o;
+})();
+// Cible [min, opt] d'un muscle : d'abord le serveur (données affichées), sinon la table de secours.
+function _volCible(muscle, niveauKey, data) {
+  var d = data || ((typeof dernierAppData !== 'undefined') ? dernierAppData : null);
+  var o = ((d && d.volume_obti) || []).filter(function (x) { return x && x.muscle === muscle && Number(x.series_min) > 0; })[0];
+  if (o) return [Number(o.series_min), Number(o.series_opt) || Number(o.series_min)];
+  return VOLUME_CIBLE[muscle] ? VOLUME_CIBLE[muscle][niveauKey || 'intermediaire'] : null;
+}
 
 function getNiveauKey(strategie) {
   if (!strategie) return 'intermediaire';
@@ -16826,7 +16835,7 @@ function renderVolumeOptionA(volumes, targetId, niveauKey, muscleRetard) {
   }
   const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
   const rowsVol = volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
-    const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
+    const cible = _volCible(v.muscle, niveauKey) || [10, 14];
     return { muscle: v.muscle, optimal: cible[1], faites: v.faites || 0 };
   });
   const scaleMax = Math.max(1, ...rowsVol.map(r => Math.max(r.optimal, r.faites)));
@@ -19243,7 +19252,7 @@ function _g2VolLignes(lignes, cat) {
   });
   return V;
 }
-function _g2Allouer(days, cap, sets, vol) {
+function _g2Allouer(days, cap, sets, vol, niveau) {
   var T = vol.targets || {}, cat = vol.cat || [], W = {};
   var cible = function (m) { return T[m] || T._defaut || null; };
   // Budget en SÉRIES par séance = durée choisie (nb d'exercices × séries) ; ajouter un exercice
@@ -19253,7 +19262,19 @@ function _g2Allouer(days, cap, sets, vol) {
     decl.forEach(function (x) { seen[x.bk + '|' + x.si] = 1; });
     // Pool étendu (déficit seulement) : tous les angles des muscles DÉJÀ présents dans la séance.
     d.b.forEach(function (pair, bi) { var L = _G2_BLOCKS[pair[0]].slots.length; for (var si = 0; si < L; si++) if (!seen[pair[0] + '|' + si]) { seen[pair[0] + '|' + si] = 1; ext.push({ bk: pair[0], si: si, bi: bi, pk: 9 + si }); } });
-    return { decl: decl, ext: ext, keep: [], budget: cap * sets };
+    return { decl: decl, ext: ext, keep: [], budget: cap * sets, over: 0, d: d };
+  });
+  // Volume débutant, option A (porteur 03/11) : fessiers, mollets et abdos doivent atteindre leur minimum
+  // (6 séries/sem). Leurs blocs sont rendus disponibles là où c'est logique même si la séance ne les prévoit pas
+  // (fessiers / mollets : séances avec quadriceps ou ischios ; abdos : toutes les séances).
+  var _COMP = (niveau === 'debutant') ? [['fessiers', 'Fessier', /quad|ischios/], ['mollets', 'Mollets', /quad|ischios/], ['abdos', 'Abdominaux', /./]] : [];
+  _COMP.forEach(function (c) {
+    if (!_G2_BLOCKS[c[0]]) return;
+    plan.forEach(function (P) {
+      var bks = P.d.b.map(function (pr) { return pr[0]; });
+      if (bks.indexOf(c[0]) >= 0 || !bks.some(function (k) { return c[2].test(k); })) return;
+      if (!P.ext.some(function (x) { return x.bk === c[0]; })) P.ext.push({ bk: c[0], si: 0, bi: 99, pk: 20 });
+    });
   });
   var mus = function (x) { return x.mus || (x.mus = _g2MusCand(x, cat)); };
   var addW = function (mm, n) { if (mm[0]) W[mm[0]] = (W[mm[0]] || 0) + n; if (mm[1] && mm[1] !== mm[0]) W[mm[1]] = (W[mm[1]] || 0) + n / 2; };
@@ -19287,6 +19308,28 @@ function _g2Allouer(days, cap, sets, vol) {
     if (!f) break;
     add(f.P, f.x);
   }
+  // Option A : si le minimum n'est toujours pas atteint faute de place, on ajoute l'exercice quand même
+  // (au plus 2 exercices au-delà de la durée choisie par séance) — la séance s'allonge un peu.
+  _COMP.forEach(function (c) {
+    for (var g2 = 0; g2 < 8; g2++) {
+      var ci = cible(c[1]); if (!ci || (W[c[1]] || 0) >= ci.min) break;
+      var pick = null;
+      plan.forEach(function (P) {
+        if (P.over >= 2) return;
+        var x = P.ext.concat(P.decl).filter(function (y) { return y.bk === c[0] && P.keep.indexOf(y) < 0; })[0];
+        var dejaLa = P.keep.some(function (y) { return y.bk === c[0]; });
+        if (x && !dejaLa && (!pick || P.budget > pick.P.budget)) pick = { P: P, x: x };
+      });
+      if (!pick) {
+        // Plus d'exercice possible (ex. une seule séance jambes) : une série de plus sur l'exercice déjà prévu (6 max).
+        var up = null; plan.forEach(function (P) { P.keep.forEach(function (y) { if (y.bk === c[0] && (y.sets || sets) < 6 && (!up || y.sets < up.sets)) up = y; }); });
+        if (!up) break;
+        up.sets = (up.sets || sets) + 1; addW(mus(up), 1); continue;
+      }
+      if (pick.P.budget < sets) pick.P.over++;
+      add(pick.P, pick.x);
+    }
+  });
   return plan.map(function (P) { return _g2Trie(P.keep); });
 }
 // Hypertrophie / organisation → lignes genererProgramme.
@@ -19295,7 +19338,7 @@ function _genProgramme2(objectif, organisation, jours, temps, niveau, vol) {
   var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
   // Maintien = volume allégé (une série de moins, un exercice de moins par séance).
   if (objectif === 'maintien') { sets = Math.max(2, sets - 1); cap = Math.max(3, cap - 1); }
-  var alloc = (vol && vol.cat && vol.cat.length) ? _g2Allouer(days, cap, sets, vol) : null;
+  var alloc = (vol && vol.cat && vol.cat.length) ? _g2Allouer(days, cap, sets, vol, niveau) : null;
   days.forEach(function (day, di) {
     var ex = alloc ? alloc[di] : _g2Build(day, cap);
     var hasBi = ex.some(function (x) { return x.bk === 'biceps'; }), hasTri = ex.some(function (x) { return x.bk === 'triceps'; });
@@ -19470,16 +19513,18 @@ function _g2Resolve(lignes) {
   return lignes;
 }
 // Cibles de volume de l'athlète ciblé (mêmes que les Analyses : volume_obti par muscle, sinon par niveau).
-function _g2VolCtx() {
+function _g2VolCtx(niv) {
   var d = null;
   try { d = (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) ? dernierAppData : ((typeof coachAthleteData !== 'undefined') ? coachAthleteData : null); } catch (e) {}
   var T = {};
-  ((d && d.volume_obti) || []).forEach(function (o) { var m = _g2Mus(o.muscle), mn = Number(o.series_min), op = Number(o.series_opt); if (m && mn > 0) T[m] = { min: mn, opt: op > 0 ? op : mn }; });
+  // 03/11 : cibles du niveau choisi dans l'assistant (table serveur, tous niveaux), sinon celles de l'athlète.
+  var _src = (niv && d && d.volume_niveaux && d.volume_niveaux[niv]) ? d.volume_niveaux[niv] : ((d && d.volume_obti) || []);
+  _src.forEach(function (o) { var m = _g2Mus(o.muscle), mn = Number(o.series_min), op = Number(o.series_opt); if (m && mn > 0) T[m] = { min: mn, opt: op > 0 ? op : mn }; });
   try { var dt = _maVolTargets(); if (dt && dt.min) T._defaut = { min: dt.min, opt: dt.opt || dt.min }; } catch (e) {}
   return { targets: T, cat: exercicesData || [] };
 }
 function _g2Lignes() {
-  var st = _genState, lignes, vol = _g2VolCtx();
+  var st = _genState, lignes, vol = _g2VolCtx(st.niv === 'expert' ? 'expert' : st.niv);
   if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, 75, 'debutant', vol); }
   else if (st.but === 'force') { lignes = _genProgrammeForce(st.jours); }
   else { lignes = _genProgramme2(st.but || 'masse', st.org, st.jours, st.temps, st.niv, vol); }

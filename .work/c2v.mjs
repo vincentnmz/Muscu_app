@@ -1,0 +1,11 @@
+import { open } from './harness.mjs'; import fs from 'fs';
+const data = JSON.parse(fs.readFileSync(new URL('./audit/out_vinc.json', import.meta.url)));
+const { pg, close } = await open({ programme: data.programme, onboarding_vu: true, tourVu: true }, { width: 390, height: 844 });
+await pg.evaluate((d) => { document.body.classList.add('has-bottom-nav'); athlete.nom = 'Vincent'; _onbChecked = true; _etatAutoChecked = true; _appliquerAppData(d); try { _etatSkip(); } catch (e) {} document.querySelectorAll('.tj-reveal').forEach(x=>x.classList.add('in')); }, data);
+await pg.waitForTimeout(800);
+const t = await pg.evaluate(() => { const h=[...document.querySelectorAll('#tab-accueil *')].find(x=>/^Ton plan de la semaine/i.test((x.textContent||'').trim())&&x.children.length<3); if(h){h.scrollIntoView({block:'center'}); return h.parentElement.parentElement.innerText;} return 'NO PLAN'; });
+console.log('AUJ:', t); await pg.waitForTimeout(300); await pg.screenshot({ path: '/home/user/Muscu_app/.work/shots/ali-auj.png' });
+await pg.evaluate(() => { switchTab('historique'); maSetTab('resume'); }); await pg.waitForTimeout(800);
+const t2 = await pg.evaluate(() => { const h=[...document.querySelectorAll('#tab-historique *')].find(x=>/^Ton plan de la semaine/i.test((x.textContent||'').trim())&&x.children.length<3); if(h){h.scrollIntoView({block:'center'}); return h.parentElement.parentElement.innerText;} return 'NO PLAN'; });
+console.log('ANA:', t2); await pg.waitForTimeout(300); await pg.screenshot({ path: '/home/user/Muscu_app/.work/shots/ali-ana.png' });
+await close();
