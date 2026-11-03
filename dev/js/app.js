@@ -13733,7 +13733,7 @@ var _MA_INFO = {
   tonnage: { t: 'Tonnage', d: 'Le tonnage = charge × répétitions, additionné sur toutes tes séries. C\'est une mesure du volume de travail soulevé, que Novalyz somme par séance et par semaine pour suivre ta charge globale.', fiab: 'Fiable comme suivi de charge, mais ce n\'est pas une mesure d\'intensité : un gros tonnage peut venir de beaucoup de répétitions légères.' },
   volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
-  ressenti: { t: 'Effort des séances (RPE)', d: 'Après chaque séance tu notes son intensité sur l\'échelle CR-10 de Foster (0 = repos, 10 = effort maximal). Ce bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
+  ressenti: { t: 'Effort des séances (RPE)', d: 'Barres = la note que tu donnes à TOUTE la séance dans le bilan (échelle CR-10 de Foster : 0 = repos, 10 = effort maximal). Point bleu = la moyenne des RPE que tu notes à chaque série ce jour-là. Les deux sont normaux mais différents : une série proche de l\'échec est notée 8-9, la séance entière (avec les repos) souvent moins. Le bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
   acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: 'Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
   fraicheur: { t: 'Fraîcheur : es-tu reposé ?', d: 'En clair : à quel point ton corps est <b>reposé</b> aujourd\'hui. Novalyz compare ce que tu encaisses <b>d\'habitude</b> (sur plusieurs semaines) à ce que tu as fait <b>ces derniers jours</b>. Si tu as fait <b>plus que d\'habitude</b> récemment → tu es plus fatigué (fraîcheur négative) ; si tu as fait <b>moins</b> → tu es reposé (fraîcheur positive). « Charge récente » = ta charge des 7 derniers jours vs ton habitude.<br><br><span style="color:var(--text-subtle)">Détail technique : forme de fond (CTL, 42 j) − fatigue récente (ATL, 7 j) = fraîcheur (TSB %).</span>', fiab: 'Méthode reconnue et largement utilisée (modèle fitness-fatigue de Banister, base du TSB/CTL/ATL de TrainingPeaks ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
@@ -14475,13 +14475,14 @@ function _maMuscuResume(data) {
     ['Séances', String(seances), ''],
     ['Séries totales', String(r.series != null ? r.series : '—'), ''],
     ['Répétitions', String(r.reps != null ? r.reps : '—'), ''],
-    ['RPE moyen', (r.rpe_moyen != null ? String(r.rpe_moyen).replace('.', ',') : '—'), '/10'],
+    ['RPE moyen des séries', (r.rpe_moyen != null ? String(r.rpe_moyen).replace('.', ',') : '—'), '/10'],
     ['Records battus', String(nRec), '']
   ].map(function (k) { return '<div class="ma-kpi"><span class="u">' + k[0] + '</span><span class="v">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</span></div>'; }).join('');
   // Ressenti (période)
   var rsArr = _maEffortSeries(data, 'muscu').filter(function (x) { return x.valeur != null && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; });
   var rsHtml;
-  if (rsArr.length) {
+  if (rsArr.length && typeof _maEffortBloc === 'function') { try { rsHtml = _maEffortBloc(data, w, rsArr); } catch (e) { rsHtml = ''; } }   // variante A (03/11)
+  if (rsHtml) {} else if (rsArr.length) {
     var rec = rsArr.slice(0, 14).reverse();
     rsHtml = '<div class="ma-rsbox"><div class="ma-rsbars">' + rec.map(function (x) { return '<div class="b" title="RPE ' + x.valeur + '/10" style="height:' + Math.max(8, x.valeur / 10 * 100) + '%;background:' + _maRpeCol(x.valeur) + '"></div>'; }).join('') + '</div>'
       + _maRsAxis(rec, p)
@@ -14796,11 +14797,11 @@ function _maProgExo(data) {
       if (_tc) {
         var _why = _tc.mode === 'premier' ? '1re fois : trouve ta charge de travail' : ((_tc.why || '').charAt(0).toUpperCase() + (_tc.why || '').slice(1) + '.');
         aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
-          + '<div style="font-size:13px;font-weight:800;display:flex;align-items:center">Ce que Novalyz vise la prochaine fois' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>'
+          + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
           + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
           + '<div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.45">' + _maE(_why) + '</div>'
           + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>Bloqué depuis ' + b.n + ' séances</b> — ' + _maE(_leviersBlocage(data, sel)) + '</div>' : ''; })()
-          + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Sur ta série la plus lourde, même calcul que l\'écran de saisie. C\'est toi qui décides.</div></div>';
+          + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Sur ta série la plus lourde, même calcul que l\'écran de saisie. C\'est toi qui décides.</div>' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>';
       }
     }
   } catch (e) {}
@@ -17001,9 +17002,9 @@ function _tjCiblesHtml(rows) {
       + '<td style="padding:7px 0 7px 10px;border-top:1px solid var(--tj-border);text-align:right;white-space:nowrap;font-size:12.5px;font-weight:800;color:' + col + ';vertical-align:top">' + goTxt + '</td></tr>';
   }).join('');
   return '<div style="margin:10px 0 12px;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:10px 12px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px"><span style="display:inline-flex;align-items:center">Ce que Novalyz vise' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</span><span style="letter-spacing:0;text-transform:none;font-weight:600">dernière fois → aujourd\'hui</span></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px"><span>Ce que Novalyz vise</span><span style="letter-spacing:0;text-transform:none;font-weight:600">dernière fois → aujourd\'hui</span></div>'
     + '<table style="width:100%;border-collapse:collapse"><tbody>' + tr + '</tbody></table>'
-    + '<div style="font-size:10.5px;color:var(--tj-subtle);margin-top:6px;line-height:1.4">Sur ta série la plus lourde (même calcul que l\'écran de saisie). Propositions indicatives : c\'est toi qui décides.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--tj-subtle);margin-top:6px;line-height:1.4">Sur ta série la plus lourde (même calcul que l\'écran de saisie). Propositions indicatives : c\'est toi qui décides.</div>' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>';
 }
 // « Depuis ta dernière séance » : records / bloqués / sous la fourchette parmi les
 // exercices de la DERNIÈRE séance faite (date la plus récente de progression_par_exo).

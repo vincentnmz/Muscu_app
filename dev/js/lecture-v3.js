@@ -338,7 +338,7 @@ function ouvrirInfoGenerique(titre, contenu, estHtml) {
   ov.style.display = 'flex';
 }
 // ── A. « Comment Novalyz te fait progresser » (adapté au niveau) ─────────────
-function _lv3InfoBtn() { return '<button type="button" onclick="event.stopPropagation();ouvrirInfoProgression()" aria-label="Comment Novalyz te fait progresser" title="Comment Novalyz te fait progresser" style="margin-left:6px;width:18px;height:18px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:10.5px;font-weight:800;cursor:pointer;line-height:1;padding:0;vertical-align:middle;flex:none">?</button>'; }
+function _lv3InfoBtn() { return '<div style="margin-top:9px"><button type="button" onclick="event.stopPropagation();ouvrirInfoProgression()" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-a10,rgba(26,95,255,.10));color:var(--accent);border:1px solid var(--accent-a25,rgba(26,95,255,.28));border-radius:999px;padding:7px 12px;font:inherit;font-weight:800;font-size:12px;cursor:pointer">ⓘ Comment Novalyz te fait progresser ›</button></div>'; }   // bouton visible (validé 03/11)
 function ouvrirInfoProgression() {
   var d = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
   try { if (typeof _maCoach !== 'undefined' && _maCoach && typeof coachAthleteData !== 'undefined' && coachAthleteData) d = coachAthleteData; } catch (_) {}
@@ -361,4 +361,53 @@ function ouvrirInfoProgression() {
     + '<div>Celle de ton programme, sinon celle du type d\'exercice : lourd / moyen <b>6-12</b>, léger <b>8-20</b>.</div>'
     + '<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:11px;font-size:12px">Ce sont des <b>propositions</b> : c\'est toi qui choisis à chaque séance.</div>';
   ouvrirInfoGenerique('Comment Novalyz te fait progresser', html, true);
+}
+
+// ── Effort des séances (variante A validée 03/11) ─────────────────────────────
+// Barre = note de séance (bilan, CR-10) ; point bleu = RPE moyen des SÉRIES ce jour-là ; 1 séance = carte.
+function _maEffortBloc(data, w, rsArr) {
+  var esc = (typeof _maE === 'function') ? _maE : function (x) { return String(x); };
+  var dm = (data && data.historique && data.historique.daily_muscu) || {};
+  var durees = {}; (((data && data.analyses) || {}).duree_muscu || []).forEach(function (x) { if (x && x.date) durees[x.date] = x.valeur; });
+  var serieRpe = function (iso) { var o = dm[iso]; return (o && o.rpe_n) ? Math.round(o.rpe_sum / o.rpe_n * 10) / 10 : null; };
+  var col = function (v) { return (typeof _maRpeCol === 'function') ? _maRpeCol(v) : '#E07800'; };
+  var pts = (rsArr || []).slice(0, 14).reverse().map(function (x) { var iso = _lv3Iso(x.date); return { iso: iso, s: x.seance_id && !/^(muscu|cardio)_\d/.test(String(x.seance_id)) ? String(x.seance_id) : '', v: Number(x.valeur), sr: serieRpe(iso), dur: durees[iso] }; });
+  var dd = function (iso) { var p = String(iso).split('-'); return p.length === 3 ? (+p[2]) + '/' + (+p[1]) : iso; };
+  var f1 = function (x) { return String(Math.round(x * 10) / 10).replace('.', ','); };
+  var cap = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px;line-height:1.45">Note de séance = ce que tu indiques dans le bilan (0-10, toute la séance). RPE des séries = ce que tu notes à chaque série.</div>';
+  if (pts.length === 1) {
+    var p = pts[0], jours = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'], jd = new Date(p.iso + 'T12:00:00');
+    return '<div class="ma-card" style="padding:12px 14px"><div style="display:flex;gap:12px;align-items:center">'
+      + '<div style="width:54px;height:54px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:20px;flex:none;background:' + col(p.v) + '">' + f1(p.v) + '</div>'
+      + '<div style="font-size:12.5px;line-height:1.5"><b>' + (isNaN(jd.getTime()) ? '' : jours[jd.getDay()].charAt(0).toUpperCase() + jours[jd.getDay()].slice(1) + ' ') + dd(p.iso) + (p.s ? ' · ' + esc(p.s) : '') + '</b><br>Note de séance <b>' + f1(p.v) + '/10</b>'
+      + (p.sr != null ? ' · séries <b>' + f1(p.sr) + '/10</b>' : '') + (p.dur ? ' · ' + Math.round(p.dur) + ' min' : '') + '</div></div>'
+      + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Une seule séance sur la période : le graphique apparaît dès 2 séances.</div>' + cap + '</div>';
+  }
+  var W = 340, H = 196, pl = 24, pr = 8, top = 18, bot = H - 40, n = pts.length;
+  var Y = function (v) { return bot - (v / 10) * (bot - top); }, step = (W - pl - pr) / n, bw = Math.min(26, step * 0.55);
+  var g = '';
+  [10, 8, 6, 4, 2].forEach(function (v) { g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v).toFixed(0) + '" y2="' + Y(v).toFixed(0) + '" stroke="var(--border)"/><text x="' + (pl - 5) + '" y="' + (Y(v) + 3).toFixed(0) + '" font-size="9" text-anchor="end" fill="var(--text-subtle)">' + v + '</text>'; });
+  var b = '', ligne = [], courts = n > 7;
+  pts.forEach(function (p, i) {
+    var cx = pl + step * (i + 0.5);
+    b += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + Y(p.v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (bot - Y(p.v)).toFixed(1) + '" rx="5" fill="' + col(p.v) + '" opacity=".9"><title>' + dd(p.iso) + ' · séance ' + f1(p.v) + '/10' + (p.sr != null ? ' · séries ' + f1(p.sr) + '/10' : '') + '</title></rect>'
+      + '<text x="' + cx.toFixed(1) + '" y="' + (Y(p.v) + 14).toFixed(1) + '" font-size="10.5" font-weight="800" text-anchor="middle" fill="#fff">' + f1(p.v) + '</text>';   // valeur DANS la barre (le point bleu ne la cache plus)
+    if (p.sr != null) { b += '<circle cx="' + cx.toFixed(1) + '" cy="' + Y(p.sr).toFixed(1) + '" r="4" fill="var(--surface)" stroke="#1A5FFF" stroke-width="2.2"/>'; ligne.push([cx, Y(p.sr)]); }
+    if (!courts || (n - 1 - i) % 2 === 0) {   // une date sur deux, alignée sur la dernière (pas de chevauchement)
+      b += '<text x="' + cx.toFixed(1) + '" y="' + (bot + 13) + '" font-size="9.5" text-anchor="middle" fill="var(--text-muted)">' + dd(p.iso) + '</text>';
+      if (!courts && p.s) b += '<text x="' + cx.toFixed(1) + '" y="' + (bot + 25) + '" font-size="8.5" text-anchor="middle" fill="var(--text-subtle)">' + esc(p.s.length > 9 ? p.s.slice(0, 8) + '…' : p.s) + '</text>';
+    }
+  });
+  if (ligne.length > 1) b = '<path d="' + ligne.map(function (q, i) { return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join(' ') + '" fill="none" stroke="#1A5FFF" stroke-width="1.5" stroke-dasharray="3 3"/>' + b;
+  var moy = pts.reduce(function (a, p) { return a + p.v; }, 0) / n;
+  var avecS = pts.filter(function (p) { return p.sr != null; }), moyS = avecS.length ? avecS.reduce(function (a, p) { return a + p.sr; }, 0) / avecS.length : null;
+  var vmin = Math.min.apply(null, pts.map(function (p) { return p.v; })), vmax = Math.max.apply(null, pts.map(function (p) { return p.v; }));
+  var phrase = 'Tes séances sont notées <b>' + (vmin === vmax ? f1(vmin) : f1(vmin) + ' à ' + f1(vmax)) + '/10</b>'
+    + (moyS != null ? ', tes séries sont à <b>' + f1(moyS) + '/10</b> en moyenne' + ((moyS >= 8 && moyS - moy >= 1) ? ' : chaque série va près de l\'échec, la séance dans son ensemble te paraît moins dure.' : '.') : '.');
+  var kp = function (v, t) { return '<div style="flex:1;background:var(--surface2);border-radius:10px;padding:8px;text-align:center"><b style="display:block;font-size:18px">' + v + '</b><span style="font-size:10px;color:var(--text-subtle)">' + t + '</span></div>'; };
+  return '<div class="ma-card" style="padding:12px 14px">'
+    + '<div style="display:flex;gap:8px;margin-bottom:6px">' + kp(f1(moy), 'note moyenne de tes séances') + (moyS != null ? kp(f1(moyS), 'RPE moyen de tes séries') : '') + '</div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;font-family:inherit" role="img" aria-label="Effort des séances">' + g + b + '</svg>'
+    + '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-muted);margin-top:4px"><span><i style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#E07800;margin-right:5px;vertical-align:-1px"></i>Note de ta séance (bilan)</span><span><i style="display:inline-block;width:11px;height:11px;border-radius:999px;border:2px solid #1A5FFF;margin-right:5px;vertical-align:-2px;box-sizing:border-box"></i>RPE moyen de tes séries</span></div>'
+    + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-top:8px">' + phrase + '</div>' + cap + '</div>';
 }
