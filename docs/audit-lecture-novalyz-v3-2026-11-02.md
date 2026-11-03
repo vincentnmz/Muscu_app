@@ -55,3 +55,7 @@ Maquette : `mockups/lecture-novalyz-v3.html` (chiffres réels de tes données).
 - **C (b)** Charge en plus seulement à **RPE ≤ 8** (tous niveaux), comme les reps.
 - Saisie : message « sous la fourchette » aligné sur la vraie proposition (75 kg, ≈ 5 reps attendues, ou 70 kg pour assurer 6 reps).
 - Tests : `surcharge-serie` (+1), `lecture-v3` (15 cas) ; 76 suites vertes. Captures relues : écran d'aide, Évolution (« ? »).
+
+## Bouton + effort des séances (03/11, validé porteur : bouton, variante A)
+- « ? » gris remplacé par un bouton visible **« ⓘ Comment Novalyz te fait progresser › »** sous « Ce que Novalyz vise » (saisie, Aujourd'hui, Évolution).
+- **Effort des séances** (Résumé) — variante A : une barre par séance (note du bilan, largeur fixe, valeur dans la barre), point bleu = RPE moyen des séries ce jour-là, date + séance sous la barre (une date sur deux au-delà de 7 séances) ; 2 chiffres clés (note moyenne des séances · RPE moyen des séries) + une phrase ; 1 seule séance → carte (séance, note, séries, durée) au lieu d'une barre pleine largeur. Le KPI « RPE moyen » devient **« RPE moyen des séries »** ; le « ? » du bloc explique la différence entre les deux mesures. Captures relues sur tes vraies notes (semaine en cours, semaine du 26/10, octobre).
