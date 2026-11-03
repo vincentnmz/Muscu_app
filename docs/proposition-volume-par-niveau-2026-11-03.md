@@ -45,3 +45,8 @@ Programmes **débutant** proposés par Novalyz (vrai générateur `_genProgramme
 | Split 5 j | 12 | 15 | 12 | 13,5 | 12 | 9 | 11 | **5,5** | **4** | **4** |
 
 Avec « 6-12 partout » pour le débutant : pecs / dos / épaules / bras / quadriceps / ischios **atteignent le minimum dans les 5 programmes** (Full Body 2 j pile à 6). En revanche **fessiers, mollets, abdos** sont sous 6 dans 3 à 4 programmes → l'app signalerait « sous le minimum » dès la 1re semaine d'un programme qu'elle a elle-même proposé (même défaut que P3 du 01/11).
+
+## Décision porteur (03/11)
+- **Débutant : 6-12 pour tous les muscles.** Intermédiaire / avancé / expert : la proposition ci-dessus.
+- **Option A** : le générateur ajoute fessiers, mollets, abdos jusqu'au minimum (6) dans les programmes débutant.
+- À faire : une seule table serveur par niveau (migration `volume_obti`), lue partout (athlète, coach, mail, plan, générateur) → redéploiement `index.ts`.
