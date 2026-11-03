@@ -23,3 +23,13 @@ Données : Vincent (copie 02/11) et Alizé (base 03/11), rejouées. Captures : `
 | **F7** | Repère « **Progression — pas assez de données** » (ancien calcul 7 j / 7 j) alors que records et progrès sont listés au-dessus. « Trapèze 1.5 ». | Repère « Plan 0/3 » (ou « 4 records · 13 exos en hausse »). « 1,5 ». |
 | **F8** | **Prochaine séance à faire** : ne montre pas ce que Novalyz va proposer (Pendulum +3 séries, Smith 75 kg). | Repère sur l'exercice : « Novalyz propose : +3 séries » / « 75 kg (ou 70) », avec « modifier ». |
 | **F9** | **Bloc IA** actif en apparence (boutons, champ) mais la clé n'est pas posée : chaque question répond « pas encore activé… *Tes* analyses… ». | Tant que l'IA n'est pas active : bloc « Bientôt » non cliquable (comme l'athlète). |
+
+## Décisions porteur (03/11)
+Validé : tout (F1-F9). Maquette : `mockups/coach-fiche-v2.html` (+ `-vincent.png`, `-alize.png`, `-desk.png`).
+
+## F10 — Volume cible selon le niveau (remarque porteur 03/11 : « le volume par niveau de l'athlète n'a pas l'air bon »)
+Vérifié dans le code :
+- **Serveur (`volume_obti`, ce que voit l'athlète, mail, plan de la semaine)** : **une seule table, la même pour tous les niveaux** (pecs 8-14, dos 10-16, épaules 8-14, biceps 8-14, triceps 6-12, quadriceps 8-14, ischio 6-12, fessier 8-14, mollets 8-14, abdos 6-13). Alizé (débutante) et Vincent (intermédiaire) ont les mêmes cibles.
+- **App (`VOLUME_CIBLE`, côté coach : statut, hub volume, alerte « volume insuffisant » ; + 3 écrans athlète)** : une table **par niveau** (ex. pecs débutant 8-12 · intermédiaire 12-16 · avancé/expert 16-20), source non documentée ; muscle absent (trapèze) → 10-14 inventé.
+- Donc : niveau ignoré là où l'athlète regarde, et deux chiffres différents selon l'écran.
+À trancher par le porteur : valeurs par niveau (débutant / intermédiaire / avancé / expert) et par muscle, rangées **dans une seule table serveur**, lue partout.

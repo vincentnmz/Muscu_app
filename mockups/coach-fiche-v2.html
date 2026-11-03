@@ -1,0 +1,158 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette fiche athlète coach v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.w{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;padding:20px;align-items:flex-start}
+.ph{width:390px;background:#F4F7FF;border-radius:24px;padding:14px 0 18px;box-shadow:0 8px 30px rgba(14,26,51,.12)}
+h3{margin:2px 16px 10px;font-size:13px;color:#55627E}
+.hero{margin:0 14px 12px;border-radius:18px;padding:14px 16px;color:#fff}
+.hero .n{font-size:16px;font-weight:800}.hero .s{font-size:11.5px;opacity:.9}.hero .e{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;opacity:.9;margin-top:10px}.hero .v{font-size:22px;font-weight:800}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pills span{background:rgba(255,255,255,.2);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800}
+.act{display:flex;gap:8px;margin:0 14px 12px}.act span{flex:1;text-align:center;border-radius:12px;padding:10px 6px;font-size:12px;font-weight:800}
+.sec{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8A96B0;font-weight:800;margin:14px 18px 7px;display:flex;align-items:center;gap:6px}.sec .ct{margin-left:auto;color:#1A5FFF}
+.c{background:#fff;border:1px solid #DCE4F5;border-radius:16px;padding:12px 14px;margin:0 14px 10px}
+.dec{border-left:4px solid #f59f00}.dec.bad{border-left-color:#f0505a}
+.tg{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:6px;display:inline-block}
+.t{font-size:13.5px;font-weight:800;margin-top:5px}.f{font-size:12px;color:#55627E;line-height:1.5;margin-top:3px}
+.prop{margin-top:7px;background:#EEF4FF;border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45}.prop b{color:#1A5FFF}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.btn{font-size:11.5px;font-weight:800;border-radius:9px;padding:6px 10px;border:1px solid #CFDCFF;color:#1A5FFF;background:#fff}.btn.p{background:#1A5FFF;color:#fff;border-color:#1A5FFF}.btn.g{color:#55627E;border-color:#DCE4F5}
+.row{display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:12.5px;line-height:1.45;border-top:1px solid #F0F3FA}.row:first-child{border-top:0}.row i{font-style:normal;width:16px;flex:none;text-align:center}
+.sub{color:#8A96B0;font-size:11px}
+.vol{display:grid;grid-template-columns:72px 1fr 64px;gap:6px;align-items:center;font-size:11.5px;margin-top:5px}.bar{height:7px;background:#EEF2FB;border-radius:9px;position:relative;overflow:hidden}.bar b{position:absolute;left:0;top:0;bottom:0;border-radius:9px}
+.rep{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 14px 10px}.rep>div{background:#fff;border:1px solid #DCE4F5;border-radius:13px;padding:9px 11px}.rep .l{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A96B0}.rep .v{font-size:17px;font-weight:800;margin-top:3px}.rep .s{font-size:10.5px;color:#8A96B0}
+.ex{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #F0F3FA;font-size:12.5px}.ex:first-of-type{border-top:0}.nv{font-size:10.5px;font-weight:800;color:#1A5FFF;background:#EEF4FF;border-radius:6px;padding:2px 6px;white-space:nowrap}
+.soon{opacity:.75;background:linear-gradient(135deg,#F4F0FF,#EEF4FF)}
+.new{outline:2px dashed #1A5FFF;outline-offset:3px}.note{font-size:10.5px;color:#1A5FFF;font-weight:700;margin:-4px 18px 10px}
+.desk{width:1000px;background:#F4F7FF;border-radius:18px;box-shadow:0 8px 30px rgba(14,26,51,.12);padding:16px 6px}
+.cols{display:grid;grid-template-columns:1.25fr 1fr;gap:4px}
+</style></head><body><div class="w">
+
+<!-- ===================== VINCENT MOBILE ===================== -->
+<div class="ph"><h3>Fiche ▸ Aperçu — Vincent (après)</h3>
+<div class="hero" style="background:linear-gradient(135deg,#12B76A,#0A9455)"><div class="n">Vincent</div><div class="s">Intermédiaire · 83 kg</div>
+<div class="e">État du jour</div><div class="v">Prêt</div><div class="s">récup excellente · 1/4 séances cette semaine · dernière le 02/11</div>
+<div class="pills"><span>Sommeil bon</span><span>Fatigue aucune</span><span class="new">Douleur légère (2/5)</span></div><div class="s" style="margin-top:6px">Ressenti du 30/10</div></div>
+<div class="note">F1 : même lecture de la douleur partout</div>
+<div class="act"><span style="background:#7A5AF8;color:#fff">▶ Saisir sa séance</span><span style="background:#fff;border:1px solid #CFDCFF;color:#1A5FFF">✉ Écrire</span><span style="background:#fff;border:1px solid #CFDCFF;color:#1A5FFF">✎ Programme</span></div>
+
+<div class="sec new">① À décider <span class="ct">3</span></div>
+<div class="note">F6 : alertes + points ouverts, chacun avec ses actions · F3 : la fausse alerte « Volume insuffisant » (trapèze) disparaît</div>
+<div class="c dec bad"><span class="tg" style="background:#f0505a1a;color:#c0303a">Charge</span>
+<div class="t">Développé incliné à la Smith : sous la fourchette</div>
+<div class="f">29/10 : <b>80 kg × 1 à RPE 10</b> (fourchette 6-12) · saut de 70 → 80 kg (+14 %) · 3 séances d'affilée avec une série à RPE 10</div>
+<div class="prop new">Proposé à l'athlète : <b>75 kg</b> (≈ 5 reps attendues) <b>ou 70 kg</b> (6 reps à RPE 9)</div>
+<div class="btns"><span class="btn p">✎ Modifier dans le programme</span><span class="btn">✉ Écrire à Vincent</span><span class="btn g">Marquer traité</span></div></div>
+<div class="note">F5 : faits + ce que Novalyz a proposé + actions — pas de consigne au coach</div>
+<div class="c dec"><span class="tg" style="background:#f59f001a;color:#b86e00">Effort</span>
+<div class="t">Élévation frontale à la poulie : RPE en hausse à charge égale</div>
+<div class="f">7,5 kg : RPE 8 → 9 sur les 2 dernières séances</div>
+<div class="prop">Proposé à l'athlète : <b>garder 7,5 kg, viser RPE 8</b></div>
+<div class="btns"><span class="btn p">✎ Modifier dans le programme</span><span class="btn">✉ Écrire</span><span class="btn g">Marquer traité</span></div></div>
+<div class="c dec"><span class="tg" style="background:#f59f001a;color:#b86e00">Douleur</span>
+<div class="t">Gêne légère signalée</div>
+<div class="f">Questionnaire du 30/10 : douleur 2/5 · zone non précisée</div>
+<div class="btns"><span class="btn p">✉ Lui demander où</span><span class="btn g">Marquer traité</span></div></div>
+
+<div class="sec">② Entraînement</div>
+<div class="c">
+<div class="row"><i>★</i><div><b>Records</b> — Développé décliné machine 60 kg × 8 · Tirage horizontal large 80 kg × 7 · Tirage vertical serré 70 kg × 8</div></div>
+<div class="row"><i>▲</i><div><b>Progresse</b> — Décliné Smith 3 séries à 8 au lieu de 1 · Écarté machine 2 séries à 9 au lieu de 1 · Traction même niveau à RPE 8 au lieu de 9</div></div>
+<div class="row"><i>🔥</i><div><b>Effort</b> — RPE moyen des séries 8,4 (7 j) · stable</div></div>
+<div class="row new"><i>➜</i><div><b>Plan de la semaine proposé à l'athlète</b> (0/3 fait)<br>Smith incliné 75 kg (ou 70) · Quadriceps +3 séries de Pendulum · Ischio +2 séries de Leg curl allongé <span class="sub">· modifiable dans le programme</span></div></div>
+</div>
+<div class="c new"><div style="font-size:12.5px;font-weight:800">Séries des 7 derniers jours <span class="sub" style="font-weight:600">· cible de l'athlète (min-opt)</span></div>
+<div class="vol"><span>Pectoraux</span><div class="bar"><b style="width:100%;background:#12B76A"></b></div><span>18 · 8-14</span></div>
+<div class="vol"><span>Dos</span><div class="bar"><b style="width:100%;background:#12B76A"></b></div><span>18 · 10-16</span></div>
+<div class="vol"><span>Épaules</span><div class="bar"><b style="width:100%;background:#12B76A"></b></div><span>18 · 8-14</span></div>
+<div class="vol"><span>Biceps</span><div class="bar"><b style="width:57%;background:#12B76A"></b></div><span>8 · 8-14</span></div>
+<div class="vol"><span>Triceps</span><div class="bar"><b style="width:75%;background:#12B76A"></b></div><span>9 · 6-12</span></div>
+<div class="vol"><span>Quadriceps</span><div class="bar"><b style="width:43%;background:#f59f00"></b></div><span>6 · 8-14</span></div>
+<div class="vol"><span>Ischio</span><div class="bar"><b style="width:33%;background:#f59f00"></b></div><span>4 · 6-12</span></div>
+<div class="vol"><span>Fessier</span><div class="bar"><b style="width:14%;background:#f59f00"></b></div><span>2 · 8-14</span></div>
+<div class="sub" style="margin-top:6px">Mêmes cibles que celles de l'athlète (serveur). Muscle sans cible (ex. trapèze) : pas d'alerte.</div></div>
+<div class="note">F2 : vrais 7 jours (avant : « Dos, Jambes non travaillés ») · F3 : une seule source de cibles</div>
+
+<div class="sec">③ État & récup</div>
+<div class="c">
+<div class="row"><i style="color:#12B76A">●</i><div><b>Récupération</b> excellente</div></div>
+<div class="row"><i style="color:#12B76A">●</i><div><b>Sommeil</b> bon · dans sa normale</div></div>
+<div class="row"><i style="color:#12B76A">●</i><div><b>Fatigue musc.</b> aucune · dans sa normale</div></div>
+<div class="row"><i style="color:#f59f00">●</i><div><b>Douleur</b> légère (2/5) · 30/10</div></div>
+<div class="row"><i style="color:#12B76A">●</i><div><b>Sommeil (montre)</b> 8 h 15 / nuit (2 nuits) · normale 7 h 40</div></div>
+<div class="row"><i style="color:#8A96B0">●</i><div><b>Pas</b> 2 629 / jour (7 j)</div></div>
+<div class="row"><i style="color:#8A96B0">●</i><div><b>Cardio</b> dernière sortie il y a 31 j</div></div>
+<div class="row"><i style="color:#8A96B0">●</i><div><b>Poids</b> 83 kg · −1 kg depuis le 23/06</div></div>
+</div>
+<div class="note">F4/F5 : faits seuls (plus de « manque de cardio »)</div>
+
+<div class="sec">④ Repères & prochaine séance</div>
+<div class="rep"><div><div class="l">Régularité</div><div class="v">1/4</div><div class="s">séances / objectif</div></div><div><div class="l">ACWR</div><div class="v">0,88</div><div class="s">zone optimale</div></div>
+<div><div class="l">Dernière séance</div><div class="v">02/11</div><div class="s">pec epaule · 18 séries</div></div><div class="new"><div class="l">Plan</div><div class="v">0/3</div><div class="s">fait cette semaine</div></div></div>
+<div class="note">F7 : « Plan 0/3 » remplace « Progression — pas assez de données »</div>
+<div class="c"><div style="display:flex;justify-content:space-between"><b style="font-size:12.5px">Prochaine séance : dos jambes</b><span class="btn" style="padding:3px 8px">Programme →</span></div>
+<div class="ex"><span>Traction</span><span>4 × 8–12</span></div>
+<div class="ex"><span>T-bar row</span><span>3 × 8–12</span></div>
+<div class="ex"><span>Tirage vertical uni poulie</span><span>3 × 8–12</span></div>
+<div class="ex new"><span>Pendulum</span><span>3 × 8–12 <span class="nv">Novalyz propose +3 séries</span></span></div>
+<div class="ex"><span>Leg extension</span><span>3 × 8–12</span></div>
+<div class="ex"><span>Leg curl allongé</span><span>3 × 8–12 <span class="nv">+2 séries</span></span></div></div>
+<div class="note">F8 : ce que Novalyz va proposer est visible avant la séance</div>
+
+<div class="c soon new"><b style="font-size:12.5px">✦ Analyse Novalyz IA · ce client</b> <span class="tg" style="background:#fff;color:#7A5AF8">Bientôt</span><div class="f">Posera des questions sur les données de l'athlète. Pas encore activée.</div></div>
+<div class="note">F9 : bloc IA en « Bientôt » tant qu'il n'est pas activé</div>
+</div>
+
+<!-- ===================== ALIZÉ MOBILE ===================== -->
+<div class="ph"><h3>Fiche ▸ Aperçu — Alizé (après)</h3>
+<div class="hero" style="background:linear-gradient(135deg,#F59F00,#D97706)"><div class="n">Alizé</div><div class="s">Débutante · 74 kg</div>
+<div class="e">État du jour</div><div class="v">Vigilance</div><div class="s">récup moyenne · 0/1 séance cette semaine</div>
+<div class="pills"><span>Sommeil bon</span><span>Fatigue importante (4/5)</span></div><div class="s" style="margin-top:6px">Ressenti du 28/10</div></div>
+<div class="c new" style="font-size:12.5px;line-height:1.5"><b>Activité</b> — Muscu : dernière le <b>07/10 (27 j)</b> · Cardio : dernière le <b>25/10 (9 j)</b></div>
+<div class="note">F4 : l'essentiel en tête de fiche</div>
+<div class="act"><span style="background:#7A5AF8;color:#fff">▶ Saisir sa séance</span><span style="background:#fff;border:1px solid #CFDCFF;color:#1A5FFF">✉ Écrire</span><span style="background:#fff;border:1px solid #CFDCFF;color:#1A5FFF">✎ Programme</span></div>
+
+<div class="sec">① À décider <span class="ct">2</span></div>
+<div class="c dec"><span class="tg" style="background:#f59f001a;color:#b86e00">Régularité</span>
+<div class="t">Pas de muscu depuis 27 jours</div>
+<div class="f">Dernière séance muscu le 07/10 · cardio le 25/10 · objectif 1 séance / semaine</div>
+<div class="prop">Proposé à l'athlète : <b>reprendre 1 séance de muscu cette semaine</b> (ses cibles : « refais ta dernière fois, sans pousser »)</div>
+<div class="btns"><span class="btn p">✉ Écrire à Alizé</span><span class="btn">✎ Programme</span><span class="btn g">Marquer traité</span></div></div>
+<div class="c dec"><span class="tg" style="background:#f59f001a;color:#b86e00">Bien-être</span>
+<div class="t">Fatigue importante</div>
+<div class="f">Questionnaire du 28/10 : fatigue 4/5 · courbatures 4/5 · stress 3/5 · sommeil 4/5</div>
+<div class="btns"><span class="btn p">✉ Écrire</span><span class="btn g">Marquer traité</span></div></div>
+<div class="note">L'alerte « récupération modérée » est fondue dans celle-ci (même questionnaire)</div>
+
+<div class="sec">② Entraînement</div>
+<div class="c">
+<div class="row"><i>➜</i><div><b>Plan de la semaine proposé à l'athlète</b> (0/1 fait)<br>Reprendre : 1 séance de muscu cette semaine</div></div>
+<div class="row"><i>📅</i><div><b>Dernière séance</b> — 07/10 · Libre · 10 séries · RPE 8,3</div></div>
+</div>
+<div class="sec">③ État & récup</div>
+<div class="c">
+<div class="row"><i style="color:#f59f00">●</i><div><b>Récupération</b> moyenne</div></div>
+<div class="row"><i style="color:#e5484d">●</i><div><b>Fatigue musc.</b> importante (4/5) · 28/10</div></div>
+<div class="row"><i style="color:#12B76A">●</i><div><b>Sommeil</b> bon · montre 8 h 14 (1 nuit)</div></div>
+<div class="row"><i style="color:#8A96B0">●</i><div><b>Cardio</b> dernière sortie il y a 9 j</div></div>
+<div class="row"><i style="color:#8A96B0">●</i><div><b>Poids</b> 74 kg (1 seule pesée)</div></div>
+</div>
+<div class="sec">④ Repères & prochaine séance</div>
+<div class="rep"><div><div class="l">Régularité</div><div class="v">0/1</div><div class="s">séances / objectif</div></div><div><div class="l">Plan</div><div class="v">0/1</div><div class="s">fait cette semaine</div></div></div>
+</div>
+
+<!-- ===================== VINCENT BUREAU ===================== -->
+<div class="desk"><h3>Fiche ▸ Aperçu — Vincent, ordinateur (même contenu, 2 colonnes)</h3>
+<div class="cols"><div>
+<div class="sec">① À décider <span class="ct">3</span></div>
+<div class="c dec bad"><span class="tg" style="background:#f0505a1a;color:#c0303a">Charge</span><div class="t">Développé incliné à la Smith : sous la fourchette</div><div class="f">29/10 : <b>80 kg × 1 à RPE 10</b> (6-12) · saut 70 → 80 kg (+14 %)</div><div class="prop">Proposé à l'athlète : <b>75 kg</b> ou <b>70 kg</b></div><div class="btns"><span class="btn p">✎ Modifier dans le programme</span><span class="btn">✉ Écrire</span><span class="btn g">Marquer traité</span></div></div>
+<div class="c dec"><span class="tg" style="background:#f59f001a;color:#b86e00">Effort</span><div class="t">Élévation frontale poulie : RPE 8 → 9 à 7,5 kg</div><div class="prop">Proposé à l'athlète : <b>garder 7,5 kg, viser RPE 8</b></div><div class="btns"><span class="btn p">✎ Programme</span><span class="btn">✉ Écrire</span><span class="btn g">Marquer traité</span></div></div>
+<div class="c dec"><span class="tg" style="background:#f59f001a;color:#b86e00">Douleur</span><div class="t">Gêne légère (2/5) · 30/10</div><div class="btns"><span class="btn p">✉ Lui demander où</span><span class="btn g">Marquer traité</span></div></div>
+<div class="sec">② Entraînement</div>
+<div class="c"><div class="row"><i>★</i><div><b>Records</b> — Décliné machine, Tirage horizontal, Tirage vertical</div></div><div class="row"><i>▲</i><div><b>Progresse</b> — Décliné Smith, Écarté machine, Traction</div></div><div class="row"><i>➜</i><div><b>Plan proposé</b> (0/3) — Smith 75 kg · Quadriceps +3 · Ischio +2</div></div></div>
+</div><div>
+<div class="hero" style="background:linear-gradient(135deg,#12B76A,#0A9455)"><div class="n">Vincent · Prêt</div><div class="s">récup excellente · 1/4 cette semaine · dernière le 02/11</div><div class="pills"><span>Sommeil bon</span><span>Fatigue aucune</span><span>Douleur légère (2/5)</span></div></div>
+<div class="rep"><div><div class="l">Régularité</div><div class="v">1/4</div></div><div><div class="l">ACWR</div><div class="v">0,88</div></div><div><div class="l">Dernière séance</div><div class="v">02/11</div></div><div><div class="l">Plan</div><div class="v">0/3</div></div></div>
+<div class="c"><b style="font-size:12.5px">Prochaine séance : dos jambes</b><div class="ex"><span>Pendulum</span><span>3 × 8–12 <span class="nv">+3 séries</span></span></div><div class="ex"><span>Leg curl allongé</span><span>3 × 8–12 <span class="nv">+2 séries</span></span></div><div class="sub">+ 4 autres exercices</div></div>
+<div class="c"><b style="font-size:12.5px">Séries 7 derniers jours</b><div class="f">Pecs 18 · Dos 18 · Épaules 18 · Bras 17 · Jambes 12 (quadriceps 6, ischio 4, fessier 2 — sous leur cible)</div></div>
+</div></div></div>
+</div></body></html>
