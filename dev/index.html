@@ -1038,6 +1038,8 @@
     <!-- ONGLET PROGRAMME -->
     <div id="cdtab-programme" style="display:none">
             <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</h2></div>
+      <!-- Zones prioritaires de l'athlète, modifiables par le coach (03/11) — renderCoachZones -->
+      <div class="card" id="cd-zones" style="margin-bottom:10px"></div>
       <div class="card">
         <div id="cd-programme-content"><div class="loader">Chargement...</div></div>
         <button class="btn btn-outline" style="margin-top:10px" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
@@ -2051,6 +2053,12 @@
             <select id="prof-sexe" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
               <option value="">Non renseigné</option><option value="H">Homme</option><option value="F">Femme</option>
             </select>
+          </div>
+          <!-- Zones à développer en priorité (03/11) — enregistrées à chaque choix (_profZone) -->
+          <div style="margin-top:12px;">
+            <label>Zones à développer en priorité <span style="font-weight:500;color:var(--text-subtle);text-transform:none;letter-spacing:0">— 2 max</span></label>
+            <div id="prof-zones" style="margin-top:6px"></div>
+            <div style="font-size:11px;color:var(--text-subtle);margin-top:7px;line-height:1.45">Change tes cibles de volume et ton plan de la semaine. Le programme n'est pas modifié tout seul : <a href="#" onclick="ouvrirGenProgramme();return false;" style="color:var(--accent);font-weight:700">régénérer avec mes zones</a>.</div>
           </div>
           <button onclick="enregistrerProfil()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer mon profil</button>
           <div id="prof-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>

@@ -60,7 +60,7 @@ function _lv3Volume(data, muscle, nowT) {
     if (v > 0) { s += v; j++; }
   });
   var cible = ((data && data.volume_obti) || []).filter(function (o) { return o && _musKey(o.muscle) === k; })[0] || null;
-  return { parSem: Math.round(s / 4 * 10) / 10, freq: Math.round(j / 4 * 10) / 10, min: cible ? _lv3Num(cible.series_min) : null, opt: cible ? _lv3Num(cible.series_opt) : null };
+  return { parSem: Math.round(s / 4 * 10) / 10, freq: Math.round(j / 4 * 10) / 10, min: cible ? _lv3Num(cible.series_min) : null, opt: cible ? _lv3Num(cible.series_opt) : null, prio: !!(cible && cible.prio) };
 }
 
 // ── B. Diagnostic ─────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ function _lv3Diag(data, exo, kind, nowT) {
       if (!cause) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
         cause = 'volume'; levier = '+' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo + ' (' + _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem).';
-        action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, titre: (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ton minimum.' };
+        action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
       }
     } else checks.push({ s: 'ok', t: 'Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem — pas en cause' });
   }
@@ -204,7 +204,7 @@ function _lv3Plan(data, nowT) {
       var V = _lv3Volume(D, musProg[k].m, lundi.getTime());
       if (V.min && V.parSem > 0 && V.parSem < V.min) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
-        push({ exo: musProg[k].exo, type: 'series', muscle: musProg[k].m, min: V.min, add: add, titre: musProg[k].m + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + musProg[k].exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ton minimum.' });
+        push({ exo: musProg[k].exo, type: 'series', muscle: musProg[k].m, min: V.min, add: add, titre: (V.prio ? '★ ' : '') + musProg[k].m + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + musProg[k].exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') });
       }
     });
   } catch (_) {}
