@@ -41,6 +41,12 @@ eq(P && !P.actions[0].fait, 'C : pas encore faite');
 data.historique.progression_par_exo['Smith incliné'].unshift(pt('2026-11-02', 72.5, 6, 9, 'pec'));
 const P2 = sb._lv3Plan(data, now);
 eq(P2 && P2.actions[0].fait === true && P2.actions[0].charge === 75, 'C : 72,5 kg × 6 fait lundi (entre 70 et 75) → cochée, plan inchangé', P2 && P2.actions[0]);
+// B (niveau, 03/11) — aucune cause visible : levier différent pour un débutant et un avancé.
+const plat = (d) => pt(d, 50, 10, 8, 'pec');
+const dNiv = (niv) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = niv; ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; }); dd.historique.progression_par_exo['Rowing'] = [plat('2026-10-29'), plat('2026-10-22'), plat('2026-10-15'), plat('2026-10-08')]; dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
+eq(/garde cet exercice et ta régularité/.test(dNiv('debutant').levier), 'B niveau : débutant → garder l\'exercice et la régularité', dNiv('debutant').levier);
+eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau : avancé → changer de fourchette ou de variante 3-4 semaines', dNiv('avance').levier);
+eq(sb.LV3_BLOQUE_N.debutant === 2 && sb.LV3_BLOQUE_N.intermediaire === 3 && sb.LV3_BLOQUE_N.avance === 4, 'B niveau : « bloqué » après 2 / 3 / 4 séances');
 // D — sommeil → performance en apprentissage.
 data.sante_historique = [{ date: '2026-10-29', sommeil_min: 450 }];
 const A = sb._lv3Apprentissage(data);

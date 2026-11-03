@@ -52,7 +52,9 @@ d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 7, 12
 check('intermédiaire : 1 fois avec RPE ≤ 7 → charge', d.mode === 'charge');
 // --- Règle validée le 01/11 : série par série, RPE 9 n'est plus un blocage (intermédiaire et +) ---
 d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 9, 120), prev: top });
-check('intermédiaire : haut de fourchette 2 séances de suite, RPE 9 → charge (RPE 9 ne bloque plus)', d.mode === 'charge' && d.cible(1).charge === 37.5);
+check('intermédiaire : haut de fourchette 2 séances de suite mais RPE 9 → pas de charge, on consolide (décision 03/11, C b)', d.mode === 'consolide' && d.cible(1).charge === 35);
+d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 8, 120), prev: top });
+check('intermédiaire : haut de fourchette 2 séances de suite à RPE 8 → charge', d.mode === 'charge' && d.cible(1).charge === 37.5);
 d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 10, 120), prev: top });
 check('intermédiaire : haut atteint mais à l\'échec (RPE 10) → pas de charge, tout gardé (consolide)', d.mode === 'consolide' && d.cible(1).charge === 35 && d.cible(1).reps === 12);
 d = D({ niveau: 'intermediaire', last: [{ serie: 1, charge: 90, reps: 7, rpe: 9 }, { serie: 2, charge: 90, reps: 6, rpe: 10 }, { serie: 3, charge: 75, reps: 10, rpe: 8 }], prev: null, rmin: 6, rmax: 12 });

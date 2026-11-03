@@ -138,7 +138,11 @@ function _lv3Diag(data, exo, kind, nowT) {
   var pourquoi = '';
   var ko = checks.filter(function (c) { return c.s === 'ko'; });
   if (ko.length) pourquoi = ko.slice(0, 2).map(function (c) { return c.t; }).join(' · ');
-  if (!cause) levier = 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure 2 séances de plus, change de fourchette ou de variante.';
+  // Levier sans cause trouvée : selon le niveau (03/11).
+  var niv = _lv3Niveau(data);
+  if (!cause) levier = niv === 'debutant' ? 'aucune cause visible dans tes données — à ton niveau, garde cet exercice et ta régularité avant de changer quoi que ce soit, en visant RPE 8-9.'
+    : (niv === 'avance' || niv === 'expert') ? 'aucune cause visible dans tes données — à ton niveau, un plateau est fréquent : change de fourchette (ex. 6-8 ↔ 10-12) ou de variante pendant 3-4 semaines.'
+    : 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure 2 séances de plus, change de fourchette ou de variante.';
   var n = pts.filter(function (p) { return (nowT - _lv3T(p.date)) / 864e5 <= 42; }).length;
   var sem = Math.max(1, Math.round((_lv3T(pts[0].date) - _lv3T(pts[Math.min(pts.length, n) - 1].date)) / 864e5 / 7));
   return { exo: exo, kind: kind, checks: checks, cause: cause, pourquoi: pourquoi, levier: levier, action: action, n: n, sem: sem, rmin: rmin, rmax: rmax };
@@ -261,7 +265,9 @@ function _lv3ForcesHtml(data) {
   return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
     + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:2px">Ta force estimée · 6 semaines</div>'
     + rows.replace('border-top:1px solid var(--border);', '')
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px;line-height:1.45">Force estimée = charge × reps <b>+ les reps qu\'il te restait</b> (10 − RPE). Un même 80 kg × 8 compte plus à RPE 7 qu\'à RPE 9. Repère, pas un test de 1RM.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px;line-height:1.45">Force estimée = charge × reps <b>+ les reps qu\'il te restait</b> (10 − RPE). Un même 80 kg × 8 compte plus à RPE 7 qu\'à RPE 9. Repère, pas un test de 1RM.'
+    + (function () { var nv = _lv3Niveau(data); return nv === 'debutant' ? ' À ton niveau, la force monte souvent d\'une séance à l\'autre.' : (nv === 'avance' || nv === 'expert') ? ' À ton niveau, la progression est lente : quelques % sur plusieurs semaines, c\'est déjà bien.' : ''; })()
+    + '</div></div>';
 }
 function _lv3PlanHtml(data, compact) {
   var P = null; try { P = _lv3Plan(data); } catch (_) {}
@@ -302,4 +308,57 @@ function _lv3ApprentissageHtml(data) {
   return '<div style="font-size:11.5px;color:var(--text-muted);margin-top:9px">En apprentissage : sommeil → performance</div>'
     + '<div style="display:flex;gap:9px;align-items:center;font-size:11.5px;color:var(--text-muted);margin-top:4px"><div style="flex:1;height:6px;background:var(--border);border-radius:9px;overflow:hidden"><i style="display:block;height:100%;width:' + Math.round(a.n / a.seuil * 100) + '%;background:var(--text-subtle)"></i></div><span style="flex:none">' + a.n + ' / ' + a.seuil + ' séances avec nuit mesurée</span></div>'
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px">Novalyz ne tirera de conclusion qu\'à partir de ' + a.seuil + ' séances. D\'ici là, rien n\'est affirmé.</div>';
+}
+
+// ── Niveau d'expérience (03/11) : donné par le serveur (getAppData.niveau_experience), sinon profil ──
+function _lv3Niveau(data) {
+  if (data && data.niveau_experience) return data.niveau_experience;
+  try { if (typeof _maCoach !== 'undefined' && _maCoach && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) return getNiveauExperience(coachAthleteCourant.annees_pratique != null ? coachAthleteCourant.annees_pratique : coachAthleteCourant.annees); } catch (_) {}
+  try { return getNiveauExperience(athlete && athlete.annees_pratique); } catch (_) { return 'intermediaire'; }
+}
+var LV3_NIV_LBL = { debutant: 'débutant (0-3 ans)', intermediaire: 'intermédiaire (4-7 ans)', avance: 'avancé (8-10 ans)', expert: 'expert (11 ans et +)' };
+// Séances identiques avant de dire « bloqué » : un débutant progresse presque à chaque séance, un
+// avancé beaucoup plus lentement (règle de terrain, pas un chiffre d'étude).
+var LV3_BLOQUE_N = { debutant: 2, intermediaire: 3, avance: 4, expert: 4 };
+
+// ── Fenêtre d'aide générique (manquait : les « ? » tombaient sur une alerte système) ──
+function ouvrirInfoGenerique(titre, contenu, estHtml) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var ov = document.getElementById('nv-info-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'nv-info-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1300;display:flex;align-items:flex-end;justify-content:center';
+    ov.onclick = function (ev) { if (ev.target === ov) ov.style.display = 'none'; };
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = '<div role="dialog" aria-label="' + esc(titre) + '" style="background:var(--surface);color:var(--text);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:82vh;overflow:auto;box-shadow:0 -8px 30px rgba(7,11,20,.25)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><div style="font-weight:800;font-size:16px;color:var(--accent)">' + esc(titre) + '</div>'
+    + '<button onclick="document.getElementById(\'nv-info-overlay\').style.display=\'none\'" aria-label="Fermer" style="border:none;background:var(--surface2);color:var(--text-muted);width:30px;height:30px;border-radius:999px;font-size:16px;cursor:pointer;flex:none">×</button></div>'
+    + '<div style="font-size:13px;color:var(--text-muted);line-height:1.55">' + (estHtml ? contenu : esc(contenu)) + '</div></div>';
+  ov.style.display = 'flex';
+}
+// ── A. « Comment Novalyz te fait progresser » (adapté au niveau) ─────────────
+function _lv3InfoBtn() { return '<button type="button" onclick="event.stopPropagation();ouvrirInfoProgression()" aria-label="Comment Novalyz te fait progresser" title="Comment Novalyz te fait progresser" style="margin-left:6px;width:18px;height:18px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:10.5px;font-weight:800;cursor:pointer;line-height:1;padding:0;vertical-align:middle;flex:none">?</button>'; }
+function ouvrirInfoProgression() {
+  var d = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
+  try { if (typeof _maCoach !== 'undefined' && _maCoach && typeof coachAthleteData !== 'undefined' && coachAthleteData) d = coachAthleteData; } catch (_) {}
+  var niv = _lv3Niveau(d || {}), N = LV3_BLOQUE_N[niv] || 3;
+  var charge = niv === 'debutant'
+    ? 'toutes tes séries au <b>haut de ta fourchette</b> une fois, à RPE 8 ou moins → la charge monte d\'un petit pas et tu repars au bas de la fourchette'
+    : 'toutes tes séries au <b>haut de ta fourchette</b> <b>2 séances de suite</b> à RPE 8 ou moins (ou une seule fois à RPE 7 ou moins) → la charge monte d\'un petit pas et tu repars au bas de la fourchette';
+  var li = function (t) { return '<li style="margin:0 0 8px">' + t + '</li>'; };
+  var html = '<div style="margin-bottom:10px">Ton niveau : <b style="color:var(--text)">' + (LV3_NIV_LBL[niv] || niv) + '</b>, d\'après tes années de pratique.</div>'
+    + '<div style="font-weight:800;color:var(--text);margin:12px 0 6px">Série par série, à partir de ton RPE</div><ul style="padding-left:18px;margin:0">'
+    + li('<b>RPE 9 ou 10</b> (1 rep en réserve ou moins) → on <b>garde</b> la charge et les reps : on consolide jusqu\'à ce que ça devienne plus facile.')
+    + li('<b>RPE 8 ou moins</b> → <b>+1 rep</b> la prochaine fois, jusqu\'au haut de ta fourchette.')
+    + li('Charge en plus : ' + charge + '. Jamais juste après une séance à l\'échec (RPE 10).')
+    + (niv === 'avance' || niv === 'expert' ? li('À ton niveau, quand la charge peut monter, tu choisis le levier du jour : charge, charge + 30 s de repos, +1 rep avec +30 s de repos, ou repos −30 s.') : '')
+    + li('<b>Sous ta fourchette</b> à l\'effort maximal → au choix : un <b>petit pas</b> en dessous (≈ −5 %) ou une charge <b>sûre</b> calculée sur ta force estimée (jamais plus de −12,5 %).')
+    + '</ul><div style="font-weight:800;color:var(--text);margin:12px 0 6px">Garde-fous</div><ul style="padding-left:18px;margin:0">'
+    + li('2 séances de suite à l\'échec, jour de vigilance, déload ou reprise après 3 semaines sans séance → <b>pas de progression</b> ce jour-là.')
+    + li('Exercice dit « bloqué » après <b>' + N + ' séances</b> identiques (à ton niveau) : Novalyz cherche la cause dans tes données (charge, volume du muscle, effort qui monte, fréquence) et te propose <b>un</b> levier.')
+    + '</ul><div style="font-weight:800;color:var(--text);margin:12px 0 6px">Ta fourchette</div>'
+    + '<div>Celle de ton programme, sinon celle du type d\'exercice : lourd / moyen <b>6-12</b>, léger <b>8-20</b>.</div>'
+    + '<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:11px;font-size:12px">Ce sont des <b>propositions</b> : c\'est toi qui choisis à chaque séance.</div>';
+  ouvrirInfoGenerique('Comment Novalyz te fait progresser', html, true);
 }

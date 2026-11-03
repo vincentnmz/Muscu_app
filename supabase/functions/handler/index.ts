@@ -2895,6 +2895,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
+    // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
+    niveau_experience: getNiveauExperience(anneesEffectives(athData?.annees, athData?.created_at, now)),
     exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
