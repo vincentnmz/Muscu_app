@@ -29,5 +29,5 @@ await pg.goto('http://localhost:8766/index.html'); await pg.waitForTimeout(3500)
 const H=await pg.evaluate(()=>document.documentElement.scrollHeight);
 await pg.setViewportSize({width:390,height:Math.min(H,3000)}); await pg.waitForTimeout(400);
 await pg.screenshot({path:ROOT+'/.work/shots/coach-auj.png'});
-console.log(JSON.stringify(await pg.evaluate(()=>_coachDesk.datas.map(d=>{let p=null,g=[];try{p=_lv3Plan(d)}catch(e){p="ERR "+e.message}try{g=_lv3Diags(d).map(x=>x.exo+":"+(x.cause||x.titre||"")+":"+(x.levier||""))}catch(e){g="ERR "+e.message}return {plan:p&&p.actions?p.actions.map(a=>a.txt||a.titre||JSON.stringify(a).slice(0,140)):p,diag:g}})),null,1));
+console.log(JSON.stringify(await pg.evaluate(()=>_coachDesk.datas.map(d=>{let p=_lv3Plan(d);return p&&{faits:p.faits,n:p.actions.length,a:p.actions.map(a=>[a.titre,a.raison,a.fait,a.seance])}})),null,1));
 await b.close(); srv.close();
