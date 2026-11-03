@@ -26,3 +26,15 @@ Capture : `mockups/audit-coach-aujourdhui-avant.png`.
 Validé : tout ; **A6 = b** (conversation ouverte avec message prérempli, envoyé par le coach) ; **A8 plus tard**.
 Souhait : **photos des athlètes** dans les carrés à terme → A3 fait un avatar « photo si disponible, sinon initiales » ; l'envoi de la photo (Réglages athlète ou coach) = lot à part (backlog).
 Maquette : `mockups/coach-aujourdhui-v2.html` (+ `-1.png`, `-2.png`).
+
+## Réalisé (03/11)
+- **A1** Absence = muscu **et** cardio hors marche (`moteur.derniere_activite`) : « 27 j sans muscu · cardio il y a 9 j », orange ; rouge seulement après 14 j sans **aucune** activité. Même règle pour le KPI « absents », le filtre Équipe « Inactifs » et le statut « Inactif » (`computeMarqueursCoach`). Repli sur la dernière séance muscu tant que le serveur n'envoie pas le moteur.
+- **A2** Libellé = titre du moteur + date (« Gêne légère signalée · 02/11 ») ; repli = type avec majuscule.
+- **A3** Carré = photo de l'athlète si `photo_url` existe (à venir), sinon initiales colorées selon la gravité (`_coachAv`).
+- **A4** Bloc « Entraînement à regarder » (mobile + bureau) : 1re ligne du diagnostic ou du plan + « Plan x/n fait » ; clic → fiche ▸ Analyses ouverte sur l'exercice (comme « Voir le détail »).
+- **A5** Plan de la semaine : aucune séance muscu dans les 14 j avant lundi → une seule action « Reprendre : 1 séance de muscu cette semaine », cochée dès qu'une séance muscu est faite (athlète et coach).
+- **A6** « relancer → » ouvre la conversation avec le message prérempli (le coach l'envoie lui-même) — mobile + bureau.
+- **A7** Messages non lus remontés sous « À traiter » + pastille 💬 sur la ligne prioritaire.
+- **Défaut trouvé en vérifiant** (existait avant) : fiche ouverte directement sur Analyses (et rechargement sur cet onglet) → analyses vides, car affichées avant l'arrivée des données. Corrigé. `maVoirPourquoi` côté coach visait un onglet inexistant (`progression` → `prog`) : corrigé.
+- À voir à l'écran 4 (Progression coach) : bouton « Importer mes séances » visible côté coach ; textes adressés à l'athlète (« ta fourchette »).
+- Tests : `coach-accueil` (6 cas, nouveau), `lecture-v3` (18 cas) ; 77 suites vertes. Captures relues : accueil mobile, bureau, relance (mobile + bureau), ouverture Analyses, plan d'Alizé côté athlète. Capture : `mockups/coach-aujourdhui-apres.png`.

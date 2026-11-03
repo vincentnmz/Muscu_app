@@ -47,6 +47,16 @@ const dNiv = (niv) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_e
 eq(/garde cet exercice et ta régularité/.test(dNiv('debutant').levier), 'B niveau : débutant → garder l\'exercice et la régularité', dNiv('debutant').levier);
 eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau : avancé → changer de fourchette ou de variante 3-4 semaines', dNiv('avance').levier);
 eq(sb.LV3_BLOQUE_N.debutant === 2 && sb.LV3_BLOQUE_N.intermediaire === 3 && sb.LV3_BLOQUE_N.avance === 4, 'B niveau : « bloqué » après 2 / 3 / 4 séances');
+// A5 (audit coach 03/11) — après un arrêt (aucune muscu dans les 14 j avant lundi) : une seule action « Reprendre ».
+{ const dr = JSON.parse(JSON.stringify(data)); dr.historique.daily_muscu = { '2026-09-20': { series: 10, spm: {} }, '2026-10-07': { series: 10, spm: { Ischio: 1 } } };
+  const R = sb._lv3Plan(dr, now);
+  eq(R && R.reprise && R.actions.length === 1 && R.actions[0].type === 'reprise' && /Dernière séance le 07\/10/.test(R.actions[0].raison) && !R.actions[0].fait, 'A5 : dernière muscu 07/10 → plan = « Reprendre » seul', R);
+  dr.historique.daily_muscu['2026-11-02'] = { series: 8, spm: {} };
+  const R2 = sb._lv3Plan(dr, now);
+  eq(R2 && R2.reprise && R2.actions[0].fait === true && R2.faits === 1, 'A5 : séance faite lundi → « Reprendre » cochée', R2);
+  dr.historique.daily_muscu = { '2026-10-20': { series: 10, spm: {} } };
+  const R3 = sb._lv3Plan(dr, now);
+  eq(!R3 || !R3.reprise, 'A5 : muscu le 20/10 (13 j avant lundi) → plan habituel', R3); }
 // D — sommeil → performance en apprentissage.
 data.sante_historique = [{ date: '2026-10-29', sommeil_min: 450 }];
 const A = sb._lv3Apprentissage(data);
