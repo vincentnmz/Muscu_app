@@ -33,3 +33,18 @@ Vérifié dans le code :
 - **App (`VOLUME_CIBLE`, côté coach : statut, hub volume, alerte « volume insuffisant » ; + 3 écrans athlète)** : une table **par niveau** (ex. pecs débutant 8-12 · intermédiaire 12-16 · avancé/expert 16-20), source non documentée ; muscle absent (trapèze) → 10-14 inventé.
 - Donc : niveau ignoré là où l'athlète regarde, et deux chiffres différents selon l'écran.
 À trancher par le porteur : valeurs par niveau (débutant / intermédiaire / avancé / expert) et par muscle, rangées **dans une seule table serveur**, lue partout.
+
+## Correction (vérifiée en codant, 03/11)
+- **F2 était à moitié juste** : la séance « dos jambe 2 » du 30/10 ne contenait **aucun exercice de jambes** (traction, 2 tirages, extension triceps). « Dos non travaillé » était faux ; « Jambes non travaillées » était vrai. Le calcul « depuis lundi » reste faux dans le principe (corrigé).
+- Les chiffres de volume de la maquette (Dos 18, Quadriceps 6…) étaient pris sur 27/10 → 02/11. L'app compte **les 7 derniers jours, aujourd'hui compris** (28/10 → 03/11) : Pectoraux 18 · Épaules 18 · Triceps 9 · Dos 8 · Biceps 3 · Quadriceps 0 · Ischio 0.
+
+## Réalisé (03/11)
+- **F1** Douleur : niveau du questionnaire + date + zone (« légère (2/5) · zone non précisée · 30/10 ») ; « Zone : NaN » corrigé (fiche bureau + 2 écrans athlète).
+- **F2** « Séries des 7 derniers jours » (vrais 7 jours) ; lignes « Travaillé / Non travaillé » retirées.
+- **F3** Cibles du serveur partout dans la fiche et le statut coach (plus de table du front, plus de cible inventée) ; l'alerte « Volume faible — Volume correct » (contradictoire) n'existe plus : entre minimum et optimum, ce n'est pas une alerte.
+- **F4** Ligne « Activité — Muscu : 07/10 (27 j) · Cardio : 25/10 (9 j) » + dernière séance, quand la muscu date de plus de 7 jours ; alerte absence avec les vrais jours et la même gravité que l'accueil (calculée côté app : **pas de redéploiement**).
+- **F5** Plus de consignes au coach : « Lecture Novalyz » et « Reco » retirées ; pas, cardio : faits seuls ; « Proposé à l'athlète : … » + boutons Modifier dans le programme / Écrire à X (message prérempli « Au sujet de « exo » : ») / Marquer traité.
+- **F6** « ① À décider » en tête (diagnostics + alertes), puis ② Entraînement, ③ État & récup. « Fatigue élevée — Fatigue élevée (4/5) » → « Fatigue élevée (4/5) » ; « Récupération modérée » fondue dans la fatigue (même questionnaire). Bureau : carte « Récupération & bien-être » masquée (redisait ③).
+- **F7** Repère « Plan 0/3 ». **F8** Prochaine séance : « Novalyz : +3 séries » sur l'exercice. **F9** IA « Bientôt » tant que la clé n'est pas posée.
+- Tests : 77 suites vertes. Captures relues : Vincent et Alizé (mobile), Vincent (bureau) ; boutons testés (Marquer traité masque la carte, Écrire préremplit le message).
+- Reste (F10) : volume par niveau → proposition `docs/proposition-volume-par-niveau-2026-11-03.md`, en attente du porteur.

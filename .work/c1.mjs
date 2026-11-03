@@ -4,7 +4,7 @@ const ROOT='/home/user/Muscu_app', A='/home/user/Muscu_app/.work/audit/';
 const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 const srv=http.createServer((q,r)=>{let p=decodeURIComponent(q.url.split('?')[0]);if(p==='/')p='/index.html';const f=path.join(ROOT,p);fs.readFile(f,(e,d)=>{if(e){r.writeHead(404);r.end();return;}r.writeHead(200,{'Content-Type':types[path.extname(f)]||'application/octet-stream'});r.end(d);});}).listen(8766);
 const J=f=>JSON.parse(fs.readFileSync(A+f));
-const vin=J('out_vinc.json'), ali=J('out_aliz.json');
+const vin=J('out_vinc.json'), ali=J('out_aliz.json'); [vin,ali].forEach(x=>{ if(x.recompenses) x.recompenses.ia_active=false; });   // clé IA absente en prod
 // John / Yann : pas rejoués (stub) — seules les dates réelles comptent ici.
 const john={dashboard:{derniere_seance:{date:'17/09/2026',seance_id:'Push',nb_series:20},regularite:{seances_prevues:4,seances_faites:0}},historique:{},programme:[]};
 const yann={dashboard:{regularite:{seances_prevues:0}},historique:{},programme:[]};

@@ -4,7 +4,7 @@
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
 > Dernière mise à jour : **30 oct. 2026 (soir)**.
 
-- **03/11 — Audit coach, écran 1 « Aujourd'hui » : fait** (A1-A7, voir `docs/audit-coach-1-aujourdhui-2026-11-03.md`). Écran 2 « Équipe » : fait (E1-E7, `docs/audit-coach-2-equipe-2026-11-03.md`). Suivant : écran 3 « Fiche athlète ▸ Aperçu ». A8 (coût réseau accueil coach) reporté à la montée en charge. Photo de profil athlète au backlog.
+- **03/11 — Audit coach, écran 1 « Aujourd'hui » : fait** (A1-A7, voir `docs/audit-coach-1-aujourdhui-2026-11-03.md`). Écran 2 « Équipe » : fait (E1-E7, `docs/audit-coach-2-equipe-2026-11-03.md`). Écran 3 « Fiche ▸ Aperçu » : fait (F1-F9, `docs/audit-coach-3-fiche-apercu-2026-11-03.md`) ; F10 volume par niveau en attente du porteur (`docs/proposition-volume-par-niveau-2026-11-03.md`). Suivant : écran 4 « Fiche ▸ Progression ». A8 (coût réseau accueil coach) reporté à la montée en charge. Photo de profil athlète au backlog.
 
 ## Boussole (ne pas dériver)
 Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comment progresser (données + ressenti)**. Moteur déterministe = **source de vérité** ; l'IA est une *couche langage* branchée dessus, elle n'invente aucun chiffre. Segmentation **muscu B2C grand public / autres sports B2B pro** sur **un seul moteur**. Détails figés : `docs/vision-produit.md`, `docs/roadmap-produit.md`.

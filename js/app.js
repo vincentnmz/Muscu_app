@@ -1129,7 +1129,7 @@ function renderCockpitBienEtre(data){
       + '</div>';
   }).join('');
   var doul = Number(be.douleur);
-  var zoneHtml = (!isNaN(doul) && doul !== 1 && be.zone) ? '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">📍 Zone : <b style="color:var(--text);">' + escapeHtml(String(be.zone)) + '</b></div>' : '';
+  var zoneHtml = (!isNaN(doul) && doul !== 1 && be.zone && String(be.zone) !== 'NaN') ? '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">📍 Zone : <b style="color:var(--text);">' + escapeHtml(String(be.zone)) + '</b></div>' : '';
   var noteHtml = be.note ? '<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);font-style:italic;">« ' + escapeHtml(String(be.note)) + ' »</div>' : '';
   // Synthèse questionnaire (score /100 + point faible) rapatriée depuis l'ancien
   // « Bilan de la dernière séance ». Descriptif, neutre — pas un verdict.
@@ -5624,6 +5624,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
 
     renderCoachOverview(data);
     try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
+    try { renderCoachDecider(data); } catch (_) {}           // F6 (03/11) — ① À décider (diagnostics + alertes, avec actions)
+    try { _coachIaEtat(data); } catch (_) {}                 // F9 (03/11) — IA « Bientôt » tant qu'elle n'est pas activée
     try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
     try { cdAgInit(); } catch (_) {}                         // agenda daté (rail Aperçu + onglet Programme)
     try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
@@ -5633,6 +5635,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
     try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu v3 : carte Récupération (Poids masqué)
+    try { var _fr = document.getElementById('cd-forme-recup'); if (_fr) _fr.style.display = 'none'; } catch (_) {}   // F6 (03/11) : redit le bloc ③ État & récup
     try { renderCoachChargeCard(data); } catch (_) {}    // Aperçu v3 : Charge & assiduité (RPE/tonnage/régul./ACWR)
     try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
     try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
@@ -5815,6 +5818,61 @@ function _lectureExos(data, nowT) {
   });
   return R;
 }
+// ===== Audit coach écran 3 (03/11) — fiche Aperçu : faits + ce qui est proposé à l'athlète + actions =====
+// Cibles de volume = celles du SERVEUR (volume_obti), les mêmes que voit l'athlète (F3). Muscle sans cible → null.
+function _coachCibles(data) { var o = {}; ((data && data.volume_obti) || []).forEach(function (v) { if (v && v.muscle && Number(v.series_min) > 0) o[v.muscle] = { min: Number(v.series_min), opt: Number(v.series_opt) || 0 }; }); return o; }
+// Séries par muscle des 7 derniers jours (aujourd'hui + 6 jours), séances réelles, secondaire = 0,5 (F2).
+function _coachVol7(data, nowT) {
+  var dm = (data && data.historique && data.historique.daily_muscu) || {}, out = {};
+  var d = new Date(nowT || Date.now()); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 6);
+  var lim = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  Object.keys(dm).forEach(function (k) { if (k < lim) return; var spm = (dm[k] && dm[k].spm) || {}; Object.keys(spm).forEach(function (m) { out[m] = (out[m] || 0) + (Number(spm[m]) || 0); }); });
+  return out;
+}
+function _coachFmtN(x) { var n = Math.round(Number(x) * 10) / 10; return String(n).replace('.', ','); }
+function _coachDdmm(s) { var t = parseChatDate(s); if (!t) return String(s || ''); var d = new Date(t); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
+// Écrire à l'athlète (conversation) avec un début de message prérempli — le coach l'envoie lui-même.
+function coachEcrireA(txt) {
+  switchCoachDetailTab('conseils');
+  var n = 0, t = setInterval(function () { var el = document.getElementById('cd-comment-input'); if ((el && el.offsetParent !== null) || ++n > 30) { clearInterval(t); if (el && !el.value && txt) { el.value = txt; try { el.focus(); } catch (e) {} } } }, 100);
+}
+function coachDiagTraite(exo) {
+  if (!coachAthleteCourant) return;
+  marquerAlerteTraitee(coachAthleteCourant.athlete_id, { type: 'diag-' + exo });
+  try { renderCoachDecider(coachAthleteData); } catch (e) {}
+}
+// ① À décider : un point ouvert par exercice (même diagnostic que l'athlète) + les alertes, chacun avec ses actions.
+function renderCoachDecider(data) {
+  var host = document.getElementById('cd-decider'); if (!host || !coachAthleteCourant) return;
+  var a = coachAthleteCourant, prenom = String(a.nom || '').split(/\s+/)[0] || 'l\'athlète', esc = escapeHtml;
+  var prog = (data && data.historique && data.historique.progression_par_exo) || {};
+  var D = []; try { D = (typeof _lv3Diags === 'function') ? (_lv3Diags(data) || []) : []; } catch (e) {}
+  var KIND = { sous: 'sous la fourchette', recule: 'recule', bloque: 'bloqué', effort: 'RPE en hausse à charge égale' };
+  var cards = D.filter(function (g) { return !alerteEstTraitee(a.athlete_id, { type: 'diag-' + g.exo }); }).map(function (g) {
+    var p0 = (prog[g.exo] || [])[0], rmx = 0;
+    if (p0) (p0.series || []).forEach(function (x) { var r = Number(x && x.rpe); if (r > rmx) rmx = r; });
+    var faits = [];
+    if (p0 && g.kind !== 'effort') faits.push(_coachDdmm(p0.date) + ' : <b>' + _cdFmtKg(p0.charge) + ' kg × ' + p0.reps + (rmx ? ' à RPE ' + rmx : '') + '</b> (fourchette ' + g.rmin + '-' + g.rmax + ')');
+    (g.checks || []).filter(function (c) { return c.s === 'ko' && !/^<b>Charge :/.test(c.t); }).forEach(function (c) { faits.push(c.t.replace(/ta fourchette est/g, 'fourchette')); });
+    var prop = (g.action && g.action.titre) ? String(g.action.titre).split(' : ').slice(1).join(' : ').replace(/^proposé /, '').replace(/\bgarde\b/, 'garder').replace(/\bvise\b/, 'viser') : '';
+    var bad = g.kind === 'sous' || g.kind === 'recule', col = bad ? '#f0505a' : '#f59f00', tcol = bad ? '#c0303a' : '#b86e00';
+    var tag = g.kind === 'effort' ? 'Effort' : (g.cause === 'volume' ? 'Volume' : 'Charge');
+    var ex = String(g.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return '<div class="dash-card" style="padding:12px 14px;margin-bottom:10px;border-left:4px solid ' + col + '">'
+      + '<span style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:6px;background:' + col + '1a;color:' + tcol + '">' + tag + '</span>'
+      + '<div style="font-size:13.5px;font-weight:800;margin-top:5px">' + esc(g.exo) + ' : ' + KIND[g.kind] + '</div>'
+      + (faits.length ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">' + faits.join(' · ') + ' <span style="color:var(--text-subtle)">(' + g.n + ' séance' + (g.n > 1 ? 's' : '') + ' sur 6 sem.)</span></div>' : '')
+      + '<div style="margin-top:7px;background:var(--accent-a08,rgba(26,95,255,.08));border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45">' + (prop ? 'Proposé à l\'athlète : <b style="color:var(--accent)">' + esc(prop) + '</b>' : 'Aucune cause visible dans ses données : rien de proposé automatiquement.') + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'
+      + '<button class="cda-btn cda-primary" onclick="switchCoachDetailTab(\'programme\')">✎ Modifier dans le programme</button>'
+      + '<button class="cda-btn cda-ghost" onclick="coachEcrireA(\'Au sujet de « ' + ex.trim() + ' » : \')">✉ Écrire à ' + esc(prenom) + '</button>'
+      + '<button class="cda-btn cda-ok" onclick="coachDiagTraite(\'' + ex + '\')">Marquer traité</button></div></div>';
+  });
+  var al = document.getElementById('cd-alertes-card');
+  host.innerHTML = '<div class="cdcp-lab">① À décider <span class="cdcp-tag">faits · ce qui est proposé à l\'athlète · actions</span></div><div id="cd-decider-diags">' + cards.join('') + '</div>';
+  if (al) { host.appendChild(al); al.style.display = ''; }
+}
+
 function renderCoachCoupDoeil(data) {
   var el = document.getElementById('cd-coupdoeil'); if (!el) return;
   try {
@@ -5846,7 +5904,7 @@ function renderCoachCoupDoeil(data) {
     var rpeMoy = mean(rpeNow), rpeMoyPrev = mean(rpePrev);
     // Couverture des 5 grands groupes sur 7 j (ce qui MANQUE, groupes à 0).
     var GR = [['Pecs', ['Pectoraux']], ['Dos', ['Dos']], ['Épaules', ['Epaule']], ['Bras', ['Biceps', 'Triceps']], ['Jambes', ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Jambe', 'Aducteur']]];
-    var volMap = {}; (Array.isArray(hist.volume_semaine) ? hist.volume_semaine : []).forEach(function (v) { volMap[v.muscle] = (volMap[v.muscle] || 0) + (v.faites || 0); });
+    var volMap = _coachVol7(data, nowT);   // F2 (03/11) : vrais 7 derniers jours (avant : depuis lundi)
     var faits = [], absent = [], total7 = 0;
     GR.forEach(function (gr) { var s = gr[1].reduce(function (a, mk) { return a + (volMap[mk] || 0); }, 0); total7 += s; if (s > 0) faits.push(gr[0]); else absent.push(gr[0]); });
 
@@ -5863,31 +5921,25 @@ function renderCoachCoupDoeil(data) {
     }
     var _dgC = {}; try { (typeof _lv3Diags === 'function' ? _lv3Diags(data, nowT) : []).forEach(function (d) { _dgC[d.exo] = d; }); } catch (e) {}
     var _pqC = function (exo) { var d = _dgC[exo]; return d ? '<div class="cdcp-sub" style="display:block;margin-top:3px;line-height:1.45"><b>Pourquoi</b> : ' + (d.pourquoi || 'aucune cause visible') + ' · <b>levier</b> : ' + esc(d.levier) + '</div>' : ''; };
-    if (stagne.length) {
-      var st = stagne[0];
-      entr += _cdCoupRow('var(--warn)', '⏸', '<b>Stagne</b> — ' + esc(st.exo) + ' : ' + _cdFmtKg(st.c) + ' kg × ' + st.r + ' depuis ' + st.n + ' séances' + (st.rpeUp ? ', <b>RPE en hausse</b>' : '') + sub(st.rpeUp ? 'pareil mais plus dur → à débloquer' : 'plateau à débloquer') + _pqC(st.exo));
-    }
-    if (sousF.length) { var sf = sousF[0]; entr += _cdCoupRow('var(--bad)', '!', '<b>Sous la fourchette</b> — ' + esc(sf.exo) + ' : ' + _cdFmtKg(sf.c) + ' kg × ' + sf.r + ' à RPE ' + sf.rpe + sub('vise ' + sf.rmin + '-' + sf.rmax + ' reps') + (sousF.length > 1 ? ' <span class="cdcp-sub">+' + (sousF.length - 1) + '</span>' : '') + _pqC(sf.exo)); }
+    // Stagne / sous la fourchette / effort en hausse : déplacés dans « ① À décider » (audit coach F6, 03/11).
     try {
       var _plC = (typeof _lv3Plan === 'function') ? _lv3Plan(data, nowT) : null;
-      if (_plC) entr += _cdCoupRow('var(--accent)', '➜', '<b>Plan de la semaine</b> (' + _plC.faits + '/' + _plC.actions.length + ') — ' + _plC.actions.map(function (a) { return (a.fait ? '✓ ' : '') + esc(a.titre); }).join(' · ') + sub('calculé par Novalyz, le même que voit l\'athlète'));
+      if (_plC) entr += _cdCoupRow('var(--accent)', '➜', '<b>Plan de la semaine proposé à l\'athlète</b> (' + _plC.faits + '/' + _plC.actions.length + ' fait) — ' + _plC.actions.map(function (a) { return (a.fait ? '✓ ' : '') + esc(a.titre); }).join(' · ') + sub('calculé par Novalyz, le même que voit l\'athlète'));
     } catch (e) {}
-    if (recule.length) entr += _cdCoupRow('var(--bad)', '▼', '<b>Recule</b> — ' + esc(recule.slice(0, 3).join(', ')) + ' : charge <i>et</i> reps en baisse' + sub('perf réelle en baisse'));
     if (rpeMoy != null) {
       var rpeTxt = (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',');
       var trd2 = (rpeMoyPrev == null) ? '' : (rpeMoy - rpeMoyPrev > 0.3 ? ' · en hausse' : (rpeMoy - rpeMoyPrev < -0.3 ? ' · en baisse' : ' · stable'));
-      var effSub = rpeMoy >= 8.5 ? 'intensité très élevée → surveiller la fatigue' : (rpeMoy >= 7.5 ? 'intensité soutenue' : (rpeMoy >= 6 ? 'intensité modérée' : 'intensité légère'));
-      entr += _cdCoupRow('var(--accent2)', '🔥', '<b>Effort</b> — RPE moyen <b>' + rpeTxt + '</b> /7 j' + trd2 + sub(effSub));
+      entr += _cdCoupRow('var(--accent2)', '🔥', '<b>Effort</b> — RPE moyen des séries <b>' + rpeTxt + '</b> (7 j)' + trd2);
     }
-    // Point 4 (31/10) : effort à charge égale (backend : RPE des 2 dernières séances vs les 2 d'avant,
-    // charge égale ou plus basse ; ≥ 4 séances de l'exo, dernière ≤ 10 j). Rien d'affiché sans exo comparable.
     try {
-      var _cr = m.charge_ressenti || {}, _rd = Array.isArray(_cr.rpe_details) ? _cr.rpe_details : [];
-      if (_rd.length) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Effort en hausse à charge égale</b> — ' + _rd.slice(0, 3).map(function (x) { return esc(x.exo) + ' ' + _cdFmtKg(x.charge) + ' kg : RPE ' + _fmt1(x.rpeAvant) + ' → <b>' + _fmt1(x.rpeApres) + '</b>'; }).join(' · ') + sub('signe de fatigue avant que les reps baissent'));
-      else if (_cr.rpe_evalues > 0) entr += _cdCoupRow('var(--good)', '✓', '<b>Effort à charge égale</b> — stable' + sub(_cr.rpe_evalues + ' exercice' + (_cr.rpe_evalues > 1 ? 's' : '') + ' comparé' + (_cr.rpe_evalues > 1 ? 's' : '') + ' sur leurs 4 dernières séances'));
+      var _ab = _coachAbsence(data, { derniere: (data.dashboard || {}).derniere_seance || null });
+      if (_ab.muscuAge > 7 || !_ab.muscuConnue) {
+        var _ch = ((data.cardio || {}).history || []).map(function (x) { return pd(x.date); }).filter(Boolean).sort(function (x, y) { return y - x; })[0];
+        var _ds = (data.dashboard || {}).derniere_seance;
+        entr = _cdCoupRow('var(--warn)', '📅', '<b>Activité</b> — Muscu : ' + (_ds && _ds.date ? 'dernière le <b>' + esc(_coachDdmm(_ds.date)) + ' (' + Math.floor(_ab.muscuAge) + ' j)</b>' : 'aucune séance') + ' · Cardio : ' + (_ch ? 'dernière le <b>' + _coachDdmm(new Date(_ch).toLocaleDateString('fr-FR')) + ' (' + Math.floor(days(_ch)) + ' j)</b>' : 'aucune sortie')) + entr;
+        if (_ds && _ds.date) entr += _cdCoupRow('var(--text-subtle)', '🗓', '<b>Dernière séance</b> — ' + esc(_coachDdmm(_ds.date)) + (_ds.seance_id ? ' · ' + esc(_ds.seance_id) : '') + (_ds.nb_series ? ' · ' + _ds.nb_series + ' séries' : '') + (_ds.rpe_moyen ? ' · RPE ' + _coachFmtN(_ds.rpe_moyen) : ''));
+      }
     } catch (e) {}
-    if (total7 > 0 && faits.length) entr += _cdCoupRow('var(--good)', '✓', '<b>Travaillé (7 j)</b> — ' + esc(faits.join(', ')));
-    if (total7 > 0 && absent.length && absent.length < 5) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Non travaillé (7 j)</b> — ' + esc(absent.join(', ')));
     if (!entr) entr = '<div class="cdcp-empty">Pas encore assez de séances pour analyser l\'entraînement.</div>';
 
     // ═══ ÉTAT & RÉCUP — 1 ligne par signal (niveau + tendance), + PAS (montre) + CARDIO ═══
@@ -5912,21 +5964,25 @@ function renderCoachCoupDoeil(data) {
       if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true));
     }
     if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
-    if (be && _zoneDouleur(be.zone_douloureuse)) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(_zoneDouleur(be.zone_douloureuse).toLowerCase()));
-    else if (be) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
+    if (be) {   // F1 (03/11) : niveau du questionnaire + zone (avant : zone seule → « aucune » alors que 2/5)
+      var _dl = Number(be.douleur), _zn = _zoneDouleur(be.zone_douloureuse || be.zone);
+      if (!isNaN(_dl) && _dl >= 2) etat += _cdCoupRow(_dl >= 3 ? 'var(--bad)' : 'var(--warn)', '●', '<b>Douleur</b> ' + esc(lab('douleur', _dl) || '') + ' (' + _dl + '/5)' + (_zn ? ' · ' + esc(_zn.toLowerCase()) : ' · zone non précisée') + ' · ' + esc(_coachDdmm(be.date)));
+      else if (_zn) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(_zn.toLowerCase()) + ' · ' + esc(_coachDdmm(be.date)));
+      else if (!isNaN(_dl)) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
+    }
     // Point 5 (31/10) : montre — sommeil réel 7 j et FC de repos vs sa normale (rien sans montre).
     try {
       var _mo = _montreNormale(data);
       if (_mo && _mo.sommeil) etat += _cdCoupRow('var(--good)', '●', '<b>Sommeil (montre)</b> ' + _fmtHmin(_mo.sommeil.moy) + ' / nuit <span class="cdcp-sub">(7 j, ' + _mo.sommeil.n + ' nuit' + (_mo.sommeil.n > 1 ? 's' : '') + ')</span>' + (_mo.sommeil.base != null ? ' · normale ' + _fmtHmin(_mo.sommeil.base) : ''));
       if (_mo && _mo.fc) { var _f = _mo.fc; etat += _cdCoupRow(_f.degrade ? 'var(--warn)' : 'var(--good)', '●', '<b>FC repos (montre)</b> ' + _fmt1(_f.recente) + ' bpm' + (_f.evaluable ? ' · ' + (_f.degrade ? '<b>au-dessus de sa normale</b>' : 'normale') + ' ' + _fmt1(_f.normale) : ' <span class="cdcp-sub">(' + ((_f.mesuresBase || 0) < 14 ? 'normale après 14 mesures' : 'normale ' + _fmt1(_f.normale) + ' · comparaison dès 2 mesures sur 3 j') + ')</span>')); }
     } catch (e) {}
-    if (pasAvg != null) { var pc = pasAvg >= 8000 ? 'var(--good)' : (pasAvg >= 5000 ? 'var(--text-subtle)' : 'var(--warn)'); var pl = pasAvg >= 8000 ? 'actif' : (pasAvg >= 5000 ? 'modéré' : 'faible, plutôt sédentaire'); etat += _cdCoupRow(pc, '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + '/j · ' + pl + ' <span style="color:var(--text-subtle)">(montre, 7 j)</span>'); }
+    if (pasAvg != null) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + ' / jour <span class="cdcp-sub">(montre, 7 j)</span>');   // F5 : fait seul
     // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
     var cardio = (data && data.cardio) || {}, ch = Array.isArray(cardio.history) ? cardio.history : [];
     var cardioManque = false, cN7 = 0, lastCardio = 0;
     ch.forEach(function (s) { var t = pd(s.date); if (!t) return; if (!lastCardio || t > lastCardio) lastCardio = t; if (days(t) <= 7) cN7++; });
-    if (ch.length === 0) { cardioManque = true; etat += _cdCoupRow('var(--warn)', '●', '<b>Cardio</b> aucune séance enregistrée <span style="color:var(--text-subtle)">(manque de cardio)</span>'); }
-    else if (cN7 === 0) { cardioManque = true; var ddc = lastCardio ? Math.round(days(lastCardio)) : null; etat += _cdCoupRow('var(--warn)', '●', '<b>Cardio</b> pas de sortie récente' + (ddc != null ? ' (dernière il y a ' + ddc + ' j)' : '') + ' <span style="color:var(--text-subtle)">(manque de cardio)</span>'); }
+    if (ch.length === 0) { cardioManque = true; etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Cardio</b> aucune sortie enregistrée'); }
+    else if (cN7 === 0) { cardioManque = true; var ddc = lastCardio ? Math.floor(days(lastCardio)) : null; etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Cardio</b> ' + (ddc != null ? 'dernière sortie il y a ' + ddc + ' j' : 'pas de sortie récente')); }
     else {
       // Efficience (FC à effort égal) : comparée seulement si assez de données et RPE comparable.
       var cx = ch.map(function (s) { var t = pd(s.date); return { d: t ? days(t) : 1e9, fc: Number(s.fc_moy) || 0, rpe: Number(s.rpe) || 0 }; }).filter(function (s) { return s.fc > 0 && s.rpe > 0 && s.d <= 60; });
@@ -5992,13 +6048,10 @@ function renderCoachCoupDoeil(data) {
     else if (!/intensit|fatigue/i.test(reco) && rpeMoy != null && rpeMoy >= 8.5) compl = 'Intensité haute en ce moment → garde un œil sur la fatigue.';
     if (compl) reco += ' ' + compl;
 
-    el.innerHTML = '<div class="cdcp-lab">Coup d\'œil <span class="cdcp-tag">comprendre en 5 s</span></div>'
-      + '<div class="cdcp-wrap">'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">🏋️ Entraînement</div>' + entr + '</div>'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">❤️ État &amp; récup</div>' + etat + '</div></div>'
-      + '<div class="cdcp-lab"><span style="color:var(--accent)">✦</span> Lecture Novalyz <span class="cdcp-tag">pour le coach</span></div>'
-      + '<div class="dash-card cdcp-card" style="border-left:3px solid var(--accent)">' + lect
-      + '<div class="cdcp-reco"><div class="cdcp-reco-l">Reco · prochaine séance</div><div class="cdcp-reco-t">' + reco + '</div></div></div>';
+    // F5/F6 (03/11) : plus de « Lecture Novalyz » ni de « Reco » (consignes au coach, redites) — les faits seuls.
+    el.innerHTML = '<div class="cdcp-wrap">'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">② Entraînement</div>' + entr + '</div>'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">③ État &amp; récup</div>' + etat + '</div></div>';
   } catch (e) { try { el.innerHTML = ''; } catch (_) {} }
 }
 
@@ -6098,12 +6151,15 @@ function renderCoachProchaineSeance(data) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var prog = (data && Array.isArray(data.programme)) ? data.programme : [];
   var exos = prog.filter(function (l) { return l && String(l.seance_id) === nom; });
+  // F8 (03/11) : ce que Novalyz va proposer à l'athlète sur chaque exercice (plan de la semaine).
+  var _pN = {}; try { var _P = (typeof _lv3Plan === 'function') ? _lv3Plan(data) : null; (_P && !_P.reprise ? _P.actions : []).forEach(function (a) { if (a.fait || !a.exo) return; _pN[String(a.exo).trim()] = a.type === 'series' ? '+' + a.add + ' série' + (a.add > 1 ? 's' : '') : a.type === 'charge' ? _cdFmtKg(a.charge) + ' kg' + (a.alt ? ' (ou ' + _cdFmtKg(a.alt) + ')' : '') : a.type === 'rpe' ? 'viser RPE 8' : a.type === 'cible' ? _cdFmtKg(a.charge) + ' kg × ' + a.reps : ''; }); } catch (e) {}
   var lignes = exos.map(function (l) {
     var reps = (l.reps_mini && l.reps_max) ? (l.reps_mini + '–' + l.reps_max) : (l.reps_mini || l.reps_max || '');
     var meta = l.series_prevues ? (l.series_prevues + ' × ' + (reps || '?')) : (reps ? (reps + ' reps') : '');
+    var nv = _pN[String(l.exercice || '').trim()];
     return '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:13px;">'
       + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(l.exercice || '') + '</span>'
-      + '<span style="color:var(--text-muted);white-space:nowrap;flex:none;">' + esc(meta) + '</span>'
+      + '<span style="color:var(--text-muted);white-space:nowrap;flex:none;">' + esc(meta) + (nv ? ' <span style="font-size:10.5px;font-weight:800;color:var(--accent);background:var(--accent-a08,rgba(26,95,255,.08));border-radius:6px;padding:2px 6px;margin-left:4px" title="Proposé à l\'athlète par Novalyz">Novalyz : ' + esc(nv) + '</span>' : '') + '</span>'
       + '</div>';
   }).join('');
   el.style.display = '';
@@ -6636,8 +6692,10 @@ function computeMarqueursCoach(data, a) {
     const _proVol = _jsVol / 7;
     let belowMev = false, aboveMav = true;
     volTrained.forEach(v => {
-      const cibleArr = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
-      const mev = cibleArr[0] || 0, mav = cibleArr[1] || 0;
+      // F3 (03/11) : cibles du serveur (celles de l'athlète) ; muscle sans cible → ignoré (avant : 10-14 inventé).
+      const _cs = (data.volume_obti || []).filter(o => o && o.muscle === v.muscle && Number(o.series_min) > 0)[0];
+      if (!_cs) return;
+      const mev = Number(_cs.series_min) || 0, mav = Number(_cs.series_opt) || 0;
       const faites = v.faites || 0;
       if (faites < mev * _proVol) belowMev = true;   // MEV proratisé (jours écoulés)
       if (faites < mav) aboveMav = false;
@@ -6761,8 +6819,10 @@ function renderCoachIndicateurs(data) {
   const dsSub = ds ? [ds.seance_id, ds.nb_series != null ? ds.nb_series + ' séries' : null].filter(Boolean).join(' · ') : '';
 
   // Progression (comptes hausse/baisse 7j)
-  const progVal = (m.progLabel && m.progLabel !== 'N/A') ? m.progLabel : '—';
-  const progSub = (m.progLabel && m.progLabel !== 'N/A') ? '7 derniers jours' : 'pas assez de données';
+  // F7 (03/11) : « Plan x/n » (même plan que l'athlète) remplace l'ancien comptage 7 j / 7 j.
+  const _plX = (typeof _coachPlanXN === 'function') ? _coachPlanXN(data) : null;
+  const progVal = _plX || '—';
+  const progSub = _plX ? 'fait cette semaine' : 'pas de plan cette semaine';
 
   const tile = (label, val, color, sub) => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:var(--shadow-sm);min-width:0;">
@@ -6775,7 +6835,7 @@ function renderCoachIndicateurs(data) {
     ${tile('Régularité', regVal, m.regColor, regSub)}
     ${tile('ACWR', acwrVal, acwrColor, acwrSub)}
     ${tile('Dernière séance', dsVal, 'var(--text)', dsSub)}
-    ${tile('Progression', progVal, m.progColor, progSub)}
+    ${tile('Plan', progVal, 'var(--text)', progSub)}
   </div>`;
 }
 
@@ -6784,29 +6844,24 @@ function renderCoachHubVolume(data) {
   var sec = document.getElementById('cd-hub-volume-sec');
   var el = document.getElementById('cd-hub-volume');
   if (!el) return;
-  var vols = (data && data.historique && Array.isArray(data.historique.volume_semaine)) ? data.historique.volume_semaine : [];
-  var trained = vols.filter(function (v) { return (v.faites || 0) > 0; });
-  if (!trained.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
-  var niv = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
-  var cibleDe = function (muscle) { var c = (typeof VOLUME_CIBLE !== 'undefined' && VOLUME_CIBLE[muscle]) ? VOLUME_CIBLE[muscle][niv] : null; return c || [10, 14]; };
-  trained.sort(function (a, b) { return (b.faites || 0) - (a.faites || 0); });
+  // F2/F3 (03/11) : séries des 7 DERNIERS JOURS vs cibles du SERVEUR (les mêmes que l'athlète). Muscle sans cible : pas de barre, pas d'alerte.
+  var v7 = _coachVol7(data), C = _coachCibles(data);
+  var progM = {}; ((data && data.programme) || []).forEach(function (l) { if (!l || l.type === 'cardio') return; var m = (typeof _lv3MuscleExo === 'function') ? _lv3MuscleExo(data, l.exercice) : null; if (m) progM[m] = 1; });
+  var mus = Object.keys(C).filter(function (m) { return (v7[m] || 0) > 0 || progM[m]; });
+  if (!mus.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
   var sousCount = 0;
-  var rows = trained.slice(0, 6).map(function (v) {
-    var c = cibleDe(v.muscle), mev = c[0] || 0, mav = c[1] || 0, faites = v.faites || 0;
-    var sous = faites < mev; if (sous) sousCount++;
-    var color = sous ? 'var(--warn)' : 'var(--good)';
-    var pctw = mav ? Math.min(100, Math.round(faites / mav * 100)) : 0;
-    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
-      '<span style="width:78px;flex:none;font-size:11.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(v.muscle)) + '</span>' +
-      '<div style="flex:1;height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;"><div style="height:100%;border-radius:999px;width:' + pctw + '%;background:' + color + ';"></div></div>' +
-      '<span style="width:52px;flex:none;text-align:right;font-size:11px;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;">' + faites + ' / ' + mav + '</span></div>';
+  var rows = mus.map(function (m) {
+    var c = C[m], f = v7[m] || 0, sous = f < c.min; if (sous) sousCount++;
+    var color = sous ? 'var(--warn)' : 'var(--good)', pctw = c.opt ? Math.min(100, Math.round(f / c.opt * 100)) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+      '<span style="width:78px;flex:none;font-size:11.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(m)) + '</span>' +
+      '<div style="flex:1;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;"><div style="height:100%;border-radius:999px;width:' + pctw + '%;background:' + color + ';"></div></div>' +
+      '<span style="width:64px;flex:none;text-align:right;font-size:11px;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;white-space:nowrap">' + _coachFmtN(f) + ' · ' + c.min + '-' + c.opt + '</span></div>';
   }).join('');
-  var status = sousCount
-    ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
-    : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
-  el.innerHTML = '<div class="dash-label cd-deskonly cd-cardlink">Volume par muscle · 7 j<span class="cd-voir">Voir tout →</span></div>' + rows + status;
+  el.innerHTML = '<div class="dash-label cd-cardlink">Séries des 7 derniers jours <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--text-subtle)">· cible de l\'athlète (min-opt)</span><span class="cd-voir">Voir tout →</span></div>' + rows
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (sousCount ? sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le minimum sur 7 jours. ' : '') + 'Mêmes cibles que celles de l\'athlète ; séries indirectes comptées 0,5.</div>';
   try { el.style.cursor = 'pointer'; el.onclick = function () { switchCoachDetailTab('prog'); }; } catch (e) {}
-  if (sec) sec.style.display = ''; el.style.display = '';
+  if (sec) sec.style.display = 'none'; el.style.display = '';
 }
 
 // Hub : « Comment il s'entraîne » — 2 dernières séances (exos/séries/tonnage/RPE).
@@ -7920,6 +7975,15 @@ function _coachIaRender() {
     return '<div class="cd-ia-b cd-ia-' + (m.role === 'me' ? 'me' : 'ia') + '">' + body + '</div>';
   }).join('');
   el.scrollTop = el.scrollHeight;
+}
+function _coachIaEtat(data) {
+  var card = document.getElementById('cd-ia-card'); if (!card) return;
+  var on = !!(data && data.recompenses && data.recompenses.ia_active);
+  card.classList.toggle('cd-ia-off', !on);
+  var soon = document.getElementById('cd-ia-soon');
+  if (!on && !soon) { soon = document.createElement('div'); soon.id = 'cd-ia-soon'; soon.style.cssText = 'font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px'; soon.innerHTML = '<span style="font-size:10px;font-weight:800;color:#7A5AF8;background:rgba(122,90,248,.12);border-radius:6px;padding:2px 7px;margin-right:6px">BIENTÔT</span>Posera des questions sur les données de l\'athlète. Pas encore activée.'; card.appendChild(soon); }
+  if (soon) soon.style.display = on ? 'none' : '';
+  ['cd-ia-msgs'].concat([].slice.call(card.querySelectorAll('.cd-ia-chips,.cd-ia-field'))).forEach(function (x) { var n = typeof x === 'string' ? document.getElementById(x) : x; if (n) n.style.display = on ? '' : 'none'; });
 }
 function coachIaReset() { _coachIaMsgs = []; _coachIaBusy = false; _coachIaRender(); }
 function coachIaChip(b) { var i = document.getElementById('cd-ia-input'); if (i) { i.value = (b && b.getAttribute('data-q')) || ''; coachIaSend(); } }
@@ -9471,7 +9535,7 @@ function construireSynthAlertes(data) {
   if (estEnPause(data && data.pause)) return out;
   const m = computeMarqueursCoach(data, coachAthleteCourant);
   if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') out.push({ type: 'synth-volume', msg: `Volume insuffisant — ${m.volLabel}`, color: '#e5484d' });
-  else if (m.volColor === '#f59f00' || m.volColor === 'var(--warn)') out.push({ type: 'synth-volume', msg: `Volume faible — ${m.volLabel}`, color: '#f59f00' });
+  // (03/11) plus d'alerte « Volume faible — Volume correct » : entre le minimum et l'optimum, le volume est correct, ce n'est pas une alerte.
   if (m.progColor === '#e5484d') out.push({ type: 'synth-progression', msg: `Progression en baisse — ${m.progLabel}`, color: '#e5484d' });
   if (m.recupColor === '#e5484d') out.push({ type: 'synth-recup', msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
   else if (m.recupColor === '#f59f00') out.push({ type: 'synth-recup', msg: `Récupération modérée — ${m.recupLabel}`, color: '#f59f00' });
@@ -9518,15 +9582,21 @@ function renderAlertesCoach(data) {
       + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
       + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">Marquer traité</button>`
       + (fait ? `<span class="cda-done-tag">Déjà conseillé</span>` : '');
+    let _msgA = al.message;
+    if (al.type === 'absence') { try { const _ab = _coachAbsence(d, { derniere: (d && d.dashboard && d.dashboard.derniere_seance) || null }); if (_ab.muscuConnue) _msgA = (_ab.autreRecente ? 'Pas de muscu depuis ' + Math.floor(_ab.muscuAge) + ' j · cardio il y a ' + Math.floor(_ab.actAge) + ' j' : 'Aucune séance depuis ' + Math.floor(_ab.actAge) + ' j') + ' — dernière muscu le ' + _coachDdmm(d.dashboard.derniere_seance.date); } catch (e) {} }
+    let _sevA = al.severite;
+    if (al.type === 'absence') { try { if (_coachAbsence(d, { derniere: (d && d.dashboard && d.dashboard.derniere_seance) || null }).actAge <= 14) _sevA = 'moyenne'; } catch (e) {} }   // même gravité que l'accueil (rouge > 14 j sans aucune activité)
+    _msgA = String(_msgA || '').replace(/^(.+?) — \1/, '$1');   // « Fatigue élevée — Fatigue élevée (4/5) » → « Fatigue élevée (4/5) »
     items.push({
-      sev: _sevGroupe(al.severite), cat: _catAlerte(al.type), msg: al.message,
+      sev: _sevGroupe(_sevA), cat: _catAlerte(al.type), msg: _msgA,
       rec: (al.recurrence_semaines > 1) ? ('🔁 ' + al.recurrence_semaines + ' sem') : '',
       presc: presc ? presc.act : '',
       explic: `<div id="${explicationId}" class="cda-explic" style="display:none">${explicationAlerte(al)}</div>`,
       actions
     });
   });
-  construireSynthAlertes(d).filter(s => !alerteEstTraitee(aid, { type: s.type })).forEach(s => {
+  const _fatigueBackend = alertes.some(al => al.type === 'fatigue');
+  construireSynthAlertes(d).filter(s => !alerteEstTraitee(aid, { type: s.type }) && !(s.type === 'synth-recup' && _fatigueBackend)).forEach(s => {   // récup modérée = même questionnaire que la fatigue → une seule carte
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const sev = (s.color === '#e5484d' || s.color === 'var(--bad)' || s.color === 'var(--danger)') ? 'haute' : 'moyenne';
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">Répondre</button>`
@@ -18281,7 +18351,7 @@ function renderEtat(data) {
         }).join('');
         var zone = '';
         var doul = Number(be0.douleur);
-        if (!isNaN(doul) && doul > 1 && be0.zone) {
+        if (!isNaN(doul) && doul > 1 && _zoneDouleur(be0.zone)) {
           zone = '<div class="et-er"><span class="et-lab" style="font-weight:600;color:var(--text-muted);font-size:11.5px">📍 Zone : <b style="color:var(--text)">' + esc(be0.zone) + '</b></span></div>';
         }
         // Date du relevé affiché : « du jour » peut en fait dater de la dernière
@@ -22375,7 +22445,7 @@ function _cfRecup(data) {
     var d = dimDef[p.key];
     var raw = (dernier[p.key] == null || dernier[p.key] === '' || isNaN(Number(dernier[p.key]))) ? null : Number(dernier[p.key]);
     var txt = raw != null ? (WQ_ANSWERS[p.key] ? WQ_ANSWERS[p.key][raw] : raw) : '—';
-    if (p.key === 'douleur' && raw != null && raw >= 2 && dernier.zone) txt = txt + ' · ' + dernier.zone;
+    if (p.key === 'douleur' && raw != null && raw >= 2 && _zoneDouleur(dernier.zone)) txt = txt + ' · ' + _zoneDouleur(dernier.zone);
     var c = 'var(--text-subtle)';
     if (raw != null && d) { var bon = d.invert ? raw <= 2 : raw >= 4; var moyen = raw === 3; c = bon ? 'var(--good)' : moyen ? 'var(--warn)' : 'var(--danger)'; }
     return '<div class="cd-forme-wq"><div class="k">' + p.icon + ' ' + p.label + '</div><div class="v" style="color:' + c + '">' + escapeHtml(String(txt)) + '</div></div>';
