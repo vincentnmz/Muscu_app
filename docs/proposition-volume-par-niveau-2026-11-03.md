@@ -32,3 +32,16 @@ Le **minimum** déclenche les signaux « sous le minimum » et le « +N séries 
 - Pelland 2024 (préprint) : https://sportrxiv.org/index.php/server/preprint/download/460/967/908
 - ACSM 2009 : https://sfu.ca/~ryand/kin343/ACSMresistance.pdf
 - Mollets 6/9/12 séries (via Stronger by Science) : https://www.strongerbyscience.com/?p=61503
+
+## Retour porteur (03/11) : débutant « 6-12 partout » + lien avec les programmes Novalyz
+Programmes **débutant** proposés par Novalyz (vrai générateur `_genProgramme2`, vrai catalogue, 3 séries/exercice, 75 min), séries/semaine (indirect = 0,5) :
+
+| Programme | Pecs | Dos | Épaules | Biceps | Triceps | Quadri | Ischio | Fessier | Mollets | Abdos |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Full Body découverte 2 j | 6 | 6 | 6 | 9 | 9 | 6 | 9 | **1,5** | 6 | **0** |
+| Full Body 3 j | 9 | 9 | 9 | 13,5 | 13,5 | 9 | 12 | **3** | 9 | **0** |
+| PPL 3 j | 9 | 12 | 9 | 10,5 | 10,5 | 9 | 11 | **5,5** | **4** | **0** |
+| Upper / Lower 4 j | 12 | 12 | 12 | 12 | 13,5 | 12 | 17 | 8,5 | 8 | 6 |
+| Split 5 j | 12 | 15 | 12 | 13,5 | 12 | 9 | 11 | **5,5** | **4** | **4** |
+
+Avec « 6-12 partout » pour le débutant : pecs / dos / épaules / bras / quadriceps / ischios **atteignent le minimum dans les 5 programmes** (Full Body 2 j pile à 6). En revanche **fessiers, mollets, abdos** sont sous 6 dans 3 à 4 programmes → l'app signalerait « sous le minimum » dès la 1re semaine d'un programme qu'elle a elle-même proposé (même défaut que P3 du 01/11).
