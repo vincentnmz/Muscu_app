@@ -11897,7 +11897,9 @@ function _progDecision(ctx) {
   //    échec 2 séances de suite sur l'exercice → on garde tout, viser RPE 9 ;
   //    jour en Vigilance (verdict du moteur) → aucune progression ce jour-là.
   //  • « Sous la fourchette » reste prioritaire.
-  var seuil = ctx.niveau === 'debutant' ? 8 : 9;
+  // Décision porteur 03/11 : une série à RPE 9 GARDE ses reps (on consolide jusqu'à RPE ≤ 8, puis +1 rep),
+  // pour tous les niveaux (avant : intermédiaire et + passaient à +1 rep dès RPE 9).
+  var seuil = 8;
   var prevR = (ctx.prev || []).map(function (x) { return Number(x.rpe); }).filter(function (x) { return x > 0; });
   var echec2 = rpe != null && rpe >= 10 && prevR.length && Math.max.apply(null, prevR) >= 10;
   var tousTenus = last.every(function (x) { var v = Number(x.rpe); return v > seuil; });
@@ -11937,11 +11939,11 @@ function _progDecision(ctx) {
     // série déjà dans la fourchette reste telle quelle).
     // Lecture v3 (02/11) : le petit pas ne suffit pas toujours (80 × 1 → 77,5 × 6 irréaliste) → la charge
     // ne dépasse jamais celle que permet la FORCE ESTIMÉE de la série (rmin reps à RPE 8-9, ≈ 1,5 rep en réserve).
+    // Décision porteur 03/11 : proposition = PETIT PAS (≈ −5 %, ex. 80 → 75 kg) ; la charge « sûre »
+    // (calculée sur la force estimée, plafonnée à −12,5 %) est donnée en alternative dans le texte.
     if (mode === 'sous') {
       if (!(rp > 0 && rp < rmin)) return { charge: ch, reps: rp, repos: R };
-      var cS = ch - ctx.pas;
-      try { if (typeof _lv3ForceSerie === 'function') { var fS = _lv3ForceSerie(r); if (fS > 0 && ctx.pas > 0) cS = Math.min(cS, Math.floor(fS / (1 + (rmin + 1.5) / 30) / ctx.pas) * ctx.pas); } } catch (e) {}
-      return { charge: Math.max(0, _r025(cS)), reps: rmin, repos: R, up: 'baisse' };
+      return { charge: Math.max(0, _r025(_sousPetitPas(ch, ctx.pas))), reps: rmin, repos: R, up: 'baisse' };
     }
     if (mode === 'charge' || (mode === 'choix' && (c === 'charge' || c === 'charge30')))
       return { charge: _r025(ch + ctx.pas), reps: rmin || rp, repos: (mode === 'choix' && c === 'charge30') ? options[1].repos : R, up: 'charge' };
@@ -11954,13 +11956,31 @@ function _progDecision(ctx) {
     return { charge: ch, reps: rp, repos: R };
   };
   var nTenues = (mode === 'reps') ? last.filter(function (x) { return Number(x.rpe) > seuil; }).length : 0;
-  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance };
+  // Alternative « sûre » en mode sous : charge permettant rmin reps à RPE 9 d'après la force estimée.
+  var alt = null;
+  try { if (mode === 'sous' && typeof _sousAlt === 'function') { var r0 = ref(1); alt = _sousAlt(Number(r0.charge) || 0, last.concat(ctx.prev || []), rmin, ctx.pas); } } catch (e) {}
+  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt };
+}
+// Petit pas en « sous la fourchette » : ≈ −5 % arrondi au pas de l'appareil, au moins un pas (80 → 75 kg).
+function _sousPetitPas(ch, pas) { pas = pas > 0 ? pas : 2.5; var c = Math.floor(ch * 0.95 / pas) * pas; if (c > ch - pas) c = ch - pas; return Math.max(0, c); }
+// Charge « sûre » : rmin reps à RPE 9 (1 rep en réserve) d'après la MEILLEURE force estimée des séries
+// récentes, jamais plus de −12,5 % sous la charge actuelle. null si elle n'est pas plus basse que le petit pas.
+function _sousAlt(ch, series, rmin, pas) {
+  if (!(ch > 0) || typeof _lv3ForceSerie !== 'function') return null;
+  pas = pas > 0 ? pas : 2.5;
+  var F = 0; (series || []).forEach(function (s) { var f = _lv3ForceSerie(s); if (f > F) F = f; });
+  if (!(F > 0)) return null;
+  var c = Math.floor(F / (1 + (rmin + 1) / 30) / pas) * pas, plancher = Math.ceil(ch * 0.875 / pas) * pas;
+  if (c < plancher) c = plancher;
+  var pp = _sousPetitPas(ch, pas);
+  if (c >= pp) return null;
+  return { charge: c, repsAuPetitPas: Math.max(1, Math.floor(30 * (F / pp - 1))) };
 }
 // Phrase d'explication du mode (UNE source pour la saisie, Aujourd'hui et Par exercice).
 function _progWhy(d, f, pas) {
   var kg = function (x) { return String(x).replace('.', ','); };
   if (!d || d.mode === 'premier') return '1re fois : trouve ta charge de travail';
-  if (d.mode === 'sous') return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ') · indicatif';
+  if (d.mode === 'sous') return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ')' + (d.alt ? ' · ou ' + kg(d.alt.charge) + ' kg pour assurer ' + f.rmin + ' reps' : '') + ' · proposition, c\'est toi qui choisis';
   if (d.mode === 'deload') return 'déload : même charge, 1 série de moins, garde 3 reps en réserve (RPE ≤ 7)';
   if (d.mode === 'reprise') return 'reprise après ' + Math.floor(d.joursSansSeance / 7) + ' semaines sans séance : refais ta dernière fois, sans pousser · indicatif';
   if (d.mode === 'vigilance') return 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '') + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';
