@@ -6,6 +6,9 @@
 
 - **03/11 — Audit coach, écran 1 « Aujourd'hui » : fait** (A1-A7, voir `docs/audit-coach-1-aujourdhui-2026-11-03.md`). Écran 2 « Équipe » : fait (E1-E7, `docs/audit-coach-2-equipe-2026-11-03.md`). Écran 3 « Fiche ▸ Aperçu » : fait (F1-F9, `docs/audit-coach-3-fiche-apercu-2026-11-03.md`) ; F10 volume par niveau en attente du porteur (`docs/proposition-volume-par-niveau-2026-11-03.md`). Écran 4 « Fiche ▸ Analyses » : fait (G1-G7, `docs/audit-coach-4-progression-2026-11-03.md`). Zones prioritaires + volume par niveau livrés. Suivant : écran 5 « Fiche ▸ Séances » + saisie coach. A8 (coût réseau accueil coach) reporté à la montée en charge. Photo de profil athlète au backlog.
 
+- **À faire après l'audit coach (demande porteur 03/11)** : permettre au coach d'**importer l'historique de ses clients** (Excel / CSV / autre logiciel : séances, charges, notes de suivi) quand il passe sur Novalyz, pour garder son suivi. À étudier : formats acceptés, correspondance des exercices avec le catalogue, notes libres → commentaires datés, aperçu avant import, doublons. (Avec l'audit onboarding.)
+- **Reprise demain** : audit coach écran 5 « Fiche ▸ Séances » + saisie de séance par le coach.
+
 ## Boussole (ne pas dériver)
 Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comment progresser (données + ressenti)**. Moteur déterministe = **source de vérité** ; l'IA est une *couche langage* branchée dessus, elle n'invente aucun chiffre. Segmentation **muscu B2C grand public / autres sports B2B pro** sur **un seul moteur**. Détails figés : `docs/vision-produit.md`, `docs/roadmap-produit.md`.
 
