@@ -1,0 +1,23 @@
+import { open } from './harness.mjs'; import fs from 'fs';
+const data = JSON.parse(fs.readFileSync(new URL('./audit/out_aliz_zp.json', import.meta.url)));
+const db = JSON.parse(fs.readFileSync(new URL('./audit/db_v7.json', import.meta.url)));
+const { pg, close } = await open({ programme: [], onboarding_vu: true, tourVu: true }, { width: 390, height: 844 });
+await pg.evaluate(([d, ex]) => { athlete.nom = 'Alizé'; _onbChecked = true; _etatAutoChecked = true; exercicesData = ex; _appliquerAppData(d); try { _etatSkip(); } catch (e) {} }, [data, db.exercices]);
+const shot = async (name, setup) => {
+  await pg.evaluate(setup); await pg.waitForTimeout(600);
+  const H = await pg.evaluate(() => document.getElementById('gen-prog-overlay').scrollHeight);
+  await pg.setViewportSize({ width: 390, height: Math.min(H, 3400) }); await pg.waitForTimeout(300);
+  await pg.screenshot({ path: '/home/user/Muscu_app/.work/shots/' + name + '.png' });
+  console.log('== ' + name + '\n' + await pg.evaluate(() => { const t = document.getElementById('gen-prog-sheet').innerText; const i = t.indexOf('ZONES'); const j = t.indexOf('SÉRIES PAR SEMAINE'); return t.slice(i, i + 400) + '\n…\n' + t.slice(j, j + 900); }));
+  await pg.setViewportSize({ width: 390, height: 844 });
+};
+await shot('zp-deb', () => { ouvrirGenProgramme(); _genState.niv = 'debutant'; _genState.preset = 1; _genRender(); });
+await shot('zp-int', () => { _genState.niv = 'intermediaire'; _genState.org = 'ul'; _genState.jours = 4; _genState.temps = 60; _genState.zones = ['pectoraux']; _genRender(); });
+await pg.evaluate(() => { const b = [...document.querySelectorAll('#gen-prog-sheet button')].find(x => /Passer à/.test(x.textContent)); console.log('BTN', b && b.textContent); b && b.click(); });
+await pg.waitForTimeout(500);
+console.log('APRES CLIC', await pg.evaluate(() => JSON.stringify({ org: _genState.org, jours: _genState.jours, temps: _genState.temps }) + ' ' + (document.getElementById('gen-prog-sheet').innerText.match(/✓[^\n]*|muscles? rest[^\n]*/) || [''])[0]));
+await pg.evaluate(() => { fermerGenProgramme(); switchTab('reglages'); try { remplirProfil && remplirProfil(); } catch (e) {} });
+await pg.waitForTimeout(600);
+console.log('REGLAGES', await pg.evaluate(() => { const e = document.getElementById('prof-zones'); if (!e) return 'absent'; e.scrollIntoView({ block: 'center' }); return e.innerText.replace(/\n/g, ' | '); }));
+await pg.screenshot({ path: '/home/user/Muscu_app/.work/shots/zp-reglages.png' });
+await close();

@@ -15,3 +15,11 @@ Demande porteur : « il aurait fallu demander quelle partie souhaite développer
 ## Technique prévue
 - Zones stockées comme les autres préférences (`indicateurs` pref `zones_prio`), renvoyées par `getAppData` ; le serveur relève la cible des zones dans `volume_obti` → athlète, coach, mail, plan suivent (redéploiement `index.ts`).
 - Générateur : blocs des zones prioritaires ajoutés comme pour l'option A, à tous les niveaux.
+
+## Réalisé (03/11, validé porteur : maquette + règle)
+- **Serveur** (`index.ts`) : `ZONES_PRIO` (fessiers, jambes = quadriceps + ischios, pectoraux, dos, épaules, bras = biceps + triceps, abdos) ; préférence `zones_prio` (2 max, action `saveZonesPrio`) ; `getAppData.volume_obti` relève le minimum des zones au milieu de la fourchette (`prio: true`) → Analyses, plan, mail, fiche coach suivent ; `getAppData.zones_prio`. **À redéployer.**
+- **Assistant** : étape « Zones à développer en priorité » (débutant : après le choix du programme ; autres : après l'objectif), rien de présélectionné ; aperçu ★ avec la cible relevée ; zones enregistrées à la création du programme. Générateur : la zone est servie en premier (un exercice par séance où c'est logique, dans la durée choisie ; en débutant, dépassement autorisé comme l'option A).
+- **Option b** : quand des muscles restent sous la cible, l'assistant teste +15 / +30 min, un jour de plus, puis d'autres organisations, et propose la première solution qui atteint tout (« Passer à 90 min → tout est atteint », avec les chiffres) ou « Garder ». Écart avec la maquette : pour intermédiaire Upper/Lower 4 j × 60 min ★ pecs, la solution réelle est **90 min** (à 75 min les quadriceps restent sous 10).
+- **Réglages ▸ Profil** : zones modifiables (enregistrées à chaque choix, cibles recalculées) + lien « régénérer avec mes zones ». **Fiche coach** : « ★ Fessiers » dans l'en-tête, zones modifiables dans l'onglet Programme, ★ dans « Séries des 7 derniers jours ». **Analyses** : ★ sur le muscle. **Plan de la semaine** : « ★ Fessier : +3 séries… (ta zone prioritaire) ».
+- Corrigé en route : l'aperçu de l'assistant comparait au niveau du profil au lieu du niveau choisi.
+- Tests : `generateur-v2` 42 cas (+3 zones) ; 77 suites vertes. Captures relues : assistant débutant ★ fessiers, intermédiaire ★ pecs (option b + clic), Réglages, fiche coach.

@@ -2572,8 +2572,25 @@ function prefillProfilReglages() {
   set('prof-annees', athlete.annees_pratique);
   var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
   set('prof-sexe', (athlete.sexe === 'H' || athlete.sexe === 'F') ? athlete.sexe : '');
+  try { _profZonesRender(); } catch (e) {}
   try { _renderMonCoach(); } catch (e) {}
   var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
+}
+
+// Zones à développer en priorité (03/11) — Réglages ▸ Profil : enregistrées à chaque choix.
+function _profZonesRender() {
+  var el = document.getElementById('prof-zones'); if (!el) return;
+  var z = ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.zones_prio) || []);
+  el.innerHTML = _zpChipsHtml(z, '_profZone');
+}
+async function _profZone(k) {
+  if (!athlete || !athlete.athlete_id) return;
+  var z = _zpToggle((dernierAppData && dernierAppData.zones_prio) || [], k);
+  if (dernierAppData) dernierAppData.zones_prio = z;
+  _profZonesRender();
+  var ok = await _zpSave(athlete.athlete_id, z);
+  try { showToast(ok ? (z.length ? 'Zones prioritaires : ' + _zpLabels(z).join(', ') : 'Programme équilibré (aucune zone prioritaire)') : 'Erreur : zones non enregistrées'); } catch (e) {}
+  if (ok && typeof chargerAppData === 'function') { try { await chargerAppData(); } catch (e) {} }   // cibles de volume et plan recalculés par le serveur
 }
 
 async function enregistrerProfil() {
@@ -5117,6 +5134,22 @@ function coachBandeauGo(tab) {
 }
 
 var _coachProgApres = null;   // action à jouer une fois les données de la fiche chargées
+// Zones prioritaires de l'athlète, modifiables par le coach (fiche ▸ Programme) — 03/11.
+function renderCoachZones(data) {
+  var el = document.getElementById('cd-zones'); if (!el) return;
+  var z = (data && data.zones_prio) || [];
+  el.innerHTML = '<div style="font-size:12.5px;font-weight:800;margin-bottom:7px">Zones à développer en priorité <span style="font-weight:600;color:var(--text-subtle)">· 2 max</span></div>'
+    + _zpChipsHtml(z, 'coachZone')
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-top:7px;line-height:1.45">Relève la cible de volume (haut de la fourchette) dans ses Analyses et son plan de la semaine. Le programme n\'est pas modifié tout seul : « Novalyz propose » pour le régénérer avec ces zones.</div>';
+}
+async function coachZone(k) {
+  var a = coachAthleteCourant; if (!a || !coachAthleteData) return;
+  var z = _zpToggle(coachAthleteData.zones_prio || [], k);
+  coachAthleteData.zones_prio = z; renderCoachZones(coachAthleteData);
+  var ok = await _zpSave(a.athlete_id, z);
+  try { showToast(ok ? (z.length ? 'Zones de ' + (a.nom || 'l\'athlète') + ' : ' + _zpLabels(z).join(', ') : 'Programme équilibré') : 'Erreur : zones non enregistrées'); } catch (e) {}
+  if (ok) { try { await ouvrirDetailAthleteCoach(a, 'programme'); } catch (e) {} }   // cibles recalculées par le serveur
+}
 function coachOuvrirProgression(idx, exo) {
   const a = athletesCoach[Number(idx)];
   if (!a) return;
@@ -5625,6 +5658,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachOverview(data);
     try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
     try { renderCoachDecider(data); } catch (_) {}           // F6 (03/11) — ① À décider (diagnostics + alertes, avec actions)
+    try { renderCoachZones(data); } catch (_) {}             // zones prioritaires (onglet Programme)
     try { _coachIaEtat(data); } catch (_) {}                 // F9 (03/11) — IA « Bientôt » tant qu'elle n'est pas activée
     try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
     try { cdAgInit(); } catch (_) {}                         // agenda daté (rail Aperçu + onglet Programme)
@@ -5820,7 +5854,7 @@ function _lectureExos(data, nowT) {
 }
 // ===== Audit coach écran 3 (03/11) — fiche Aperçu : faits + ce qui est proposé à l'athlète + actions =====
 // Cibles de volume = celles du SERVEUR (volume_obti), les mêmes que voit l'athlète (F3). Muscle sans cible → null.
-function _coachCibles(data) { var o = {}; ((data && data.volume_obti) || []).forEach(function (v) { if (v && v.muscle && Number(v.series_min) > 0) o[v.muscle] = { min: Number(v.series_min), opt: Number(v.series_opt) || 0 }; }); return o; }
+function _coachCibles(data) { var o = {}; ((data && data.volume_obti) || []).forEach(function (v) { if (v && v.muscle && Number(v.series_min) > 0) o[v.muscle] = { min: Number(v.series_min), opt: Number(v.series_opt) || 0, prio: !!v.prio }; }); return o; }
 // Séries par muscle des 7 derniers jours (aujourd'hui + 6 jours), séances réelles, secondaire = 0,5 (F2).
 function _coachVol7(data, nowT) {
   var dm = (data && data.historique && data.historique.daily_muscu) || {}, out = {};
@@ -6121,6 +6155,7 @@ function renderCoachHeroEtat(data) {
   if (a.objectif) metaBits.push(a.objectif);
   if (data.poids && data.poids.length) metaBits.push(`${data.poids[0].poids} kg`);
   else if (a.poids) metaBits.push(`${a.poids} kg`);
+  try { const _zl = _zpLabels(data.zones_prio); if (_zl.length) metaBits.push('★ ' + _zl.join(', ')); } catch (e) {}   // zones prioritaires (03/11)
   // Sans état du jour récent, on NE peut pas certifier « en forme » : un vert
   // (optimal) est rétrogradé en orange « À confirmer ». Un orange/rouge reste.
   let heroBg = s.color, niveauDisp = niveau;
@@ -6854,7 +6889,7 @@ function renderCoachHubVolume(data) {
     var c = C[m], f = v7[m] || 0, sous = f < c.min; if (sous) sousCount++;
     var color = sous ? 'var(--warn)' : 'var(--good)', pctw = c.opt ? Math.min(100, Math.round(f / c.opt * 100)) : 0;
     return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-      '<span style="width:78px;flex:none;font-size:11.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(m)) + '</span>' +
+      '<span style="width:78px;flex:none;font-size:11.5px;font-weight:' + (c.prio ? 800 : 700) + ';color:' + (c.prio ? 'var(--text)' : 'var(--text-muted)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (c.prio ? '★ ' : '') + escapeHtml(String(m)) + '</span>' +
       '<div style="flex:1;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;"><div style="height:100%;border-radius:999px;width:' + pctw + '%;background:' + color + ';"></div></div>' +
       '<span style="width:64px;flex:none;text-align:right;font-size:11px;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;white-space:nowrap">' + _coachFmtN(f) + ' · ' + c.min + '-' + c.opt + '</span></div>';
   }).join('');
@@ -8327,7 +8362,7 @@ function _modeleLignes(org, n) {
     : ((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.annees_pratique != null) ? coachAthleteCourant.annees_pratique : null);
   var niv = (ann != null && typeof getNiveauExperience === 'function') ? getNiveauExperience(ann) : 'intermediaire';
   if (niv === 'expert') niv = 'avance';
-  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv, _g2VolCtx(niv)));
+  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv, _g2VolCtx(niv)));   // zones enregistrées de l'athlète
 }
 async function _psModele(org) {
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
@@ -14431,7 +14466,7 @@ function _lxVolume(data) {
   var rows = obti.filter(function (o) { return o && o.muscle && (!filtre || progMus[_musKey(o.muscle)]); }).map(function (o) {
     var fait = Number(o.series_semaine) || 0, mn = Number(o.series_min) || 0, opt = Number(o.series_opt) || 0;
     var attendu = Math.round(mn * prorata * 10) / 10;
-    return { muscle: o.muscle, fait: fait, min: mn, opt: opt, attendu: attendu, retard: mn > 0 && fait < attendu };
+    return { muscle: o.muscle, lbl: (o.prio ? '★ ' : '') + o.muscle, prio: !!o.prio, fait: fait, min: mn, opt: opt, attendu: attendu, retard: mn > 0 && fait < attendu };
   });
   // Muscles ciblés par le moteur mais absents du programme et à 0 cette semaine (retour 31/10).
   var horsProg = filtre ? obti.filter(function (o) { return o && o.muscle && !progMus[_musKey(o.muscle)] && !(Number(o.series_semaine) > 0); }).map(function (o) { return o.muscle; }) : [];
@@ -14610,12 +14645,12 @@ function _maLectureNovalyzBloc(data) {
     var _faits = V.rows.filter(function (r) { return r.fait > 0; }), _zero = V.rows.filter(function (r) { return !(r.fait > 0); });
     var vr = _faits.map(function (r) {
       var C = r.retard ? '#E07800' : '#00A854', w = r.opt ? Math.min(100, Math.round(r.fait / r.opt * 100)) : 0;
-      return '<div style="display:grid;grid-template-columns:84px 1fr 62px;gap:8px;align-items:center;font-size:12px;padding:3px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(r.muscle) + '</span>'
+      return '<div style="display:grid;grid-template-columns:84px 1fr 62px;gap:8px;align-items:center;font-size:12px;padding:3px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (r.prio ? ';font-weight:800' : '') + '">' + _maE(r.lbl || r.muscle) + '</span>'
         + '<div style="height:7px;border-radius:999px;background:var(--surface);overflow:hidden"><i style="display:block;height:100%;width:' + w + '%;background:' + C + ';border-radius:999px"></i></div>'
         + '<span style="text-align:right;color:var(--text-muted);font-weight:700">' + r.fait + ' / ' + r.min + '-' + r.opt + '</span></div>';
     }).join('');
     if (_zero.length) vr += '<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:800;margin:9px 0 3px">' + (_semOk ? 'Pas travaillés cette semaine' : 'Encore à faire cette semaine') + '</div>'
-      + _zero.map(function (r) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-muted)"><span>' + _maE(r.muscle) + '</span><span style="font-weight:700">0 / ' + r.min + '-' + r.opt + '</span></div>'; }).join('');
+      + _zero.map(function (r) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-muted)"><span>' + _maE(r.lbl || r.muscle) + '</span><span style="font-weight:700">0 / ' + r.min + '-' + r.opt + '</span></div>'; }).join('');
     if (V.horsProg && V.horsProg.length) vr += '<div style="font-size:11px;color:var(--text-subtle);margin-top:7px;line-height:1.4">Pas dans ton programme (0 série) : ' + V.horsProg.map(_maE).join(', ') + '.</div>';
     progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
       + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:8px">Volume par muscle · séries cette semaine' + (V.prevues ? ' (' + V.faites + '/' + V.prevues + ' séances)' : '') + '</div>'
@@ -19225,6 +19260,40 @@ function _g2Reps(objectif, niveau, sl) {
 }
 function _g2Sets(niveau) { return niveau === 'avance' ? 4 : 3; }
 
+// ── Zones à développer en priorité (porteur 03/11, docs/zones-prioritaires-2026-11-03.md) ──
+// 2 max, choisies par l'athlète ou son coach (jamais déduites du sexe). Règle validée : le minimum
+// d'une zone prioritaire passe au MILIEU de sa fourchette (6-12 → 9-12 ; 10-16 → 13-16) — la même
+// règle est appliquée par le serveur (ZONES_PRIO / volumeCiblesRows d'index.ts) pour les cibles enregistrées.
+var ZONES_PRIO_UI = [['fessiers', 'Fessiers', ['Fessier']], ['jambes', 'Jambes', ['Quadriceps', 'Ischio']], ['pectoraux', 'Pectoraux', ['Pectoraux']],
+  ['dos', 'Dos', ['Dos']], ['epaules', 'Épaules', ['Epaule']], ['bras', 'Bras', ['Biceps', 'Triceps']], ['abdos', 'Abdos', ['Abdominaux']]];
+function _zpMuscles(zones) { var o = {}; (zones || []).forEach(function (z) { ZONES_PRIO_UI.forEach(function (Z) { if (Z[0] === z) Z[2].forEach(function (m) { o[m] = 1; }); }); }); return o; }
+function _zpLabels(zones) { return (zones || []).map(function (z) { var Z = ZONES_PRIO_UI.filter(function (x) { return x[0] === z; })[0]; return Z ? Z[1] : null; }).filter(Boolean); }
+// Relève le minimum des zones prioritaires dans une table de cibles {muscle: {min, opt}} (générateur).
+function _zpAppliquer(T, zones) {
+  var P = _zpMuscles(zones);
+  Object.keys(T).forEach(function (k) { if (k !== '_defaut' && P[k] && T[k]) T[k] = { min: Math.round((T[k].min + T[k].opt) / 2), opt: T[k].opt, prio: true }; });
+  return T;
+}
+// Puces de choix (2 max). onclickFn reçoit la clé de zone ('' = équilibré).
+function _zpChipsHtml(zones, onclickFn) {
+  var on = zones || [];
+  var chip = function (k, lbl, actif) { return '<button type="button" onclick="' + onclickFn + '(\'' + k + '\')" style="padding:8px 12px;border-radius:999px;border:1.5px solid ' + (actif ? 'var(--accent)' : 'var(--border)') + ';background:' + (actif ? 'var(--accent)' : 'var(--surface)') + ';color:' + (actif ? '#fff' : 'var(--text)') + ';font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">' + (actif && k ? '★ ' : '') + lbl + '</button>'; };
+  return '<div style="display:flex;flex-wrap:wrap;gap:7px">' + ZONES_PRIO_UI.map(function (Z) { return chip(Z[0], Z[1], on.indexOf(Z[0]) >= 0); }).join('') + chip('', 'Équilibré', !on.length) + '</div>';
+}
+function _zpToggle(zones, k) {
+  var z = (zones || []).slice();
+  if (!k) return [];
+  var i = z.indexOf(k);
+  if (i >= 0) z.splice(i, 1); else { if (z.length >= 2) { try { showToast('2 zones maximum'); } catch (e) {} return z; } z.push(k); }
+  return z;
+}
+async function _zpSave(aid, zones) {
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveZonesPrio', athlete_id: aid, zones: zones }) });
+    var j = await r.json(); return !!(j && j.success);
+  } catch (e) { return false; }
+}
+
 // ── Audit Programme P3 (01/11, option a) : répartition selon le DÉFICIT de volume ──
 // Mêmes cibles et même comptage que les Analyses (muscle principal 1 série, secondaire 0,5 ;
 // cibles volume_obti par muscle, sinon cibles par niveau). 1) un exercice par muscle et par
@@ -19268,7 +19337,13 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
   // (6 séries/sem). Leurs blocs sont rendus disponibles là où c'est logique même si la séance ne les prévoit pas
   // (fessiers / mollets : séances avec quadriceps ou ischios ; abdos : toutes les séances).
   var _COMP = (niveau === 'debutant') ? [['fessiers', 'Fessier', /quad|ischios/], ['mollets', 'Mollets', /quad|ischios/], ['abdos', 'Abdominaux', /./]] : [];
-  _COMP.forEach(function (c) {
+  // Zones prioritaires (03/11) : leurs blocs deviennent disponibles là où c'est logique, à TOUS les niveaux.
+  var _BK = { Pectoraux: 'pecs', Dos: 'dos', Epaule: 'epaules', Biceps: 'biceps', Triceps: 'triceps', Quadriceps: 'quad', Ischio: 'ischios', Fessier: 'fessiers', Mollets: 'mollets', Abdominaux: 'abdos' };
+  var _BAS = /quad|ischios|fessiers|mollets/, _HAUT = /pecs|dos|epaules|biceps|triceps/;
+  var _PRIO = [];
+  Object.keys(T).forEach(function (m) { if (T[m] && T[m].prio && _BK[m] && !_COMP.some(function (c) { return c[1] === m; })) _PRIO.push([_BK[m], m, m === 'Abdominaux' ? /./ : (_BAS.test(_BK[m]) ? _BAS : _HAUT)]); });
+  if (niveau === 'debutant') _COMP = _COMP.concat(_PRIO);   // débutant : dépassement de durée autorisé (option A)
+  _PRIO.concat(_COMP).forEach(function (c) {
     if (!_G2_BLOCKS[c[0]]) return;
     plan.forEach(function (P) {
       var bks = P.d.b.map(function (pr) { return pr[0]; });
@@ -19282,8 +19357,10 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
   var deficit = function (m) { var c = cible(m); return c ? (c.min - (W[m] || 0)) / c.min : -1; };
   var sousMax = function (mm, n) { var c0 = cible(mm[0]), c1 = mm[1] ? cible(mm[1]) : null;
     return (!c0 || (W[mm[0]] || 0) + n <= c0.opt * 1.5) && (!c1 || (W[mm[1]] || 0) + n / 2 <= c1.opt * 1.5); };
+  // 0) Zones prioritaires (03/11) : servies EN PREMIER (un exercice par séance où c'est logique), dans la durée choisie.
+  plan.forEach(function (P) { _PRIO.forEach(function (c) { var x = P.ext.concat(P.decl).filter(function (y) { return y.bk === c[0] && y.si === 0 && P.keep.indexOf(y) < 0; })[0]; if (x && P.budget >= sets) add(P, x); }); });
   // 1) un exercice par muscle et par séance (comme avant)
-  plan.forEach(function (P) { P.decl.filter(function (x) { return x.pk === 0; }).forEach(function (x) { if (P.budget >= sets) add(P, x); }); });
+  plan.forEach(function (P) { P.decl.filter(function (x) { return x.pk === 0 && P.keep.indexOf(x) < 0 && !P.keep.some(function (y) { return y.bk === x.bk; }); }).forEach(function (x) { if (P.budget >= sets) add(P, x); }); });
   for (var guard = 0; guard < 400; guard++) {
     // 2a) muscle le plus en retard : un exercice de plus (pool étendu)
     var best = null, bestD = 1e-9;
@@ -19308,7 +19385,7 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
     if (!f) break;
     add(f.P, f.x);
   }
-  // Option A : si le minimum n'est toujours pas atteint faute de place, on ajoute l'exercice quand même
+  // Option A (débutant ; zones prioritaires comprises) : si le minimum n'est toujours pas atteint faute de place, on ajoute l'exercice quand même
   // (au plus 2 exercices au-delà de la durée choisie par séance) — la séance s'allonge un peu.
   _COMP.forEach(function (c) {
     for (var g2 = 0; g2 < 8; g2++) {
@@ -19416,7 +19493,8 @@ function ouvrirGenProgramme() {
     else if (_ol.indexOf('maintien') >= 0 || _ol.indexOf('entretien') >= 0 || _ol.indexOf('mainte') >= 0) _butDef = 'maintien';
     else _butDef = 'masse';
   } catch (e) {}
-  _genState = { niv: 'intermediaire', obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0 };
+  var _zIni = []; try { var _dd0 = _gc.coach ? coachAthleteData : dernierAppData; _zIni = ((_dd0 && _dd0.zones_prio) || []).slice(0, 2); } catch (e) {}
+  _genState = { niv: 'intermediaire', obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -19496,6 +19574,45 @@ function _g2Set(k, v) {
   if (k === 'but') { _genState.obj = (v === 'force') ? 'force' : 'hypertrophie'; }
   _genRender();
 }
+function _g2ZonesHtml(st) {
+  var z = st.zones || [], P = _zpMuscles(z), ex = '';
+  try { var T = _g2VolCtx(st.niv, z).targets; var m0 = Object.keys(P)[0]; if (m0 && T[m0]) ex = ' (' + _zpLabels([z[0]])[0].toLowerCase() + ' ' + T[m0].min + '-' + T[m0].opt + ' séries/sem au lieu de ' + Math.round(2 * T[m0].min - T[m0].opt) + '-' + T[m0].opt + ')'; } catch (e) {}
+  return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">Zones à développer en priorité <span style="text-transform:none;letter-spacing:0;font-weight:700">· 2 max</span></div>'
+    + _zpChipsHtml(z, '_g2Zone')
+    + '<div style="font-size:11.5px;color:var(--text-subtle);margin:7px 2px 2px;line-height:1.45">Rien n\'est choisi d\'avance : c\'est toi qui dis. Une zone prioritaire vise le haut de ta fourchette' + ex + ' et reçoit un exercice de plus.</div>';
+}
+function _g2Zone(k) { _genState.zones = _zpToggle(_genState.zones, k); _genState.garde = null; _genRender(); }
+// Option b (03/11) : la plus petite modification (durée, jour, organisation) qui fait atteindre tous les minimums.
+function _g2Solution(st) {
+  var essai = function (o, j, t) {
+    try { var vol = _g2VolCtx(st.niv, st.zones || []); var L = _genProgramme2(st.but || 'masse', o, j, t, st.niv, vol); var V = _g2VolLignes(L, vol.cat), T = vol.targets;
+      return Object.keys(T).filter(function (k) { return k !== '_defaut' && T[k] && (V[k] || 0) < T[k].min; }).length === 0 ? { V: V, T: T } : null; } catch (e) { return null; }
+  };
+  var JL = _G2_JLOGIC[st.org] || [2, 3, 4, 5, 6], cands = [];
+  [15, 30].forEach(function (dt) { if (st.temps + dt <= 90) cands.push({ org: st.org, jours: st.jours, temps: st.temps + dt }); });
+  if (JL.indexOf(st.jours + 1) >= 0) { cands.push({ org: st.org, jours: st.jours + 1, temps: st.temps }); [15, 30].forEach(function (dt) { if (st.temps + dt <= 90) cands.push({ org: st.org, jours: st.jours + 1, temps: st.temps + dt }); }); }
+  [['ul', 4], ['ppl', 6], ['split', 5]].forEach(function (oj) { if (oj[0] !== st.org) [st.temps, 75, 90].forEach(function (t) { if (t >= st.temps) cands.push({ org: oj[0], jours: oj[1], temps: t }); }); });
+  for (var i = 0; i < cands.length; i++) { var c = cands[i], r = essai(c.org, c.jours, c.temps); if (r) { c.V = r.V; c.T = r.T; return c; } }
+  return null;
+}
+function _g2SousHtml(st, sous, esc) {
+  if (!sous.length) return '<div style="font-size:11.5px;line-height:1.45;margin-top:4px;color:#00A854;font-weight:700">✓ Tous les muscles atteignent ton minimum' + ((st.zones || []).length ? ((st.zones.length > 1) ? ', tes zones prioritaires aussi' : ', ta zone prioritaire aussi') : '') + '.</div>';
+  var cle = [st.org, st.jours, st.temps, (st.zones || []).join(',')].join('|');
+  var titre = st.niv === 'debutant' ? '' : 'À ' + st.jours + ' j × ' + st.temps + ' min, ';
+  var h = '<div style="background:#FFF4E5;border:1px solid #F5C77E;border-radius:12px;padding:10px 12px;margin-top:8px;font-size:12px;line-height:1.5;color:var(--text)"><b>' + titre + sous.length + ' muscle' + (sous.length > 1 ? 's restent' : ' reste') + ' sous ta cible</b> : ' + esc(sous.join(', ')) + '.';
+  if (st.niv === 'debutant' || st.garde === cle) return h + (st.garde === cle ? '<div style="font-size:11px;color:var(--text-subtle);margin-top:5px">Gardé tel quel : ces muscles apparaîtront « sous le minimum » dans tes Analyses.</div>' : '') + '</div>';
+  var S = _g2Solution(st), ORG = { fb: 'Full Body', ul: 'Upper / Lower', ppl: 'PPL', split: 'Split' };
+  if (S) {
+    var lbl = (S.org !== st.org ? ORG[S.org] + ' ' + S.jours + ' j' + (S.temps !== st.temps ? ' × ' + S.temps + ' min' : '') : (S.jours !== st.jours ? (S.jours + ' jours' + (S.temps !== st.temps ? ' × ' + S.temps + ' min' : '')) : S.temps + ' min'));
+    var det = sous.map(function (x) { var m = String(x).replace(/^★ /, '').split(' ')[0]; var v = S.V[m] || 0; return (/^★/.test(x) ? '★ ' : '') + m + ' ' + String(Math.round(v * 10) / 10).replace('.', ','); }).join(', ');
+    h += '<br>Pour tout atteindre :<br><button onclick="_g2Appliquer(\'' + S.org + '\',' + S.jours + ',' + S.temps + ')" style="margin:6px 6px 0 0;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:800;cursor:pointer">Passer à ' + esc(lbl) + ' → tout est atteint</button>'
+      + '<button onclick="_g2Garder()" style="margin:6px 0 0;background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:800;cursor:pointer">Garder ' + (S.temps !== st.temps && S.jours === st.jours && S.org === st.org ? st.temps + ' min' : 'tel quel') + '</button>'
+      + '<div style="font-size:11px;color:var(--text-subtle);margin-top:6px">Avec ' + esc(lbl) + ' : ' + esc(det) + '. Si tu gardes, ces muscles apparaîtront « sous le minimum » dans tes Analyses — c\'est ton choix.</div>';
+  } else h += '<div style="font-size:11px;color:var(--text-subtle);margin-top:5px">Aucune durée (≤ 90 min) ni organisation testée ne suffit : garde ce programme ou complète-le dans l\'éditeur.</div>';
+  return h + '</div>';
+}
+function _g2Appliquer(org, jours, temps) { _genState.org = org; _genState.jours = jours; _genState.temps = temps; _genState.garde = null; _genRender(); }
+function _g2Garder() { _genState.garde = [_genState.org, _genState.jours, _genState.temps, (_genState.zones || []).join(',')].join('|'); _genRender(); }
 function _g2Chip(onclick, on, label, dis) {
   return '<button ' + (dis ? '' : 'onclick="' + onclick + '"') + ' style="flex:1 1 auto;min-width:0;padding:9px 10px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';color:' + (dis ? 'var(--text-subtle)' : (on ? 'var(--accent)' : 'var(--text-muted)')) + ';border-radius:11px;font-weight:700;font-size:12.5px;cursor:' + (dis ? 'default' : 'pointer') + ';opacity:' + (dis ? '.4' : '1') + '">' + label + '</button>';
 }
@@ -19513,7 +19630,7 @@ function _g2Resolve(lignes) {
   return lignes;
 }
 // Cibles de volume de l'athlète ciblé (mêmes que les Analyses : volume_obti par muscle, sinon par niveau).
-function _g2VolCtx(niv) {
+function _g2VolCtx(niv, zones) {
   var d = null;
   try { d = (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) ? dernierAppData : ((typeof coachAthleteData !== 'undefined') ? coachAthleteData : null); } catch (e) {}
   var T = {};
@@ -19521,10 +19638,17 @@ function _g2VolCtx(niv) {
   var _src = (niv && d && d.volume_niveaux && d.volume_niveaux[niv]) ? d.volume_niveaux[niv] : ((d && d.volume_obti) || []);
   _src.forEach(function (o) { var m = _g2Mus(o.muscle), mn = Number(o.series_min), op = Number(o.series_opt); if (m && mn > 0) T[m] = { min: mn, opt: op > 0 ? op : mn }; });
   try { var dt = _maVolTargets(); if (dt && dt.min) T._defaut = { min: dt.min, opt: dt.opt || dt.min }; } catch (e) {}
-  return { targets: T, cat: exercicesData || [] };
+  // Zones prioritaires (choisies dans l'assistant, sinon celles enregistrées) : on repart des cibles du niveau SANS zones.
+  var _zs = zones || (d && d.zones_prio) || [];
+  if (_zs.length && d && d.volume_niveaux && niv && d.volume_niveaux[niv]) {
+    T = {}; d.volume_niveaux[niv].forEach(function (o) { var m = _g2Mus(o.muscle), mn = Number(o.series_min), op = Number(o.series_opt); if (m && mn > 0) T[m] = { min: mn, opt: op > 0 ? op : mn }; });
+    if (dt && dt.min) T._defaut = { min: dt.min, opt: dt.opt || dt.min };
+  }
+  _zpAppliquer(T, _zs);
+  return { targets: T, cat: exercicesData || [], zones: _zs };
 }
 function _g2Lignes() {
-  var st = _genState, lignes, vol = _g2VolCtx(st.niv === 'expert' ? 'expert' : st.niv);
+  var st = _genState, lignes, vol = _g2VolCtx(st.niv === 'expert' ? 'expert' : st.niv, st.zones || []);
   if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, 75, 'debutant', vol); }
   else if (st.but === 'force') { lignes = _genProgrammeForce(st.jours); }
   else { lignes = _genProgramme2(st.but || 'masse', st.org, st.jours, st.temps, st.niv, vol); }
@@ -19644,6 +19768,7 @@ function _genRender() {
   if (st.niv === 'debutant') {
     body += L('Choisis ton programme')
       + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('')
+      + _g2ZonesHtml(st)
       + _semBlockHtml();
   } else {
     var BUTS = [['masse', 'Prise de masse'], ['seche', 'Sèche'], ['maintien', 'Maintien'], ['force', 'Force']];
@@ -19652,6 +19777,7 @@ function _genRender() {
     // (c'est la nutrition qui diffère) ; le maintien allège le volume.
     var _butNote = { masse: 'Volume complet, 8–12 reps : on construit du muscle.', seche: 'Même entraînement qu\'en prise de masse (on préserve le muscle) — c\'est la nutrition qui fait la sèche.', maintien: 'Volume allégé : juste de quoi entretenir tes acquis.', force: 'Charges lourdes, peu de reps : squelette powerlifting modifiable.' }[st.but];
     if (_butNote) body += '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px;line-height:1.45">' + _butNote + '</div>';
+    if (st.but !== 'force') body += _g2ZonesHtml(st);
     if (st.but === 'force') {
       body += L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j'); }).join(''))
         + _semBlockHtml()
@@ -19677,14 +19803,14 @@ function _genRender() {
   // P3 (01/11) : volume par muscle du programme proposé vs cibles (comme les Analyses) — on DIT ce qui reste sous le minimum.
   var volHtml = '';
   try {
-    var _vc = _g2VolCtx(st.niv), _V = _g2VolLignes(lignes, _vc.cat), _T = _vc.targets, _mus = Object.keys(_T).filter(function (k) { return k !== '_defaut'; });
+    var _vc = _g2VolCtx(st.niv, st.zones || []), _V = _g2VolLignes(lignes, _vc.cat), _T = _vc.targets, _mus = Object.keys(_T).filter(function (k) { return k !== '_defaut'; });
     if (!_mus.length) _mus = Object.keys(_V);
     var _fmtS = function (n) { return String(Math.round(n * 10) / 10).replace('.', ','); };
     var _sous = [];
-    var _rows = _mus.map(function (m) { var c = _T[m] || _T._defaut, v = _V[m] || 0; if (!c) return ''; var col = v < c.min ? '#DC3545' : (v > c.opt * 1.5 ? '#9D5FD3' : (v < c.opt ? '#E07800' : '#00A854')); if (v < c.min) _sous.push(m + ' ' + _fmtS(v) + '/' + c.min);
-      return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin:0 8px 4px 0"><i style="width:7px;height:7px;border-radius:9px;background:' + col + '"></i>' + esc(m) + ' ' + _fmtS(v) + '</span>'; }).join('');
+    var _rows = _mus.map(function (m) { var c = _T[m] || _T._defaut, v = _V[m] || 0; if (!c) return ''; var col = v < c.min ? '#DC3545' : (v > c.opt * 1.5 ? '#9D5FD3' : (v < c.opt ? '#E07800' : '#00A854')); if (v < c.min) _sous.push((c.prio ? '★ ' : '') + m + ' ' + _fmtS(v) + '/' + c.min);
+      return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin:0 8px 4px 0"><i style="width:7px;height:7px;border-radius:9px;background:' + col + '"></i>' + (c.prio ? '<b style="color:var(--text)">★ ' + esc(m) + ' ' + _fmtS(v) + '</b> (' + c.min + '-' + c.opt + ')' : esc(m) + ' ' + _fmtS(v)) + '</span>'; }).join('');
     volHtml = '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border)"><div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:6px">Séries par semaine et par muscle</div>' + _rows
-      + '<div style="font-size:11.5px;line-height:1.45;margin-top:4px;color:' + (_sous.length ? '#DC3545' : '#00A854') + '">' + (_sous.length ? 'Sous ton minimum : ' + esc(_sous.join(', ')) + '. Pour l\'atteindre : plus de temps par séance ou un jour de plus.' : 'Tous les muscles atteignent ton minimum de séries.') + '</div>'
+      + _g2SousHtml(st, _sous, esc)
       + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:3px">Même calcul que tes Analyses (muscle secondaire = ½ série).</div></div>';
   } catch (e) {}
   // Bureau : options à gauche, aperçu + bouton à droite (colonne collante). Mobile : empilé.
@@ -19708,6 +19834,7 @@ async function _genGenerer() {
       body: JSON.stringify({ action: 'genererProgramme', athlete_id: _gc.id, athlete_nom: _gc.nom, remplacer: true, lignes: lignes }) });
     var data = await res.json();
     if (data && (data.ok || data.inserees)) {
+      try { await _zpSave(_gc.id, _genState.zones || []); } catch (e) {}   // zones prioritaires choisies dans l'assistant
       showToast('Programme créé (' + (data.inserees || lignes.length) + ' exercices)');
       if (!_gc.coach) _genOpeningEditor = true;   // l'éditeur va s'ouvrir → le tour démarrera à sa fermeture, pas là
       fermerGenProgramme();

@@ -105,5 +105,17 @@ check('P3: 4 séries max par exercice (interméd.)', p1.every(function (l) { ret
   check('Option A réservée au débutant (intermédiaire FB 3 j 60 min : pas de Hip thrust ajouté)', !Li.some(function (l) { return /Hip thrust/i.test(l.exercice); }));
 }
 
+// Zones prioritaires (03/11) : minimum relevé au milieu de la fourchette ; la zone atteint sa nouvelle cible.
+{ const T = {}; Object.values(MUSB).forEach(function (m) { T[m] = { min: 6, opt: 12 }; });
+  T.Fessier = { min: 9, opt: 12, prio: true };
+  const L = gen('masse', 'fb', 3, 75, 'debutant', { targets: T, cat: CAT }), V = sandbox._g2VolLignes(L, CAT);
+  check('Zone prioritaire fessiers (débutant FB 3 j) : ≥ 9 séries/sem (' + V.Fessier + ')', (V.Fessier || 0) >= 9);
+  const Ti = {}; Object.values(MUSB).forEach(function (m) { Ti[m] = { min: 10, opt: 16 }; });
+  Ti.Fessier = { min: 13, opt: 16, prio: true };
+  const Li = gen('masse', 'fb', 3, 60, 'intermediaire', { targets: Ti, cat: CAT });
+  check('Zone prioritaire fessiers (intermédiaire FB 3 j) : un exercice fessiers ajouté (bloc absent du Full Body)', Li.some(function (l) { return /Hip thrust/i.test(l.exercice); }));
+  check('Zone prioritaire intermédiaire : la durée choisie reste respectée (≤ 6 exos/séance à 60 min)', Object.values(Li.reduce(function (o, l) { o[l.seance_id] = (o[l.seance_id] || 0) + 1; return o; }, {})).every(function (n) { return n <= 6; }));
+}
+
 console.log((ko === 0 ? '✓' : '✗') + ' generateur-v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs:\n  ' + fails.join('\n  ')); process.exit(1); }

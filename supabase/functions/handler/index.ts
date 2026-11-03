@@ -61,10 +61,26 @@ const VOLUME_CIBLES_NIVEAU: Record<string, Record<string, [number, number]>> = (
     expert: t([12, 20], [10, 18], [8, 14]),        // aucune étude ne distingue avancé et expert
   }
 })()
+// Zones à développer en priorité (porteur 03/11, docs/zones-prioritaires-2026-11-03.md) : 2 max, choisies par
+// l'athlète ou son coach. Règle validée : le MINIMUM d'une zone prioritaire passe au MILIEU de sa fourchette
+// (débutant 6-12 → 9-12 ; intermédiaire 10-16 → 13-16), l'optimum ne change pas.
+const ZONES_PRIO: Record<string, string[]> = {
+  fessiers: ['Fessier'], jambes: ['Quadriceps', 'Ischio'], pectoraux: ['Pectoraux'], dos: ['Dos'],
+  epaules: ['Epaule'], bras: ['Biceps', 'Triceps'], abdos: ['Abdominaux'],
+}
+function zonesPrioMuscles(zones: any): Record<string, boolean> {
+  const out: Record<string, boolean> = {}
+  ;(Array.isArray(zones) ? zones : []).forEach((z: any) => (ZONES_PRIO[String(z)] || []).forEach(m => { out[m] = true }))
+  return out
+}
 // Lignes au format de l'ancienne table (muscle, series_min_semaine, series_opt_semaine) pour un niveau.
-function volumeCiblesRows(niveau: string): any[] {
+function volumeCiblesRows(niveau: string, zones?: any): any[] {
   const T = VOLUME_CIBLES_NIVEAU[niveau] || VOLUME_CIBLES_NIVEAU.intermediaire
-  return Object.keys(T).map(m => ({ muscle: m, series_min_semaine: T[m][0], series_opt_semaine: T[m][1], series_max_semaine: Math.round(T[m][1] * 1.5) }))
+  const P = zonesPrioMuscles(zones)
+  return Object.keys(T).map(m => {
+    const mn = P[m] ? Math.round((T[m][0] + T[m][1]) / 2) : T[m][0]
+    return { muscle: m, series_min_semaine: mn, series_opt_semaine: T[m][1], series_max_semaine: Math.round(T[m][1] * 1.5), prio: !!P[m] }
+  })
 }
 
 function anneesEffectives(base: any, created_at: any, now: Date): number {
@@ -2420,7 +2436,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const perfs = (perfsAll || []).map((r: any) => ({ ...r, muscle: normMuscle(r.muscle) }))
   // Cibles de volume du NIVEAU de l'athlète (ancienneté effective) — source unique (03/11).
   const niveauAth = getNiveauExperience(anneesEffectives(athData?.annees, athData?.created_at, now))
-  const volObtiRows = volumeCiblesRows(niveauAth)
+  const zonesPrio: string[] = (() => { const r = (prefRows || []).find((x: any) => x.cle === 'zones_prio'); if (!r) return []; try { const a = JSON.parse(String(r.valeur || '[]')); return Array.isArray(a) ? a.filter((z: any) => ZONES_PRIO[String(z)]).slice(0, 2) : [] } catch (_) { return [] } })()
+  const volObtiRows = volumeCiblesRows(niveauAth, zonesPrio)
   void _volObtiDb
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
@@ -2744,6 +2761,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     volume_obti = volObtiRows.map(v => ({
       muscle: v.muscle, series_semaine: seriesParMuscle[v.muscle] || 0,
       series_min: v.series_min_semaine, series_opt: v.series_opt_semaine,
+      prio: !!(v as any).prio,
     }))
   }
 
@@ -2926,6 +2944,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
     niveau_experience: niveauAth,
+    zones_prio: zonesPrio,   // zones à développer en priorité (2 max) — cibles relevées dans volume_obti
     // Cibles de volume de TOUS les niveaux (générateur : niveau choisi dans l'assistant) — même table que volume_obti.
     volume_niveaux: Object.fromEntries(Object.keys(VOLUME_CIBLES_NIVEAU).map(k => [k, volumeCiblesRows(k).map(r => ({ muscle: r.muscle, series_min: r.series_min_semaine, series_opt: r.series_opt_semaine }))])),
     exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
@@ -6240,6 +6259,23 @@ async function handleSavePref(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// Zones à développer en priorité (2 max), choisies par l'athlète ou son coach. JSON dans UNE ligne pref.
+async function handleSaveZonesPrio(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id || !Array.isArray(body.zones)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  const zones = [...new Set(body.zones.map((z: any) => String(z)))].filter((z: any) => ZONES_PRIO[z as string]).slice(0, 2)
+  const valeur = JSON.stringify(zones)
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'zones_prio').limit(1)
+  if (existing?.length) {
+    const { error } = await sb().from('indicateurs').update({ valeur }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'zones_prio')
+    if (error) return jsonResp({ success: false, error: error.message })
+  } else {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'zones_prio', valeur, unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true, zones })
+}
+
 // Catégorie de chaque exercice choisie par l'athlète (ou son coach) : gros (6-8 reps),
 // moyen (8-12), petit (12-25). Sert aux fourchettes de reps de la lecture et des
 // cibles de saisie. Stockée en JSON dans UNE ligne pref (seance_id='pref',
@@ -7334,6 +7370,7 @@ Deno.serve(async (req: Request) => {
         case 'saveSemaineType':          return handleSaveSemaineType(body)
         case 'savePref':                 return handleSavePref(body)
         case 'saveExoCategories':        return handleSaveExoCategories(body)
+        case 'saveZonesPrio':            return handleSaveZonesPrio(body)
         case 'claimRecompense':          return handleClaimRecompense(body)
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)
