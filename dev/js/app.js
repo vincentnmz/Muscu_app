@@ -19677,7 +19677,7 @@ function _genRender() {
   // P3 (01/11) : volume par muscle du programme proposé vs cibles (comme les Analyses) — on DIT ce qui reste sous le minimum.
   var volHtml = '';
   try {
-    var _vc = _g2VolCtx(), _V = _g2VolLignes(lignes, _vc.cat), _T = _vc.targets, _mus = Object.keys(_T).filter(function (k) { return k !== '_defaut'; });
+    var _vc = _g2VolCtx(st.niv), _V = _g2VolLignes(lignes, _vc.cat), _T = _vc.targets, _mus = Object.keys(_T).filter(function (k) { return k !== '_defaut'; });
     if (!_mus.length) _mus = Object.keys(_V);
     var _fmtS = function (n) { return String(Math.round(n * 10) / 10).replace('.', ','); };
     var _sous = [];
