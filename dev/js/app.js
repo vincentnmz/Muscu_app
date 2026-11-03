@@ -5497,6 +5497,10 @@ function _maCoachAttach(data) {
   if (!_maCoach) _maPrevApp = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
   dernierAppData = data;
   _maCoach = true;
+  // G1 (03/11) : « Importer mes séances (montre) » n'a pas de sens pour le coach.
+  try { var _hc = document.getElementById('btn-hc-analyses'); if (_hc) _hc.style.display = 'none'; } catch (e) {}
+  // G5 (03/11) : exercice ouvert par défaut = celui du 1er point « À décider » (s'il y en a un).
+  try { var _dg = (typeof _lv3Diags === 'function') ? _lv3Diags(data) : []; _maExoSel = (_dg && _dg[0]) ? _dg[0].exo : null; } catch (e) {}
   // En-tête : côté coach, ce n'est pas « Mes analyses » mais celles de l'athlète.
   try {
     var t = node.querySelector('.ma-ttl'), s = node.querySelector('.ma-sub');
@@ -5507,6 +5511,7 @@ function _maCoachAttach(data) {
 }
 var _maTtlOrig = null, _maSubOrig = null;
 function _maCoachDetach() {
+  try { var _hc = document.getElementById('btn-hc-analyses'); if (_hc) _hc.style.display = ''; } catch (e) {}   // G1 : rendu à l'athlète
   var node = document.getElementById('tab-historique');
   if (node && _maHome && node.parentNode !== _maHome.parent) {
     if (_maHome.next && _maHome.next.parentNode === _maHome.parent) _maHome.parent.insertBefore(node, _maHome.next);
@@ -13471,7 +13476,11 @@ function maSetDisc(d) {
 // Granularité par défaut selon la vue : Résumé = semaine (instantané) ; Par
 // exercice/sport et Tendances = mois (courbe lisible). L'utilisateur peut ensuite
 // naviguer (flèches) ou changer Semaine/Mois/Année.
-function _maDefaultGran(t) { return (t === 'detail' || t === 'tendances') ? 'M' : 'S'; }
+function _maDefaultGran(t) {
+  // G4 (03/11) : côté coach, Année par défaut (toute l'histoire ; le mois en cours n'a qu'1 point en début de mois).
+  if (typeof _maCoach !== 'undefined' && _maCoach && (t === 'detail' || t === 'tendances')) return 'A';
+  return (t === 'detail' || t === 'tendances') ? 'M' : 'S';
+}
 function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; if (!_maPeriodeTouched) { var _g0 = _maGran; _maGran = _maDefaultGran(t); _maOffset = 0; _maSyncPeriode(); if (_g0 !== _maGran) { try { maRenderData(); } catch (e) {} } } _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
@@ -14085,6 +14094,22 @@ function _maSportWeekly(sesss, metric, nWeeks) {
 }
 
 // Point d'entrée : rend tous les sous-onglets à partir de dernierAppData.
+// G2 (03/11) : dans la fiche coach, les Analyses de l'athlète sont réutilisées telles quelles ; on réécrit
+// les phrases adressées à l'athlète (« ta », « tu », « c'est toi qui choisis ») pour le coach.
+var _MA_TON_COACH = [
+  [/C'est toi qui (choisis|décides)\.?/g, ''], [/attends-toi à/g, 'à prévoir :'], [/\bLevier\b ?:/g, 'Proposé à l\'athlète :'],
+  [/\bta fourchette\b/g, 'sa fourchette'], [/\bta meilleure série\b/g, 'sa meilleure série'], [/\bTa meilleure série\b/g, 'Sa meilleure série'],
+  [/\bqu'il te restait\b/g, 'qu\'il lui restait'], [/\btes séries\b/g, 'ses séries'], [/\btes séances\b/g, 'ses séances'], [/\btu vois\b/g, 'on voit'],
+  [/\bsi tu montes\b/g, 's\'il monte'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\bta progression\b/g, 'sa progression'],
+  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire']
+];
+function _maCoachTon(root) {
+  if (!root || typeof _maCoach === 'undefined' || !_maCoach) return;
+  try {
+    var tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n;
+    while ((n = tw.nextNode())) { var t = n.nodeValue, t2 = t; if (!t || !/[a-zA-Z]/.test(t)) continue; _MA_TON_COACH.forEach(function (r) { t2 = t2.replace(r[0], r[1]); }); if (t2 !== t) n.nodeValue = t2; }
+  } catch (e) {}
+}
 function maRenderData() {
   var data = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
   if (!data) return;
@@ -14098,6 +14123,7 @@ function maRenderData() {
   try { _maCardioHistorique(data); } catch (e) {}
   try { _maCroise(data); } catch (e) {}
   try { _maSuivi(data); } catch (e) {}
+  try { _maCoachTon(document.getElementById('tab-historique')); } catch (e) {}   // G2 : ton coach
 }
 
 // Onglet « Photo & mensurations » CÔTÉ COACH (consultation) — même contenu dans les
@@ -14356,7 +14382,10 @@ function _maProgRegBloc(data) {
 // FRÉQUENCE par muscle (jours distincts / semaine) — cible ≥ 2×/sem (hypertrophie).
 function _maFreqMuscleBloc(data) {
   var w = _maWin(), daily = (data.historique && data.historique.daily_muscu) || {};
-  var weeks = Math.max(1, Math.round(w.days / 7)), dayc = {};
+  // G3 (03/11) : période en cours → on divise par les jours ÉCOULÉS (avant : le mois entier → « 0,3×/sem » en rouge le 3 du mois).
+  var _ecoul = w.isCurrent ? Math.max(1, Math.round((Math.min(Date.now(), w.end.getTime()) - w.start.getTime()) / 86400000)) : w.days;
+  if (_ecoul < 7) return _maSec('Fréquence par muscle', w.plabel, 'frequence') + _maEmpty('Pas encore assez de recul sur la période (' + _ecoul + ' jour' + (_ecoul > 1 ? 's' : '') + ') : la fréquence s\'affiche à partir de 7 jours.');
+  var weeks = Math.max(1, Math.round(_ecoul / 7)), dayc = {};
   Object.keys(daily).forEach(function (d) {
     if (d >= w.startISO && d < w.endISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
   });
@@ -14768,6 +14797,7 @@ function _maMuscuResume(data) {
 }
 
 function _maMuscuExercice(data) {
+  try { setTimeout(function () { _maCoachTon(document.getElementById("tab-historique")); }, 0); } catch (e) {}   // G2 : ton coach après chaque rendu partiel
   var prog = (data.historique && data.historique.progression_par_exo) || {};
   var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 2; });
   exos.sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
@@ -14784,7 +14814,7 @@ function _maMuscuExercice(data) {
   // (même position que les autres panes), pas décalé sous les sélecteurs.
   // Rail coach de « Évolution » : on y pose l'agenda daté (comme l'Aperçu et
   // l'onglet Programme). Côté athlète, pas d'agenda → rail = bloc Novalyz seul.
-  var _agMount = (typeof _maCoach !== 'undefined' && _maCoach) ? '<div id="cd-agenda-prog" class="dash-card" style="padding:14px;margin-bottom:12px"></div>' : '';
+  var _agMount = '';   // G7 (03/11) : le planning reste dans l'onglet Programme (doublon retiré d'Analyses)
   _maSet('ma-muscu-detail',
     '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + head + periodSel + body + '</div>'
@@ -14865,7 +14895,7 @@ function _maChargeRepsRich(pts) {
   charges.forEach(function (v, i) {
     var xx = X(i), yy = Yc(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#00A854' : '#1A5FFF') + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    if (last || i % cstep === 0) clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + v + '×' + reps[i] + '</text>';
+    if (last || i % cstep === 0) clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + _kgTxt(v) + '×' + reps[i] + '</text>';
     if (last || i % xstepCR === 0) xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
   });
   var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
@@ -14947,7 +14977,7 @@ function _maProgExo(data) {
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
   }
   var _chipTxt = isSrv ? 'Par série' : (isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')'));
-  var _topVal = isSrv ? ((_srvLines ? _srvLines.length : 0) + ' série' + ((_srvLines && _srvLines.length > 1) ? 's' : '')) : (isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last);
+  var _topVal = isSrv ? ((_srvLines ? _srvLines.length : 0) + ' série' + ((_srvLines && _srvLines.length > 1) ? 's' : '')) : (isCR ? (_kgTxt(pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last);
   var _topTail = isSrv ? '' : (' ' + dspan);   // pas de delta global en vue « par série »
   // Retour 31/10 : les onglets de métrique (Charge + reps / 1RM / Volume / Par série) passent DANS la carte blanche du graphique.
   var chart = '<div class="ma-chart">' + seg + '<div class="ma-ctop" style="margin-top:10px"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + _topTail + '</span></div>' + chartBody + legend + '</div>';
@@ -14955,7 +14985,7 @@ function _maProgExo(data) {
   // séance qui ajoute des reps à charge identique n'était pas prise en compte).
   var best = pts.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, pts[0]);
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
-  var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">force estimée</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
+  var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">force estimée</div></div><div class="c"><div class="v">' + _kgTxt(best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
   // « Dernières séances » : TOUTES les séries du jour (depuis seances_detail), +
   // 1RM estimé du jour LABELLISÉ (sinon on ne comprend pas le chiffre de droite).
   var sdByDate = {};
@@ -14963,12 +14993,12 @@ function _maProgExo(data) {
     var ex = (s.exercices || []).filter(function (e) { return e.nom === sel; })[0];
     if (ex && ex.series && ex.series.length) sdByDate[s.date_fr || s.date] = ex.series;
   });
-  var recentHead = '<div class="ma-sess ma-sess-h"><span class="dt">Date</span><span class="s">Séries (charge × reps)</span><span class="r">1RM</span></div>';
+  var recentHead = '<div class="ma-sess ma-sess-h"><span class="dt">Date</span><span class="s">Séries (charge × reps)</span><span class="r">Force est.</span></div>';
   var recent = pts.slice().reverse().slice(0, 6).map(function (p) {
     var series = sdByDate[p.date] || [{ charge: p.charge, reps: p.reps }];
-    var setsTxt = series.map(function (x) { return (x.charge || 0) + '×' + (x.reps || 0); }).join(' · ');
+    var setsTxt = series.map(function (x) { return _kgTxt(x.charge || 0) + '×' + (x.reps || 0); }).join(' · ');
     var bd = series.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, series[0]);
-    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps }) + ' kg</span></div>';
+    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps, rpe: bd.rpe, series: [bd] }) + ' kg</span></div>';
   }).join('');
   // Explication de la métrique affichée (sous le graphe) — reprend la maquette validée.
   var EXPL = {
@@ -15549,7 +15579,7 @@ function _maCardioParSport(data) {
   var types = Object.keys(allBy).sort(function (a, b) { return allBy[b].n - allBy[a].n; });
   // Rail coach de « Évolution » cardio : agenda daté (id distinct du muscu pour éviter
   // toute collision d'id entre les 2 panes qui coexistent dans le DOM).
-  var _agC = (typeof _maCoach !== 'undefined' && _maCoach) ? '<div id="cd-agenda-progc" class="dash-card" style="padding:14px;margin-bottom:12px"></div>' : '';
+  var _agC = '';   // G7 (03/11) : planning seulement dans l'onglet Programme
   if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _agC + _maNovaAsk() + '</div></div>'); if (_agC) { try { cdAgRender(); } catch (e) {} } return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
