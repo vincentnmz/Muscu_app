@@ -4624,6 +4624,9 @@ function coachRelancerRessenti(idx) {
 function _coachEntrLigne(d) {
   if (!d || typeof _lv3Plan !== 'function') return null;
   var P = null, D = []; try { P = _lv3Plan(d); } catch (e) {}
+  // 04/11 (retour porteur : Alizé « Plan 1/1 » restait listée après sa séance) : plan fait = rien à regarder.
+  var _toutFait = !!(P && P.actions && P.actions.length && P.faits >= P.actions.length);
+  if (P && P.reprise && _toutFait) return null;
   if (P && P.reprise) { var a0 = P.actions[0], pp = String(a0.derniere || '').split('-'); return { txt: '<b>Reprendre</b> : 1 séance de muscu cette semaine' + (pp.length === 3 ? ' (dernière le ' + pp[2] + '/' + pp[1] + ')' : ''), P: P }; }
   try { D = _lv3Diags(d) || []; } catch (e) {}
   var KIND = { sous: 'sous la fourchette', recule: 'recule', bloque: 'bloqué', effort: 'effort en hausse' };
@@ -4634,6 +4637,7 @@ function _coachEntrLigne(d) {
     var act = g.action && g.action.titre ? String(g.action.titre).split(' : ').slice(1).join(' : ') : '';
     txt = '<b>' + escapeHtml(g.exo) + '</b> : ' + (KIND[g.kind] || g.kind) + (g.kind === 'sous' ? der : '') + (act ? ' · ' + escapeHtml(act) : '');
   } else if (P) {
+    if (_toutFait) return null;
     var a1 = P.actions.filter(function (x) { return !x.fait; })[0] || P.actions[0];
     txt = escapeHtml(a1.titre);
   }
@@ -5069,7 +5073,8 @@ async function renderCoachSynthese(athletes) {
   const entrHtml = !_entr.length ? '' : `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Entraînement à regarder<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">plan de la semaine</span></div></div>`
     + _entr.map(({ e, L }) => {
       const P = L.P, n = P ? P.actions.length : 0;
-      const tag = P ? `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--surface2);color:var(--text-muted);">Plan ${P.faits}/${n} fait${n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : ''}</span>` : '';
+      const _ok = P && n && P.faits >= n;
+      const tag = P ? (_ok ? `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A);">✓ Plan de la semaine fait</span>` : `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--surface2);color:var(--text-muted);">Plan ${P.faits}/${n} fait${n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : ''}</span>`) : '';
       const _ex = L.exo ? String(L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
       return `<div onclick="coachOuvrirProgression('${e.i}'${_ex ? `,'${_ex}'` : ''})" style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);">
           ${_coachAv(e.a, 'var(--accent-a12)', 'var(--accent-strong)', 36)}
@@ -6766,7 +6771,12 @@ function computeMarqueursCoach(data, a) {
     const _ctxV = (typeof _ctxAttendu === 'function') && _ctxAttendu(data);
     if (typeof _lv3Volume === 'function' && _jrsV.length && _jrsV[0] < _ymdV(_debV) && !_ctxV) {
       const _fmt = x => String(Math.round(x * 10) / 10).replace('.', ',');
-      const rows = (data.volume_obti || []).filter(o => o && Number(o.series_min) > 0).map(o => { const V = _lv3Volume(data, o.muscle, _lunV.getTime()); return { m: o.muscle, v: V.parSem, min: Number(o.series_min), opt: Number(o.series_opt) || 0 }; });
+      // 04/11 (porteur) : seuls les muscles TRAVAILLÉS par le programme (principal ou secondaire) — un muscle
+      // absent du programme (ex. mollets) n'est pas un oubli à signaler. Programme vide / catalogue absent → tous.
+      const _pm = {};
+      try { (data.programme || []).forEach(l => { if (!l || l.type === 'cardio' || !l.exercice) return; const ex = (typeof exercicesData !== 'undefined' ? exercicesData : []).filter(x => x && String(x.exercice).trim() === String(l.exercice).trim())[0]; const m1 = (ex && ex.muscle) || (typeof _lv3MuscleExo === 'function' ? _lv3MuscleExo(data, l.exercice) : ''); if (m1) _pm[_musKey(m1)] = 1; if (ex && ex.muscle_secondaire) _pm[_musKey(ex.muscle_secondaire)] = 1; }); } catch (e) {}
+      const _dansProg = o => !Object.keys(_pm).length || !!_pm[_musKey(o.muscle)];
+      const rows = (data.volume_obti || []).filter(o => o && Number(o.series_min) > 0 && _dansProg(o)).map(o => { const V = _lv3Volume(data, o.muscle, _lunV.getTime()); return { m: o.muscle, v: V.parSem, min: Number(o.series_min), opt: Number(o.series_opt) || 0 }; });
       const sous = rows.filter(r => r.v < r.min).sort((a, b) => a.v / a.min - b.v / b.min);
       if (sous.length) {
         volAlerte = true; volColor = '#f59f00';
@@ -7949,7 +7959,8 @@ function _coachDeskAujourdhui() {
   var entrHtml = !entr.length ? '' : '<div class="cs-sec" style="margin-top:18px">Entraînement à regarder</div><div class="cs-watch">' + entr.map(function (x) {
     var P = x.L.P, n = P ? P.actions.length : 0, ex = x.L.exo ? String(x.L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
     return '<div class="cs-wrow" onclick="coachOuvrirProgression(\'' + x.e.i + '\'' + (ex ? ',\'' + ex + '\'' : '') + ')"><span class="cs-av2">' + _coachDeskInit(x.e.a.nom) + '</span><div class="cs-wn"><b>' + escapeHtml(x.e.a.nom) + '</b><div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px">' + x.L.txt.replace(/<b>/g, '<strong style="font-weight:700;color:var(--text)">').replace(/<\/b>/g, '</strong>') + '</div>'
-      + (P ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">Plan ' + P.faits + '/' + n + ' fait' + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
+      + (P && n && P.faits >= n ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A)">✓ Plan de la semaine fait</span></div>' : '')
+      + (P && !(n && P.faits >= n) ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">Plan ' + P.faits + '/' + n + ' fait' + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
   }).join('') + '</div>';
   return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div>' + entrHtml + '</div>'
     + '<aside>' + questPanel
