@@ -29,3 +29,7 @@ Données : Vincent (copie 02/11) et Alizé, rejouées avec la vraie action serve
 | **N1** | **« vs la fois précédente »** sur chaque exercice du détail : ▲ +2 reps à 70 kg · ▼ −1 rep · = (même calcul que « progresse / recule »). | Le coach voit d'un coup si la séance a fait progresser, sans comparer de tête avec la séance d'avant. |
 | **N2** | Bouton **« Commenter cette séance »** → conversation avec « Au sujet de ta séance du 02/11 (pec epaule) : » prérempli. | Retour rapide et contextualisé à l'athlète (comme « Écrire à… » de l'Aperçu). |
 | **N3** | Sur la séance : **ce que Novalyz proposait pour ce jour-là** (ex. « Smith : proposé 75 kg ») et si c'est fait (✓) — le plan de la semaine relié à la séance. | Le coach voit si l'athlète a suivi la proposition, et décide de la suite. |
+
+## Décisions porteur (04/11)
+Validé : S1-S9 et N1-N3. Maquette : `mockups/coach-seances-v2.html` (+ `-1.png` liste, `-2.png` séance dépliée, `-3.png` saisie présentiel).
+Chiffres de la maquette (vérifiés) : 02/11 « pec epaule » avec la fourchette réelle → 17 séries sur 18 dans la fourchette (94 %), 1 en dessous (élévation frontale 7,5 × 7) ; « vs la fois précédente » calculé sur les séances réelles (ex. décliné Smith 70 × 8 à RPE 8 contre RPE 9 le 12/10). Bilan 02/11 : 6/10 · 84 min (base au 03/11) ; douleurs 29/10 (2/5) et 26/10 (2/5, épaule gauche).
