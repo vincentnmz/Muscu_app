@@ -5136,7 +5136,11 @@ function coachBandeauGo(tab) {
 var _coachProgApres = null;   // action à jouer une fois les données de la fiche chargées
 // Zones prioritaires de l'athlète, modifiables par le coach (fiche ▸ Programme) — 03/11.
 function renderCoachZones(data) {
-  var el = document.getElementById('cd-zones'); if (!el) return;
+  // Mobile : #cd-zones (onglet Programme) ; desktop : #cd-zones-desk (colonne droite du Builder,
+  // l'onglet Programme y est remplacé par le Builder — retour porteur 04/11 : réglage introuvable sur ordi).
+  var els = ['cd-zones', 'cd-zones-desk'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
+  if (!els.length) return;
+  var el = { set innerHTML(h) { els.forEach(function (e) { e.innerHTML = h; }); } };
   var z = (data && data.zones_prio) || [];
   var _pn = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'l\'athlète', _ok = !!(data && data.novalyz_athlete_ok);
   var _radio = function (on, val, titre, txt) { return '<div role="radio" aria-checked="' + on + '" onclick="coachNovalyzAthlete(' + val + ')" style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.4;cursor:pointer;margin-top:6px"><span style="width:16px;height:16px;border-radius:50%;flex:none;margin-top:1px;box-sizing:border-box;border:' + (on ? '5px solid var(--accent)' : '2px solid var(--border)') + '"></span><span><b>' + titre + '</b> — ' + txt + '</span></div>'; };
@@ -5675,6 +5679,10 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
     try { renderCoachDecider(data); } catch (_) {}           // F6 (03/11) — ① À décider (diagnostics + alertes, avec actions)
     try { renderCoachZones(data); } catch (_) {}             // zones prioritaires (onglet Programme)
+    try {   // 04/11 : programme affiché avant l'arrivée des données → catégories absentes jusqu'ici
+      var _pel = _progEl(), _tp = document.getElementById('cdtab-programme');
+      if (_tp && _tp.style.display !== 'none' && _pel && !_pel.querySelector('.loader') && String(_progAthleteId()) === String(a.athlete_id) && Array.isArray(cdProgrammeLignes) && cdProgrammeLignes.length) renderProgrammeCoach();
+    } catch (_) {}
     try { _coachIaEtat(data); } catch (_) {}                 // F9 (03/11) — IA « Bientôt » tant qu'elle n'est pas activée
     try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
     try { cdAgInit(); } catch (_) {}                         // agenda daté (rail Aperçu + onglet Programme)
@@ -8753,13 +8761,14 @@ function renderProgrammeCoach() {
     // Agenda daté : UNIQUEMENT côté coach (fiche athlète). En tête de la colonne droite.
     var _agCoach = (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id);
     var insp = '<div class="pb-insp">'
+      + (_agCoach ? '<div class="pb-card" id="cd-zones-desk" style="padding:14px"><div class="loader">Chargement...</div></div>' : '')
       + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
       + '<div class="pb-card" style="padding:12px 14px">' + _semBlockHtml() + '</div>'
-      + (_nvPropsAthlete() ? '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>' : '')
+      + (!_agCoach && _nvPropsAthlete() ? '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>' : '')
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
       + '</div>';
     elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
-    if (_agCoach) { try { cdAgRender(); } catch (e) {} }
+    if (_agCoach) { try { cdAgRender(); } catch (e) {} try { if (coachAthleteData) renderCoachZones(coachAthleteData); } catch (e) {} }
   }
   if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 
