@@ -1,0 +1,81 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette programme coach et athlète avec coach</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.w{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;padding:20px;align-items:flex-start}
+.ph{width:390px;background:#F4F7FF;border-radius:24px;padding:14px 0 18px;box-shadow:0 8px 30px rgba(14,26,51,.12)}
+h3{margin:2px 16px 10px;font-size:13px;color:#55627E}
+.c{background:#fff;border:1px solid #DCE4F5;border-radius:16px;padding:12px 14px;margin:0 14px 10px}
+.t{font-size:13px;font-weight:800}.s{font-size:11.5px;color:#55627E;line-height:1.5;margin-top:3px}
+.rad{display:flex;flex-direction:column;gap:6px;margin-top:8px}.rad label{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.4}.rad i{width:16px;height:16px;border-radius:50%;border:2px solid #CFDCFF;flex:none;margin-top:1px}.rad i.on{border:5px solid #1A5FFF}
+.btn{display:block;text-align:center;background:linear-gradient(135deg,#1A5FFF,#7C5CFF);color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;margin:0 14px 10px}
+.info{background:#FFF7EB;border:1px solid #F5D7A1;border-radius:12px;padding:9px 11px;font-size:12px;line-height:1.5;margin:0 14px 10px}
+.sea{background:#DCE6FF;border-radius:14px;margin:0 14px 8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:800;color:#1A5FFF;font-size:14px}
+.sea span{font-size:10.5px;background:#fff;border-radius:999px;padding:2px 8px}
+.nv{margin:-4px 14px 10px;background:#EEF4FF;border:1px dashed #9DB8FF;border-radius:10px;padding:7px 10px;font-size:11.5px;line-height:1.45}
+.new{outline:2px dashed #1A5FFF;outline-offset:3px}.note{font-size:10.5px;color:#1A5FFF;font-weight:700;margin:-4px 18px 10px}
+.hero{margin:0 14px 10px;border-radius:16px;padding:12px 14px;background:linear-gradient(135deg,#12B76A,#0A9455);color:#fff}.hero b{font-size:15px}
+.ex{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #EEF2FB;padding:7px 0;font-size:12.5px}.ex:first-of-type{border-top:0}.ex .r{text-align:right;color:#55627E;font-size:11.5px}.ex .r b{color:#0E1A33}
+.gone{font-size:11px;color:#8A96B0;text-decoration:line-through}
+.row{display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:6px;font-size:12px;padding:6px 0;border-top:1px solid #EEF2FB;align-items:center}.row.h{font-size:9.5px;color:#8A96B0;font-weight:800;text-transform:uppercase;border-top:0}
+.inp{background:#EEF2FB;border-radius:8px;padding:6px;text-align:center;font-weight:800}
+.coachtag{display:inline-block;font-size:10px;font-weight:800;background:#F1ECFF;color:#7A5AF8;border-radius:6px;padding:2px 7px}
+</style></head><body><div class="w">
+
+<!-- ====== 1. Coach : onglet Programme ====== -->
+<div class="ph"><h3>① Coach ▸ fiche de Vincent ▸ Programme</h3>
+<div class="c new"><div class="t">Propositions Novalyz pour Vincent</div>
+<div class="rad"><label><i class="on"></i><span><b>Au coach seulement</b> (par défaut) — Novalyz te propose ; Vincent voit tes consignes et ses faits.</span></label>
+<label><i></i><span><b>Aussi à Vincent</b> — il voit le plan, les cibles et les leviers de Novalyz comme un athlète sans coach.</span></label></div></div>
+<div class="note">P2 : qui a la main (option b)</div>
+<span class="btn new">✦ Novalyz propose un programme</span>
+<div class="note">P1 : niveau et zones de Vincent ; tu relis avant de créer</div>
+<div class="info new">✎ <b>Vincent a modifié son programme le 03/11</b> : « pec epaule » — Écarté machine remplacé par Écarté haltères. <span style="color:#1A5FFF;font-weight:800">Voir</span></div>
+<div class="note">P4 : modifications signalées (exemple)</div>
+<div class="c"><div class="t">Zones à développer en priorité <span style="font-weight:600;color:#8A96B0">· 2 max</span></div><div class="s">Fessiers · Jambes · Pectoraux · Dos · Épaules · Bras · Abdos · <b style="color:#1A5FFF">Équilibré</b></div></div>
+<div class="c" style="font-size:12px;color:#55627E">📅 Cette semaine (agenda inchangé)…</div>
+<div class="sea">pec epaule <span>6 exos</span></div>
+<div class="sea">dos jambes <span>6 exos</span></div>
+<div class="nv new">➜ <b>Novalyz propose cette semaine</b> : Pendulum +4 séries · Leg curl allongé +4 séries <span style="color:#8A96B0">(volume quadriceps / ischios sous le minimum)</span></div>
+<div class="note">P3 : propositions à côté de la séance concernée (lecture ; « appliquer » = plus tard)</div>
+<div class="sea">pec epaule 2 <span>6 exos</span></div>
+<div class="nv">➜ <b>Novalyz propose</b> : Développé incliné à la Smith 75 kg (ou 70 kg) <span style="color:#8A96B0">(80 kg × 1 à RPE 10, fourchette 6-12)</span></div>
+<div class="sea">dos jambe 2 <span>5 exos</span></div>
+</div>
+
+<!-- ====== 2. Athlète avec coach : Aujourd'hui ====== -->
+<div class="ph"><h3>② Vincent athlète (réglage par défaut) ▸ Aujourd'hui</h3>
+<div class="hero"><div style="font-size:10px;letter-spacing:.1em;font-weight:800;opacity:.9">ÉTAT DU JOUR</div><b>Prêt</b><div style="font-size:11.5px;opacity:.9">récup excellente · 1/4 cette semaine</div></div>
+<div class="info new" style="background:#F1ECFF;border-color:#D7CBFF">✎ <b>Ton coach a mis à jour ton programme</b> le 04/11 (« dos jambes »).</div>
+<div class="note">P4 côté athlète</div>
+<div class="c new"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">Ta séance du jour · dos jambes</span><span class="coachtag">programme de ton coach</span></div>
+<div style="margin-top:6px">
+<div class="ex"><span>Traction</span><span class="r">cible <b>4 × 6–12</b><br>dernière fois 7 reps (PDC) · RPE 9</span></div>
+<div class="ex"><span>T-bar row</span><span class="r">cible <b>3 × 6–12</b><br>dernière fois 60 kg × 8 · RPE 8</span></div>
+<div class="ex"><span>Pendulum</span><span class="r">cible <b>3 × 6–12</b><br>dernière fois 60 kg × 8 · RPE 9</span></div>
+<div class="ex"><span>Leg curl allongé</span><span class="r">cible <b>3 × 8–12</b><br>dernière fois 35 kg × 8 · RPE 8</span></div>
+<div class="s">+ 2 autres exercices</div></div></div>
+<div class="note">D1 : cibles du programme du coach + dernière fois (plus de « Ce que Novalyz vise »)</div>
+<div class="c"><div class="t">Depuis ta dernière séance</div><div class="s">Records : décliné machine 60 kg × 8 · Développé incliné Smith : 80 kg × 1 à RPE 10, sous ta fourchette 6-12 <span style="color:#8A96B0">(le fait reste ; plus de « levier » Novalyz)</span></div></div>
+<div class="c" style="opacity:.65"><div class="gone">Ton plan de la semaine · Pendulum +4 séries…</div><div class="gone">Ce que Novalyz vise · Smith 75 kg (ou 70)</div><div class="s" style="text-decoration:none">→ masqués : c'est ton coach qui décide</div></div>
+<div class="note">D1/D3 : faits gardés, prescriptions masquées</div>
+</div>
+
+<!-- ====== 3. Athlète avec coach : saisie + Entraînement ====== -->
+<div class="ph"><h3>③ Vincent athlète ▸ saisie et Entraînement</h3>
+<div class="c new"><div class="t">Pendulum <span class="coachtag">cible du coach : 3 × 6–12</span></div>
+<div class="s">Dernière fois (27/10) : 60 × 8 · 60 × 6 · 60 × 6 · RPE 9</div>
+<div class="row h"><span>Série</span><span>Charge</span><span>Reps</span><span>RPE</span></div>
+<div class="row"><span>1</span><span class="inp">60</span><span class="inp">—</span><span class="inp">—</span></div>
+<div class="row"><span>2</span><span class="inp">60</span><span class="inp">—</span><span class="inp">—</span></div>
+<div class="row"><span>3</span><span class="inp">60</span><span class="inp">—</span><span class="inp">—</span></div>
+<div class="s" style="margin-top:6px">Charges préremplies avec la dernière fois — <span class="gone">« Ce que Novalyz vise »</span></div></div>
+<div class="note">D2 : pas de charge proposée par Novalyz ; cible du coach + dernière fois</div>
+<div class="c new"><div class="t">Mon programme · 4 séances</div><div class="s">✎ Géré par ton coach (Vincent). Tu peux remplacer un exercice ou ajuster une charge : ton coach est prévenu.</div>
+<div class="s" style="margin-top:6px"><span class="gone">✦ Régénérer avec Novalyz</span> → retiré</div></div>
+<div class="note">D5 + P5 : petits ajustements gardés, signalés au coach</div>
+<div class="c"><div class="t">Mail récap du lundi</div><div class="s">Faits de la semaine (séances, records, volume, régularité) ; <span class="gone">3 recos Novalyz</span> → « Les consignes de la semaine viennent de ton coach. »</div></div>
+<div class="note">D6 (serveur)</div>
+<div class="c" style="background:#F2FBF6;border-color:#BFE8D0"><div class="t">Gardé dans tous les cas</div><div class="s">Alertes douleur / fatigue / charge, état du jour, reco de vigilance, records, force estimée, volume, régularité.</div></div>
+</div>
+</div></body></html>

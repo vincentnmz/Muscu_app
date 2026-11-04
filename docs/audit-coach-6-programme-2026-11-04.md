@@ -27,3 +27,7 @@ Capture : `mockups/audit-coach-programme-avant.png` (Vincent).
 | **D6** | Mail récap (serveur) | 3 recos | Recos remplacées par les faits (→ redéploiement `index.ts`) |
 
 **Gardé dans tous les cas** (sécurité, pas des prescriptions) : alertes douleur / fatigue / charge trop élevée, état du jour, « reco du jour » de vigilance, records, force estimée, volume, régularité. Le coach voit tout.
+
+## Décisions porteur (04/11)
+Validé : P1-P5 (P5 = petits ajustements gardés, signalés au coach) et D1-D6. Réglage par défaut **« au coach seulement »** pour tous, Vincent compris (il cochera « aussi à Vincent » lui-même pour tester).
+Maquette : `mockups/coach-programme-v2.html` (+ `-1.png` coach ▸ Programme, `-2.png` athlète avec coach ▸ Aujourd'hui, `-3.png` saisie + Entraînement + mail). « Dernière fois » = séance réelle du 27/10 (dos jambes).
