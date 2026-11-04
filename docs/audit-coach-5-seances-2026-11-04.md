@@ -33,3 +33,14 @@ Données : Vincent (copie 02/11) et Alizé, rejouées avec la vraie action serve
 ## Décisions porteur (04/11)
 Validé : S1-S9 et N1-N3. Maquette : `mockups/coach-seances-v2.html` (+ `-1.png` liste, `-2.png` séance dépliée, `-3.png` saisie présentiel).
 Chiffres de la maquette (vérifiés) : 02/11 « pec epaule » avec la fourchette réelle → 17 séries sur 18 dans la fourchette (94 %), 1 en dessous (élévation frontale 7,5 × 7) ; « vs la fois précédente » calculé sur les séances réelles (ex. décliné Smith 70 × 8 à RPE 8 contre RPE 9 le 12/10). Bilan 02/11 : 6/10 · 84 min (base au 03/11) ; douleurs 29/10 (2/5) et 26/10 (2/5, épaule gauche).
+
+## Réalisé (04/11)
+- **S1** Bilan de l'athlète en tête de séance (note /10, durée, douleur + zone, commentaire) — ex. 26/10 : « séance 7/10 · ⚠ douleur 2/5 · épaule gauche ».
+- **S2** Ligne de séance : exos · séries · tonnage · RPE séries · note de séance · durée · ⚠ douleur.
+- **S3** Filtre Tout / Muscu / Cardio (cardio : activité, durée, distance, FC). Écart avec la maquette : **Muscu par défaut** (Cardio si l'athlète ne fait que du cardio) — Vincent a 127 activités cardio, surtout des marches importées de la montre, qui noyaient la liste en « Tout ».
+- **S4** Fourchette réelle de l'app (catégorie) : « Cible : 3 × 8–20 · léger » ; Écarté 20 × 16 = ✓.
+- **S5** Virgule dans les charges. **S6** « Voir 20 séances de plus ». **S7** Secours hors ligne : vraies séries.
+- **S8** Présentiel : « Séance de Vincent · choisis la séance », « Son état du jour · demande-lui », Régénérer / Modifier / suivi / agenda / Hyrox masqués, et « Novalyz propose : … » sur chaque séance.
+- **S9** ▲ bleu « au-dessus · charge à monter » ; résumé en 3 parts (dans / au-dessus / en dessous).
+- **N1** « vs la fois précédente » par exercice (ex. 02/11 décliné Smith « ▲ même charge, RPE 9 → 8 (vs 12/10) »). **N2** « ✉ Commenter cette séance » (message prérempli). **N3** « Proposé par Novalyz pour cette séance » (semaine en cours).
+- Tests : 77 suites vertes. Captures relues : `mockups/coach-seances-apres.png`, `mockups/coach-saisie-apres.png`.
