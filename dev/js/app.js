@@ -5138,7 +5138,15 @@ var _coachProgApres = null;   // action à jouer une fois les données de la fic
 function renderCoachZones(data) {
   var el = document.getElementById('cd-zones'); if (!el) return;
   var z = (data && data.zones_prio) || [];
-  el.innerHTML = '<div style="font-size:12.5px;font-weight:800;margin-bottom:7px">Zones à développer en priorité <span style="font-weight:600;color:var(--text-subtle)">· 2 max</span></div>'
+  var _pn = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'l\'athlète', _ok = !!(data && data.novalyz_athlete_ok);
+  var _radio = function (on, val, titre, txt) { return '<div role="radio" aria-checked="' + on + '" onclick="coachNovalyzAthlete(' + val + ')" style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.4;cursor:pointer;margin-top:6px"><span style="width:16px;height:16px;border-radius:50%;flex:none;margin-top:1px;box-sizing:border-box;border:' + (on ? '5px solid var(--accent)' : '2px solid var(--border)') + '"></span><span><b>' + titre + '</b> — ' + txt + '</span></div>'; };
+  var _qui = '<div style="font-size:12.5px;font-weight:800">Propositions Novalyz pour ' + escapeHtml(_pn) + '</div>'
+    + _radio(!_ok, 'false', 'Au coach seulement', 'Novalyz te propose ; ' + escapeHtml(_pn) + ' voit tes consignes et ses faits.')
+    + _radio(_ok, 'true', 'Aussi à ' + escapeHtml(_pn), 'il voit le plan, les cibles et les leviers de Novalyz comme un athlète sans coach.')
+    + '<button onclick="ouvrirGenProgramme()" style="width:100%;margin:12px 0 4px;padding:11px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7C5CFF);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">✦ Novalyz propose un programme</button>'
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:10px">Niveau et zones de ' + escapeHtml(_pn) + ' ; tu relis avant de créer.</div>'
+    + _progMajBandeau(data, 'c') + '<div style="border-top:1px solid var(--border);margin:4px 0 12px"></div>';
+  el.innerHTML = _qui + '<div style="font-size:12.5px;font-weight:800;margin-bottom:7px">Zones à développer en priorité <span style="font-weight:600;color:var(--text-subtle)">· 2 max</span></div>'
     + _zpChipsHtml(z, 'coachZone')
     + '<div style="font-size:11px;color:var(--text-subtle);margin-top:7px;line-height:1.45">Relève la cible de volume (haut de la fourchette) dans ses Analyses et son plan de la semaine. Le programme n\'est pas modifié tout seul : « Novalyz propose » pour le régénérer avec ces zones.</div>';
 }
@@ -8656,7 +8664,7 @@ function renderProgrammeCoach() {
     }).join('') + '<button class="prog-tab prog-tab-add" onclick="cdAjouterSeance()">＋<small>Jour</small></button>';
     var head = '<div class="prog-head">'
       + '<div class="prog-seg"><button class="' + (_progView === 'semaine' ? 'on' : '') + '" onclick="progSetView(\'semaine\')">Vue semaine</button><button class="' + (_progView === 'liste' ? 'on' : '') + '" onclick="progSetView(\'liste\')">Liste</button></div>'
-      + '<button class="prog-btn-ia" onclick="ouvrirGenProgramme()">✦ Novalyz propose</button>'
+      + (_nvPropsAthlete() ? '<button class="prog-btn-ia" onclick="ouvrirGenProgramme()">✦ Novalyz propose</button>' : '<span style="font-size:11.5px;color:var(--text-muted);font-weight:700">✎ Géré par ' + escapeHtml(_nvCoachNom()) + '</span>')
       + '</div>';
     elE.innerHTML = head + _semBlockHtml()
       + '<div class="prog-tabs">' + tabs + '</div>'
@@ -8746,7 +8754,7 @@ function renderProgrammeCoach() {
     var insp = '<div class="pb-insp">'
       + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
       + '<div class="pb-card" style="padding:12px 14px">' + _semBlockHtml() + '</div>'
-      + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
+      + (_nvPropsAthlete() ? '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>' : '')
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
       + '</div>';
     elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
@@ -8821,7 +8829,7 @@ function renderProgrammeCoach() {
           ? `<button onclick='demarrerRenfoJoueur(${JSON.stringify(seanceId)})' style="width:100%;margin-top:4px;padding:13px;border:none;border-radius:11px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(26,95,255,.28);"><span style="font-size:16px;line-height:1;">▶</span> Démarrer cette séance</button>`
           : `<button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>`}
       </div>
-    </div>`;
+    </div>${(!ro && progCtx && progCtx.el === 'cd-programme-content') ? _cdNvSeanceHtml(seanceId) : ''}`;
   }).join('');
   // Mobile coach (accordéon, pas le Builder desktop inline) : agenda daté en tête.
   if (!ro && progCtx && progCtx.el === 'cd-programme-content' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) {
@@ -12383,6 +12391,7 @@ function majPlanSeries() {
   var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData);
   var _jss = _joursSansSeance((typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData);
   var _dlData = (typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData;
+  var _offNv = !_nvPropsAthlete(_dlData);   // D2 (écran 6) : le coach a la main → pas de charge proposée par Novalyz
   var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _jss, deload: _ctxAttendu(_dlData) === 'déload',
     nPrevues: pProg && _numOk(pProg.series_prevues) ? Number(pProg.series_prevues) : 0, pas: _petitPas(exoEnCours.exerciceNom),
     reposRef: _reposRef(lastSeries, pProg ? pProg.repos_sec : null), bornes: _reposBornes(exoEnCours.exerciceNom) });
@@ -12403,7 +12412,12 @@ function majPlanSeries() {
     var hasRef = ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0);
     var cDer = hasRef ? ('<b>' + _kgTxt(ref.charge) + '×' + ref.reps + '</b>' + sousLigne(ref.rpe, ref.repos)) : '<span class="ps-muted">—</span>';
     var cCib;
-    if (hasRef) {
+    if (_offNv) {
+      // Cible du coach : schéma du programme s'il existe (%1RM / RPE), sinon sa fourchette de reps.
+      if (ps[i]) { var spc = ps[i], loadc = _planLoadTxt(spc); cCib = '<b>' + esc(spc.reps + ' reps') + '</b>' + ((loadc || spc.rpe != null) ? '<small>' + esc([loadc, (spc.rpe != null ? 'RPE ' + spc.rpe : '')].filter(Boolean).join(' · ')) + '</small>' : ''); }
+      else cCib = (rminP && rmaxP) ? '<b>' + rminP + '–' + rmaxP + ' reps</b>' : '<span class="ps-muted">—</span>';
+    }
+    else if (hasRef) {
       var cib = dec.cible(k, choix);
       var pale = (dec.mode === 'choix' && !exoEnCours._progChoix) ? ' style="opacity:.55"' : '';
       var repTag = (cib && cib.repos != null && cib.repos !== dec.reposRef) ? '<small>repos ' + esc(_reposTxt(cib.repos)) + '</small>' : '';
@@ -12450,11 +12464,12 @@ function majPlanSeries() {
       + (R0 != null ? '<div class="pc-ref">Repos de référence : ' + esc(_reposTxt(R0)) + ' (dernière fois). Bornes : ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).min)) + ' à ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).max)) + '.</div>' : '')
       + '</div>';
   }
-  if (dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
+  if (_offNv) { choixHtml = ''; if (dec.mode !== 'vigilance' && dec.mode !== 'deload' && dec.mode !== 'reprise') msg = ''; }   // D2 : garde seulement vigilance / déload / reprise (sécurité, contexte)
+  if (!_offNv && dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
   var sg = document.getElementById('exo-actuel-suggestion');
-  if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>' : '';
+  if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + (!_offNv && typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
-  var kCur = done + 1, cCur = (lastSeries && _refSerie(lastSeries, kCur)) ? dec.cible(kCur, choix) : null;
+  var kCur = done + 1, cCur = (lastSeries && _refSerie(lastSeries, kCur)) ? (_offNv ? (function (r) { return { charge: Number(r.charge) || 0, reps: Number(r.reps) || 0, repos: null }; })(_refSerie(lastSeries, kCur)) : dec.cible(kCur, choix)) : null;   // D2 : préremplissage = dernière fois
   if (cCur && exoEnCours._prefillK !== kCur) {
     exoEnCours._prefillK = kCur;
     var ic = document.getElementById('inp-charge'), ir = document.getElementById('inp-reps');
@@ -12466,7 +12481,7 @@ function majPlanSeries() {
     exoEnCours._reposInit = true;
   }
   el.innerHTML = choixHtml + '<div class="plan-hd">Tes séries' + (ps.length ? ' · ' + Math.min(done, ps.length) + '/' + ps.length + ' prévues' : '') + '</div>'
-    + '<table class="ps-tab"><thead><tr><th></th><th>' + (dRefTxt ? esc(dRefTxt) : 'Dernière fois') + '</th><th>Cible</th><th>Aujourd\'hui</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<table class="ps-tab"><thead><tr><th></th><th>' + (dRefTxt ? esc(dRefTxt) : 'Dernière fois') + '</th><th>' + (_offNv ? 'Cible du coach' : 'Cible') + '</th><th>Aujourd\'hui</th></tr></thead><tbody>' + rows + '</tbody></table>'
     + (sub.length ? '<div class="ps-note">' + sub.map(esc).join('<br>') + '</div>' : '');
   _majPerfLignes(!!lastSeries);
 }
@@ -14710,7 +14725,7 @@ function _maLectureNovalyzBloc(data) {
   } catch (e) {}
   var nProg = L.records.length + L.progresse.length;
   var niveauXp = 'debutant'; try { niveauXp = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
-  var recos = []; try { recos = _lxRecos(L, V, niveauXp, data); } catch (e) {}
+  var recos = []; try { if (_nvPropsAthlete(data)) recos = _lxRecos(L, V, niveauXp, data); } catch (e) {}   // D3 : pas de recos Novalyz si le coach a la main
   var reco = '';
   if (!recos.length) { try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {} }
   // Rien à montrer (nouvel athlète sans aucune donnée) → on masque le bloc.
@@ -14775,7 +14790,7 @@ function _maLectureNovalyzBloc(data) {
   }
 
   // ── Reco d'entraînement ── (Lecture v3 : le plan de la semaine prend la place des recos ; repli = recos)
-  var planHtml = ''; try { planHtml = (typeof _lv3PlanHtml === 'function') ? _lv3PlanHtml(data, false) : ''; } catch (e) {}
+  var planHtml = ''; try { planHtml = (typeof _lv3PlanHtml === 'function' && _nvPropsAthlete(data)) ? _lv3PlanHtml(data, false) : ''; } catch (e) {}
   var forceHtml = ''; try { forceHtml = (typeof _lv3ForcesHtml === 'function') ? _lv3ForcesHtml(data) : ''; } catch (e) {}
   var recoHtml = planHtml ? planHtml : recos.length ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:5px">Reco entraînement · par priorité</div><ol style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.5;color:var(--text)">' + recos.map(function (r) { return '<li style="margin-bottom:4px">' + r + '</li>'; }).join('') + '</ol></div>')
     : reco ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco entraînement</div><div style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(reco) + '</div></div>') : '';
@@ -15129,7 +15144,7 @@ function _maProgExo(data) {
   } catch (e) {}
   try {
     var _coachView = (typeof _maCoach !== 'undefined' && _maCoach);
-    if (!_coachView && typeof athlete !== 'undefined' && athlete) {
+    if (!_coachView && typeof athlete !== 'undefined' && athlete && _nvPropsAthlete(data)) {   // D4 (écran 6)
       // « Ce que Novalyz vise » : MÊME calcul que l'écran de saisie et Aujourd'hui (_progDecision).
       // Avant : « Charge à viser » (_chargeAViser, % de 1RM) donnait un 2ᵉ conseil, générique
       // (« monte les reps vers 12 ») même à 80×1 RPE 10, et disait « 1RM pas encore fiable »
@@ -17309,7 +17324,7 @@ function _tjCibles(data, exos) {
     var last = pts[0] && Array.isArray(pts[0].series) ? pts[0].series : null;
     var prev = pts[1] && Array.isArray(pts[1].series) ? pts[1].series : null;
     var f = _exoFourchette(nom, _numOk(p.reps_mini) ? Number(p.reps_mini) : null, _numOk(p.reps_max) ? Number(p.reps_max) : null, cats);
-    if (!last || !last.length) return { exo: nom, mode: 'premier', f: f };
+    if (!last || !last.length) return { exo: nom, mode: 'premier', f: f, np: _numOk(p.series_prevues) ? Number(p.series_prevues) : null };
     var pas = _petitPas(nom);
     var _vg = _vigilanceDuJour(data);
     var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _joursSansSeance(data), deload: _ctxAttendu(data) === 'déload', nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
@@ -17318,12 +17333,24 @@ function _tjCibles(data, exos) {
     var kRef = 0; last.forEach(function (x, i) { var b = last[kRef]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) kRef = i; });
     var ref = last[kRef], kNum = Number(ref.serie) || (kRef + 1), cib = dec.cible(kNum, 'charge');
     var _bq = (dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') ? _blocageInfo(data, nom) : null;
-    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib, bloqueN: _bq ? _bq.n : 0, why: _progWhy(dec, f, pas) };
+    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0, rpe: Number(ref.rpe) || null }, cib: cib, bloqueN: _bq ? _bq.n : 0, why: _progWhy(dec, f, pas), np: _numOk(p.series_prevues) ? Number(p.series_prevues) : null };
   });
 }
 function _tjCiblesHtml(rows) {
   if (!rows.length) return '';
   var esc = escapeHtml, kg = function (x) { return _cdFmtKg(x); };
+  // D1 (écran 6) : le coach a la main → cible = programme du coach + dernière fois (pas de charge Novalyz).
+  if (!_nvPropsAthlete()) {
+    var trC = rows.map(function (x) {
+      var cible = (x.np ? x.np + ' × ' : '') + (x.f && x.f.rmin ? x.f.rmin + '–' + x.f.rmax : '—');
+      var der = x.last ? (x.last.c > 0 ? kg(x.last.c) + ' kg × ' + x.last.r : x.last.r + ' reps (poids du corps)') + (x.last.rpe ? ' · RPE ' + x.last.rpe : '') : (x.mode === 'premier' ? '1re fois' : '—');
+      return '<tr><td style="padding:7px 0;border-top:1px solid var(--tj-border);font-size:12.5px;font-weight:700;color:var(--tj-text)">' + esc(x.exo.trim()) + '</td>'
+        + '<td style="padding:7px 0 7px 8px;border-top:1px solid var(--tj-border);text-align:right;font-size:11.5px;color:var(--tj-muted);line-height:1.4">cible <b style="color:var(--tj-text)">' + esc(cible) + '</b><br>dernière fois ' + esc(der) + '</td></tr>';
+    }).join('');
+    return '<div style="margin:10px 0 12px;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:10px 12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px"><span>Ta séance</span><span style="letter-spacing:0;text-transform:none;font-weight:800;color:#7A5AF8">programme de ' + esc(_nvCoachNom()) + '</span></div>'
+      + '<table style="width:100%;border-collapse:collapse"><tbody>' + trC + '</tbody></table></div>';
+  }
   // Lecture v3 : levier du diagnostic (au lieu des leviers génériques) + rappel du plan de la semaine.
   var _dgT = {}, _plT = {};
   try { var _dd = (typeof dernierAppData !== 'undefined') ? dernierAppData : null; if (_dd && typeof _lv3Diags === 'function') { _lv3Diags(_dd).forEach(function (d) { _dgT[String(d.exo).trim()] = d; }); var _pp = _lv3Plan(_dd); if (_pp) _pp.actions.forEach(function (a) { if (!a.fait) _plT[String(a.exo).trim()] = a; }); } } catch (e) {}
@@ -17609,7 +17636,7 @@ function renderChargeFatigueJour(data) {
   try { normaleHtml = _normaleBloc(data, 'ta'); } catch (e) {}
   var depuisHtml = '';
   try { depuisHtml = _tjDepuisDerniere(data, _lectureExos(data)); } catch (e) {}
-  try { if (typeof _lv3PlanHtml === 'function') depuisHtml += _lv3PlanHtml(data, true); } catch (e) {}   // Lecture v3 : plan de la semaine
+  try { if (typeof _lv3PlanHtml === 'function' && _nvPropsAthlete(data)) depuisHtml += _lv3PlanHtml(data, true); } catch (e) {}   // D1 : pas de plan Novalyz si le coach a la main   // Lecture v3 : plan de la semaine
   var fraicheurWidget = (hasCf && !niv0) ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
     +   '<div style="text-align:center;flex:none;min-width:56px;max-width:96px"><div style="font-size:' + (fr.length > 10 ? '14px' : '18px') + ';font-weight:800;color:' + frc + ';line-height:1.1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
     +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> : on compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b>. Plus de charge récente ne veut pas dire fatigue : c\'est ton <b>ressenti</b> (sommeil, fatigue, RPE) qui le confirme. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
@@ -17861,7 +17888,7 @@ function renderAujourdhui(data) {
       if (elFoc && elFocT && noms.length) { elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>'; elFoc.style.display = ''; }
       else if (elFoc) elFoc.style.display = 'none';
       var elCib = document.getElementById('tj-seance-cibles');
-      if (elCib) { var _ch = ''; try { _ch = _tjCiblesHtml(_tjCibles(data, exos)); } catch (e) {} elCib.innerHTML = _ch; elCib.style.display = _ch ? '' : 'none'; if (_ch && elFoc) elFoc.style.display = 'none'; }
+      if (elCib) { var _ch = ''; try { _ch = _progMajBandeau(data, 'a') + _tjCiblesHtml(_tjCibles(data, exos)); } catch (e) {} elCib.innerHTML = _ch; elCib.style.display = _ch ? '' : 'none'; if (_ch && elFoc) elFoc.style.display = 'none'; }
     } else {
       if (elNom) elNom.textContent = 'Séance libre';
       if (elMeta) elMeta.textContent = 'Choisis tes exercices au démarrage';
@@ -19378,6 +19405,55 @@ function _g2Reps(objectif, niveau, sl) {
 }
 function _g2Sets(niveau) { return niveau === 'avance' ? 4 : 3; }
 
+// ── Écran 6 (04/11, décision porteur) : QUI A LA MAIN ──
+// Les propositions Novalyz (plan, cibles, leviers, régénérer) vont à l'athlète seulement s'il n'a pas de coach,
+// ou si son coach l'a autorisé. Sinon elles vont au coach. Côté coach (fiche, saisie présentiel) : toujours visibles.
+// Sécurité (douleur, fatigue, charge, vigilance) et faits (records, force, volume) : toujours visibles.
+function _nvPropsAthlete(data) {
+  try {
+    if (typeof _maCoach !== 'undefined' && _maCoach) return true;
+    if (typeof coach !== 'undefined' && coach && coach.coach_id) return true;
+    var d = data || ((typeof dernierAppData !== 'undefined') ? dernierAppData : null);
+    return !(d && d.propositions_novalyz === false);   // serveur pas encore redéployé → comportement d'avant
+  } catch (e) { return true; }
+}
+// P4 (écran 6) : dernière modification du programme faite par l'AUTRE partie (≤ 14 jours).
+// vue 'a' (athlète) : modifs du coach ; vue 'c' (coach) : modifs de l'athlète.
+function _progMajBandeau(data, vue) {
+  try {
+    var m = data && data.prog_maj; if (!m || !m.date) return '';
+    if ((vue === 'a' && m.par !== 'c') || (vue === 'c' && m.par !== 'a')) return '';
+    var t = new Date(m.date).getTime(); if (!t || (Date.now() - t) / 864e5 > 14) return '';
+    var d = new Date(t), dd = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+    var quoi = [m.quoi, m.seance ? '« ' + m.seance + ' »' : '', m.exercice ? m.exercice : ''].filter(Boolean).join(' · ');
+    var qui = vue === 'a' ? 'Ton coach a mis à jour ton programme' : (((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'L\'athlète') + ' a modifié son programme');
+    return '<div style="background:#F1ECFF;border:1px solid #D7CBFF;border-radius:12px;padding:9px 11px;font-size:12px;line-height:1.5;margin:0 0 10px;color:#2a1d66">✎ <b>' + escapeHtml(qui) + '</b> le ' + dd + (quoi ? ' : ' + escapeHtml(quoi) : '') + '.</div>';
+  } catch (e) { return ''; }
+}
+// P2 (écran 6) : le coach règle « qui reçoit les propositions Novalyz » pour cet athlète.
+async function coachNovalyzAthlete(on) {
+  var a = coachAthleteCourant; if (!a || !coachAthleteData) return;
+  coachAthleteData.novalyz_athlete_ok = !!on; try { renderCoachZones(coachAthleteData); } catch (e) {}
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'savePref', athlete_id: a.athlete_id, cle: 'novalyz_athlete', valeur: on ? 1 : 0 }) });
+    var j = await r.json(); showToast(j && j.success ? (on ? 'Novalyz propose aussi à ' + (String(a.nom || '').split(/\s+/)[0] || 'l\'athlète') : 'Propositions Novalyz : à toi seulement') : 'Erreur : réglage non enregistré');
+  } catch (e) { showToast('Erreur réseau'); }
+}
+// P3 (écran 6) : ce que Novalyz propose cette semaine pour une séance du programme (vue coach).
+function _cdNvSeanceHtml(seanceId) {
+  try {
+    if (typeof coachAthleteData === 'undefined' || !coachAthleteData || typeof _lv3Plan !== 'function') return '';
+    var P = _lv3Plan(coachAthleteData); if (!P || P.reprise) return '';
+    var A = P.actions.filter(function (a) { return !a.fait && a.seance && String(a.seance).trim().toLowerCase() === String(seanceId).trim().toLowerCase(); });
+    if (!A.length) return '';
+    return '<div style="margin:-6px 0 12px;background:var(--accent-a08,#EEF4FF);border:1px dashed var(--accent-dim,#9DB8FF);border-radius:10px;padding:8px 10px;font-size:11.5px;line-height:1.45">➜ <b>Novalyz propose cette semaine</b> : '
+      + A.map(function (a) {
+        var tc = function (x) { return String(x || '').replace(/ : proposé /, ' : ').replace(/\bton minimum\b/g, 'son minimum').replace(/\bta fourchette\b/g, 'sa fourchette').replace(/si tu veux être sûr de faire/g, 'pour assurer').replace(/\.\s*$/, ''); };
+        return escapeHtml(tc(a.titre)) + (a.raison ? ' <span style="color:var(--text-subtle)">(' + escapeHtml(tc(a.raison)) + ')</span>' : ''); }).join(' · ') + '</div>';
+  } catch (e) { return ''; }
+}
+function _nvCoachNom(data) { var d = data || ((typeof dernierAppData !== 'undefined') ? dernierAppData : null); return (d && d.coach_lie && d.coach_lie.nom) ? String(d.coach_lie.nom) : 'ton coach'; }
+
 // ── Zones à développer en priorité (porteur 03/11, docs/zones-prioritaires-2026-11-03.md) ──
 // 2 max, choisies par l'athlète ou son coach (jamais déduites du sexe). Règle validée : le minimum
 // d'une zone prioritaire passe au MILIEU de sa fourchette (6-12 → 9-12 ; 10-16 → 13-16) — la même
@@ -20735,7 +20811,7 @@ function _enSetMode(m) {
   var st = document.getElementById('en-start'); if (st) { st.classList.toggle('cardio', m === 'cardio'); st.style.display = (m === 'hyrox') ? 'none' : ''; }
   // Les constructeurs de programme sont MUSCU → cachés en mode cardio/hyrox (pas de plan
   // de course/vélo/fractionné pour l'instant). À réactiver quand le cardio en aura.
-  var gen = document.getElementById('en-gen'); if (gen) gen.style.display = (m === 'muscu') ? '' : 'none';
+  var gen = document.getElementById('en-gen'); if (gen) gen.style.display = (m === 'muscu' && _nvPropsAthlete()) ? '' : 'none';   // D5 (écran 6)
   var creer = document.getElementById('en-creer'); if (creer) creer.style.display = (m === 'muscu') ? '' : 'none';
   // Emphase selon qu'un programme existe déjà : si OUI → « Modifier » en avant et
   // « Régénérer » en secondaire (sinon on re-générait sans le vouloir) ; si NON →
@@ -20746,7 +20822,8 @@ function _enSetMode(m) {
       var gl = document.getElementById('en-gen-lbl'), cl = document.getElementById('en-creer-lbl');
       var strong = function (b) { b.style.borderColor = 'var(--accent)'; b.style.color = 'var(--accent)'; b.style.background = 'var(--accent-a08)'; b.style.fontWeight = '800'; };
       var soft = function (b) { b.style.borderColor = ''; b.style.color = ''; b.style.background = ''; b.style.fontWeight = ''; };
-      if (_hasProg) { strong(creer); soft(gen); if (cl) cl.textContent = 'Modifier mon programme'; if (gl) gl.textContent = 'Régénérer avec Novalyz'; }
+      if (!_nvPropsAthlete()) { soft(creer); if (cl) cl.textContent = 'Ajuster mon programme (ton coach est prévenu)'; }   // P5 : petits ajustements, signalés au coach
+      else if (_hasProg) { strong(creer); soft(gen); if (cl) cl.textContent = 'Modifier mon programme'; if (gl) gl.textContent = 'Régénérer avec Novalyz'; }
       else { strong(gen); soft(creer); if (gl) gl.textContent = 'Novalyz me propose un programme'; if (cl) cl.textContent = 'Créer / modifier mon programme'; }
     }
   } catch (e) {}
