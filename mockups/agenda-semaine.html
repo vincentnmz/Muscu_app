@@ -1,0 +1,86 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette agenda et séance du jour</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.w{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;padding:20px;align-items:flex-start}
+.ph{width:390px;background:#F4F7FF;border-radius:24px;padding:14px 0 18px;box-shadow:0 8px 30px rgba(14,26,51,.12)}
+h3{margin:2px 16px 10px;font-size:13px;color:#55627E}
+.c{background:#fff;border:1px solid #DCE4F5;border-radius:16px;padding:12px 14px;margin:0 14px 10px}
+.t{font-size:13px;font-weight:800}.s{font-size:11.5px;color:#55627E;line-height:1.5;margin-top:3px}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.hd b{font-size:14px}.nav{width:26px;height:26px;border-radius:8px;border:1px solid #DCE4F5;display:flex;align-items:center;justify-content:center;font-weight:800}
+.day{display:flex;align-items:center;gap:10px;border-top:1px solid #EEF2FB;padding:6px 2px;min-height:34px}
+.dd{width:30px;height:30px;border-radius:50%;background:#EEF2FB;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;line-height:1}.dd b{font-size:11px}
+.dd.today{background:#1A5FFF;color:#fff}
+.p{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:8px;padding:4px 8px;color:#fff}
+.p small{font-weight:600;opacity:.9;font-size:10px}
+.g{background:transparent!important;border:2px dashed;color:inherit}
+.rep{font-size:11.5px;color:#8A96B0}
+.ok{font-size:10.5px;font-weight:800;color:#12B76A}.ko{font-size:10.5px;font-weight:800;color:#E07800}
+.leg{font-size:10.5px;color:#55627E;line-height:1.5;margin-top:8px;border-top:1px solid #EEF2FB;padding-top:7px}
+.new{outline:2px dashed #1A5FFF;outline-offset:3px}.note{font-size:10.5px;color:#1A5FFF;font-weight:700;margin:-4px 18px 10px;line-height:1.4}
+.lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#1A5FFF;font-weight:800}
+.big{font-size:20px;font-weight:700;margin:4px 0 2px}
+.mq{background:#EEF4FF;border-radius:12px;padding:9px 11px;font-size:12.5px;line-height:1.5;margin-top:8px}
+.ch{display:inline-block;border:1px solid #CFDCFF;background:#fff;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:800;color:#1A5FFF;margin:6px 4px 0 0}
+.ch.on{background:#1A5FFF;color:#fff;border-color:#1A5FFF}
+.cta{display:block;text-align:center;background:#1A5FFF;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;margin-top:10px}
+.rules{max-width:1250px;margin:0 auto 30px;background:#fff;border:1px solid #DCE4F5;border-radius:16px;padding:16px 20px;font-size:13px;line-height:1.6}
+.rules h2{font-size:15px;margin:0 0 6px}.rules li{margin:2px 0}
+</style></head><body><div class="w">
+
+<!-- ① Coach : agenda par défaut = semaine type -->
+<div class="ph"><h3>① Coach ▸ Programme ▸ Agenda · mercredi 4 nov.</h3>
+<div class="c new"><div class="hd"><span class="nav">‹</span><div style="text-align:center"><b>Cette semaine</b><div class="s" style="margin:0">2 nov. – 8 nov.</div></div><span class="nav">›</span></div>
+<div class="day"><div class="dd"><b>L</b>2</div><span class="p" style="background:#1A5FFF">pec epaule</span><span class="ok">✓ faite</span></div>
+<div class="day"><div class="dd"><b>M</b>3</div><span class="p g" style="border-color:#00A854;color:#00A854">dos jambes</span><span class="ko">non faite</span></div>
+<div class="day"><div class="dd today"><b>M</b>4</div><span class="rep">— repos</span></div>
+<div class="day"><div class="dd"><b>J</b>5</div><span class="p g" style="border-color:#9D5FD3;color:#9D5FD3">pec epaule 2</span></div>
+<div class="day"><div class="dd"><b>V</b>6</div><span class="p g" style="border-color:#E07800;color:#E07800">dos jambe 2</span></div>
+<div class="day"><div class="dd"><b>S</b>7</div><span class="rep">— repos</span></div>
+<div class="day"><div class="dd"><b>D</b>8</div><span class="rep">— repos</span></div>
+<div class="leg"><b>Pointillé</b> = semaine type (jours conseillés du programme), rien à faire.<br><b>Plein</b> = posé ou déplacé pour cette semaine. Glisse une séance pour la déplacer.</div></div>
+<div class="note">Plus de « repos » partout : la semaine type s'affiche toute seule. Le bouton « Pré-remplir » disparaît (inutile).</div>
+</div>
+
+<!-- ② Coach ou athlète déplace -->
+<div class="ph"><h3>② Après déplacement de « dos jambes » au samedi</h3>
+<div class="c"><div class="hd"><span class="nav">‹</span><div style="text-align:center"><b>Cette semaine</b><div class="s" style="margin:0">2 nov. – 8 nov.</div></div><span class="nav">›</span></div>
+<div class="day"><div class="dd"><b>L</b>2</div><span class="p" style="background:#1A5FFF">pec epaule</span><span class="ok">✓ faite</span></div>
+<div class="day"><div class="dd"><b>M</b>3</div><span class="rep">— repos</span></div>
+<div class="day"><div class="dd today"><b>M</b>4</div><span class="rep">— repos</span></div>
+<div class="day"><div class="dd"><b>J</b>5</div><span class="p g" style="border-color:#9D5FD3;color:#9D5FD3">pec epaule 2</span></div>
+<div class="day"><div class="dd"><b>V</b>6</div><span class="p g" style="border-color:#E07800;color:#E07800">dos jambe 2</span></div>
+<div class="day new"><div class="dd"><b>S</b>7</div><span class="p" style="background:#00A854">dos jambes <small>déplacée par Vincent</small></span></div>
+<div class="day"><div class="dd"><b>D</b>8</div><span class="rep">— repos</span></div></div>
+<div class="note">Le déplacement vaut pour CETTE semaine seulement ; la semaine prochaine repart de la semaine type. Le coach voit qui a déplacé.</div>
+<div class="c"><div class="s" style="margin:0">Séance libre faite jeudi à la place ? Elle compte (régularité, volume) et n'efface rien : « pec epaule 2 » reste à faire ou à laisser.</div></div>
+</div>
+
+<!-- ③ Athlète : Aujourd'hui (mercredi) -->
+<div class="ph"><h3>③ Athlète ▸ Aujourd'hui · mercredi</h3>
+<div class="c"><div class="lab">Séance du jour</div><div class="big">Repos prévu aujourd'hui</div><div class="s">Prochaine : pec epaule 2 (jeudi)</div>
+<div class="mq new">Dos jambes (prévue mardi) pas faite. La caser :<br><span class="ch">Jeu</span><span class="ch">Ven</span><span class="ch on">Sam</span><span class="ch">Dim</span><span class="ch" style="color:#55627E">Pas cette semaine</span></div>
+<span class="cta">▷ Faire une séance quand même</span></div>
+<div class="note">Un appui = la séance est posée dans l'agenda (ton coach la voit déplacée). « Pas cette semaine » = plus rappelée, sans pénalité.</div>
+</div>
+
+<!-- ④ Athlète : après choix samedi -->
+<div class="ph"><h3>④ Athlète ▸ Aujourd'hui · après « Sam »</h3>
+<div class="c"><div class="lab">Séance du jour</div><div class="big">Repos prévu aujourd'hui</div><div class="s">Prochaine : pec epaule 2 (jeudi)</div>
+<div class="mq">✓ Dos jambes déplacée à samedi.</div></div>
+<div class="c"><div class="t" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A96B0">Ma semaine</div>
+<div class="s" style="font-size:12.5px;color:#0E1A33;line-height:1.9">Lun · pec epaule <span class="ok">✓</span><br>Jeu · pec epaule 2<br>Ven · dos jambe 2<br><b>Sam · dos jambes</b> <span style="font-size:10.5px;color:#8A96B0">(déplacée)</span></div></div>
+<div class="note">Samedi, « Séance du jour » = dos jambes (même règle que jeudi / vendredi).</div>
+</div>
+</div>
+
+<div class="rules"><h2>La règle (une seule source)</h2><ul>
+<li><b>Date de chaque séance cette semaine</b> = la date posée dans l'agenda si elle existe, sinon son jour conseillé.</li>
+<li><b>Séance du jour</b> = la séance dont la date est aujourd'hui et pas encore faite ; aucune → « Repos prévu aujourd'hui ».</li>
+<li><b>Pas faite</b> = date passée, pas faite cette semaine, pas marquée « pas cette semaine » → ligne douce avec les jours restants pour la caser (aucune alerte, aucune pénalité).</li>
+<li><b>Faite un autre jour</b> (même nom de séance) → comptée faite. Séance libre → compte pour le volume et la régularité, n'efface pas une séance du programme.</li>
+<li><b>Programme sans jours conseillés</b> et rien posé → inchangé (prochaine séance non faite).</li>
+<li>Le coach garde l'agenda pour planifier des semaines différentes (vacances, compétition…) ; l'athlète peut déplacer ses séances de la semaine, le coach le voit.</li>
+</ul>
+<p style="margin:8px 0 0;color:#55627E"><b>Technique :</b> l'app ET le serveur (<code>index.ts</code> : fenêtre de l'agenda depuis le lundi au lieu d'aujourd'hui, l'athlète peut poser/déplacer ses séances, statut « pas cette semaine ») → <b>un redéploiement Supabase</b> sera nécessaire.</p></div>
+</body></html>
