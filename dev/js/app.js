@@ -5148,8 +5148,8 @@ function renderCoachZones(data) {
   var _qui = '<div style="font-size:12.5px;font-weight:800">Propositions Novalyz pour ' + escapeHtml(_pn) + '</div>'
     + _radio(!_ok, 'false', 'Au coach seulement', 'Novalyz te propose ; ' + escapeHtml(_pn) + ' voit tes consignes et ses faits.')
     + _radio(_ok, 'true', 'Aussi à ' + escapeHtml(_pn), 'il voit le plan, les cibles et les leviers de Novalyz comme un athlète sans coach.')
-    + '<button onclick="ouvrirGenProgramme()" style="width:100%;margin:12px 0 4px;padding:11px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7C5CFF);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">✦ Novalyz propose un programme</button>'
-    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:10px">Niveau et zones de ' + escapeHtml(_pn) + ' ; tu relis avant de créer.</div>'
+    + ((data && (data.programme || []).length) ? '<button onclick="ouvrirGenProgramme()" style="width:100%;margin:12px 0 4px;padding:11px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7C5CFF);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">✦ Novalyz propose un programme</button>'
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:10px">Niveau et zones de ' + escapeHtml(_pn) + ' ; tu relis avant de créer.</div>' : '<div style="height:10px"></div>')   // sans programme : le bouton est déjà dans « Partir de… »
     + _progMajBandeau(data, 'c') + '<div style="border-top:1px solid var(--border);margin:4px 0 12px"></div>';
   el.innerHTML = _qui + '<div style="font-size:12.5px;font-weight:800;margin-bottom:7px">Zones à développer en priorité <span style="font-weight:600;color:var(--text-subtle)">· 2 max</span></div>'
     + _zpChipsHtml(z, 'coachZone')
@@ -8614,12 +8614,22 @@ function _progStartHTML() {
       + '<span class="prog-tpl-tt"><span class="a">' + a + '</span><span class="b">' + b + '</span></span>'
       + '<span class="prog-tpl-chev">›</span></button>';
   };
+  // 04/11 (retour porteur) : côté COACH, l'écran de départ parle au coach de son athlète (avant : « Novalyz me le
+  // construit / Je construis tout moi-même », comme un athlète sans coach) + réglage « propositions Novalyz » / zones.
+  var _coachS = (typeof coach !== 'undefined' && coach && coach.coach_id && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant);
+  var _pn = _coachS ? (String(coachAthleteCourant.nom || '').split(/\s+/)[0] || 'l\'athlète') : '';
+  var _desk = false; try { _desk = window.matchMedia('(min-width:992px)').matches; } catch (e) {}
+  if (_coachS && _desk) setTimeout(function () { try { if (coachAthleteData) renderCoachZones(coachAthleteData); } catch (e) {} }, 0);
   return '<div class="prog-start">'
+    + (_coachS ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">' + escapeHtml(_pn) + ' n\'a pas encore de programme.</div>' : '')
     + '<div class="prog-start-lab">Partir de…</div>'
-    + tpl('ia', 'linear-gradient(135deg,var(--accent),#7C5CFF)', '✦', 'Novalyz me le construit', 'Objectif → jours → niveau, en 30 s', 'ouvrirGenProgramme()')
-    + tpl('', 'var(--text-subtle)', '＋', 'Programme vierge', 'Je construis tout moi-même', 'cdAjouterSeance()')
+    + (_coachS
+      ? tpl('ia', 'linear-gradient(135deg,var(--accent),#7C5CFF)', '✦', 'Novalyz propose un programme pour ' + escapeHtml(_pn), 'Son niveau et ses zones ; tu relis avant de créer', 'ouvrirGenProgramme()')
+        + tpl('', 'var(--text-subtle)', '＋', 'Programme vierge', 'Tu le construis toi-même', 'cdAjouterSeance()')
+      : (tpl('ia', 'linear-gradient(135deg,var(--accent),#7C5CFF)', '✦', 'Novalyz me le construit', 'Objectif → jours → niveau, en 30 s', 'ouvrirGenProgramme()')) + (tpl('', 'var(--text-subtle)', '＋', 'Programme vierge', 'Je construis tout moi-même', 'cdAjouterSeance()')))
     + '<div class="prog-start-lab" style="margin-top:16px">Modèles prêts à l\'emploi</div>'
     + _modelesJoursHTML(_psJours, '_psSetJours', '_psModele')
+    + (_coachS && _desk ? '<div class="card" id="cd-zones-desk" style="margin-top:16px;padding:14px"></div>' : '')
     + '</div>';
 }
 // Modèles prêts à l'emploi PAR NOMBRE DE JOURS (2 → 6) — même présentation et même
