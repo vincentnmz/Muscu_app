@@ -6198,6 +6198,7 @@ function renderCoachHeroEtat(data) {
 function renderCoachProchaineSeance(data) {
   var el = document.getElementById('cd-prochaine'); if (!el) return;
   var nom = (data && data.dashboard && data.dashboard.prochaine_seance) ? String(data.dashboard.prochaine_seance) : '';
+  var _sjC = _seanceDuJour(data); if (_sjC && _sjC.suivante) nom = _sjC.suivante;   // jours conseillés (04/11)
   if (!nom) { el.style.display = 'none'; el.innerHTML = ''; return; }
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var prog = (data && Array.isArray(data.programme)) ? data.programme : [];
@@ -17281,9 +17282,12 @@ function _tjEtatSeance(data) {
   var _pn = dash.prochaine_seance, pn = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : null;
   var d = dash.derniere_seance || null, t = new Date();
   var todayFR = String(t.getDate()).padStart(2, '0') + '/' + String(t.getMonth() + 1).padStart(2, '0') + '/' + t.getFullYear();
+  var SJ = _seanceDuJour(data);   // jours conseillés (04/11)
+  if (SJ) pn = SJ.suivante;
   if (d && d.date === todayFR) return { etat: 'faite', nom: String(d.seance_id || ''), d: d, next: pn, seances: seances };
+  if (SJ && !SJ.aujourdhui && (SJ.suivante || SJ.manquees.length)) return { etat: 'repos', next: SJ.suivante, jourNext: SJ.jourSuivante, manquees: SJ.manquees, seances: seances };
   if (!pn) return { etat: 'semaine_ok', next: seances[0], seances: seances };
-  return { etat: 'a_faire', nom: pn, seances: seances };
+  return { etat: 'a_faire', nom: SJ ? SJ.aujourdhui : pn, manquees: SJ ? SJ.manquees : [], seances: seances };
 }
 function _tjDetailSeanceFaite(data) {
   var sd = (data && data.seances_detail && data.seances_detail[0]) || null; if (!sd) return '';
@@ -17857,7 +17861,14 @@ function renderAujourdhui(data) {
     if (_lbl) _lbl.textContent = 'Séance du jour';
     _ctaTxt('Commencer ma séance', "switchTab('seance')");
     var _elCibX = document.getElementById('tj-seance-cibles');
-    if (_E.etat === 'faite' || _E.etat === 'semaine_ok') {
+    if (_E.etat === 'repos') {
+      // Jour sans séance prévue (04/11) : repos, prochaine séance prévue, séances non faites en douceur.
+      if (_elCibX) _elCibX.style.display = 'none';
+      if (elNom) elNom.textContent = 'Repos prévu aujourd\'hui';
+      if (elMeta) elMeta.textContent = _E.next ? 'Prochaine : ' + _E.next + (_E.jourNext ? ' (' + _PROG_JOURS_LONG[_E.jourNext - 1] + ')' : '') : 'Plus de séance prévue cette semaine';
+      if (elFoc && elFocT) { var _mq = _manqueesTxt(_E.manquees); elFocT.innerHTML = _mq ? esc(_mq) : 'Récupère bien, ou fais une séance libre si tu veux.'; elFoc.style.display = ''; }
+      _ctaTxt('Faire une séance quand même', "switchTab('seance')");
+    } else if (_E.etat === 'faite' || _E.etat === 'semaine_ok') {
       if (_elCibX) _elCibX.style.display = 'none';
       var _nS = Number((data.dashboard && data.dashboard.regularite && data.dashboard.regularite.seances_semaine) || 0);
       if (_E.etat === 'faite') {
@@ -17885,7 +17896,7 @@ function renderAujourdhui(data) {
       if (elNom) elNom.textContent = s1;
       if (elMeta) elMeta.textContent = exos.length + ' exercice' + (exos.length > 1 ? 's' : '') + (seances.length > 1 ? ' · ' + seances.length + ' séances au programme' : '');
       var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3);
-      if (elFoc && elFocT && noms.length) { elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>'; elFoc.style.display = ''; }
+      if (elFoc && elFocT && noms.length) { var _mq2 = _manqueesTxt(_E.manquees); elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>' + (_mq2 ? '<br><span style="color:var(--tj-muted)">' + esc(_mq2) + '</span>' : ''); elFoc.style.display = ''; }
       else if (elFoc) elFoc.style.display = 'none';
       var elCib = document.getElementById('tj-seance-cibles');
       if (elCib) { var _ch = ''; try { _ch = _progMajBandeau(data, 'a') + _tjCiblesHtml(_tjCibles(data, exos)); } catch (e) {} elCib.innerHTML = _ch; elCib.style.display = _ch ? '' : 'none'; if (_ch && elFoc) elFoc.style.display = 'none'; }
@@ -20833,7 +20844,36 @@ function _enSetMode(m) {
 }
 // Séance proposée = la « prochaine séance » calculée par le backend (suite du programme
 // après la dernière faite cette semaine) ; à défaut, la 1re du programme.
+// Séance du jour selon les JOURS CONSEILLÉS du programme (retour porteur 04/11 : « dos jambes » manquée
+// mardi restait proposée mercredi). Programme sans jours → null (on garde la prochaine séance non faite).
+// Renvoie { aujourdhui: séance prévue aujourd'hui et pas faite (ou null = repos), suivante: prochaine séance
+// prévue (aujourd'hui compris), manquees: [{sid, jour}] séances prévues plus tôt dans la semaine et pas faites }.
+function _seanceDuJour(data, nowT) {
+  try {
+    var prog = (data && data.programme) || [], jours = {}, ordre = [];
+    prog.forEach(function (p) { if (!p || !p.seance_id || p.type === 'cardio') return; var sid = String(p.seance_id); if (ordre.indexOf(sid) === -1) ordre.push(sid); if (p.jour != null && p.jour !== '' && jours[sid] == null) jours[sid] = Number(p.jour); });
+    if (!Object.keys(jours).length) return null;
+    var now = new Date(nowT || Date.now()), j = (now.getDay() + 6) % 7 + 1;   // 1 = lundi … 7 = dimanche
+    var lun = new Date(now); lun.setHours(0, 0, 0, 0); lun.setDate(lun.getDate() - (j - 1));
+    var lunIso = lun.getFullYear() + '-' + String(lun.getMonth() + 1).padStart(2, '0') + '-' + String(lun.getDate()).padStart(2, '0');
+    var faites = {}; ((data && data.seances_detail) || []).forEach(function (x) { if (x && x.date && String(x.date) >= lunIso && x.seance_id) faites[String(x.seance_id).trim().toLowerCase()] = 1; });
+    var fait = function (sid) { return !!faites[String(sid).trim().toLowerCase()]; };
+    var avecJour = ordre.filter(function (sid) { return jours[sid] != null; }).sort(function (a, b) { return jours[a] - jours[b]; });
+    var auj = avecJour.filter(function (sid) { return jours[sid] === j && !fait(sid); })[0] || null;
+    var sansJour = ordre.filter(function (sid) { return jours[sid] == null && !fait(sid); });
+    var suivante = auj || avecJour.filter(function (sid) { return jours[sid] > j && !fait(sid); })[0] || sansJour[0] || null;
+    var manquees = avecJour.filter(function (sid) { return jours[sid] < j && !fait(sid); }).map(function (sid) { return { sid: sid, jour: jours[sid] }; });
+    return { aujourdhui: auj || (sansJour.length ? sansJour[0] : null), suivante: suivante, jourSuivante: suivante && jours[suivante] != null ? jours[suivante] : null, manquees: manquees };
+  } catch (e) { return null; }
+}
+function _manqueesTxt(m) {
+  if (!m || !m.length) return '';
+  var t = m.map(function (x) { return x.sid + ' (prévue ' + (_PROG_JOURS_LONG[x.jour - 1] || '') + ')'; }).join(', ') + ' pas faite' + (m.length > 1 ? 's' : '') + ' · à rattraper si tu veux';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 function _seanceProposee(order) {
+  var _sj = (typeof dernierAppData !== 'undefined') ? _seanceDuJour(dernierAppData) : null;
+  if (_sj) { if (_sj.aujourdhui && order.indexOf(_sj.aujourdhui) !== -1) return _sj.aujourdhui; if (_sj.suivante && order.indexOf(_sj.suivante) !== -1) return _sj.suivante; }
   var n = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.dashboard) ? dernierAppData.dashboard.prochaine_seance : null;
   if (n && order.indexOf(String(n)) !== -1) return String(n);
   return order.length ? order[0] : null;
