@@ -20,6 +20,7 @@ await pg.route(/supabase\.co|smooth-service/, async route=>{
   let res={success:true};
   if(a==='getCoachAthletes') res={ok:true,athletes:ath};
   else if(a==='getAppData') res=byId[id]||{};
+  else if(a==='getSeancesDetail') { try { res=J(id==='1'?'sd_vinc.json':id==='2'?'sd_aliz.json':'none'); } catch(e) { res={seances:[]}; } }
   else if(a==='getCommentaires') res={commentaires: id==='2'?[{auteur:'athlete',texte:'Coucou',date:'01/11/2026 10:00',comment_id:1}]:[]};
   route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(res)});
 });
