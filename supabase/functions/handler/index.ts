@@ -2945,6 +2945,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
     niveau_experience: niveauAth,
     zones_prio: zonesPrio,   // zones à développer en priorité (2 max) — cibles relevées dans volume_obti
+    // Écran 6 (04/11, décision porteur) : propositions Novalyz à l'athlète seulement s'il n'a PAS de coach,
+    // ou si son coach l'a autorisé (pref novalyz_athlete = '1'). Avec coach : Novalyz propose au coach.
+    novalyz_athlete_ok: (prefRows || []).some((x: any) => x.cle === 'novalyz_athlete' && x.valeur === '1'),
+    propositions_novalyz: !athData?.coach_id || (prefRows || []).some((x: any) => x.cle === 'novalyz_athlete' && x.valeur === '1'),
+    prog_maj: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'prog_maj'); if (!r) return null; try { return JSON.parse(String(r.valeur || 'null')) } catch (_) { return null } })(),
     // Cibles de volume de TOUS les niveaux (générateur : niveau choisi dans l'assistant) — même table que volume_obti.
     volume_niveaux: Object.fromEntries(Object.keys(VOLUME_CIBLES_NIVEAU).map(k => [k, volumeCiblesRows(k).map(r => ({ muscle: r.muscle, series_min: r.series_min_semaine, series_opt: r.series_opt_semaine }))])),
     exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
@@ -5310,6 +5315,8 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')
   else if (ilYa > 14) recos.push(`<b>Cardio</b> : aucune sortie depuis le ${fmtFR(derniere).slice(0, 5)}. 1 à 2 sorties par semaine pour ta base d'endurance.`)
   out.recos = out.series || ch.length ? recos.slice(0, 3) : []
+  // D6 (04/11) : athlète avec coach (sans autorisation du coach) → pas de recos Novalyz, les consignes viennent du coach.
+  if (ad.propositions_novalyz === false) { out.recos = []; out.recos_coach = true }
   return out
 }
 function _frNum(v: any): string { const n = Number(v); if (isNaN(n)) return String(v); return (Math.round(n * 10) / 10).toLocaleString('fr-FR') }
@@ -5375,6 +5382,7 @@ function _emailRecapV2HTML(prenom: string, b: any): string {
     h += h3('Cardio', b.label) + card(`<div style="font-size:13px;color:#cdd6ea">${txt}${b.cardio.derniere ? ` · dernière sortie le ${fmtFR(b.cardio.derniere).slice(0, 5)}` : ''}.</div>`)
   }
   // Recos
+  if (b.recos_coach) h += h3('Tes consignes') + `<div style="background:#13213f;border:1px solid #27407a;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:#d6e2ff">Les consignes de la semaine viennent de ton coach : retrouve-les dans ton programme et ta conversation.</div>`
   if (b.recos && b.recos.length) h += h3('Ce que Novalyz retient') + `<div style="background:#13213f;border:1px solid #27407a;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:#e9eef8">${b.recos.map((r: string, i: number) => `<div style="padding:4px 0">${i + 1}. ${r}</div>`).join('')}</div>`
   if (!h) h = `<p style="font-size:13px;color:#cdd6ea">Pas encore de séance enregistrée sur la période. Ton bilan se remplira dès tes premières séances.</p>`
   h += `<p style="margin:18px 0 0;color:#8b96b0;font-size:12px">Ouvre Novalyz pour le détail de ${b.per === 'semaine' ? 'ta semaine' : b.per === 'mois' ? 'ton mois' : 'ton trimestre'}.</p>`
@@ -6246,7 +6254,9 @@ async function handleClaimRecompense(body: any): Promise<Response> {
 async function handleSavePref(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const cle = String(body.cle || '')
-  if (!athlete_id || !['onboarding_vu', 'prog_auto_off'].includes(cle)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  if (!athlete_id || !['onboarding_vu', 'prog_auto_off', 'novalyz_athlete'].includes(cle)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  // « novalyz_athlete » (écran 6, 04/11) : réglé par le COACH (« laisser Novalyz proposer à l'athlète ») — pas par l'athlète.
+  if (cle === 'novalyz_athlete' && body._sessRole && body._sessRole !== 'c') return jsonResp({ success: false, error: 'Réservé au coach' })
   const v = (body.valeur === 0 || body.valeur === '0' || body.valeur === false) ? '0' : '1'
   const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle).limit(1)
   if (existing?.length) {
@@ -6257,6 +6267,27 @@ async function handleSavePref(body: any): Promise<Response> {
     if (error) return jsonResp({ success: false, error: error.message })
   }
   return jsonResp({ success: true })
+}
+
+// Écran 6 (04/11) : dernière modification du programme (auteur coach / athlète, date, séance, exercice) —
+// affichée à l'autre partie (« Ton coach a mis à jour ton programme » / « Vincent a modifié son programme »).
+async function _progMajTrace(action: string, body: any, run: () => Promise<Response>): Promise<Response> {
+  let aid = String(body.athlete_id || ''), seance = String(body.seance_id || ''), exo = String(body.exercice || '')
+  if ((!aid || !seance) && body.row_index) {
+    try { const { data } = await sb().from('programme').select('athlete_id,seance_id,exercice').eq('id', body.row_index).limit(1); const r: any = data && data[0]; if (r) { aid = aid || String(r.athlete_id || ''); seance = seance || String(r.seance_id || ''); exo = exo || String(r.exercice || '') } } catch (_) {}
+  }
+  const res = await run()
+  try {
+    const role = body._sessRole === 'c' ? 'c' : (body._sessRole === 'a' ? 'a' : '')
+    if (aid && role) {
+      const quoi = action === 'genererProgramme' ? 'programme regénéré' : action === 'supprimerProgrammeLigne' ? 'exercice retiré' : (body.row_index ? 'exercice modifié' : 'exercice ajouté')
+      const valeur = JSON.stringify({ date: new Date().toISOString(), par: role, quoi, seance: action === 'genererProgramme' ? '' : seance, exercice: action === 'genererProgramme' ? '' : exo })
+      const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', 'prog_maj').limit(1)
+      if (ex?.length) await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', 'prog_maj')
+      else await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'prog_maj', valeur, unite: '', source: 'app' })
+    }
+  } catch (_) { /* le traçage ne bloque jamais l'enregistrement */ }
+  return res
 }
 
 // Zones à développer en priorité (2 max), choisies par l'athlète ou son coach. JSON dans UNE ligne pref.
@@ -7353,14 +7384,14 @@ Deno.serve(async (req: Request) => {
         case 'rebuildActivites':         return handleRebuildActivites(body)
         case 'savePoids':                return handleSavePoids(body)
         case 'saveNote':                 return handleSaveNote(body)
-        case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)
+        case 'saveProgrammeLigne':       return _progMajTrace(action, body, () => handleSaveProgrammeLigne(body))
         case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
         case 'getPlanning':              return handleGetPlanning(body)
         case 'planSeance':               return handlePlanSeance(body)
         case 'movePlanning':             return handleMovePlanning(body)
         case 'unplanPlanning':           return handleUnplanPlanning(body)
-        case 'genererProgramme':         return handleGenererProgramme(body)
-        case 'supprimerProgrammeLigne':  return handleSupprimerProgrammeLigne(body)
+        case 'genererProgramme':         return _progMajTrace(action, body, () => handleGenererProgramme(body))
+        case 'supprimerProgrammeLigne':  return _progMajTrace(action, body, () => handleSupprimerProgrammeLigne(body))
         case 'deleteCoach':              return handleDeleteCoach(body)
         case 'saveBienEtre':             return handleSaveBienEtre(body)
         case 'saveBilanSeance':          return handleSaveBilanSeance(body)

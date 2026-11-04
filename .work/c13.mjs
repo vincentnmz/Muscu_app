@@ -1,0 +1,24 @@
+import { open } from './harness.mjs'; import fs from 'fs';
+const data = JSON.parse(fs.readFileSync(new URL('./audit/out_vinc.json', import.meta.url)));
+const db = JSON.parse(fs.readFileSync(new URL('./audit/db_v7.json', import.meta.url)));
+const mode = process.argv[2] || 'coach';   // 'coach' = propositions_novalyz false ; 'libre' = true
+data.propositions_novalyz = (mode !== 'coach');
+data.prog_maj = { date: new Date(Date.now() - 864e5).toISOString(), par: 'c', quoi: 'exercice modifié', seance: 'dos jambes', exercice: 'Pendulum' };
+const { pg, close } = await open({ programme: data.programme, onboarding_vu: true, tourVu: true }, { width: 390, height: 844 });
+await pg.evaluate(([d, ex]) => { athlete.nom = 'Vincent'; _onbChecked = true; _etatAutoChecked = true; exercicesData = ex; _appliquerAppData(d); try { _etatSkip(); } catch (e) {} document.querySelectorAll('.tj-reveal').forEach(x => x.classList.add('in')); }, [data, db.exercices]);
+await pg.waitForTimeout(900);
+const T = async () => pg.evaluate(() => document.body.innerText);
+let t = await T();
+const has = (re) => re.test(t);
+console.log('[' + mode + '] AUJOURD\'HUI : bandeau coach=' + has(/Ton coach a mis à jour ton programme/) + ' | « programme de » =' + has(/programme de /) + ' | plan Novalyz=' + has(/Ton plan de la semaine/i) + ' | « Ce que Novalyz vise »=' + has(/Ce que Novalyz vise/) + ' | bouton aide=' + has(/Comment Novalyz te fait progresser/));
+const k = t.indexOf('TA SÉANCE'); if (k >= 0) console.log(t.slice(k, k + 420));
+await pg.evaluate(() => { const e = [...document.querySelectorAll('#tab-accueil *')].find(x => /Ton coach a mis à jour/.test(x.textContent || '') && x.children.length < 3); if (e) e.scrollIntoView({ block: 'start' }); window.scrollBy(0, -80); });
+await pg.waitForTimeout(300); await pg.screenshot({ path: '/home/user/Muscu_app/.work/shots/ath-coach-auj-' + mode + '.png' });
+await pg.evaluate(() => { switchTab('historique'); maSetTab('resume'); }); await pg.waitForTimeout(900); t = await T();
+console.log('[' + mode + '] ANALYSES : plan=' + has(/TON PLAN DE LA SEMAINE|Ton plan de la semaine/) + ' | levier=' + has(/Levier/));
+await pg.evaluate(() => { switchTab('seance'); try { _enSetMode('muscu'); } catch (e) {} }); await pg.waitForTimeout(700); t = await T();
+console.log('[' + mode + '] ENTRAINEMENT : Régénérer=' + has(/Régénérer avec Novalyz|Novalyz me propose/) + ' | ajuster=' + has(/ton coach est prévenu/));
+await pg.evaluate(() => { try { programmeSeance = (dernierAppData.programme || []).filter(l => l.seance_id === 'dos jambes'); exoEnCours = { exerciceNom: 'Pendulum', series: [] }; majPlanSeries(); } catch (e) { console.log('ERR', e.message); } });
+await pg.waitForTimeout(300);
+console.log('[' + mode + '] SAISIE : ' + (await pg.evaluate(() => { const e = document.getElementById('plan-series-actuel'); const g = document.getElementById('exo-actuel-suggestion'); return (e ? e.innerText.replace(/\n/g, ' | ').slice(0, 260) : 'absent') + ' || msg: ' + (g ? g.innerText.slice(0, 160) : '-'); })));
+await close();

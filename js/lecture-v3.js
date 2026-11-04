@@ -304,7 +304,7 @@ function _lv3PlanHtml(data, compact) {
 function _lv3PourquoiHtml(d) {
   if (!d) return '';
   return '<div style="margin:5px 0 0;padding:7px 9px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.06));border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);line-height:1.45">'
-    + '<b style="color:var(--text)">Pourquoi :</b> ' + (d.pourquoi || 'aucune cause visible dans tes données') + (d.cause ? '' : '') + '<br><b style="color:var(--text)">Levier :</b> ' + _maE(d.levier) + '</div>';
+    + '<b style="color:var(--text)">Pourquoi :</b> ' + (d.pourquoi || 'aucune cause visible dans tes données') + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<br><b style="color:var(--text)">Levier :</b> ' + _maE(d.levier)) + '</div>';
 }
 function _lv3DiagCardHtml(d) {
   if (!d) return '';
@@ -312,7 +312,7 @@ function _lv3DiagCardHtml(d) {
   return '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
     + '<div style="font-size:13px;font-weight:800">' + (d.kind === 'effort' ? 'Pourquoi l\'effort monte' : d.kind === 'recule' ? 'Pourquoi ça recule' : 'Pourquoi ça bloque') + '</div>'
     + '<div style="font-size:12.5px;line-height:1.6;margin-top:6px">' + (d.checks.length ? d.checks.map(function (c) { return ic[c.s] + ' ' + c.t; }).join('<br>') : 'Aucune cause visible dans tes données.') + '</div>'
-    + '<div style="margin-top:8px;font-size:13px"><b>Levier :</b> ' + _maE(d.levier) + '</div>'
+    + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<div style="margin-top:8px;font-size:13px"><b>Levier :</b> ' + _maE(d.levier) + '</div>')   // écran 6 : le coach a la main
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Basé sur ' + d.n + ' séance' + (d.n > 1 ? 's' : '') + ' en ' + d.sem + ' semaine' + (d.sem > 1 ? 's' : '') + (d.n >= 4 ? ' · fiable' : ' · à confirmer') + '. C\'est toi qui décides.</div></div>';
 }
 function _lv3ApprentissageHtml(data) {
@@ -351,7 +351,7 @@ function ouvrirInfoGenerique(titre, contenu, estHtml) {
   ov.style.display = 'flex';
 }
 // ── A. « Comment Novalyz te fait progresser » (adapté au niveau) ─────────────
-function _lv3InfoBtn() { return '<div style="margin-top:9px"><button type="button" onclick="event.stopPropagation();ouvrirInfoProgression()" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-a10,rgba(26,95,255,.10));color:var(--accent);border:1px solid var(--accent-a25,rgba(26,95,255,.28));border-radius:999px;padding:7px 12px;font:inherit;font-weight:800;font-size:12px;cursor:pointer">ⓘ Comment Novalyz te fait progresser ›</button></div>'; }   // bouton visible (validé 03/11)
+function _lv3InfoBtn() { if (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete()) return ''; return '<div style="margin-top:9px"><button type="button" onclick="event.stopPropagation();ouvrirInfoProgression()" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-a10,rgba(26,95,255,.10));color:var(--accent);border:1px solid var(--accent-a25,rgba(26,95,255,.28));border-radius:999px;padding:7px 12px;font:inherit;font-weight:800;font-size:12px;cursor:pointer">ⓘ Comment Novalyz te fait progresser ›</button></div>'; }   // bouton visible (validé 03/11)
 function ouvrirInfoProgression() {
   var d = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
   try { if (typeof _maCoach !== 'undefined' && _maCoach && typeof coachAthleteData !== 'undefined' && coachAthleteData) d = coachAthleteData; } catch (_) {}
