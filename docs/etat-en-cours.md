@@ -26,6 +26,8 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Fait récemment
 
+- **04/11 — Écran 7 Analyses équipe refait** (audit `docs/audit-coach-7-analyses-equipe-2026-11-04.md`, maquette `mockups/analyses-equipe.html` validées). Un seul modèle `_aeModele` + rendu `_aeHtml` pour mobile et bureau (`_coachDeskAnalyses`) : régularité sur 4 semaines terminées, séances cette semaine à date (retard / à venir via `_seanceDuJour`), état = `_coachEtatEquipe` (cliquable → Équipe filtrée ; aussi le « Résumé équipe » de l'accueil mobile, fini « Surcharge » pour un absent), douleurs dès 2/5 sur 7 j (ressenti + bilan de séance, persistance 10 j), progression = `_lectureExos` (fiche), bien-être vs sa normale (`_beNormale`), volume par muscle (4 sem., muscles du programme = `_musclesDuProgramme`, aussi utilisé par l'alerte volume), charge 6 sem. (hausse > +30 % vs moyenne des 3 précédentes), suivi des programmes. SW v528.
+
 - **04/11 — Accueil coach « Entraînement à regarder »** (retour porteur : Alizé restait listée « Plan 1/1 » après sa séance du matin = reprise faite). Plan de la semaine entièrement fait → l'athlète sort de la liste ; il reste seulement si un exercice pose question (bloqué, recule…), avec la pastille verte « ✓ Plan de la semaine fait ». Test `coach-entrainement-regarder` (5 cas).
 - **04/11 — Alerte volume** : seuls les muscles travaillés par le programme (principal ou secondaire, catalogue) sont jugés. Vincent : « Fessier 1,5/10 · Ischio 4,3/10 · Quadriceps 5,5/10 · +… » (mollets / abdos absents du programme ignorés). SW v527.
 
