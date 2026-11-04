@@ -26,6 +26,9 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Fait récemment
 
+- **04/11 — Accueil coach « Entraînement à regarder »** (retour porteur : Alizé restait listée « Plan 1/1 » après sa séance du matin = reprise faite). Plan de la semaine entièrement fait → l'athlète sort de la liste ; il reste seulement si un exercice pose question (bloqué, recule…), avec la pastille verte « ✓ Plan de la semaine fait ». Test `coach-entrainement-regarder` (5 cas).
+- **04/11 — Alerte volume** : seuls les muscles travaillés par le programme (principal ou secondaire, catalogue) sont jugés. Vincent : « Fessier 1,5/10 · Ischio 4,3/10 · Quadriceps 5,5/10 · +… » (mollets / abdos absents du programme ignorés). SW v527.
+
 - **04/11 — Alerte volume coach sur semaines terminées** (retour porteur : « Volume insuffisant — Trop peu de séries » prioritaire un mercredi). Avant : semaine en cours + prorata des jours → Triceps 3 séries (secondaire) < 8×3/7 → rouge. Maintenant : moyenne des **4 dernières semaines lundi→dimanche terminées** (même calcul que les Analyses, `_lv3Volume`), cibles serveur, ≥ 3 semaines d'historique, rien en déload/reprise, muscles nommés (« Mollets 0/8 · Abdominaux 0/6 · Fessier 1,5/10 · +4 autres »), **à surveiller** (orange) et non plus prioritaire ; le statut de l'athlète passe en « Surveillance », plus en « Action ». Vérifié sur les données de Vincent (rejeu serveur 04/11).
 - **04/11 — Générateur ouvert par le coach** : ton coach (« Novalyz propose pour Vincent », « Son objectif », « Créer le programme de Vincent », « Je le construis moi-même ») via `_genCoachTon` ; **niveau pré-réglé = niveau réel de l'athlète** (avant : toujours Intermédiaire, y compris côté athlète). SW v526.
 
