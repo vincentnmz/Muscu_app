@@ -8133,13 +8133,13 @@ function _aeHtml(M, desk) {
     var mid, right = '';
     if (r.et.cat === 'inactifs') { mid = '<b style="color:var(--danger)">' + esc(r.et.court) + '</b>'; right = r.nbProg ? btn('Écrire', 'ouvrirConversationDepuisMessagerie(\'' + r.i + '\')') : btn('Programme', 'aeOuvrir(\'' + r.i + '\',\'programme\')'); }
     else {
-      var p = [r.faitesSem + ' faite' + (r.faitesSem > 1 ? 's' : '') + (!r.date && r.obj ? ' / ' + r.obj : '')];
+      var p = ['Cette semaine : ' + r.faitesSem + ' faite' + (r.faitesSem > 1 ? 's' : '') + (!r.date && r.obj ? ' sur ' + r.obj + ' prévue' + (r.obj > 1 ? 's' : '') : '')];
       if (r.retard.length) p.push('<b style="color:var(--warn)">' + r.retard.length + ' en retard</b> (' + esc(r.retard.map(function (x) { return x.sid + ', ' + _PROG_JOURS_LONG[x.jour - 1]; }).join(' · ')) + ')');
       if (r.date && r.avenir) p.push(r.avenir + ' à venir');
       mid = p.join(' · ') + (r.reprise ? ' <span class="ae-mut">· reprise</span>' : '');
       if (r.retard.length) right = btn('Écrire', 'ouvrirConversationDepuisMessagerie(\'' + r.i + '\')');
     }
-    var reg = r.reg4 ? (function () { var q = r.reg4.f / r.reg4.p, c = q >= 0.75 ? 'ok' : q >= 0.5 ? 'wa' : 'ba'; return '<div class="ae-bar"><i class="' + c + '" style="width:' + Math.round(q * 100) + '%"></i></div>' + chip(r.reg4.f + '/' + r.reg4.p, c); })() : '';
+    var reg = r.reg4 ? (function () { var q = r.reg4.f / r.reg4.p, c = q >= 0.75 ? 'ok' : q >= 0.5 ? 'wa' : 'ba'; return '<div class="ae-bar" title="Régularité sur les 4 dernières semaines terminées"><i class="' + c + '" style="width:' + Math.round(q * 100) + '%"></i></div>' + chip('4 sem. : ' + r.reg4.f + '/' + r.reg4.p, c); })() : '';   // libellé explicite (retour porteur : « 1/4 » lu comme « 1 séance sur 4 cette semaine »)
     return row(r, mid, reg + right);
   }).join('');
   // Douleurs & blessures
