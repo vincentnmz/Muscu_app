@@ -5350,7 +5350,7 @@ function alertesActives(a) {
 function synthAlertesActivesCoach(athleteId, m) {
   if (!m) return [];
   const list = [];
-  if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') list.push('synth-volume');
+  if (m.volAlerte) list.push('synth-volume');   // 04/11 : semaines terminées (4), muscles nommés
   if (m.progColor === '#e5484d') list.push('synth-progression');
   if (m.recupColor === '#e5484d') list.push('synth-recup');
   if (m.regColor === '#e5484d') list.push('synth-regularite');
@@ -6753,33 +6753,30 @@ function computeMarqueursCoach(data, a) {
   // 3. Volume muscles
   const niv = getNiveauExperience(annees);
   const niveauKey = niv === 'debutant' ? 'debutant' : niv === 'intermediaire' ? 'intermediaire' : 'experimente';
-  const volSem = hist.volume_semaine || [];
-  let volColor = '#aaa', volLabel = 'N/A';
-  const volTrained = volSem.filter(v => (v.faites || 0) > 0);
-  if (volTrained.length === 0 && volSem.length > 0) {
-    volColor = '#e5484d'; volLabel = 'Aucune séance';
-  } else if (volTrained.length > 0) {
-    // (A) Prorata temporel : le MEV est une cible de SEMAINE PLEINE. En début de
-    // semaine les séries ne sont pas encore faites → on compare le volume réalisé
-    // au MEV *proratisé* sur les jours écoulés (comme la Régularité §4), sinon on
-    // affichait « Trop peu de séries » (rouge) dès le lundi. « Volume optimal »
-    // reste jugé sur le MAV plein (on ne le proclame pas à mi-semaine).
-    const _jsVol = (new Date().getDay() + 6) % 7 + 1;   // 1 (lundi) … 7 (dimanche)
-    const _proVol = _jsVol / 7;
-    let belowMev = false, aboveMav = true;
-    volTrained.forEach(v => {
-      // F3 (03/11) : cibles du serveur (celles de l'athlète) ; muscle sans cible → ignoré (avant : 10-14 inventé).
-      const _cs = (data.volume_obti || []).filter(o => o && o.muscle === v.muscle && Number(o.series_min) > 0)[0];
-      if (!_cs) return;
-      const mev = Number(_cs.series_min) || 0, mav = Number(_cs.series_opt) || 0;
-      const faites = v.faites || 0;
-      if (faites < mev * _proVol) belowMev = true;   // MEV proratisé (jours écoulés)
-      if (faites < mav) aboveMav = false;
-    });
-    if (belowMev) { volColor = 'var(--bad)'; volLabel = 'Trop peu de séries'; }
-    else if (!aboveMav) { volColor = 'var(--warn)'; volLabel = 'Volume correct'; }
-    else { volColor = 'var(--good)'; volLabel = 'Volume optimal'; }
-  }
+  // 04/11 (retour porteur) : le volume se juge sur des SEMAINES TERMINÉES, jamais sur la semaine en cours
+  // (avant : semaine entamée + prorata des jours → « Trop peu de séries » rouge le mercredi, sur un muscle
+  // travaillé en secondaire). Base = moyenne des 4 dernières semaines lundi→dimanche (même calcul que les
+  // Analyses : muscle secondaire = ½ série), cibles du serveur. Muscles sous le minimum NOMMÉS.
+  let volColor = '#aaa', volLabel = 'N/A', volAlerte = false, volDetail = '';
+  try {
+    const _lunV = new Date(); _lunV.setHours(0, 0, 0, 0); _lunV.setDate(_lunV.getDate() - ((_lunV.getDay() + 6) % 7));
+    const _dmV = (hist && hist.daily_muscu) || {}, _jrsV = Object.keys(_dmV).sort();
+    const _debV = new Date(_lunV.getTime() - 21 * 864e5);
+    const _ymdV = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const _ctxV = (typeof _ctxAttendu === 'function') && _ctxAttendu(data);
+    if (typeof _lv3Volume === 'function' && _jrsV.length && _jrsV[0] < _ymdV(_debV) && !_ctxV) {
+      const _fmt = x => String(Math.round(x * 10) / 10).replace('.', ',');
+      const rows = (data.volume_obti || []).filter(o => o && Number(o.series_min) > 0).map(o => { const V = _lv3Volume(data, o.muscle, _lunV.getTime()); return { m: o.muscle, v: V.parSem, min: Number(o.series_min), opt: Number(o.series_opt) || 0 }; });
+      const sous = rows.filter(r => r.v < r.min).sort((a, b) => a.v / a.min - b.v / b.min);
+      if (sous.length) {
+        volAlerte = true; volColor = '#f59f00';
+        volDetail = sous.slice(0, 3).map(r => r.m + ' ' + _fmt(r.v) + '/' + r.min).join(' · ') + (sous.length > 3 ? ' · +' + (sous.length - 3) + ' autres' : '');
+        volLabel = 'Sous le minimum : ' + volDetail;
+      } else if (rows.some(r => r.v < r.opt)) { volColor = 'var(--good)'; volLabel = 'Volume correct'; }
+      else if (rows.length) { volColor = 'var(--good)'; volLabel = 'Volume optimal'; }
+    } else if (_ctxV) { volLabel = 'Déload / reprise : volume réduit attendu'; }
+    else { volLabel = 'Moins de 3 semaines de données'; }
+  } catch (e) {}
 
   // 4. Régularité (prorata des jours écoulés)
   const reg = dash.regularite || {};
@@ -6865,7 +6862,7 @@ function computeMarqueursCoach(data, a) {
 
   return {
     progColor, progLabel, acwrColor, acwrLabel, acwrRatio,
-    volColor, volLabel, regColor, regLabel, recupColor, recupLabel, statut,
+    volColor, volLabel, volAlerte, volDetail, regColor, regLabel, recupColor, recupLabel, statut,
     derniere: dash.derniere_seance || null
   };
 }
@@ -9696,7 +9693,7 @@ function construireSynthAlertes(data) {
   // Mode vacances : aucune alerte de synthèse (reprend seul à la fin).
   if (estEnPause(data && data.pause)) return out;
   const m = computeMarqueursCoach(data, coachAthleteCourant);
-  if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') out.push({ type: 'synth-volume', msg: `Volume insuffisant — ${m.volLabel}`, color: '#e5484d' });
+  if (m.volAlerte) out.push({ type: 'synth-volume', msg: `Volume sous le minimum (moyenne des 4 dernières semaines terminées) — ${m.volDetail}`, color: '#f59f00' });
   // (03/11) plus d'alerte « Volume faible — Volume correct » : entre le minimum et l'optimum, le volume est correct, ce n'est pas une alerte.
   if (m.progColor === '#e5484d') out.push({ type: 'synth-progression', msg: `Progression en baisse — ${m.progLabel}`, color: '#e5484d' });
   if (m.recupColor === '#e5484d') out.push({ type: 'synth-recup', msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
@@ -19739,7 +19736,9 @@ function ouvrirGenProgramme() {
     else _butDef = 'masse';
   } catch (e) {}
   var _zIni = []; try { var _dd0 = _gc.coach ? coachAthleteData : dernierAppData; _zIni = ((_dd0 && _dd0.zones_prio) || []).slice(0, 2); } catch (e) {}
-  _genState = { niv: 'intermediaire', obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni };
+  // 04/11 : niveau RÉEL de l'athlète (avant : toujours « Intermédiaire », même pour un débutant).
+  var _nivIni = 'intermediaire'; try { var _dn = _gc.coach ? coachAthleteData : dernierAppData; var _ne = _dn && _dn.niveau_experience; if (_ne === 'debutant') _nivIni = 'debutant'; else if (_ne === 'avance' || _ne === 'expert') _nivIni = 'avance'; } catch (e) {}
+  _genState = { niv: _nivIni, obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -20002,7 +20001,19 @@ function _genCard(onclick, on, titre, sous) {
     + '<div style="flex:1"><div style="font-weight:800;font-size:14.5px;color:' + (on ? 'var(--accent)' : 'var(--text)') + '">' + titre + '</div><div style="font-size:12px;color:var(--text-subtle);margin-top:2px">' + sous + '</div></div>'
     + '<span style="width:20px;height:20px;border-radius:999px;border:2px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';flex:none;display:grid;place-items:center">' + (on ? '<span style="width:10px;height:10px;border-radius:999px;background:var(--accent)"></span>' : '') + '</span></button>';
 }
-function _genRender() {
+// 04/11 : ouvert par le COACH → le générateur parle au coach de l'athlète (avant : « ton objectif », « Créer mon programme »).
+function _genRender() { _genRender0.apply(this, arguments); _genCoachTon(); }
+function _genCoachTon() {
+  var gc = _genCtx(); if (!gc || !gc.coach) return;
+  var root = document.getElementById('gen-prog-overlay'); if (!root) return;
+  var P = String(gc.nom || 'l\'athlète').split(/\s+/)[0];
+  var R = [[/Novalyz te propose/g, 'Novalyz propose pour ' + P], [/Réponds à quelques questions, Novalyz assemble ton programme/g, 'Quelques réglages, Novalyz assemble le programme de ' + P],
+    [/\bTon objectif\b/g, 'Son objectif'], [/\bChoisis ton programme\b/g, 'Choisis son programme'], [/\bta fourchette\b/g, 'sa fourchette'], [/\bsous ta cible\b/g, 'sous sa cible'],
+    [/\btes Analyses\b/g, 'ses Analyses'], [/\btes acquis\b/g, 'ses acquis'], [/Créer mon programme/g, 'Créer le programme de ' + P], [/Je gère mon programme moi-même/g, 'Je le construis moi-même'],
+    [/Tu as déjà un programme\./g, P + ' a déjà un programme.'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\btes options\b/g, 'les options']];
+  try { var tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n; while ((n = tw.nextNode())) { var t = n.nodeValue, t2 = t; if (!t || !/[a-zA-Z]/.test(t)) continue; R.forEach(function (r) { t2 = t2.replace(r[0], r[1]); }); if (t2 !== t) n.nodeValue = t2; } } catch (e) {}
+}
+function _genRender0() {
   var sh = document.getElementById('gen-prog-sheet'); if (!sh) return;
   var st = _genState, esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var L = function (t) { return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">' + t + '</div>'; };
