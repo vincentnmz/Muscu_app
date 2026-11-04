@@ -5,7 +5,7 @@ let ok = 0, ko = 0; const eq = (c, n) => { if (c) ok++; else { ko++; console.err
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const pick = (n) => { const i = src.indexOf('function ' + n + '('); let d = 0; for (let k = src.indexOf('{', i); k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } } };
 const sb = { _PROG_JOURS_LONG: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'] };
-vm.createContext(sb); vm.runInContext(pick('_seanceDuJour') + ';' + pick('_manqueesTxt') + '; this.SJ = _seanceDuJour; this.MQ = _manqueesTxt;', sb);
+vm.createContext(sb); vm.runInContext(pick('_sjIso') + ';' + pick('_seanceDuJour') + ';' + pick('_manqueesTxt') + '; this.SJ = _seanceDuJour; this.MQ = _manqueesTxt;', sb);
 const prog = [['pec epaule', 1], ['dos jambes', 2], ['pec epaule 2', 4], ['dos jambe 2', 5]].map(([s, j]) => ({ seance_id: s, jour: j, exercice: 'x' }));
 const faite = (s, d) => ({ seance_id: s, date: d });
 const T = (iso) => new Date(iso + 'T10:00:00').getTime();
@@ -28,4 +28,23 @@ r = sb.SJ({ programme: prog, seances_detail: [faite('dos jambes', '2026-10-27')]
 eq(r.aujourdhui === 'dos jambes', 'faite la semaine précédente → reproposée cette semaine');
 // Programme sans jours conseillés → null (comportement d'avant : prochaine non faite).
 eq(sb.SJ({ programme: prog.map(p => ({ seance_id: p.seance_id })) }, T('2026-11-04')) === null, 'programme sans jours → règle inchangée');
+
+// ── Agenda (une seule source, 04/11) : la date posée dans l'agenda passe avant le jour conseillé.
+const pl = (s, d, st, src) => ({ id: Math.floor(Math.random() * 1e6), seance_id: s, date_iso: d, statut: st || 'planifie', source: src || 'athlete' });
+const base = [faite('pec epaule', '2026-11-02')];
+r = sb.SJ({ programme: prog, seances_detail: base, planning: [pl('dos jambes', '2026-11-07')] }, T('2026-11-04'));
+eq(!r.manquees.length, 'dos jambes déplacée samedi → plus « pas faite » mercredi');
+eq(r.semaine.some(e => e.sid === 'dos jambes' && e.jour === 6 && e.deplacee), 'dos jambes au samedi, marquée déplacée');
+r = sb.SJ({ programme: prog, seances_detail: base, planning: [pl('dos jambes', '2026-11-07')] }, T('2026-11-07'));
+eq(r.aujourdhui === 'dos jambes', 'samedi → séance du jour = dos jambes (déplacée)');
+r = sb.SJ({ programme: prog, seances_detail: base, planning: [pl('dos jambes', '2026-11-03', 'annule')] }, T('2026-11-04'));
+eq(!r.manquees.length && !r.semaine.some(e => e.sid === 'dos jambes'), '« pas cette semaine » → plus rappelée');
+r = sb.SJ({ programme: prog, seances_detail: base, planning: [pl('dos jambes', '2026-11-03', 'annule')] }, T('2026-11-10'));
+eq(r.aujourdhui === 'dos jambes', '« pas cette semaine » ne vaut que pour la semaine (mardi suivant → proposée)');
+r = sb.SJ({ programme: prog, seances_detail: base, planning: [pl('pec epaule 2', '2026-11-04', 'planifie', 'coach')] }, T('2026-11-04'));
+eq(r.aujourdhui === 'pec epaule 2', 'coach pose pec epaule 2 mercredi → séance du jour mercredi');
+r = sb.SJ({ programme: prog.map(p => ({ seance_id: p.seance_id })), planning: [pl('dos jambes', '2026-11-05', 'planifie', 'coach')] }, T('2026-11-05'));
+eq(r && r.aujourdhui === 'dos jambes', 'programme sans jours mais agenda posé → agenda suivi');
+r = sb.SJ({ programme: prog, seances_detail: base, planning: [pl('dos jambes', '2026-10-27')] }, T('2026-11-04'));
+eq(r.manquees.length === 1, 'agenda d\'une autre semaine → ignoré');
 console.log('-'.repeat(70)); console.log('seance-du-jour : ' + ok + ' OK / ' + ko + ' KO'); if (ko) process.exitCode = 1;

@@ -2425,10 +2425,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
   // Agenda daté : fenêtre courte pour l'athlète (aujourd'hui → +14 j) → séances
   // prévues, « séance du jour », rappels. Le coach navigue librement via getPlanning.
-  const _planFrom = fmtYMD(now)
+  // 04/11 : depuis le LUNDI de la semaine (séance du jour, séances pas faites, « Ma semaine »).
+  const _planFrom = (() => { const d = new Date(now); const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return fmtYMD(d) })()
   const _planTo = fmtYMD(new Date(now.getTime() + 14 * 86400000))
   const { data: planRows } = await sb().from('planning')
-    .select('id,date,seance_id,statut')
+    .select('id,date,seance_id,statut,source')
     .eq('athlete_id', athleteId).gte('date', _planFrom).lte('date', _planTo)
     .order('date', { ascending: true })
 
@@ -2917,7 +2918,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     },
     poids,
     programme,
-    planning: (planRows || []).map((r: any) => ({ id: r.id, date: fmtFR(r.date), date_iso: r.date, seance_id: r.seance_id, statut: r.statut })),
+    planning: (planRows || []).map((r: any) => ({ id: r.id, date: fmtFR(r.date), date_iso: r.date, seance_id: r.seance_id, statut: r.statut, source: r.source })),
     bien_etre,
     pause: pauseObj,
     contexte,
@@ -5879,8 +5880,10 @@ async function handlePlanSeance(body: any): Promise<Response> {
   const seance_id = String(body.seance_id ?? '')
   if (!athlete_id || !date || !seance_id) return jsonResp({ erreur: 'Paramètres manquants' })
   const source = (body.source === 'athlete' || body.source === 'auto') ? body.source : 'coach'
+  // 04/11 : statut « annule » = « pas cette semaine » (séance non faite, plus rappelée, sans pénalité).
+  const statut = body.statut === 'annule' ? 'annule' : 'planifie'
   const { data, error } = await sb().from('planning')
-    .upsert({ athlete_id, date, seance_id, statut: 'planifie', source }, { onConflict: 'athlete_id,date,seance_id' })
+    .upsert({ athlete_id, date, seance_id, statut, source }, { onConflict: 'athlete_id,date,seance_id' })
     .select('id').single()
   if (error) return jsonResp({ erreur: error.message })
   return jsonResp({ ok: true, id: data?.id })

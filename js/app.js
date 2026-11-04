@@ -6271,7 +6271,15 @@ function _cdAgSeances() {
 }
 function _cdAgSeanceMap() { var m = {}; _cdAgSeances().forEach(function (s) { m[s.id] = s; }); return m; }
 function _cdAgRowsForDay(iso) { return (_cdAgRows || []).filter(function (r) { return String(r.date) === iso; }); }
-function _cdAgUnplanned() { var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; }); return _cdAgSeances().filter(function (s) { return !placed[s.id]; }); }
+// 04/11 : séances avec jour conseillé = semaine type affichée en pointillé (pas « à planifier »).
+function _cdAgUnplanned() { var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; }); return _cdAgSeances().filter(function (s) { return !placed[s.id] && s.jour == null; }); }
+// Semaine type : séances avec jour conseillé, ni posées ni « pas cette semaine » la semaine affichée.
+function _cdAgGhosts() { var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; }); return _cdAgSeances().filter(function (s) { return !placed[s.id] && s.jour != null && s.jour >= 1 && s.jour <= 7; }); }
+function _cdAgFaite(sid, iso) {   // faite la semaine affichée (n'importe quel jour) ?
+  var d = (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.seances_detail) || [];
+  var a = _cdAgYmd(_cdAgMonday(_cdAgOff)), b = _cdAgYmd(_cdAgDateOf(6)), k = String(sid).trim().toLowerCase();
+  return d.some(function (x) { return x && x.date >= a && x.date <= b && String(x.seance_id || '').trim().toLowerCase() === k; });
+}
 
 // Chargement de la semaine affichée.
 function cdAgLoadWeek() {
@@ -6314,17 +6322,24 @@ function cdAgRender() {
   var rowsHtml = '';
   for (var i = 0; i < 7; i++) {
     var dt = _cdAgDateOf(i), iso = _cdAgYmd(dt), dayRows = _cdAgRowsForDay(iso);
+    var _tIso = _cdAgYmd(new Date()), _prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'l\'athlète';
+    var _etat = function (sid) { return _cdAgFaite(sid) ? '<span class="cdag-ok">✓ faite</span>' : (iso < _tIso ? '<span class="cdag-ko">non faite</span>' : ''); };
     var pills = dayRows.map(function (r) {
-      var s = smap[String(r.seance_id)], col = s ? s.col : '#64748b', nom = s ? s.nom : String(r.seance_id), det = s ? (s.exos + ' exos') : '';
-      return '<span class="cdag-pill" draggable="true" data-pid="' + r.id + '" style="background:' + col + '">' + _cdAgEsc(nom) + (det ? ' <small>' + det + '</small>' : '') + '<span class="cdag-x" data-rm="' + r.id + '" title="Retirer">✕</span></span>';
+      var s = smap[String(r.seance_id)], col = s ? s.col : '#64748b', nom = s ? s.nom : String(r.seance_id);
+      if (r.statut === 'annule') return '<span class="cdag-pill cdag-annule">' + _cdAgEsc(nom) + ' <small>pas cette semaine</small><span class="cdag-x" data-rm="' + r.id + '" title="Annuler">✕</span></span>';
+      var det = (r.source === 'athlete') ? 'déplacée par ' + _prenom : (s && s.jour != null && s.jour !== i + 1 ? 'déplacée' : '');
+      return '<span class="cdag-pill" draggable="true" data-pid="' + r.id + '" style="background:' + col + '">' + _cdAgEsc(nom) + (det ? ' <small>' + _cdAgEsc(det) + '</small>' : '') + '<span class="cdag-x" data-rm="' + r.id + '" title="Retirer (revient à la semaine type)">✕</span></span>' + _etat(String(r.seance_id));
+    }).join('');
+    pills += _cdAgGhosts().filter(function (g) { return g.jour === i + 1; }).map(function (g) {
+      return '<span class="cdag-chip cdag-ghost' + (_cdAgSelChip === g.id ? ' sel' : '') + '" draggable="true" data-sid="' + _cdAgEsc(g.id) + '" style="border-color:' + g.col + ';color:' + g.col + '" title="Semaine type — glisse pour déplacer">' + _cdAgEsc(g.nom) + '</span>' + _etat(g.id);
     }).join('');
     rowsHtml += '<div class="cdag-day' + (dayRows.length ? ' has' : '') + '" data-iso="' + iso + '"><div class="cdag-dd"><b>' + _CD_AG_ABBR[i] + '</b><span>' + dt.getDate() + '</span></div><div class="cdag-ct">' + (pills || '<span class="cdag-empty">— repos</span>') + '</div></div>';
   }
   var unpl = _cdAgUnplanned();
   var chips = unpl.length
     ? unpl.map(function (s) { return '<span class="cdag-chip' + (_cdAgSelChip === s.id ? ' sel' : '') + '" draggable="true" data-sid="' + _cdAgEsc(s.id) + '" style="background:' + s.col + '">' + _cdAgEsc(s.nom) + '</span>'; }).join('')
-    : '<span class="cdag-sub">Tout est planifié ✓</span>';
-  var canPrefill = _cdAgSeances().some(function (s) { return s.jour != null; }) && unpl.length;
+    : '';
+  var canPrefill = false;   // 04/11 : la semaine type s'affiche toute seule (pointillé) → plus de « Pré-remplir »
   var html = '<div class="cdag-head">'
     + '<button class="cdag-nav" data-nav="-1" title="Semaine précédente">‹</button>'
     + '<div class="cdag-wl"><b>' + lab + '</b><span>' + _cdAgFmt(a) + ' – ' + _cdAgFmt(b) + '</span></div>'
@@ -6334,10 +6349,11 @@ function cdAgRender() {
   if (!hasProg) {
     html += '<div class="cdag-sub" style="padding:8px 2px">Aucune séance dans le programme — crée des séances pour pouvoir les planifier.</div>';
   } else {
-    html += '<div class="cdag-sub" style="margin:2px 2px 8px">Glisse une séance sur un jour · ✕ pour retirer.</div>'
+    html += '<div class="cdag-sub" style="margin:2px 2px 8px">Glisse une séance pour la déplacer cette semaine · ✕ pour revenir à la semaine type.</div>'
       + (_cdAgLoading ? '<div class="cdag-sub" style="padding:4px 2px">Chargement…</div>' : '')
       + '<div class="cdag-days">' + rowsHtml + '</div>'
-      + '<div class="cdag-topl"><div class="cdag-lab">À planifier' + (canPrefill ? ' <button class="cdag-prefill" data-prefill="1">↳ Pré-remplir semaine type</button>' : '') + '</div><div class="cdag-chips">' + chips + '</div></div>';
+      + '<div class="cdag-sub" style="margin:8px 2px 0;line-height:1.5"><b>Pointillé</b> = semaine type (jours conseillés), rien à faire. <b>Plein</b> = posé ou déplacé pour cette semaine.</div>'
+      + (unpl.length ? '<div class="cdag-topl"><div class="cdag-lab">Sans jour conseillé · à planifier' + (canPrefill ? '' : '') + '</div><div class="cdag-chips">' + chips + '</div></div>' : '');
   }
   mounts.forEach(function (root) { root.innerHTML = '<div class="cdag">' + html + '</div>'; _cdAgBind(root); });
 }
@@ -16405,6 +16421,21 @@ var _TJP_DOW = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 var _TJP_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 function renderTjPlanning(data) {
   var host = document.getElementById('tj-planning'); if (!host) return;
+  // 04/11 : « Ma semaine » = même source que la séance du jour (agenda sinon jours conseillés).
+  var SJ = null; try { SJ = _seanceDuJour(data); } catch (e) {}
+  if (SJ && SJ.semaine.length) {
+    var escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+    var _ord = []; (data.programme || []).forEach(function (l) { var x = l && String(l.seance_id || '').trim(); if (x && _ord.indexOf(x) === -1) _ord.push(x); });
+    var it = SJ.semaine.map(function (e) {
+      var st = e.fait ? ' · ✓ faite' : (e.jour < SJ.j ? ' · non faite' : '');
+      return '<div class="tjp-item' + (e.jour === SJ.j ? ' today' : '') + (e.fait ? ' done' : '') + (!e.fait && e.jour < SJ.j ? ' missed' : '') + '" style="border-left-color:' + (e.fait ? 'var(--tj-good)' : _TJP_PAL[Math.max(0, _ord.indexOf(String(e.sid).trim())) % _TJP_PAL.length]) + '">'
+        + '<div class="tjp-d">' + (e.jour === SJ.j ? "Aujourd'hui" : _PROG_JOURS_LONG[e.jour - 1]) + st + (e.deplacee || e.src === 'athlete' ? ' · déplacée' : '') + '</div>'
+        + '<div class="tjp-n">' + escS(e.sid) + '</div></div>';
+    }).join('');
+    host.style.display = '';
+    host.innerHTML = '<div class="tj-label">Ma semaine</div><div class="tjp-row">' + it + '</div>';
+    return;
+  }
   var pl = (data && Array.isArray(data.planning)) ? data.planning.slice() : [];
   if (!pl.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
   // Couleur par séance (même logique que l'agenda coach : ordre d'apparition dans le programme).
@@ -17294,9 +17325,9 @@ function _tjEtatSeance(data) {
   var SJ = _seanceDuJour(data);   // jours conseillés (04/11)
   if (SJ) pn = SJ.suivante;
   if (d && d.date === todayFR) return { etat: 'faite', nom: String(d.seance_id || ''), d: d, next: pn, seances: seances };
-  if (SJ && !SJ.aujourdhui && (SJ.suivante || SJ.manquees.length)) return { etat: 'repos', next: SJ.suivante, jourNext: SJ.jourSuivante, manquees: SJ.manquees, seances: seances };
+  if (SJ && !SJ.aujourdhui && (SJ.suivante || SJ.manquees.length)) return { etat: 'repos', next: SJ.suivante, jourNext: SJ.jourSuivante, manquees: SJ.manquees, j: SJ.j, seances: seances };
   if (!pn) return { etat: 'semaine_ok', next: seances[0], seances: seances };
-  return { etat: 'a_faire', nom: SJ ? SJ.aujourdhui : pn, manquees: SJ ? SJ.manquees : [], seances: seances };
+  return { etat: 'a_faire', nom: SJ ? SJ.aujourdhui : pn, manquees: SJ ? SJ.manquees : [], j: SJ ? SJ.j : 0, seances: seances };
 }
 function _tjDetailSeanceFaite(data) {
   var sd = (data && data.seances_detail && data.seances_detail[0]) || null; if (!sd) return '';
@@ -17875,7 +17906,7 @@ function renderAujourdhui(data) {
       if (_elCibX) _elCibX.style.display = 'none';
       if (elNom) elNom.textContent = 'Repos prévu aujourd\'hui';
       if (elMeta) elMeta.textContent = _E.next ? 'Prochaine : ' + _E.next + (_E.jourNext ? ' (' + _PROG_JOURS_LONG[_E.jourNext - 1] + ')' : '') : 'Plus de séance prévue cette semaine';
-      if (elFoc && elFocT) { var _mq = _manqueesTxt(_E.manquees); elFocT.innerHTML = _mq ? esc(_mq) : 'Récupère bien, ou fais une séance libre si tu veux.'; elFoc.style.display = ''; }
+      if (elFoc && elFocT) { var _mq = _manqueesHtml(_E.manquees, _E.j); elFocT.innerHTML = (_sjMsg ? '<div>' + esc(_sjMsg) + '</div>' : '') + (_mq || (_sjMsg ? '' : 'Récupère bien, ou fais une séance libre si tu veux.')); elFoc.style.display = ''; _sjMsg = ''; }
       _ctaTxt('Faire une séance quand même', "switchTab('seance')");
     } else if (_E.etat === 'faite' || _E.etat === 'semaine_ok') {
       if (_elCibX) _elCibX.style.display = 'none';
@@ -17905,7 +17936,7 @@ function renderAujourdhui(data) {
       if (elNom) elNom.textContent = s1;
       if (elMeta) elMeta.textContent = exos.length + ' exercice' + (exos.length > 1 ? 's' : '') + (seances.length > 1 ? ' · ' + seances.length + ' séances au programme' : '');
       var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3);
-      if (elFoc && elFocT && noms.length) { var _mq2 = _manqueesTxt(_E.manquees); elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>' + (_mq2 ? '<br><span style="color:var(--tj-muted)">' + esc(_mq2) + '</span>' : ''); elFoc.style.display = ''; }
+      if (elFoc && elFocT && noms.length) { var _mq2 = _manqueesHtml(_E.manquees, _E.j); elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>' + (_sjMsg ? '<div>' + esc(_sjMsg) + '</div>' : '') + _mq2; _sjMsg = ''; elFoc.style.display = ''; }
       else if (elFoc) elFoc.style.display = 'none';
       var elCib = document.getElementById('tj-seance-cibles');
       if (elCib) { var _ch = ''; try { _ch = _progMajBandeau(data, 'a') + _tjCiblesHtml(_tjCibles(data, exos)); } catch (e) {} elCib.innerHTML = _ch; elCib.style.display = _ch ? '' : 'none'; if (_ch && elFoc) elFoc.style.display = 'none'; }
@@ -20853,32 +20884,88 @@ function _enSetMode(m) {
 }
 // Séance proposée = la « prochaine séance » calculée par le backend (suite du programme
 // après la dernière faite cette semaine) ; à défaut, la 1re du programme.
-// Séance du jour selon les JOURS CONSEILLÉS du programme (retour porteur 04/11 : « dos jambes » manquée
-// mardi restait proposée mercredi). Programme sans jours → null (on garde la prochaine séance non faite).
-// Renvoie { aujourdhui: séance prévue aujourd'hui et pas faite (ou null = repos), suivante: prochaine séance
-// prévue (aujourd'hui compris), manquees: [{sid, jour}] séances prévues plus tôt dans la semaine et pas faites }.
+// Séance du jour — UNE SEULE SOURCE (04/11, maquette agenda-semaine validée) :
+// date de chaque séance cette semaine = date posée dans l'agenda (table planning) si elle existe,
+// sinon son jour conseillé (programme.jour). Statut « annule » = « pas cette semaine » (plus rappelée).
+// Renvoie null si rien n'est daté (programme sans jours ET agenda vide) → comportement d'avant.
+// { aujourdhui, suivante, jourSuivante, manquees:[{sid,jour,id}], semaine:[{sid,jour,iso,fait,id,src,deplacee}], j, lunIso }
+function _sjIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function _seanceDuJour(data, nowT) {
   try {
     var prog = (data && data.programme) || [], jours = {}, ordre = [];
     prog.forEach(function (p) { if (!p || !p.seance_id || p.type === 'cardio') return; var sid = String(p.seance_id); if (ordre.indexOf(sid) === -1) ordre.push(sid); if (p.jour != null && p.jour !== '' && jours[sid] == null) jours[sid] = Number(p.jour); });
-    if (!Object.keys(jours).length) return null;
     var now = new Date(nowT || Date.now()), j = (now.getDay() + 6) % 7 + 1;   // 1 = lundi … 7 = dimanche
     var lun = new Date(now); lun.setHours(0, 0, 0, 0); lun.setDate(lun.getDate() - (j - 1));
-    var lunIso = lun.getFullYear() + '-' + String(lun.getMonth() + 1).padStart(2, '0') + '-' + String(lun.getDate()).padStart(2, '0');
-    var faites = {}; ((data && data.seances_detail) || []).forEach(function (x) { if (x && x.date && String(x.date) >= lunIso && x.seance_id) faites[String(x.seance_id).trim().toLowerCase()] = 1; });
-    var fait = function (sid) { return !!faites[String(sid).trim().toLowerCase()]; };
-    var avecJour = ordre.filter(function (sid) { return jours[sid] != null; }).sort(function (a, b) { return jours[a] - jours[b]; });
-    var auj = avecJour.filter(function (sid) { return jours[sid] === j && !fait(sid); })[0] || null;
-    var sansJour = ordre.filter(function (sid) { return jours[sid] == null && !fait(sid); });
-    var suivante = auj || avecJour.filter(function (sid) { return jours[sid] > j && !fait(sid); })[0] || sansJour[0] || null;
-    var manquees = avecJour.filter(function (sid) { return jours[sid] < j && !fait(sid); }).map(function (sid) { return { sid: sid, jour: jours[sid] }; });
-    return { aujourdhui: auj || (sansJour.length ? sansJour[0] : null), suivante: suivante, jourSuivante: suivante && jours[suivante] != null ? jours[suivante] : null, manquees: manquees };
+    var dim = new Date(lun); dim.setDate(dim.getDate() + 6);
+    var lunIso = _sjIso(lun), dimIso = _sjIso(dim);
+    var key = function (x) { return String(x || '').trim().toLowerCase(); };
+    var jourOf = function (iso) { var d = new Date(iso + 'T00:00:00'); return Math.round((d - lun) / 864e5) + 1; };
+    // Agenda de la semaine (par séance)
+    var plan = {}, annul = {};
+    ((data && data.planning) || []).forEach(function (r) {
+      var iso = String(r.date_iso || r.date || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || iso < lunIso || iso > dimIso) return;
+      var k = key(r.seance_id); if (!k) return;
+      if (r.statut === 'annule') annul[k] = true; else (plan[k] = plan[k] || []).push({ iso: iso, id: r.id, src: r.source || '' });
+    });
+    var faites = {}; ((data && data.seances_detail) || []).forEach(function (x) { if (x && x.date && String(x.date) >= lunIso && String(x.date) <= dimIso && x.seance_id) faites[key(x.seance_id)] = 1; });
+    var semaine = [];
+    ordre.forEach(function (sid) {
+      var k = key(sid);
+      if (plan[k]) plan[k].forEach(function (pr) { var jr = jourOf(pr.iso); semaine.push({ sid: sid, jour: jr, iso: pr.iso, fait: !!faites[k], id: pr.id, src: pr.src, deplacee: jours[sid] != null && jours[sid] !== jr }); });
+      else if (jours[sid] != null && !annul[k]) { var d = new Date(lun); d.setDate(d.getDate() + jours[sid] - 1); semaine.push({ sid: sid, jour: jours[sid], iso: _sjIso(d), fait: !!faites[k], id: null, src: 'type', deplacee: false }); }
+    });
+    if (!semaine.length) return null;
+    semaine.sort(function (a, b) { return a.jour - b.jour; });
+    var dates = {}; semaine.forEach(function (e) { dates[key(e.sid)] = 1; });
+    var auj = semaine.filter(function (e) { return e.jour === j && !e.fait; })[0];
+    var sansJour = ordre.filter(function (sid) { return !dates[key(sid)] && !annul[key(sid)] && !faites[key(sid)]; });
+    var suiv = auj || semaine.filter(function (e) { return e.jour > j && !e.fait; })[0];
+    var manquees = semaine.filter(function (e) { return e.jour < j && !e.fait; }).map(function (e) { return { sid: e.sid, jour: e.jour, id: e.id }; });
+    return { aujourdhui: auj ? auj.sid : (sansJour[0] || null), suivante: suiv ? suiv.sid : (sansJour[0] || null), jourSuivante: suiv ? suiv.jour : null, manquees: manquees, semaine: semaine, j: j, lunIso: lunIso };
   } catch (e) { return null; }
 }
 function _manqueesTxt(m) {
   if (!m || !m.length) return '';
   var t = m.map(function (x) { return x.sid + ' (prévue ' + (_PROG_JOURS_LONG[x.jour - 1] || '') + ')'; }).join(', ') + ' pas faite' + (m.length > 1 ? 's' : '') + ' · à rattraper si tu veux';
   return t.charAt(0).toUpperCase() + t.slice(1);
+}
+// Ligne « pas faite » avec les jours restants pour la caser (athlète). Coach / hors semaine → texte seul.
+var _sjMsg = '';   // « ✓ Dos jambes déplacée à samedi » (affiché une fois)
+function _manqueesHtml(m, j) {
+  var esc = escapeHtml;
+  if (!m || !m.length) return '';
+  return m.map(function (x) {
+    var sj = JSON.stringify(x.sid).replace(/"/g, '&quot;');
+    var ch = ''; for (var d = Math.max(j + 1, 1); d <= 7; d++) ch += '<button class="sj-ch" onclick="athCaserSeance(' + sj + ',' + d + ')">' + _CD_AG_DAYS[d - 1] + '</button>';
+    ch += '<button class="sj-ch sj-no" onclick="athPasCetteSemaine(' + sj + ',' + x.jour + ')">Pas cette semaine</button>';
+    var nom = String(x.sid); nom = nom.charAt(0).toUpperCase() + nom.slice(1);
+    return '<div class="sj-mq">' + esc(nom) + ' (prévue ' + esc(_PROG_JOURS_LONG[x.jour - 1] || '') + ') pas faite. ' + (j < 7 ? 'La caser :' : '') + '<div>' + ch + '</div></div>';
+  }).join('');
+}
+function _sjDateDe(jour) { var SJ = _seanceDuJour(dernierAppData); var d = new Date((SJ ? SJ.lunIso : _sjIso(new Date())) + 'T00:00:00'); d.setDate(d.getDate() + jour - 1); return _sjIso(d); }
+async function athCaserSeance(sid, jour) {
+  if (typeof athlete === 'undefined' || !athlete || !dernierAppData) return;
+  var SJ = _seanceDuJour(dernierAppData), iso = _sjDateDe(jour);
+  var ex = SJ && SJ.semaine.filter(function (e) { return e.sid === sid && e.id; })[0];
+  var r = ex ? await _cdPost({ action: 'movePlanning', id: ex.id, date: iso })
+             : await _cdPost({ action: 'planSeance', athlete_id: athlete.athlete_id, date: iso, seance_id: sid, source: 'athlete' });
+  if (!r || !r.ok) { showToast('Erreur : séance non déplacée'); return; }
+  var pl = dernierAppData.planning = (dernierAppData.planning || []);
+  if (ex) pl.forEach(function (p) { if (p.id === ex.id) { p.date_iso = iso; p.source = 'athlete'; } });
+  else pl.push({ id: r.id, date_iso: iso, seance_id: sid, statut: 'planifie', source: 'athlete' });
+  _sjMsg = '✓ ' + sid.charAt(0).toUpperCase() + sid.slice(1) + ' déplacée à ' + _PROG_JOURS_LONG[jour - 1] + '.';
+  try { renderAujourdhui(dernierAppData); } catch (e) {}
+}
+async function athPasCetteSemaine(sid, jour) {
+  if (typeof athlete === 'undefined' || !athlete || !dernierAppData) return;
+  var iso = _sjDateDe(jour);
+  var r = await _cdPost({ action: 'planSeance', athlete_id: athlete.athlete_id, date: iso, seance_id: sid, source: 'athlete', statut: 'annule' });
+  if (!r || !r.ok) { showToast('Erreur réseau'); return; }
+  var pl = dernierAppData.planning = (dernierAppData.planning || []);
+  pl.forEach(function (p) { if (String(p.seance_id).trim().toLowerCase() === sid.trim().toLowerCase() && String(p.date_iso) === iso) p.statut = 'annule'; });
+  if (!pl.some(function (p) { return p.statut === 'annule' && p.seance_id === sid && p.date_iso === iso; })) pl.push({ id: r.id, date_iso: iso, seance_id: sid, statut: 'annule', source: 'athlete' });
+  _sjMsg = sid.charAt(0).toUpperCase() + sid.slice(1) + ' : pas cette semaine, c\'est noté.';
+  try { renderAujourdhui(dernierAppData); } catch (e) {}
 }
 function _seanceProposee(order) {
   var _sj = (typeof dernierAppData !== 'undefined') ? _seanceDuJour(dernierAppData) : null;
