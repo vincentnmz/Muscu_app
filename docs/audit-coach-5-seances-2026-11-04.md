@@ -21,6 +21,8 @@ Données : Vincent (copie 02/11) et Alizé, rejouées avec la vraie action serve
 | **S7** | Si le serveur ne répond pas (hors ligne), l'affichage de secours compte **1 série par exercice** (« 6 exos · 6 séries »). | Compter les vraies séries des points de progression. |
 | **S8** | **Saisie en présentiel = l'écran Entraînement de l'athlète tel quel** : « TA SEMAINE · CHOISIS TA SÉANCE », « Ton état du jour », « Voir le détail de tes séances », et des boutons hors sujet / à risque pour un coach en salle : **« Régénérer avec Novalyz »** (remplace le programme de l'athlète), « Modifier mon programme », « Mes analyses », agenda, onglet Hyrox. | Mode présentiel épuré : « Séance de Vincent · choisis la séance », questionnaire « Son état du jour — demande-lui » (gardé : utile en présentiel), boutons hors sujet masqués. |
 
+| **S9** | (remarque porteur) **Flèche ▲ rouge** quand les reps dépassent la fourchette, et ces séries comptées comme ratées dans « reps dans la cible ». Dépasser la fourchette n'est pas une erreur : c'est le signal que la **charge peut monter** (règle de progression de l'app). | ▲ **bleu** « au-dessus · charge à monter » ; ▼ orange « sous la fourchette » ; le résumé sépare : « dans la fourchette 72 % · au-dessus 11 % (charge à monter) · en dessous 17 % ». |
+
 ## Propositions (manques pertinents, demande porteur)
 | # | Proposition | Pourquoi (aide à décider) |
 |---|---|---|
