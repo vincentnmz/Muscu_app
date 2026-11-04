@@ -5148,8 +5148,8 @@ function renderCoachZones(data) {
   var _qui = '<div style="font-size:12.5px;font-weight:800">Propositions Novalyz pour ' + escapeHtml(_pn) + '</div>'
     + _radio(!_ok, 'false', 'Au coach seulement', 'Novalyz te propose ; ' + escapeHtml(_pn) + ' voit tes consignes et ses faits.')
     + _radio(_ok, 'true', 'Aussi à ' + escapeHtml(_pn), 'il voit le plan, les cibles et les leviers de Novalyz comme un athlète sans coach.')
-    + ((data && (data.programme || []).length) ? '<button onclick="ouvrirGenProgramme()" style="width:100%;margin:12px 0 4px;padding:11px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7C5CFF);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">✦ Novalyz propose un programme</button>'
-    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:10px">Niveau et zones de ' + escapeHtml(_pn) + ' ; tu relis avant de créer.</div>' : '<div style="height:10px"></div>')   // sans programme : le bouton est déjà dans « Partir de… »
+    + ((data && (data.programme || []).length) || !(window.matchMedia && window.matchMedia('(min-width:992px)').matches) ? '<button onclick="ouvrirGenProgramme()" style="width:100%;margin:12px 0 4px;padding:11px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7C5CFF);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">✦ Novalyz propose un programme</button>'
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:10px">Niveau et zones de ' + escapeHtml(_pn) + ' ; tu relis avant de créer.</div>' : '<div style="height:10px"></div>')   // sans programme sur ordi : le bouton est déjà dans « Partir de… » (sur mobile, cet écran n'existe pas → on le garde)
     + _progMajBandeau(data, 'c') + '<div style="border-top:1px solid var(--border);margin:4px 0 12px"></div>';
   el.innerHTML = _qui + '<div style="font-size:12.5px;font-weight:800;margin-bottom:7px">Zones à développer en priorité <span style="font-weight:600;color:var(--text-subtle)">· 2 max</span></div>'
     + _zpChipsHtml(z, 'coachZone')
