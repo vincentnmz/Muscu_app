@@ -6764,8 +6764,13 @@ function computeMarqueursCoach(data, a) {
     const _dmV = (hist && hist.daily_muscu) || {}, _jrsV = Object.keys(_dmV).sort();
     const _debV = new Date(_lunV.getTime() - 21 * 864e5);
     const _ymdV = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const _ctxV = (typeof _ctxAttendu === 'function') && _ctxAttendu(data);
-    if (typeof _lv3Volume === 'function' && _jrsV.length && _jrsV[0] < _ymdV(_debV) && !_ctxV) {
+    let _ctxV = (typeof _ctxAttendu === 'function') && _ctxAttendu(data);
+    // 04/11 : reprise après un arrêt, ou aucune séance sur les 4 semaines → pas de « volume sous le minimum »
+    // (c'est l'absence qui est signalée ; sinon John « 0/10 » et Alizé « Biceps 0,4/6 » en reprise).
+    try { const _Pv = (typeof _lv3Plan === 'function') ? _lv3Plan(data) : null; if (_Pv && _Pv.reprise) _ctxV = true; } catch (e) {}
+    const _sans4V = !_jrsV.some(k => k >= _ymdV(new Date(_lunV.getTime() - 28 * 864e5)) && k < _ymdV(_lunV));
+    if (_sans4V) { volLabel = 'Aucune séance sur 4 sem.'; }
+    else if (typeof _lv3Volume === 'function' && _jrsV.length && _jrsV[0] < _ymdV(_debV) && !_ctxV) {
       const _fmt = x => String(Math.round(x * 10) / 10).replace('.', ',');
       // 04/11 (porteur) : seuls les muscles TRAVAILLÉS par le programme (principal ou secondaire) — un muscle
       // absent du programme (ex. mollets) n'est pas un oubli à signaler. Programme vide / catalogue absent → tous.
@@ -6779,7 +6784,7 @@ function computeMarqueursCoach(data, a) {
         volLabel = 'Sous le minimum : ' + volDetail;
       } else if (rows.some(r => r.v < r.opt)) { volColor = 'var(--good)'; volLabel = 'Volume correct'; }
       else if (rows.length) { volColor = 'var(--good)'; volLabel = 'Volume optimal'; }
-    } else if (_ctxV) { volLabel = 'Déload / reprise : volume réduit attendu'; }
+    } else if (_ctxV) { volLabel = 'Reprise / déload : volume non jugé'; }
     else { volLabel = 'Moins de 3 semaines de données'; }
   } catch (e) {}
 
@@ -8042,7 +8047,8 @@ function _aeModele(enrich, datas) {
     r.avenir = SJ ? SJ.semaine.filter(function (x) { return !x.fait && x.jour >= SJ.j; }).length : (obj ? Math.max(0, obj - r.faitesSem) : 0);
     r.date = !!SJ;
     var P = null; try { P = _lv3Plan(d); } catch (x) {}
-    r.P = P; r.reprise = !!(P && P.reprise) || !!(typeof _ctxAttendu === 'function' && _ctxAttendu(d));
+    // « reprise » = il a VRAIMENT refait une séance cette semaine après un arrêt (retour porteur : John, inactif, n'est pas en reprise)
+    r.P = P; r.reprise = !!(P && P.reprise && r.faitesSem > 0) || !!(typeof _ctxAttendu === 'function' && _ctxAttendu(d));
     var ab = { actAge: Infinity }; try { ab = _coachAbsence(d, e.m); } catch (x) {}
     r.actAge = ab.actAge; r.actif7 = ab.actAge <= 7;
     // Douleurs (ressenti + bilan de séance) dès 2/5, 10 jours, 1 entrée par jour
@@ -8060,7 +8066,8 @@ function _aeModele(enrich, datas) {
     r.hors = []; try { if (be) _beNormale(d).forEach(function (n) { if (n.etat && n.etat !== 'ok' && n.etat !== 'nd') r.hors.push(n); }); } catch (x) {}
     // Volume par muscle (4 semaines terminées)
     r.vol = null;
-    if (r.histOk && typeof _lv3Volume === 'function') {
+    r.sans4 = !r.sem.slice(2).some(function (x) { return x.n > 0; });   // aucune séance sur les 4 sem. terminées (retour porteur : John « 0/10 » au lieu de « — »)
+    if (r.histOk && !r.sans4 && typeof _lv3Volume === 'function') {
       var pm = _musclesDuProgramme(d), any = Object.keys(pm).length;
       r.vol = _AE_GRP.map(function (g) {
         if (any && !pm[_musKey(g[0])]) return null;
@@ -8182,9 +8189,9 @@ function _aeHtml(M, desk) {
     return row(r, mid, right);
   }).join('') + '<div class="ae-mut" style="margin-top:6px">Ressenti sur 7 j : ' + nbR + '/' + act.length + '</div>';
   // Volume par muscle
-  var vrows = act.filter(function (r) { return r.vol; });
+  var vrows = act.filter(function (r) { return r.vol || (r.sans4 && r.nbProg); });
   var vol = vrows.length ? '<div class="ae-tw"><table class="ae-t"><tr><th>Athlète</th>' + _AE_GRP.map(function (g) { return '<th>' + g[1] + '</th>'; }).join('') + '</tr>'
-    + vrows.map(function (r) { return '<tr onclick="aeOuvrir(\'' + r.i + '\',\'prog\')"><td>' + esc(r.nom) + (r.reprise ? ' ' + chip('reprise', 'gr') : '') + '</td>' + r.vol.map(function (c) { return '<td>' + (c ? '<span class="ae-c ' + c.st + '">' + c.txt + '</span>' : '<span class="ae-c gr">—</span>') + '</td>'; }).join('') + '</tr>'; }).join('')
+    + vrows.map(function (r) { if (!r.vol) return '<tr onclick="aeOuvrir(\'' + r.i + '\')"><td>' + esc(r.nom) + '</td><td colspan="' + _AE_GRP.length + '"><span class="ae-c gr">— aucune séance sur 4 semaines</span></td></tr>'; return '<tr onclick="aeOuvrir(\'' + r.i + '\',\'prog\')"><td>' + esc(r.nom) + (r.reprise ? ' ' + chip('reprise', 'gr') : '') + '</td>' + r.vol.map(function (c) { return '<td>' + (c ? '<span class="ae-c ' + c.st + '">' + c.txt + '</span>' : '<span class="ae-c gr">—</span>') + '</td>'; }).join('') + '</tr>'; }).join('')
     + '</table></div><div class="ae-mut" style="margin-top:6px">Séries / semaine, moyenne des 4 dernières semaines terminées, vs le minimum de chacun. « — » = muscle absent de son programme.</div>'
     : vide('Pas encore 3 semaines de données.');
   // Charge
