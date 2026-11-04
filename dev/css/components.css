@@ -991,3 +991,8 @@ body.onb-open #btn-top, body.xp-open #btn-top, body.jg-open #btn-top, body.gen-o
 /* Novalyz IA pas encore activée (audit I6, 01/11) : visible, marquée « bientôt », sans saisie ni suggestions. */
 body.ia-bientot .nvz-ask-chips, body.ia-bientot .nvz-ask-field, body.ia-bientot #cv-ia-sugg, body.ia-bientot #cv-ia-dots { display:none !important; }
 body.ia-bientot #cv-ia-view .cv-input .cv-send { opacity:.4; pointer-events:none; }
+
+/* Audit coach S8 (04/11) : saisie en présentiel épurée — pas de régénération / édition du programme,
+   ni analyses, agenda ou Hyrox pendant que le coach saisit la séance de l'athlète en salle. */
+body.saisie-coach #en-gen, body.saisie-coach #en-creer, body.saisie-coach #en-suivi, body.saisie-coach #en-seg-hyrox,
+body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"] { display: none !important; }

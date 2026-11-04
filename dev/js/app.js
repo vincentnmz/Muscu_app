@@ -5566,6 +5566,8 @@ async function coachSaisirSeance() {
   progressionData = (data.historique && data.historique.progression_par_exo) || {};
   _saisieCoach.bodyCls.forEach(function (c) { document.body.classList.remove(c); });
   document.body.classList.add('saisie-coach');
+  // S8 (04/11) : titres pour le coach (rendus à la sortie).
+  try { var _es = document.querySelector('#en-sel-muscu .en-sec'); if (_es) { _es.dataset.orig = _es.dataset.orig || _es.textContent; _es.textContent = 'Séance de ' + (String(a.nom || '').split(/\s+/)[0] || 'l\'athlète') + ' · choisis la séance'; } } catch (e) {}
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-app').classList.add('active');
   var bar = document.getElementById('saisie-coach-bar');
@@ -5584,6 +5586,7 @@ function coachQuitterSaisie(apresEnvoi) {
   var S = _saisieCoach; _saisieCoach = null;
   athlete = S.prevAthlete; dernierAppData = S.prevData; progressionData = S.prevProg;
   document.body.classList.remove('saisie-coach');
+  try { var _es = document.querySelector('#en-sel-muscu .en-sec'); if (_es && _es.dataset.orig) _es.textContent = _es.dataset.orig; } catch (e) {}
   S.bodyCls.forEach(function (c) { document.body.classList.add(c); });
   var bar = document.getElementById('saisie-coach-bar'); if (bar) bar.remove();
   document.getElementById('view-app').classList.remove('active');
@@ -7091,7 +7094,8 @@ function renderCoachSeancesDetail(data) {
       const nd = normDate(p.date);
       if (!nd) return;
       if (!parDate[nd.dmy]) parDate[nd.dmy] = { iso: nd.iso, exos: [] };
-      parDate[nd.dmy].exos.push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
+      // S7 (04/11) : les vraies séries du point (avant : 1 « série » par exercice → « 6 exos · 6 séries »).
+      parDate[nd.dmy].exos.push({ exo, series: (Array.isArray(p.series) && p.series.length) ? p.series : [{ charge: p.charge, reps: p.reps, rpe: p.rpe }] });
     });
   });
 
@@ -7102,11 +7106,10 @@ function renderCoachSeancesDetail(data) {
   const entries = Object.keys(parDate).map(dmy => {
     const { iso, exos } = parDate[dmy];
     return { iso, date: dmy, tri: new Date(iso).getTime(), seance: nomParDmy[dmy] || 'Séance', exos };
-  }).sort((a,b) => b.tri - a.tri).slice(0, 20);
+  }).sort((a,b) => b.tri - a.tri);
 
-  if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
-
-  el.innerHTML = seancesCardsHTML(entries, (data && data.programme) || []);
+  _cdSea = { all: entries, n: 20, filtre: null };
+  renderCoachSeancesListe();
 }
 
 // Index des cibles du programme : { seanceId(min) : { exo(min) : ligne } }.
@@ -7211,7 +7214,70 @@ function _repsVsCible(reps, t) {
 // Rendu commun : entries = [{date, seance, exos:[{exo, series:[{charge,reps,rpe}]}]}]
 // (accepte aussi l'ancien format exos:[{exo,charge,reps,rpe}] -> regroupé ici)
 // prog = data.programme (cibles du coach) pour afficher « réalisé vs prévu ».
-function seancesCardsHTML(entries, prog) {
+// ===== Audit coach écran 5 (04/11) : liste des séances (muscu + cardio), 20 par 20 =====
+var _cdSea = { all: [], n: 20, filtre: 'tout' };
+function _cdIsoDeDmy(d) { var p = String(d || '').split('/'); return p.length === 3 ? p[2] + '-' + String(p[1]).padStart(2, '0') + '-' + String(p[0]).padStart(2, '0') : String(d || '').slice(0, 10); }
+function _cdCardioEntries() {
+  var d = (typeof coachAthleteData !== 'undefined') ? coachAthleteData : null;
+  var h = (d && d.cardio && Array.isArray(d.cardio.history)) ? d.cardio.history : [];
+  return h.map(function (c) { var iso = String(c.date || '').slice(0, 10), p = iso.split('-'); return { cardio: true, c: c, date: p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso, tri: new Date(iso + 'T12:00:00').getTime() || 0 }; });
+}
+function coachSeancesFiltre(f) { _cdSea.filtre = f; _cdSea.n = 20; renderCoachSeancesListe(); }
+function coachSeancesPlus() { _cdSea.n += 20; renderCoachSeancesListe(); }
+function renderCoachSeancesListe() {
+  var el = document.getElementById('cd-seances-detail-content'); if (!el) return;
+  var d = (typeof coachAthleteData !== 'undefined') ? coachAthleteData : null;
+  var muscu = _cdSea.all || [], cardio = _cdCardioEntries(), f = _cdSea.filtre || (muscu.length ? 'muscu' : (cardio.length ? 'cardio' : 'muscu'));   // muscu par défaut (sinon les marches importées noient la liste)
+  var liste = (f === 'muscu' ? muscu : f === 'cardio' ? cardio : muscu.concat(cardio)).slice().sort(function (a, b) { return b.tri - a.tri; });
+  var chip = function (k, l) { return '<button onclick="coachSeancesFiltre(\'' + k + '\')" style="border:1px solid ' + (f === k ? 'var(--accent)' : 'var(--border)') + ';background:' + (f === k ? 'var(--accent)' : 'var(--surface)') + ';color:' + (f === k ? '#fff' : 'var(--text)') + ';border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer">' + l + '</button>'; };
+  var head = '<div style="display:flex;gap:6px;margin-bottom:10px">' + chip('tout', 'Tout') + chip('muscu', 'Muscu') + chip('cardio', 'Cardio' + (cardio.length ? ' · ' + cardio.length : '')) + '</div>';
+  var vis = liste.slice(0, _cdSea.n);
+  var plus = liste.length > vis.length ? '<button onclick="coachSeancesPlus()" style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font:inherit;font-weight:800;color:var(--accent);cursor:pointer">Voir ' + Math.min(20, liste.length - vis.length) + ' séances de plus</button>' : '';
+  el.innerHTML = head + (vis.length ? seancesCardsHTML(vis, (d && d.programme) || [], muscu) : '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>') + plus;
+}
+// Bilan de fin de séance saisi par l'athlète (note /10, durée, douleur + zone, commentaire) — S1.
+function _cdBilan(dateDmy, seance) {
+  var d = (typeof coachAthleteData !== 'undefined') ? coachAthleteData : null, A = (d && d.analyses) || {}, iso = _cdIsoDeDmy(dateDmy), sid = String(seance || '').trim().toLowerCase();
+  var pick = function (arr) { var L = (arr || []).filter(function (x) { return x && String(x.date || '').slice(0, 10) === iso; }); return L.filter(function (x) { return String(x.seance_id || '').trim().toLowerCase() === sid; })[0] || (L.length === 1 ? L[0] : null); };
+  var note = pick(A.rpe_muscu), duree = pick(A.duree_muscu), dl = pick(A.douleurs_muscu), com = pick(A.notes_muscu);
+  if (!note && !duree && !dl && !com) return null;
+  var zone = dl && typeof _zoneDouleur === 'function' ? _zoneDouleur(dl.zone) : '';
+  return { note: note ? note.valeur : null, duree: duree ? duree.valeur : null, douleur: dl && Number(dl.valeur) >= 2 ? Number(dl.valeur) : null, zone: zone, com: com ? (com.valeur || com.note || '') : '' };
+}
+function _cdFmtDuree(min) { var m = Math.round(Number(min) || 0); return m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min'; }
+function _cdCardioCard(e) {
+  var c = e.c || {}, T = { course: '🏃 Course', velo: '🚴 Vélo', marche_normale: '🚶 Marche', marche_rapide: '🚶 Marche rapide', natation: '🏊 Natation', rameur: '🚣 Rameur', autre: '🏃 Autre activité' };
+  var bits = [];
+  if (c.duree) bits.push(_cdFmtDuree(c.duree)); if (c.distance) bits.push(String(Math.round(c.distance * 10) / 10).replace('.', ',') + ' km'); if (c.fc_moy) bits.push('FC moy. <b>' + c.fc_moy + '</b>'); if (c.rpe) bits.push('RPE <b>' + c.rpe + '</b>');
+  return '<div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;background:var(--surface);padding:11px 13px"><div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:800">' + escapeHtml(T[c.type_cardio] || ('🏃 ' + (c.type_cardio || 'Cardio'))) + '</span><span style="font-size:11px;color:var(--text-muted)">' + escapeHtml(e.date) + '</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 10px">' + bits.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div></div>';
+}
+// N1 : meilleure série (charge puis reps) et comparaison avec la fois précédente du même exercice.
+function _cdMeilleure(series) { return (series || []).reduce(function (a, b) { var ca = Number(a && a.charge) || 0, cb = Number(b && b.charge) || 0; return (cb > ca || (cb === ca && (Number(b.reps) || 0) > (Number(a.reps) || 0))) ? b : a; }, (series || [])[0]); }
+function _cdVsAvant(exo, s, all) {
+  var prev = null;
+  (all || []).forEach(function (q) { if (prev || q.cardio || !(q.tri < s.tri)) return; var e = (q.exos || []).filter(function (x) { return x && String(x.exo).trim() === String(exo).trim(); })[0]; if (e && Array.isArray(e.series) && e.series.length) prev = { d: q.date, s: e.series }; });
+  if (!prev) return null;
+  var cur = (s.exos || []).filter(function (x) { return x && String(x.exo).trim() === String(exo).trim(); })[0]; if (!cur || !Array.isArray(cur.series)) return null;
+  var a = _cdMeilleure(cur.series), b = _cdMeilleure(prev.s); if (!a || !b) return null;
+  var ca = Number(a.charge) || 0, cb = Number(b.charge) || 0, ra = Number(a.reps) || 0, rb = Number(b.reps) || 0, pa = Number(a.rpe) || 0, pb = Number(b.rpe) || 0, kg = _kgTxt;
+  var dd = String(prev.d).slice(0, 5);
+  if (ca > cb) return { s: 1, t: '▲ +' + kg(Math.round((ca - cb) * 10) / 10) + ' kg', h: 'vs ' + dd + ' : ' + kg(cb) + ' × ' + rb };
+  if (ca < cb) return { s: -1, t: '▼ −' + kg(Math.round((cb - ca) * 10) / 10) + ' kg', h: 'vs ' + dd + ' : ' + kg(cb) + ' × ' + rb };
+  if (ra > rb) return { s: 1, t: '▲ +' + (ra - rb) + ' rep' + (ra - rb > 1 ? 's' : '') + ' à ' + kg(ca) + ' kg', h: 'vs ' + dd };
+  if (ra < rb) return { s: -1, t: '▼ −' + (rb - ra) + ' rep' + (rb - ra > 1 ? 's' : '') + ' à ' + kg(ca) + ' kg', h: 'vs ' + dd };
+  if (pa && pb && pa < pb) return { s: 1, t: '▲ même charge, RPE ' + pb + ' → ' + pa, h: 'vs ' + dd };
+  if (pa && pb && pa > pb) return { s: -1, t: '= même charge, RPE ' + pb + ' → ' + pa, h: 'vs ' + dd };
+  return { s: 0, t: '= comme le ' + dd, h: '' };
+}
+// N3 : actions du plan de la semaine reliées à cette séance (semaine en cours seulement).
+function _cdPlanSeance(s) {
+  try {
+    var d = (typeof coachAthleteData !== 'undefined') ? coachAthleteData : null, P = (d && typeof _lv3Plan === 'function') ? _lv3Plan(d) : null;
+    if (!P || P.reprise || _cdIsoDeDmy(s.date) < P.lundi) return [];
+    return P.actions.filter(function (a) { return a.seance && String(a.seance).trim().toLowerCase() === String(s.seance || '').trim().toLowerCase(); });
+  } catch (e) { return []; }
+}
+function seancesCardsHTML(entries, prog, all) {
   if (!entries || entries.length === 0) {
     return '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
   }
@@ -7224,7 +7290,10 @@ function seancesCardsHTML(entries, prog) {
     const ca = n < 7.5 ? 'var(--good-a)' : n < 8.5 ? 'var(--warn-a)' : 'var(--bad-a)';
     return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span><div style="font-size:8.5px;color:var(--text-subtle);font-weight:700;margin-top:2px;white-space:nowrap;">${_rirShort(n)}</div>`;
   };
+  const _cats = (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.exo_categories) || {};
+  const _catLbl = { gros: 'lourd', moyen: 'moyen', petit: 'léger' };
   return entries.map((s, idx) => {
+    if (s.cardio) return _cdCardioCard(s);   // S3
     // Normaliser en exercices -> séries (+ muscle si fourni par getSeancesDetail)
     let ordreExo, parExo, muscleExo = {};
     if (s.exos.length && s.exos[0] && Array.isArray(s.exos[0].series)) {
@@ -7244,7 +7313,12 @@ function seancesCardsHTML(entries, prog) {
     const nbSeries = ordreExo.reduce((n, exo) => n + parExo[exo].length, 0);
     const seanceKey = String(s.seance || '').trim().toLowerCase();
     const targets = progIdx[seanceKey] || null;
-    const tgtOf = exo => (targets ? (targets[String(exo).trim().toLowerCase()] || null) : null);
+    // S4 (04/11) : la fourchette RÉELLE de l'app (catégorie de l'exercice), pas la fourchette brute du programme.
+    const tgtOf = exo => {
+      const t = targets ? (targets[String(exo).trim().toLowerCase()] || null) : null; if (!t) return null;
+      try { const f = _exoFourchette(exo, (t.reps_mini === '' ? null : t.reps_mini), (t.reps_max === '' ? null : t.reps_max), _cats); if (f && f.rmin && f.rmax) return Object.assign({}, t, { reps_mini: f.rmin, reps_max: f.rmax, _cat: f.src === 'cat' ? f.cat : '' }); } catch (e) {}
+      return t;
+    };
 
     // Récap séance : tonnage (Σ charge×reps, repli sur volume) + RPE moyen (séries renseignées)
     let tonnage = 0, rpeSum = 0, rpeN = 0;
@@ -7258,11 +7332,11 @@ function seancesCardsHTML(entries, prog) {
     const rpeMoy = rpeN ? (rpeSum / rpeN).toFixed(1).replace('.', ',') : null;
 
     // Compteurs « réalisé vs prévu » (remplis pendant la construction des blocs exo)
-    let repsInCible = 0, repsWithCible = 0;
+    let repsInCible = 0, repsWithCible = 0, repsSur = 0, repsSous = 0;
     const exosMatched = ordreExo.filter(exo => tgtOf(exo)).length;
     const prevExos = targets ? Object.keys(targets).length : 0;
 
-    const cibleBox = t => `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7C5CFF;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.22);border-radius:9px;padding:6px 10px;margin:5px 0 9px;">Cible : ${escapeHtml(_cibleTxtSeance(t))}</div>`;
+    const cibleBox = t => `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7C5CFF;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.22);border-radius:9px;padding:6px 10px;margin:5px 0 9px;">Cible : ${escapeHtml(_cibleTxtSeance(t))}${t._cat && _catLbl[t._cat] ? ' · ' + _catLbl[t._cat] : ''}</div>`;
     const th = (lbl, al) => `<th style="text-align:${al};font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">${lbl}</th>`;
 
     const exoBlocks = nbExos > 0
@@ -7272,15 +7346,16 @@ function seancesCardsHTML(entries, prog) {
           const hasRange = tgt && (tgt.reps_mini || tgt.reps_max);
           const rows = series.map((e, i) => {
             const chk = _repsVsCible(e.reps, tgt);
-            if (chk === 'ok') { repsInCible++; repsWithCible++; } else if (chk === 'sous' || chk === 'sur') { repsWithCible++; }
+            if (chk === 'ok') { repsInCible++; repsWithCible++; } else if (chk === 'sous') { repsSous++; repsWithCible++; } else if (chk === 'sur') { repsSur++; repsWithCible++; }
+            // S9 (04/11) : au-dessus de la fourchette = charge à monter (bleu), pas une erreur (avant : ▲ rouge).
             const chkCell = chk === 'ok' ? '<span style="color:var(--good);font-weight:800;">✓</span>'
               : chk === 'sous' ? '<span style="color:var(--warn);font-weight:800;">▼</span>'
-              : chk === 'sur' ? '<span style="color:var(--danger);font-weight:800;">▲</span>'
+              : chk === 'sur' ? '<span style="color:var(--accent);font-weight:800;" title="Au-dessus de la fourchette : charge à monter">▲</span>'
               : '<span style="color:var(--text-subtle);">—</span>';
             return `
             <tr>
               <td style="text-align:left;color:var(--text-subtle);font-weight:800;font-size:12px;padding:6px 0;border-top:1px solid var(--border);">${e.serie || (i + 1)}</td>
-              <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.charge ? e.charge + ' kg' : '—'}</td>
+              <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.charge ? _kgTxt(e.charge) + ' kg' : '—'}</td>
               <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.reps || '—'}</td>
               <td style="text-align:center;padding:6px 0;border-top:1px solid var(--border);">${chkCell}</td>
               <td style="text-align:right;padding:6px 0;border-top:1px solid var(--border);">${rpeChip(e.rpe)}</td>
@@ -7306,12 +7381,15 @@ function seancesCardsHTML(entries, prog) {
           } else {
             foot = `<div style="margin-top:8px;font-size:11px;color:var(--text-subtle);">Ajouté par l'athlète (hors programme du jour)</div>`;
           }
+          const _vs = _cdVsAvant(exo, s, all || entries);   // N1 (04/11)
+          const vsTag = _vs ? `<div style="font-size:11px;font-weight:800;margin:-1px 0 4px;color:${_vs.s > 0 ? 'var(--accent)' : _vs.s < 0 ? 'var(--warn)' : 'var(--text-muted)'}">${escapeHtml(_vs.t)}${_vs.h ? ` <span style="color:var(--text-subtle);font-weight:600">(${escapeHtml(_vs.h)})</span>` : ''}</div>` : '';
           return `
             <div style="background:var(--surface);border:1px ${tgt ? 'solid' : 'dashed'} var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
                 <span style="font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(exo))}</span>
                 ${tag}
               </div>
+              ${vsTag}
               ${tgt ? cibleBox(tgt) : ''}
               <table style="width:100%;border-collapse:collapse;">
                 <tr>${th('Série', 'left')}${th('Charge', 'right')}${th('Reps', 'right')}${th('Cible', 'center')}${th('RPE', 'right')}</tr>
@@ -7327,25 +7405,35 @@ function seancesCardsHTML(entries, prog) {
     const schip = (n, l, col) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;${col ? 'color:' + col + ';' : ''}">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
     const exosChip = prevExos ? schip(exosMatched + '<small style="font-size:10px;color:var(--text-subtle);font-weight:700;">/' + prevExos + '</small>', 'Exos prévus') : schip(nbExos, 'Exos');
     const pctCol = pctCible == null ? null : (pctCible >= 80 ? 'var(--good)' : pctCible >= 50 ? 'var(--warn)' : 'var(--danger)');
+    const _pS = repsWithCible ? Math.round(repsSur / repsWithCible * 100) : 0, _pB = repsWithCible ? Math.round(repsSous / repsWithCible * 100) : 0, _pI = repsWithCible ? 100 - _pS - _pB : 0;
+    const fqBar = repsWithCible ? `<div style="margin:0 0 12px"><div style="display:flex;height:9px;border-radius:9px;overflow:hidden;background:var(--surface2)">${_pI ? `<span style="width:${_pI}%;background:var(--good)"></span>` : ''}${_pS ? `<span style="width:${_pS}%;background:var(--accent)"></span>` : ''}${_pB ? `<span style="width:${_pB}%;background:var(--warn)"></span>` : ''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px 10px;font-size:11px;color:var(--text-muted);margin-top:5px"><span>● <b style="color:var(--good)">dans la fourchette ${_pI} %</b></span><span style="color:var(--accent)">▲ au-dessus ${_pS} % (charge à monter)</span><span style="color:var(--warn)">▼ en dessous ${_pB} %</span></div></div>` : '';
     const recapStrip = nbExos > 0
-      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
-          ${exosChip}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}${pctCible != null ? schip(pctCible + ' %', 'Reps ds cible', pctCol) : ''}
-        </div>` : '';
+      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:10px;padding-bottom:2px;">
+          ${exosChip}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE séries') : ''}
+        </div>${fqBar}` : '';
+    // S1 : bilan de l'athlète ; N3 : plan de la semaine ; N2 : commenter.
+    const B = _cdBilan(s.date, s.seance);
+    const bilanHtml = B ? `<div style="background:var(--warn-a, #FFF7EB);border:1px solid rgba(224,120,0,.25);border-radius:12px;padding:9px 11px;font-size:12px;line-height:1.5;margin-bottom:10px"><b>Bilan de l'athlète</b> : ${[B.note != null ? 'séance <b>' + B.note + '/10</b>' : '', B.duree ? _cdFmtDuree(B.duree) : '', B.douleur ? '<b style="color:var(--warn)">⚠ douleur ' + B.douleur + '/5' + (B.zone ? ' · ' + escapeHtml(B.zone.toLowerCase()) : '') + '</b>' : 'pas de douleur signalée'].filter(Boolean).join(' · ')}${B.com ? '<br>« ' + escapeHtml(String(B.com)) + ' »' : ''}</div>` : '';
+    const PA = _cdPlanSeance(s);
+    const planHtml = PA.length ? `<div style="margin:2px 0 10px;background:var(--accent-a08, rgba(26,95,255,.08));border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45">➜ <b>Proposé par Novalyz pour cette séance</b> : ${PA.map(a => escapeHtml(a.titre) + (a.fait ? ' <b style="color:var(--good)">✓ fait</b>' : ' <span style="color:var(--text-subtle)">· pas encore</span>')).join(' · ')}</div>` : '';
+    const _sidJs = String(s.seance || '').replace(/\\/g, '').replace(/'/g, ' ').replace(/"/g, ' ');
+    const comBtn = `<button class="cda-btn cda-ghost" style="margin-top:4px" onclick="coachEcrireA('Au sujet de ta séance du ${escapeHtml(String(s.date).slice(0, 5))} (${escapeHtml(_sidJs)}) : ')">✉ Commenter cette séance</button>`;
+    const resume = [nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' série' + (nbSeries > 1 ? 's' : ''), tonnage > 0 ? '<b style="color:var(--text)">' + tonnageTxt + '</b>' : '', rpeMoy != null ? 'RPE séries <b style="color:var(--text)">' + rpeMoy + '</b>' : '', B && B.note != null ? 'séance <b style="color:var(--text)">' + B.note + '/10</b>' + (B.duree ? ' · ' + _cdFmtDuree(B.duree) : '') : '', B && B.douleur ? '<b style="color:var(--warn)">⚠ douleur ' + B.douleur + '/5' + (B.zone ? ' · ' + escapeHtml(B.zone.toLowerCase()) : '') + '</b>' : ''].filter(Boolean).map(x => '<span>' + x + '</span>').join('');
 
     return `
       <div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);">
         <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:13px;cursor:pointer;">
           <div style="min-width:0;">
-            <div style="font-size:14px;font-weight:800;">${escapeHtml(String(s.seance))}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(String(s.date))}</div>
+            <div style="font-size:14px;font-weight:800;">${escapeHtml(String(s.seance))} <span style="font-size:11px;color:var(--text-muted);font-weight:600;">· ${escapeHtml(String(s.date))}</span></div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:3px 10px;">${resume}</div>
           </div>
           <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;">
-            ${nbExos > 0 ? `<span style="background:var(--accent-a10);color:var(--accent);font-size:10px;font-weight:800;padding:3px 9px;border-radius:var(--radius-pill);white-space:nowrap;">${nbExos} exo${nbExos>1?'s':''} · ${nbSeries} série${nbSeries>1?'s':''}</span>` : ''}
             <svg id="seance-arrow-${idx}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
           </div>
         </div>
         <div id="seance-detail-${idx}" style="display:none;padding:2px 13px 13px;">
-          ${recapStrip}${exoBlocks}
+          ${bilanHtml}${recapStrip}${planHtml}${exoBlocks}${comBtn}
         </div>
       </div>`;
   }).join('');
@@ -7362,9 +7450,9 @@ async function chargerSeancesDetailCoach(athlete_id, dataFallback) {
     const tri = dmy => { const p = String(dmy).split('/'); return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]).getTime() : 0; };
     const entries = seances
       .map(s => ({ date: s.date, seance: s.seance_id || 'Séance', exos: s.exos || [], tri: tri(s.date) }))
-      .sort((a, b) => b.tri - a.tri)
-      .slice(0, 20);
-    if (el) el.innerHTML = seancesCardsHTML(entries, (dataFallback && dataFallback.programme) || (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.programme) || []);
+      .sort((a, b) => b.tri - a.tri);
+    _cdSea = { all: entries, n: 20, filtre: null };
+    if (el) renderCoachSeancesListe();
   } catch(e) {
     renderCoachSeancesDetail(dataFallback);
   }
@@ -12490,7 +12578,7 @@ function ouvrirEtatDuJour(opts) {
   _wqDate = opts.date || null;
   _wqResetForm();
   _wqShow(['wqb-sommeil', 'wqb-fatigue', 'wqb-stress', 'wqb-courbatures']);
-  var title = document.getElementById('wq-title'); if (title) title.textContent = 'Ton état du jour';
+  var title = document.getElementById('wq-title'); if (title) title.textContent = document.body.classList.contains('saisie-coach') ? 'Son état du jour · demande-lui' : 'Ton état du jour';
   var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 15 secondes' : 'Comment tu te sens aujourd’hui ? · 15 secondes';
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
@@ -20687,6 +20775,8 @@ function _enRenderSelMuscu() {
   // Ordre : par jour conseillé (planifiées d'abord, lun→dim), puis ordre du programme.
   var ordre = _enOrder.slice().map(function (sid, i) { var j = _seanceJour(_enByS[sid]); return { sid: sid, j: j == null ? 99 : j, i: i }; })
     .sort(function (a, b) { return a.j - b.j || a.i - b.i; }).map(function (x) { return x.sid; });
+  var _plS = {};   // présentiel (04/11) : ce que Novalyz propose sur chaque séance
+  if (document.body.classList.contains('saisie-coach')) { try { var _P = _lv3Plan(dernierAppData); (_P && !_P.reprise ? _P.actions : []).forEach(function (a) { if (a.fait || !a.seance) return; var lb = a.type === 'series' ? a.exo + ' +' + a.add + ' série' + (a.add > 1 ? 's' : '') : a.type === 'charge' ? a.exo + ' ' + _kgTxt(a.charge) + ' kg' + (a.alt ? ' (ou ' + _kgTxt(a.alt) + ')' : '') : a.type === 'rpe' ? a.exo + ' : viser RPE 8' : a.type === 'cible' ? a.exo + ' ' + _kgTxt(a.charge) + ' kg × ' + a.reps : a.titre; (_plS[a.seance] = _plS[a.seance] || []).push(lb); }); } catch (e) {} }
   var html = ordre.map(function (sid) {
     var exos = _enByS[sid] || [], on = (sid === _enSelSeance);
     var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
@@ -20695,7 +20785,7 @@ function _enRenderSelMuscu() {
     var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
     return '<div class="en-sel' + (on ? ' on' : '') + '" onclick=\'_enSelectSeance(' + JSON.stringify(String(sid)) + ')\'>'
       + '<span class="ic">' + svgD + '</span>'
-      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
+      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div>' + (_plS[sid] ? '<div class="b" style="color:var(--accent);font-weight:700">Novalyz propose : ' + esc(_plS[sid].join(' · ')) + '</div>' : '') + '</div>'
       + tag + '<span class="en-rad"></span></div>';
   }).join('');
   // Carte « Séance libre » (toujours proposée) : exercices choisis à la volée.
