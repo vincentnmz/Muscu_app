@@ -39,3 +39,6 @@ Maquette : `mockups/coach-programme-v2.html` (+ `-1.png` coach ▸ Programme, `-
 - Vérifié à l'écran : les deux modes (coach a la main / sans coach) sur Aujourd'hui, Analyses, Entraînement, saisie (colonne « Cible du coach »). Non vérifié à l'écran : remplacement de la charge préremplie dans la saisie (pas d'historique de séries dans l'environnement de test) — contrôlé dans le code.
 - Défaut introduit puis corrigé pendant le lot : `_enSetMode` utilisait une variable absente (le changement Muscu/Cardio aurait cassé).
 - Tests : `qui-a-la-main` (5 cas, nouveau) ; 78 suites vertes.
+
+## Complément (04/11) — séance du jour = jours conseillés
+Une séance manquée n'est plus reproposée le lendemain : le jour sans séance prévue affiche « Repos prévu aujourd'hui » + la prochaine, et la séance manquée en ligne douce (« à rattraper si tu veux »). Voir `docs/etat-en-cours.md`.
