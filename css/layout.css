@@ -1113,3 +1113,14 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 #coach-rail .cs-brand .as-ic{ width:32px; height:35px; flex:none; color:#0E1A33; }
 #coach-rail .cs-brand .cs-bw{ display:flex; flex-direction:column; gap:5px; min-width:0; }
 #coach-rail .cs-brand .as-wm{ height:15px; width:auto; max-width:140px; color:#0E1A33; display:block; }
+
+/* 05/11 — Page de chargement = même visuel que l'écran de démarrage (un seul écran de chargement) */
+#nv-loadpage { background-color:#0b2a8a; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%23ffffff' stroke-opacity='.14' stroke-width='1.2'/%3E%3C/svg%3E"),
+  radial-gradient(60vmax 60vmax at 10% 5%, rgba(26,95,255,.85), transparent 70%),
+  radial-gradient(55vmax 55vmax at 95% 35%, rgba(34,211,238,.55), transparent 70%),
+  radial-gradient(60vmax 60vmax at 35% 105%, rgba(124,58,237,.55), transparent 70%);
+  background-size:56px 97px, 100% 100%, 100% 100%, 100% 100%; }
+#nv-loadpage .nv-lp-in { background:rgba(255,255,255,.94); border-radius:22px; padding:26px 30px 20px; box-shadow:0 18px 50px rgba(5,20,80,.35); margin-top:-12vh; }
+#nv-loadpage .nv-lp-in .nvl-ic { width:96px; height:105px; margin:0 auto 14px; }
+#nv-loadpage .nv-lp-in .nv-brand-logo { width:220px; color:#070B14; display:block; margin:0 auto; }
+#nv-loadpage .nv-lp-t { margin-top:12px; }

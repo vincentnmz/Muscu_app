@@ -57,3 +57,14 @@ Deux rendus distincts : ordi = shell `#coach-rail` + `#coach-shell` (`renderCoac
 4. **Lot 4 — Programme** : même ordre et mêmes blocs (P1-P3).
 
 Chaque lot : maquette → validation → code → captures avant/après 1280 / 390 / 360.
+
+## Liste du porteur (05/11) — ajoutée à l'audit
+- Aujourd'hui : blocs athlètes transparents ; certains textes à mettre dans des blocs blancs / rattachés ensemble → lot 2.
+- Équipe : cartes athlètes différentes de l'ordi → lot 2.
+- Analyses équipe (mobile) : tailles des blocs et des textes mal disposées, « fouillis » → lot 2.
+- Messages / Profil : plus de barre d'onglets en bas → **corrigé 05/11** (`_cbPanel`, la barre reste) ; retour d'une conversation → fiche athlète → **corrigé** (retour vers Messages, `_cdDepuisMessages`).
+- Fiche athlète : titres/phrases hors de leur bloc ; pas la même version que l'ordi ; sous-onglets Analyses / Séances / Programme comme sur ordi → lot 3.
+- 2 écrans de chargement différents à la connexion → **corrigé** (la page de chargement reprend l'écran de démarrage).
+- Tailles de blocs et écritures incohérentes en général → lot 1.
+- Évolution du poids : « Tout » par défaut partout → **fait**.
+- Programme ▸ RPE cible : reps restantes disparues → **corrigé** (liste ouverte « 8 · 2 en réserve », case fermée = chiffre).

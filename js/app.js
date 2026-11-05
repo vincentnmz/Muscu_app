@@ -2334,6 +2334,7 @@ function ouvrirReglagesCoach() {
   if (overlay) { overlay.style.display = 'none'; }
   if (drawer)  { drawer.style.display = 'flex'; window.scrollTo({ top: 0, behavior: 'instant' }); }
   try { document.documentElement.classList.add('crg-open'); } catch (_) {}   // 05/11 : la page derrière ne défile plus (une seule barre)
+  _cbPanel('profil');
 }
 
 // Enregistre le sport choisi (backend col E) puis rafraîchit les libellés.
@@ -2385,6 +2386,7 @@ async function enregistrerRecapFreqCoach() {
 
 function fermerReglagesCoach() {
   try { document.documentElement.classList.remove('crg-open'); } catch (_) {}
+  try { if (document.body.classList.contains('cb-panel') && document.getElementById('coach-reglages-drawer').style.display !== 'none') _cbPanel(null); } catch (_) {}
   document.getElementById('coach-reglages-overlay').style.display = 'none';
   document.getElementById('coach-reglages-drawer').style.display = 'none';
   if (coachDeskOverlay === 'profil') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
@@ -4849,9 +4851,11 @@ function nvChargementPage(on, txt) {
       if (document.getElementById('nv-splash') && !document.getElementById('nv-splash').classList.contains('off')) return;   // l'écran de démarrage est déjà là
       if (!el) {
         el = document.createElement('div'); el.id = 'nv-loadpage'; el.setAttribute('aria-live', 'polite');
-        var svg = '';
-        try { var src = document.querySelector('svg.nvl-ic'); if (src) svg = src.outerHTML.replace(/nvl-(X|A2|B2)/, Math.random() < .5 ? 'nvl-A2' : 'nvl-B2'); } catch (e) {}
-        el.innerHTML = '<div class="nv-lp-in">' + svg + '<div class="nv-lp-t"></div></div>';
+        // 05/11 : UN SEUL visuel de chargement — même fond, même logo (icône + Novalyz) que l'écran de démarrage.
+        var inner = '';
+        try { var sp = document.querySelector('#nv-splash .nv-splash-in'); if (sp) inner = sp.innerHTML; } catch (e) {}
+        if (!inner) { try { var src = document.querySelector('svg.nvl-ic'); if (src) inner = src.outerHTML; } catch (e) {} }
+        el.innerHTML = '<div class="nv-lp-in">' + inner + '<div class="nv-lp-t"></div></div>';
         document.body.appendChild(el);
       }
       el.querySelector('.nv-lp-t').textContent = txt || 'Chargement…';
@@ -5354,9 +5358,19 @@ function coachBandeauApply() {
     const b = document.getElementById('coach-band-' + k); if (b) b.classList.toggle('on', k === coachBandeauTab);
   });
 }
+// 05/11 : sur mobile, Messages et Profil gardent la barre d'onglets du bas (plus besoin de « retour »).
+function _cbPanel(tab) {
+  try {
+    var b = document.getElementById('coach-bandeau');
+    document.body.classList.toggle('cb-panel', !!tab);
+    if (b && tab) document.documentElement.style.setProperty('--cb-h', (b.offsetHeight || 62) + 'px');
+    ['aujourdhui', 'equipe', 'analyses', 'messages', 'profil'].forEach(function (k) { var e = document.getElementById('coach-band-' + k); if (e) e.classList.toggle('on', k === (tab || coachBandeauTab)); });
+  } catch (e) {}
+}
 function coachBandeauGo(tab) {
-  if (tab === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
-  if (tab === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  if (tab === 'messages') { try { fermerReglagesCoach(); } catch (e) {} if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
+  if (tab === 'profil')   { try { fermerMessagerieCoach(); } catch (e) {} if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  try { fermerMessagerieCoach(); fermerReglagesCoach(); } catch (e) {}
   // Onglets de contenu : revenir à l'accueil si on est sur une fiche athlète
   if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
   coachBandeauTab = tab;
@@ -5407,6 +5421,7 @@ function ouvrirAthleteDepuisSelect(idx) {
 
 // ---- Messagerie coach (liste des conversations depuis l'accueil) ----
 function fermerMessagerieCoach() {
+  if (document.body.classList.contains('cb-panel') && document.getElementById('coach-messagerie-drawer').style.display !== 'none') _cbPanel(null);
   document.getElementById('coach-messagerie-overlay').style.display = 'none';
   document.getElementById('coach-messagerie-drawer').style.display = 'none';
   if (coachDeskOverlay === 'messages') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
@@ -5593,6 +5608,7 @@ async function ouvrirMessagerieCoach() {
   if (!drawer || !liste) return;
   overlay.style.display = 'block';
   drawer.style.display = 'flex';
+  _cbPanel('messages');
   await _msgFillList();
 }
 async function _msgFillList() {
@@ -5694,6 +5710,7 @@ function ouvrirConversationDepuisMessagerie(idx) {
     if (typeof switchDetailJoueurTab === 'function') setTimeout(() => switchDetailJoueurTab(3), 60);
   } else {
     ouvrirDetailAthleteCoach(a, 'conseils');
+    _cdDepuisMessages = true;
   }
 }
 
@@ -5834,7 +5851,10 @@ function retourListeAthletesCoach() {
 }
 
 // Retour contextuel : depuis un onglet -> Aperçu ; depuis l'Aperçu -> liste des athlètes
+// 05/11 : conversation ouverte depuis Messages (mobile) → « retour » ramène à la liste des messages.
+var _cdDepuisMessages = false;
 function retourCoachDetail() {
+  if (_cdDepuisMessages) { _cdDepuisMessages = false; retourListeAthletesCoach(); try { coachBandeauGo('messages'); } catch (e) {} return; }
   const ov = document.getElementById('cdtab-overview');
   if (ov && ov.style.display === 'none') {
     switchCoachDetailTab('overview');
@@ -5847,6 +5867,7 @@ function retourCoachDetail() {
 const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Entraînement', prog: 'Analyses', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
 function switchCoachDetailTab(tab) {
   if (tab === 'volume') tab = 'prog';   // Volume fusionné dans Progression
+  if (tab !== 'conseils') _cdDepuisMessages = false;
   ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
@@ -9607,7 +9628,9 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
 
 // ═══ Carte d'exercice commune (05/11, maquette carte-exercice-programme.html) — ordi + mobile, coach + athlète ═══
 var _PBC_GRIP = '<span class="prog-grip" title="Glisser pour déplacer"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg></span>';
-function _pbcRpeOptions(cur) { var c = (cur == null) ? '' : String(cur); return '<option value=""' + (c === '' ? ' selected' : '') + '>—</option>' + [6, 7, 8, 9, 10].map(function (r) { return '<option value="' + r + '"' + (c === String(r) ? ' selected' : '') + '>' + r + '</option>'; }).join(''); }   // libellés courts : jamais coupés
+// Liste ouverte = libellé complet (« 8 · 2 reps restantes ») ; case fermée = chiffre seul (jamais coupée). 05/11.
+function _pbcRpeOptions(cur) { var c = (cur == null) ? '' : String(cur); return '<option value=""' + (c === '' ? ' selected' : '') + ' data-l="— pas de cible">—</option>' + [6, 7, 8, 9, 10].map(function (r) { return '<option value="' + r + '"' + (c === String(r) ? ' selected' : '') + ' data-l="' + r + ' · ' + _rirLong(r) + '">' + r + '</option>'; }).join(''); }
+function _pbcRpeLong(sel, on) { try { [].forEach.call(sel.options, function (o) { if (!o.dataset.c) o.dataset.c = o.textContent; o.textContent = on ? o.dataset.l : o.dataset.c; }); } catch (e) {} }
 function _pbcNum(val, ph, handler) { return '<input type="number" inputmode="numeric" class="pb-in" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + ph + '" onchange="' + handler + '">'; }
 function _pbcExoOptions(sel) { var esc = escapeHtml, has = false; var o = (exercicesData || []).map(function (e) { if (e.exercice === sel) has = true; return '<option value="' + esc(e.exercice).replace(/"/g, '&quot;') + '"' + (e.exercice === sel ? ' selected' : '') + '>' + esc(e.exercice) + '</option>'; }).join(''); return (has || !sel ? '' : '<option selected value="' + esc(sel).replace(/"/g, '&quot;') + '">' + esc(sel) + '</option>') + o; }
 function _pbcRowHtml(l, sid, lab) {
@@ -9634,7 +9657,7 @@ function _pbcRowHtml(l, sid, lab) {
         +   '<div class="pbc-f"><span class="pbc-l">Séries</span><div class="pbc-v"><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.max(1, nS - 1) + ',null,null,null,null)">−</button><b>' + (nS || '–') + '</b><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.min(15, (nS || 0) + 1) + ',null,null,null,null)">+</button></div></div>'
         +   '<div class="pbc-f pbc-reps"><span class="pbc-l">Reps</span><div class="pbc-v">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div>'
         +     (fx && fx.src === 'cat' ? '<span class="pbc-h">appliqué : ' + rmin + '–' + rmax + ' (catégorie)</span>' : '') + '</div>'
-        +   '<div class="pbc-f"><span class="pbc-l">RPE cible</span><select class="pb-in pbc-rpe" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _pbcRpeOptions(l.rpe_cible) + '</select>'
+        +   '<div class="pbc-f"><span class="pbc-l">RPE cible</span><select class="pb-in pbc-rpe" onfocus="_pbcRpeLong(this,1)" onmousedown="_pbcRpeLong(this,1)" onblur="_pbcRpeLong(this,0)" onchange="_pbcRpeLong(this,0);cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _pbcRpeOptions(l.rpe_cible) + '</select>'
         +     (l.rpe_cible ? '<span class="pbc-h">≈ ' + Math.max(0, 10 - Number(l.rpe_cible)) + ' rep' + (10 - Number(l.rpe_cible) > 1 ? 's' : '') + ' en réserve</span>' : '') + '</div>'
         +   '<div class="pbc-f pbc-repos"><span class="pbc-l">Repos (s)</span><div class="pbc-pus">' + [60, 90, 120, 180].map(puce).join('') + bNum(l.repos_sec, 's', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div></div>'
         + '</div>'
@@ -19210,7 +19233,7 @@ function renderEtat(data) {
   // ---- POIDS : graphe complet (déplacé depuis Objectif) : 1M/3M/Tout + axes + légende ----
   try {
     toutesLesPesees = data.poids || [];
-    filtrerGraphPoids('1m');
+    filtrerGraphPoids('all');
   } catch (e) {}
 
   // ---- RESSENTI 7 jours : dot par jour depuis bien_etre[] ----
@@ -22449,7 +22472,8 @@ function _nvSplashHide() {
   var el = document.getElementById('nv-splash');
   if (!el || el.classList.contains('off')) return;
   var reste = 1400 - (Date.now() - _nvSplashT0);
-  setTimeout(function () { el.classList.add('off'); setTimeout(function () { try { el.remove(); } catch (e) {} }, 500); }, Math.max(0, reste));
+  // 05/11 : l'écran reste dans la page (caché) → la page de chargement réutilise exactement le même visuel.
+  setTimeout(function () { el.classList.add('off'); }, Math.max(0, reste));
 }
 setTimeout(_nvSplashHide, 12000);
 // « Chargement… » : on ajoute le petit logo animé au-dessus du texte, partout
@@ -23152,7 +23176,7 @@ let toutesLesPesees = [];
 
 function afficherGraphiquePoids(poids) {
   toutesLesPesees = poids || [];
-  filtrerGraphPoids('1m');
+  filtrerGraphPoids('all');
 }
 
 // Graphe de poids de l'écran État (déplacé depuis Objectif) : mêmes ids préfixés « et- ».
@@ -23163,7 +23187,7 @@ function filtrerGraphPoids(periode) {
 let cdToutesLesPesees = [];
 function afficherGraphiquePoidsCoach(poids) {
   cdToutesLesPesees = poids || [];
-  cdFiltrerGraphPoids('1m');
+  cdFiltrerGraphPoids('all');
 }
 function cdFiltrerGraphPoids(periode) {
   dessinerGraphPoids(cdToutesLesPesees, periode, { btn:'cd-gp-', svg:'cd-graph-poids-svg', actuel:'cd-graph-poids-actuel', evol:'cd-graph-poids-evol' });
