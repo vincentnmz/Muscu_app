@@ -2195,7 +2195,7 @@ function renderCoachNotifs() {
     + row('chaque', 'Chaque alerte séparément', 'absence, séance en retard, volume… (une par athlète)')
     + '</div><div class="crgx-lab">Heures calmes</div><div class="card crgx-card">' + row('calme', 'Pas de notification de 22 h à 7 h', 'les messages restent dans l\'app ; le résumé du matin les reprend')
     + '</div><div class="crgx-lab">Exemple de résumé du matin</div><div class="crgx-push"><b>Novalyz · ton équipe ce matin</b>2 à surveiller (Vincent, Alizé) · 1 séance en retard · 1 message non lu</div>'
-    + '<div class="crgx-note">' + (tel ? 'Un téléphone coach est enregistré.' : 'Aucun téléphone coach enregistré : active les notifications ci-dessus (app Android). Sur ordi, choisis le résumé par e-mail ci-dessous.') + ' Les alertes de tes athlètes t\'arrivent même s\'ils n\'ont pas activé leurs propres notifications.</div>';
+    + '<div class="crgx-note">' + (tel ? 'Les notifications sont activées sur au moins un de tes téléphones.' : 'Notifications pas encore activées : ouvre l\'app Android Novalyz en coach et touche « Activer les notifications » (en haut de cet onglet, visible seulement dans l\'app). Aucun numéro à saisir. Sur ordi, utilise le résumé par e-mail ci-dessous.') + ' Les alertes de tes athlètes t\'arrivent même s\'ils n\'ont pas activé leurs propres notifications.</div>';
 }
 async function coachNotifToggle(k) {
   var n = Object.assign({}, _coachPrefs.notif); n[k] = !n[k];
