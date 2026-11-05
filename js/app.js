@@ -8047,7 +8047,7 @@ function _aeModele(enrich, datas) {
     try { r.et = _coachEtatEquipe(e, d); } catch (x) { r.et = { cat: 'prets', court: 'Prêt', color: '#00a854' }; }
     var obj = Number(((d.dashboard || {}).regularite || {}).seances_prevues) || 0;
     var sids = []; ((d.programme || [])).forEach(function (l) { if (l && l.seance_id && l.type !== 'cardio' && sids.indexOf(String(l.seance_id)) < 0) sids.push(String(l.seance_id)); });
-    r.nbProg = sids.length; r.obj = obj;
+    r.nbProg = sids.length; r.obj = obj; r.sids = sids;
     // Semaines terminées (6, ancienne → récente) : jours de muscu + séries
     var dm = (d.historique && d.historique.daily_muscu) || {}, keys = Object.keys(dm).filter(function (k) { return dm[k] && Number(dm[k].series) > 0; }).sort();
     r.sem = []; for (var w = 6; w >= 1; w--) { var a = _aeYmd(new Date(lun.getTime() - w * 7 * D)), b = _aeYmd(new Date(lun.getTime() - (w - 1) * 7 * D)), n = 0, s = 0; keys.forEach(function (k) { if (k >= a && k < b) { n++; s += Number(dm[k].series) || 0; } }); r.sem.push({ n: n, s: Math.round(s) }); }
@@ -8057,7 +8057,12 @@ function _aeModele(enrich, datas) {
     r.faitesSem = keys.filter(function (k) { return k >= lunIso; }).length;
     var SJ = null; try { SJ = _seanceDuJour(d); } catch (x) {}
     r.retard = SJ ? SJ.manquees : [];
-    r.avenir = SJ ? SJ.semaine.filter(function (x) { return !x.fait && x.jour >= SJ.j; }).length : (obj ? Math.max(0, obj - r.faitesSem) : 0);
+    // 05/11 (retour porteur : « 2 à venir » le jeudi alors que la séance du jour était faite, en séance libre) :
+    // à venir = séances prévues restantes, AUJOURD'HUI exclu si une séance a déjà été faite aujourd'hui, et
+    // jamais plus que (prévues − faites − en retard) — une séance libre remplace une séance du programme.
+    var _fait0 = keys.indexOf(_aeYmd(new Date())) >= 0;
+    r.avenir = SJ ? Math.min(SJ.semaine.filter(function (x) { return !x.fait && (x.jour > SJ.j || (x.jour === SJ.j && !_fait0)); }).length, Math.max(0, SJ.semaine.length - r.faitesSem - SJ.manquees.length))
+                  : (obj ? Math.max(0, obj - r.faitesSem) : 0);
     r.date = !!SJ;
     var P = null; try { P = _lv3Plan(d); } catch (x) {}
     // « reprise » = il a VRAIMENT refait une séance cette semaine après un arrêt (retour porteur : John, inactif, n'est pas en reprise)
@@ -8232,7 +8237,9 @@ function _aeHtml(M, desk) {
   // Programmes
   var progs = A.map(function (r) {
     if (!r.nbProg) return row(r, '<span class="ae-mut">Pas de programme</span>', btn('✦ Novalyz propose', 'aeOuvrir(\'' + r.i + '\',\'programme\')'), 'programme');
-    var p = [r.nbProg + ' séance' + (r.nbProg > 1 ? 's' : '')];
+    // 05/11 (retour porteur : Alizé « 2 séances » alors qu'elle en fait 1 par semaine) : objectif / semaine d'abord,
+    // puis le contenu du programme (ici une ancienne séance est restée dans son programme).
+    var p = [(r.obj ? r.obj + ' séance' + (r.obj > 1 ? 's' : '') + ' / semaine' : '') + (r.obj && r.nbProg !== r.obj ? ' · <span class="ae-mut">' + r.nbProg + ' séances au programme (' + esc(r.sids.join(', ')) + ')</span>' : (!r.obj ? r.nbProg + ' séance' + (r.nbProg > 1 ? 's' : '') + ' au programme' : ''))];
     if (r.P && r.P.actions && r.P.actions.length) p.push(r.P.faits >= r.P.actions.length ? 'plan ✓ fait' : 'plan de la semaine ' + r.P.faits + '/' + r.P.actions.length);
     if (r.et.cat === 'inactifs') p.push('<span style="color:var(--danger)">' + esc(r.et.court) + '</span>');
     p.push('<span class="ae-mut">propositions Novalyz : ' + (r.nvok ? 'aussi à ' + esc(String(r.nom).split(/\s+/)[0]) : 'au coach') + '</span>');
