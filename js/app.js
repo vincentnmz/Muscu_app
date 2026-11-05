@@ -5194,6 +5194,178 @@ function fermerMessagerieCoach() {
   document.getElementById('coach-messagerie-drawer').style.display = 'none';
   if (coachDeskOverlay === 'messages') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
 }
+// ===================== MESSAGERIE COACH v2 (écran 8, 05/11 — maquette messagerie-coach.html validée) =====================
+// Liste : recherche, filtres (Tous / Non lus / À surveiller), état de l'athlète (même règle que l'accueil), date lisible.
+// Fil : Contexte (faits du moteur, cliquables), messages rapides préremplis avec le fait, marquage lu à l'ouverture.
+// Bureau : 3e volet Contexte. Message à plusieurs : un message par fil (personne ne voit les autres destinataires).
+var _msgInfos = [], _msgFiltre = 'tous', _msgQ = '';
+function _msgEnrich(aid) { try { return ((_coachDesk && _coachDesk.enrich) || []).filter(function (e) { return e.a && String(e.a.athlete_id) === String(aid); })[0] || null; } catch (e) { return null; } }
+function _msgData(aid) {
+  try { if (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData._aid != null && String(coachAthleteData._aid) === String(aid)) return coachAthleteData; } catch (e) {}
+  var e = _msgEnrich(aid); return (e && _coachDesk.datas) ? (_coachDesk.datas[e.i] || null) : null;
+}
+function _msgEtat(aid) { var e = _msgEnrich(aid); if (!e) return null; try { return _coachEtatEquipe(e, _coachDesk.datas[e.i]); } catch (x) { return null; } }
+function _msgQuand(ts) {
+  if (!ts) return ''; var d = new Date(ts), n = new Date(), y = new Date(); y.setDate(n.getDate() - 1);
+  if (d.toDateString() === n.toDateString()) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  if (d.toDateString() === y.toDateString()) return 'hier';
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+}
+// Faits utiles pour répondre (rien d'inventé : moteur + données de l'athlète).
+function _msgCtx(aid) {
+  var d = _msgData(aid), out = []; if (!d) return out;
+  var a = (athletesCoach || []).filter(function (x) { return String(x.athlete_id) === String(aid); })[0] || {};
+  var J = function (t) { return _coachJourTxt(t); };
+  // Douleur (≥ 2/5, 7 j)
+  try {
+    var td = _coachDerniereDouleur(d);
+    if (td && (Date.now() - td) / 864e5 <= 7) {
+      var niv = 0, zone = '';
+      (d.bien_etre || []).forEach(function (b) { if (parseChatDate(b.date) === td) { niv = Math.max(niv, Number(b.douleur) || 0); zone = zone || _zoneDouleur(b.zone); } });
+      var A = d.analyses || {}; (A.douleurs_muscu || []).concat(A.douleurs_cardio || []).forEach(function (x) { var t = new Date(String(x.date || '').slice(0, 10) + 'T12:00:00').getTime(); if (new Date(t).toDateString() === new Date(td).toDateString()) { niv = Math.max(niv, Number(x.valeur) || 0); zone = zone || _zoneDouleur(x.zone); } });
+      var al = (a.alertes || []).filter(function (x) { return x.type === 'douleur' && !alerteEstTraitee(aid, x); })[0] || null;
+      out.push({ cat: 'Douleur', cls: 'wa', txt: (zone ? zone.charAt(0).toUpperCase() + zone.slice(1) : 'Gêne') + ' ' + (niv || 2) + '/5 · ' + J(td), chip: zone ? 'Au sujet de ta ' + zone.toLowerCase() : 'Au sujet de ta gêne', reply: 'Au sujet de ta gêne' + (zone ? ' à la ' + zone.toLowerCase() : '') + ' (' + (niv || 2) + '/5 ' + J(td) + ') : ', alerte: al });
+    }
+  } catch (e) {}
+  // Séance en retard (agenda / jours conseillés)
+  try { var SJ = _seanceDuJour(d); (SJ ? SJ.manquees : []).slice(0, 1).forEach(function (m) { out.push({ cat: 'Séance', cls: 'wa', txt: m.sid + ' (prévue ' + _PROG_JOURS_LONG[m.jour - 1] + ') pas faite', chip: 'Séance de ' + _PROG_JOURS_LONG[m.jour - 1], reply: 'Pour ta séance ' + m.sid + ' de ' + _PROG_JOURS_LONG[m.jour - 1] + ' : ' }); }); } catch (e) {}
+  // Dernière séance
+  try {
+    var ds = d.dashboard && d.dashboard.derniere_seance;
+    if (ds && ds.date) {
+      var t = parseChatDate(ds.date), P = null; try { P = _lv3Plan(d); } catch (x) {}
+      var rep = !!(P && P.reprise && t && (Date.now() - t) / 864e5 <= 7);
+      out.push({ cat: 'Dernière séance', cls: 'ok', txt: String(ds.seance_id || 'Séance') + ' · ' + J(t) + (ds.nb_series ? ' · ' + ds.nb_series + ' séries' : '') + (ds.rpe_moyen ? ' · RPE ' + String(ds.rpe_moyen).replace('.', ',') : '') + (rep ? ' · reprise' : ''),
+        chip: rep ? 'Bravo pour la reprise' : null, reply: rep ? 'Bravo pour la reprise 💪 ' : null });
+    }
+  } catch (e) {}
+  // Record récent (classement partagé)
+  try { var L = _lectureExos(d); if (L.records.length) { var r0 = L.records[0]; out.push({ cat: 'Record', cls: 'ok', txt: r0.exo, exo: r0.exo, chip: 'Bravo record', reply: 'Bravo pour ton record au ' + r0.exo + ' ! ' }); } } catch (e) {}
+  // Ressenti
+  try {
+    var be = (d.bien_etre || [])[0], tb = be ? parseChatDate(be.date) : 0, age = tb ? (Date.now() - tb) / 864e5 : Infinity;
+    var okN = []; try { _beNormale(d).forEach(function (n) { if (n.etat === 'ok') okN.push(n.label.toLowerCase().replace(' musculaire', '')); }); } catch (x) {}
+    out.push({ cat: 'Ressenti', cls: age > 7 ? 'wa' : 'gr', txt: !tb ? 'Aucun ressenti' : J(tb) + (age > 7 ? ' (ancien)' : '') + (okN.length ? ' · ' + okN.join(' et ') + ' dans sa normale' : ''),
+      chip: age > 3 ? 'Ressenti du jour' : null, reply: age > 3 ? RELANCE_RESSENTI_MSG : null });
+  } catch (e) {}
+  return out;
+}
+function _msgCtxHtml(aid, desk) {
+  var esc = escapeHtml, C = _msgCtx(aid);
+  if (!C.length) return '<div class="msgx-vide">Pas encore de données pour cet athlète.</div>';
+  return C.map(function (c, k) {
+    var acts = '';
+    if (c.reply) acts += '<button class="ae-btn" onclick="msgRepondre(\'' + aid + '\',' + k + ')">Répondre</button>';
+    if (c.alerte) acts += '<button class="ae-btn" style="color:var(--good)" title="Marquer traité" onclick="msgTraite(\'' + aid + '\')">✓</button>';
+    if (c.exo) acts += '<button class="ae-btn" onclick="msgVoirExo(\'' + aid + '\',' + k + ')">Voir</button>';
+    return '<div class="msgx-r"><span class="ae-chip ' + c.cls + '">' + esc(c.cat) + '</span><span class="msgx-t">' + esc(c.txt) + '</span>' + acts + '</div>';
+  }).join('') + (desk ? '<div style="margin-top:12px"><button class="ae-btn" onclick="msgOuvrirFiche(\'' + aid + '\')">Ouvrir la fiche ›</button></div>' : '');
+}
+function _msgRapidesHtml(aid) {
+  return _msgCtx(aid).map(function (c, k) { return (c.chip && c.reply) ? '<button class="msgx-q" onclick="msgRepondre(\'' + aid + '\',' + k + ')">' + escapeHtml(c.chip) + '</button>' : ''; }).join('');
+}
+function msgRepondre(aid, k) {
+  var c = _msgCtx(aid)[k]; if (!c || !c.reply) return;
+  var el = document.getElementById('cd-comment-input'); if (!el) return;
+  el.value = c.reply; try { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } catch (e) {}
+}
+function msgTraite(aid) {
+  var a = (athletesCoach || []).filter(function (x) { return String(x.athlete_id) === String(aid); })[0]; if (!a) return;
+  (a.alertes || []).filter(function (x) { return x.type === 'douleur'; }).forEach(function (al) { marquerAlerteTraitee(aid, al); });
+  _msgRenderCtx(aid); try { showToast('Marqué traité'); } catch (e) {}
+}
+function msgVoirExo(aid, k) { var c = _msgCtx(aid)[k]; var i = (athletesCoach || []).findIndex(function (x) { return String(x.athlete_id) === String(aid); }); try { fermerMessagerie2(); } catch (e) {} if (i >= 0 && c && c.exo) coachOuvrirProgression(String(i), c.exo); }
+function msgOuvrirFiche(aid) { var i = (athletesCoach || []).findIndex(function (x) { return String(x.athlete_id) === String(aid); }); try { fermerMessagerie2(); coachDeskOverlay = null; } catch (e) {} if (i >= 0) ouvrirDetailAthleteCoach(athletesCoach[i]); }
+function _msgRenderCtx(aid) {
+  var el = document.getElementById('cd-conv-alertes'); if (el) el.innerHTML = _msgCtxHtml(aid, false);
+  var q = document.getElementById('cd-msg-rapides'); if (q) { var h = _msgRapidesHtml(aid); q.innerHTML = h; q.style.display = h ? '' : 'none'; }
+  var dk = document.getElementById('msg2-ctx'); if (dk && _msg2Active) { var et = _msgEtat(aid), a = (athletesCoach || []).filter(function (x) { return String(x.athlete_id) === String(aid); })[0] || {}; dk.innerHTML = '<div class="msgx-dh">Contexte · ' + escapeHtml(String(a.nom || '').split(/\s+/)[0]) + (et && et.cat !== 'prets' ? ' <span class="ae-chip ' + (et.cat === 'inactifs' ? 'gr' : 'wa') + '">' + escapeHtml(et.court) + '</span>' : '') + '</div>' + _msgCtxHtml(aid, true); }
+}
+// P1 : messages de l'athlète marqués lus quand son fil est affiché (liste mobile, accueil, onglet, bureau).
+function _msgMarquerLus(aid) {
+  try {
+    var nonLus = (commentairesAthleteActuel || []).filter(function (c) { return c.auteur === 'athlete' && (c.athlete_id == null || String(c.athlete_id) === String(aid)) && !estLu(c, 'muscu_lu_coach'); }).map(function (c) { return c.id; });
+    if (!nonLus.length) return;
+    ajouterLusLocaux('muscu_lu_coach', nonLus);
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus }) });
+    (commentairesAthleteActuel || []).forEach(function (c) { if (nonLus.indexOf(c.id) >= 0) c.lu = true; });
+    try { majBadgeConseilsCoach(0); renderBullesChat(commentairesAthleteActuel, 'cd-commentaires-liste', true); } catch (e) {}
+    var e = _msgEnrich(aid); if (e) e.msgNonLus = 0;
+    var tot = ((_coachDesk && _coachDesk.enrich) || []).reduce(function (s, x) { return s + (x.msgNonLus || 0); }, 0);
+    var bb = document.getElementById('coach-band-msg-badge'); if (bb) { bb.textContent = tot; bb.style.display = tot ? '' : 'none'; }
+    try { if (_coachDeskAny()) renderCoachRail(); } catch (x) {}
+    _msgInfos.forEach(function (x) { if (String(x.a.athlete_id) === String(aid)) x.nonLus = 0; });
+    try { _msgRenderRows(); } catch (x) {}
+  } catch (e) {}
+}
+function _msgFilVisible() { var t = document.getElementById('cdtab-conseils'); return (_msg2Active && _msg2IsDesktop()) || (t && t.style.display !== 'none' && document.getElementById('view-coach-detail') && document.getElementById('view-coach-detail').classList.contains('active')); }
+// Liste : contrôles une fois, lignes re-rendues au filtre / à la recherche (le champ garde le focus).
+function _msgRenderRows() {
+  var host = document.getElementById('msg-rows'); if (!host) return;
+  var q = _msgQ.trim().toLowerCase(), esc = escapeHtml;
+  var L = _msgInfos.filter(function (x) {
+    if (q && String(x.a.nom || '').toLowerCase().indexOf(q) < 0) return false;
+    if (_msgFiltre === 'nonlus') return x.nonLus > 0;
+    if (_msgFiltre === 'surv') { var et = _msgEtat(x.a.athlete_id); return et && et.cat === 'surveiller'; }
+    return true;
+  });
+  var nNL = _msgInfos.filter(function (x) { return x.nonLus > 0; }).length, nS = _msgInfos.filter(function (x) { var et = _msgEtat(x.a.athlete_id); return et && et.cat === 'surveiller'; }).length;
+  var ch = document.getElementById('msg-ctl-chips');
+  if (ch) ch.innerHTML = [['tous', 'Tous'], ['nonlus', 'Non lus' + (nNL ? ' · ' + nNL : '')], ['surv', 'À surveiller' + (nS ? ' · ' + nS : '')]].map(function (f) { return '<button class="msgx-f' + (_msgFiltre === f[0] ? ' on' : '') + '" onclick="msgFiltre(\'' + f[0] + '\')">' + f[1] + '</button>'; }).join('') + '<button class="msgx-f" onclick="msgPlusieurs()">✉ À plusieurs</button>';
+  host.innerHTML = L.length ? L.map(function (x) {
+    var a = x.a, idx = athletesCoach.indexOf(a), et = _msgEtat(a.athlete_id), d = x.dernier;
+    var apercu = d ? (d.auteur === 'athlete' ? '' : 'Toi : ') + String(d.message || (d.media_type ? '📎 média' : '')).slice(0, 60) : 'Aucun message';
+    var etat = et && et.cat !== 'prets' ? '<span class="ae-chip ' + (et.cat === 'inactifs' ? 'gr' : 'wa') + '">' + esc(String(et.court).charAt(0).toLowerCase() + String(et.court).slice(1)) + '</span>' : '';
+    return '<div class="msgx-it' + (x.nonLus ? ' nl' : '') + '" onclick="ouvrirConversationDepuisMessagerie(\'' + idx + '\')">' + _coachAv(a, 'var(--accent-a12)', 'var(--accent-strong)', 40)
+      + '<div class="msgx-c"><div class="msgx-n">' + esc(a.nom) + (x.nonLus ? ' <span class="msgx-b">' + x.nonLus + '</span>' : '') + ' ' + etat + '</div><div class="msgx-a">' + esc(apercu) + '</div></div>'
+      + (d ? '<span class="msgx-tm">' + _msgQuand(parseChatDate(d.date)) + '</span>' : '<button class="ae-btn" onclick="event.stopPropagation();ouvrirConversationDepuisMessagerie(\'' + idx + '\')">Écrire</button>') + '</div>';
+  }).join('') : '<div class="msgx-vide">Aucune conversation ne correspond.</div>';
+}
+function msgFiltre(f) { _msgFiltre = f; _msgRenderRows(); }
+function msgRecherche(v) { _msgQ = v || ''; _msgRenderRows(); }
+// N2 : message à plusieurs
+var _msgPlus = { f: 'ressenti', sel: {} };
+function _msgPlusCands(f) {
+  return ((_coachDesk && _coachDesk.enrich) || []).filter(function (e) {
+    var d = _coachDesk.datas[e.i] || {};
+    if (f === 'ressenti') { var be = (d.bien_etre || [])[0], t = be ? parseChatDate(be.date) : 0; return !t || (Date.now() - t) / 864e5 > 7; }
+    if (f === 'inactifs') { var et = null; try { et = _coachEtatEquipe(e, d); } catch (x) {} return et && et.cat === 'inactifs'; }
+    return true;
+  });
+}
+function msgPlusieurs(f) {
+  if (f) _msgPlus.f = f;
+  var C = _msgPlusCands(_msgPlus.f); _msgPlus.sel = {}; C.forEach(function (e) { _msgPlus.sel[e.a.athlete_id] = true; });
+  var ov = document.getElementById('msgx-plus'); if (!ov) { ov = document.createElement('div'); ov.id = 'msgx-plus'; document.body.appendChild(ov); }
+  var tous = ((_coachDesk && _coachDesk.enrich) || []), esc = escapeHtml;
+  var chip = function (k, l) { return '<button class="msgx-f' + (_msgPlus.f === k ? ' on' : '') + '" onclick="msgPlusieurs(\'' + k + '\')">' + l + ' · ' + _msgPlusCands(k).length + '</button>'; };
+  ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">Message à plusieurs<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
+    + '<div class="msgx-chips">' + chip('ressenti', 'Sans ressenti 7 j') + chip('inactifs', 'Inactifs') + chip('tous', 'Tous') + '</div>'
+    + tous.map(function (e) { var on = !!_msgPlus.sel[e.a.athlete_id]; return '<label class="msgx-ck"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="_msgPlus.sel[\'' + e.a.athlete_id + '\']=this.checked;_msgPlusMaj()"> ' + esc(e.a.nom) + '</label>'; }).join('')
+    + '<textarea id="msgx-txt" rows="3" placeholder="Ton message…">' + (_msgPlus.f === 'ressenti' ? esc(RELANCE_RESSENTI_MSG) : '') + '</textarea>'
+    + '<button id="msgx-send" class="msgx-send" onclick="msgPlusEnvoyer()"></button>'
+    + '<div class="msgx-vide" style="padding:6px 0 0">Un message dans le fil de chacun : personne ne voit les autres destinataires.</div></div>';
+  ov.onclick = msgPlusFermer; ov.style.display = 'flex'; _msgPlusMaj();
+}
+function _msgPlusMaj() { var n = Object.keys(_msgPlus.sel).filter(function (k) { return _msgPlus.sel[k]; }).length, b = document.getElementById('msgx-send'); if (b) { b.textContent = 'Envoyer à ' + n + ' athlète' + (n > 1 ? 's' : ''); b.disabled = !n; } }
+function msgPlusFermer() { var ov = document.getElementById('msgx-plus'); if (ov) ov.style.display = 'none'; }
+async function msgPlusEnvoyer() {
+  var txt = (document.getElementById('msgx-txt') || {}).value || ''; txt = txt.trim();
+  var ids = Object.keys(_msgPlus.sel).filter(function (k) { return _msgPlus.sel[k]; });
+  if (!txt) { showToast('Écris un message', '#ff4444'); return; } if (!ids.length || !coach) return;
+  var b = document.getElementById('msgx-send'); if (b) { b.disabled = true; b.textContent = 'Envoi…'; }
+  var ok = 0;
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCommentaire', coach_id: coach.coach_id, coach_nom: coach.nom, auteur: 'coach', auteur_nom: coach.nom, athlete_id: ids[i], message: txt }) });
+      var j = null; try { j = await r.json(); } catch (_) {}
+      if (r.ok && j && j.success !== false && !j.error) ok++;
+    } catch (e) {}
+  }
+  showToast(ok === ids.length ? 'Envoyé à ' + ok + ' athlète' + (ok > 1 ? 's' : '') : ok + '/' + ids.length + ' envoyés — réessaie pour les autres', ok === ids.length ? undefined : '#ff4444');
+  if (ok === ids.length) msgPlusFermer(); else _msgPlusMaj();
+  try { _msgFillList(); } catch (e) {}
+}
 async function ouvrirMessagerieCoach() {
   // Desktop : 2 volets (liste + fil côte à côte). Mobile : tiroir existant.
   if (_msg2IsDesktop()) { return ouvrirMessagerie2(); }
@@ -5225,20 +5397,10 @@ async function _msgFillList() {
   }));
   // Tri : non lus d'abord, puis message le plus récent
   infos.sort((x, y) => (y.nonLus - x.nonLus) || (parseChatDate(y.dernier && y.dernier.date) - parseChatDate(x.dernier && x.dernier.date)));
-  const initiales = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-  liste.innerHTML = infos.map(({ a, dernier, nonLus }) => {
-    const idx = athletesCoach.indexOf(a);
-    const apercu = dernier ? (dernier.auteur === 'athlete' ? '' : 'Toi : ') + String(dernier.message).slice(0, 42) : 'Aucun message';
-    const heure = dernier ? formatChatDate(dernier.date).split(' ').slice(-1)[0] : '';
-    return `<div onclick="ouvrirConversationDepuisMessagerie('${idx}')" style="display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:12px;cursor:pointer;${nonLus>0?'background:var(--accent-a08);':''}">
-      <div style="width:42px;height:42px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${nonLus>0?`<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;flex-shrink:0;">${nonLus}</span>`:''}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${escapeHtml(apercu)}</div>
-      </div>
-      <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${heure}</span>
-    </div>`;
-  }).join('');
+  _msgInfos = infos;
+  // Écran 8 (05/11) : recherche + filtres une fois, lignes re-rendues (le champ garde le focus).
+  liste.innerHTML = '<div class="msgx-ctl"><input class="msgx-s" placeholder="Rechercher un athlète…" value="' + escapeHtml(_msgQ) + '" oninput="msgRecherche(this.value)" autocomplete="off"><div id="msg-ctl-chips" class="msgx-chips"></div></div><div id="msg-rows"></div>';
+  _msgRenderRows();
 }
 
 // ═══════════ MESSAGERIE COACH — 2 VOLETS (desktop) ═══════════
@@ -5259,6 +5421,7 @@ function ouvrirMessagerie2() {
     listHost.appendChild(liste);
   }
   m2.style.display = 'flex';
+  var _cx = document.getElementById('msg2-ctx'); if (_cx) _cx.innerHTML = '';
   var head = document.getElementById('msg2-thread-head'); if (head) head.style.display = 'none';
   var empty = document.getElementById('msg2-thread-empty'); if (empty) empty.style.display = 'flex';
   _msgFillList();
@@ -5287,7 +5450,8 @@ function _msg2Open(idx) {
     if (!_msg2CardHome) _msg2CardHome = { p: card.parentNode, n: card.nextSibling };
     host.appendChild(card);
   }
-  Promise.resolve(chargerCommentairesCoach(a.athlete_id)).then(function () { _msg2MarkRead(); _msgFillList(); });
+  try { _msgRenderCtx(a.athlete_id); } catch (e) {}
+  Promise.resolve(chargerCommentairesCoach(a.athlete_id)).then(function () { _msgMarquerLus(a.athlete_id); _msgRenderCtx(a.athlete_id); });
 }
 function _msg2MarkRead() {
   try {
@@ -5685,6 +5849,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   try {
     const data = await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
     coachAthleteData = data;
+    try { data._aid = a.athlete_id; } catch (_) {}   // propriétaire des données (contexte messagerie)
     cdProgressionData = data.historique ? (data.historique.progression_par_exo || {}) : {};
     cdTendancesData = data.historique ? (data.historique.tendances || null) : null;
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
@@ -5693,6 +5858,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
     try { renderCoachDecider(data); } catch (_) {}           // F6 (03/11) — ① À décider (diagnostics + alertes, avec actions)
     try { renderCoachZones(data); } catch (_) {}             // zones prioritaires (onglet Programme)
+    try { _msgRenderCtx(a.athlete_id); } catch (_) {}       // écran 8 : contexte de la conversation (données arrivées)
     try {   // 04/11 : programme affiché avant l'arrivée des données → catégories absentes jusqu'ici
       var _pel = _progEl(), _tp = document.getElementById('cdtab-programme');
       if (_tp && _tp.style.display !== 'none' && _pel && !_pel.querySelector('.loader') && String(_progAthleteId()) === String(a.athlete_id) && Array.isArray(cdProgrammeLignes) && cdProgrammeLignes.length) renderProgrammeCoach();
@@ -9755,7 +9921,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
   el.style.gap = '10px';
   // Avatar de l'interlocuteur (« eux ») : initiales + couleur selon le côté
   const themNom = isCoach ? (coachAthleteCourant && coachAthleteCourant.nom ? coachAthleteCourant.nom : 'Athlète') : 'Coach';
-  const themInit = themNom.trim().slice(0, 2).toUpperCase();
+  const themInit = themNom.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();   // P9 : mêmes initiales qu'ailleurs
   const themCol = isCoach ? 'var(--good)' : 'var(--accent)';
   const dayLabel = ts => {
     const d = new Date(ts); if (isNaN(d.getTime())) return '';
@@ -9770,7 +9936,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
   el.innerHTML = commentaires.map(c => {
     const ts = parseChatDate(c.date);
     const isMine = isCoach ? (c.auteur !== 'athlete') : (c.auteur === 'athlete');
-    const bg = isMine ? 'var(--accent)' : 'var(--surface2)';
+    const bg = isMine ? 'var(--accent)' : 'var(--surface)';   // P3 : bulle reçue visible aussi sur le fond du bureau
     const color = isMine ? '#fff' : 'var(--text)';
     const radius = isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
     const deleteBtn = (isCoach && isMine)
@@ -9781,7 +9947,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
     const media = (typeof _mediaBulleHTML === 'function') ? _mediaBulleHTML(c) : '';
     const corps = media
       ? `<div style="padding:4px;border-radius:${radius};background:${media && !isMine ? 'var(--surface2)' : 'transparent'};">${media}</div>`
-      : `<div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>`;
+      : `<div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;${isMine ? '' : 'border:1px solid var(--border);'}">${escapeHtml(c.message)}</div>`;
     const bubble = `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'};min-width:0;">
         ${corps}
         <div style="font-size:9.5px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:2px;">${heure(ts)}${meLabel}${lu}${deleteBtn}</div>
@@ -9820,47 +9986,15 @@ function majBadgeConseilsCoach(forceZero) {
 
 // Ouvre la conversation côté coach et marque les messages de l'athlète comme lus
 function renderConversationAlertes() {
-  const el = document.getElementById('cd-conv-alertes');
-  if (!el) return;
-  const a = coachAthleteCourant;
-  // Liste COMPLÈTE (non filtrée) = alertes backend + alertes de synthèse, puis on répartit traité / à traiter
-  const toutes = (a && a.alertes ? a.alertes.slice() : [])
-    .concat(construireSynthAlertes(coachAthleteData));
-  if (!toutes.length) {
-    el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;color:var(--good);font-size:13px;font-weight:700;">Aucune alerte cette semaine</div>';
-    return;
-  }
-  const traitees = toutes.filter(al => alerteEstTraitee(a.athlete_id, al));
-  const aTraiter = toutes.filter(al => !alerteEstTraitee(a.athlete_id, al));
-  const row = (al, done) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);">
-      <span style="width:26px;height:26px;border-radius:8px;background:${done?'var(--good-a)':'var(--warn-a)'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${done?'':''}</span>
-      <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;">${al.message || al.msg || 'Alerte'}</div>
-      <span style="font-size:10.5px;font-weight:800;color:${done?'var(--good)':'var(--warn)'};white-space:nowrap;">${done?'Traitée':'À traiter'}</span>
-    </div>`;
-  el.innerHTML =
-    `<div style="display:flex;gap:9px;margin-bottom:4px;">
-       <div class="v2-pstat" style="background:var(--good-a);padding:9px 11px;"><div class="pn" style="color:var(--good);font-size:18px;">${traitees.length}</div><div class="pk">traitée${traitees.length>1?'s':''}</div></div>
-       <div class="v2-pstat" style="background:var(--warn-a);padding:9px 11px;"><div class="pn" style="color:var(--warn);font-size:18px;">${aTraiter.length}</div><div class="pk">à traiter</div></div>
-     </div>
-     ${aTraiter.map(al => row(al, false)).join('')}
-     ${traitees.map(al => row(al, true)).join('')}`;
+  // Écran 8 (05/11) : « Contexte » (faits cliquables + messages rapides) remplace « Alertes de la semaine » (passif).
+  if (!coachAthleteCourant) return;
+  _msgRenderCtx(coachAthleteCourant.athlete_id);
 }
 
 function ouvrirConversationCoach() {
   switchCoachDetailTab('conseils');
   renderConversationAlertes();
-  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).map(c => c.id);
-  if (nonLus.length > 0) {
-    ajouterLusLocaux('muscu_lu_coach', nonLus);
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus })
-    });
-    commentairesAthleteActuel.forEach(c => { if (nonLus.includes(c.id)) c.lu = true; });
-  }
-  majBadgeConseilsCoach(0);
+  if (coachAthleteCourant) _msgMarquerLus(coachAthleteCourant.athlete_id);   // P1 (05/11)
 }
 
 async function chargerCommentairesCoach(athlete_id) {
@@ -9873,6 +10007,7 @@ async function chargerCommentairesCoach(athlete_id) {
     renderBullesChat(commentaires, 'cd-commentaires-liste', true);
     majBadgeConseilsCoach();
     renderAlertesCoach();
+    try { _msgRenderCtx(athlete_id); if (_msgFilVisible() && coachAthleteCourant && String(coachAthleteCourant.athlete_id) === String(athlete_id)) _msgMarquerLus(athlete_id); } catch (e) {}   // P1 : fil affiché → lu
   } catch(e) {
     if (el) el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
@@ -10059,7 +10194,8 @@ function sujetAlerte(al) {
 function repondreAlerte(contexte) {
   switchCoachDetailTab('conseils');
   const input = document.getElementById('cd-comment-input');
-  const prefixe = `À propos de : ${contexte}\n\nMon conseil : `;
+  const _c = String(contexte || '').replace(/ — .*$/, '');
+  const prefixe = _c === 'absence' ? 'Ça fait quelques jours sans séance, tout va bien ? ' : 'Au sujet de ' + (_c.charAt(0).toLowerCase() + _c.slice(1)) + ' : ';   // P5 (05/11) : plus de « À propos de : … Mon conseil : »
   input.value = prefixe;
   input.focus();
   // Placer le curseur à la fin

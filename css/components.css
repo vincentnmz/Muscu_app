@@ -1049,3 +1049,35 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 @media (min-width:992px){ .ae-row{flex-wrap:nowrap} .ae-mid{min-width:0} .ae-kpis{grid-template-columns:repeat(4,1fr)} .ae-ets{grid-template-columns:repeat(4,1fr)} .ae-g2{grid-template-columns:1fr 1fr} }
 
 .ae-exo{font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;cursor:pointer}
+
+/* ===== Messagerie coach v2 (écran 8, 05/11) ===== */
+.msgx-ctl{padding:2px 0 8px}
+.msgx-s{width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 12px;font:inherit;font-size:13px;color:var(--text);outline:none}
+.msgx-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.msgx-f{font:inherit;font-size:11.5px;font-weight:800;border:1px solid var(--accent-a25,#CFDCFF);border-radius:999px;padding:5px 11px;background:var(--surface);color:var(--accent);cursor:pointer}
+.msgx-f.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.msgx-it{display:flex;gap:11px;align-items:center;padding:10px;border-radius:12px;cursor:pointer}
+.msgx-it.nl{background:var(--accent-a08,#EEF4FF)}
+.msgx-c{flex:1;min-width:0}.msgx-n{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.msgx-b{background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px}
+.msgx-a{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.msgx-tm{font-size:10.5px;color:var(--text-muted);flex:none}
+.msgx-vide{color:var(--text-muted);font-size:12.5px;padding:10px 4px}
+.msgx-r{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px}
+.msgx-r:first-child{border-top:0}.msgx-t{flex:1;min-width:0;line-height:1.4}
+.msgx-qs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 0;border-top:1px solid var(--border);-webkit-overflow-scrolling:touch}
+.msgx-q{flex:none;font:inherit;font-size:11.5px;font-weight:800;color:var(--accent);background:var(--accent-a08,#EEF4FF);border:1px solid var(--accent-a25,#CFDCFF);border-radius:999px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.msgx-dh{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#msgx-plus{display:none;position:fixed;inset:0;background:rgba(3,6,14,.55);z-index:1400;align-items:center;justify-content:center;padding:16px}
+.msgx-mod{background:var(--surface);border-radius:18px;padding:16px;width:100%;max-width:420px;max-height:88vh;overflow:auto;box-shadow:0 18px 50px rgba(7,11,20,.4)}
+.msgx-mt{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px;margin-bottom:6px}
+.msgx-mt button{background:none;border:0;font-size:16px;cursor:pointer;color:var(--text-muted)}
+.msgx-ck{display:flex;gap:9px;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:600;color:var(--text)}
+.msgx-mod textarea{width:100%;box-sizing:border-box;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:inherit;font-size:13px;color:var(--text);resize:vertical}
+.msgx-send{width:100%;margin-top:10px;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.msgx-send:disabled{opacity:.5}
+.msg2-ctx-pane{display:none}
+@media (min-width:992px){
+  body.coach-active #coach-msg2 .msg2-ctx-pane{display:block;width:290px;flex:none;border-left:1px solid var(--border);background:var(--surface);padding:16px;overflow:auto}
+  body.coach-active #coach-msg2 .msg2-ctx-pane:empty{display:none}
+}
