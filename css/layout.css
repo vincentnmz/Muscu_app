@@ -813,6 +813,10 @@ body.prog-editor-open{ overflow:hidden; }
 .pe-tabs{ display:none; }
 @media (min-width:992px){
   body.coach-active #cd-header .cd-back{ display:none !important; }   /* fiche : nav par le rail, pas de flèche */
+  /* Réglages / Conversation / Déco sont déjà dans le rail de gauche → on les
+     masque dans l'en-tête de la fiche sur desktop (sinon doublon, et ça fait
+     « barre athlète »). Sur mobile, ils restent (pas de rail). */
+  body.coach-active.athlete-selected #cd-header .cd-head-actions{ display:none !important; }
   body.coach-active #prog-editor-overlay .pe-back{ display:none !important; } /* Programme : nav par les onglets, pas de flèche */
   body.coach-active #prog-editor-overlay .pe-tabs{ display:flex; gap:4px; margin-left:18px; }
   body.coach-active #prog-editor-overlay .pe-tabs button{ border:none; background:none; font:inherit; font-weight:800; font-size:13px; color:var(--text-muted); padding:8px 13px; border-radius:9px; cursor:pointer; border-bottom:2.5px solid transparent; }
@@ -844,3 +848,264 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active #prog-editor-overlay.prog-inline .pb-canvas,
   body.coach-active #prog-editor-overlay.prog-inline .pb-insp{ overflow:visible !important; min-height:0; height:auto; }
 }
+
+/* ============================================================
+ * TABLETTE / PETIT ÉCRAN (992-1279 px) — option A validée le 28/10/2026 :
+ * le CONTENU CENTRAL doit être la colonne la plus large. Menu latéral réduit
+ * (248 → 200 px, libellés conservés) + rail droit réduit (340/360 → 290 px)
+ * + marges intérieures plus serrées. ≥ 1280 px : inchangé. Espace coach : inchangé.
+ * ============================================================ */
+@media (min-width:992px) and (max-width:1279px){
+  body.has-bottom-nav #app-side{ width:200px; padding:20px 12px; }
+  body.has-bottom-nav #main-container{ margin-left:200px; padding:22px 22px 40px; }
+  body.has-bottom-nav #tab-objectif.tab-content,
+  body.has-bottom-nav #tab-conseils.tab-content,
+  body.has-bottom-nav #tab-blessures.tab-content,
+  body.has-bottom-nav #tab-nutrition.tab-content,
+  body.has-bottom-nav #tab-suivi.tab-content,
+  body.has-bottom-nav #tab-morpho.tab-content{ left:200px; }
+  body.has-bottom-nav .hx-overlay{ left:200px !important; }
+  body.has-bottom-nav #tab-accueil .tj{ grid-template-columns:minmax(0,1fr) 290px !important; }
+  body.has-bottom-nav #tab-seance .en-cols,
+  body.has-bottom-nav #tab-historique .ma-cols2,
+  body.has-bottom-nav #tab-etat .et-wrap{ grid-template-columns:minmax(0,1fr) 290px !important; }
+}
+
+/* ===== Nouveau logo (28/10) ===== */
+/* Connexion : « N[icône]VALYZ » + ANALYZE · PLAN · PERFORM. Les parties sombres
+   suivent la couleur du texte (currentColor) → lisibles si un thème sombre arrive. */
+.nv-login-hero .nv-hero-logo { display:block; color:var(--text); }
+.nv-brand-logo { display:block; width:260px; max-width:78%; height:auto; margin:0 auto; }
+/* Écran de connexion : le logo EST l'en-tête → le bandeau (vide à ce stade : titre
+   « Novalyz » + boutons masqués) est retiré pour ne pas laisser une barre blanche. */
+body:has(#view-login.active) #app-header { display:none; }
+/* Colonne de gauche (ordi / tablette) : icône + mot NOVALYZ */
+.as-brand { color:var(--text); }
+.as-brand .as-ic { width:32px; height:35px; flex:none; }
+.as-brand .as-wm { height:15px; width:auto; max-width:140px; }
+/* Bandeau retiré à la connexion → le logo garde la marge de la barre d'état (Android / iPhone). */
+body:has(#view-login.active) .nv-login-hero { padding-top:calc(34px + env(safe-area-inset-top, 0px)); }
+
+/* ===== Identité visuelle (28/10) : dégradé blanc → bleu + grands hexagones ===== */
+/* Maquette validée : mockups/novalyz-login-degrade.html. Même dégradé et mêmes
+   hexagones (trait 5 px, sans chevauchement) au login, dans la colonne de gauche
+   (ordi / tablette) et en fond d'écran (mobile). */
+:root { --nv-grad:linear-gradient(180deg,#ffffff 0%,#ffffff 34%,#eaf0ff 52%,#7aa3ff 74%,#1A5FFF 100%); }
+.nv-hex { position:absolute; left:0; bottom:0; width:100%; height:58%; opacity:.36; pointer-events:none; }
+
+/* Fond d'écran : calque fixe derrière le contenu (z-index:-1 → sous les cartes,
+   sans créer de contexte d'empilement qui gênerait les modales). */
+#nv-bg { display:none; position:fixed; inset:0; z-index:-1; background:var(--nv-grad); pointer-events:none; }
+body:has(#view-login.active) #nv-bg { display:block; }
+@media (max-width:991.98px) { body.has-bottom-nav #nv-bg { display:block; } }
+
+/* Colonne de gauche (ordi / tablette) */
+@media (min-width:992px) {
+  body.has-bottom-nav #app-side { background:var(--nv-grad); overflow-x:hidden; }
+  #app-side > * { position:relative; z-index:1; }
+  #app-side > .nv-hex { position:absolute; z-index:0; height:55%; }
+  #app-side .as-foot { border-top-color:rgba(255,255,255,.35); }
+  #app-side .as-foot .as-item { color:#fff; }
+  #app-side .as-foot .as-item:hover { background:rgba(255,255,255,.14); color:#fff; }
+}
+
+/* ---- Connexion ---- */
+#view-login .nv-login-hex { display:none; }
+.nv-hero-logo { color:#070B14; }
+.nv-hero-logo .nvl-ic { display:block; width:84px; height:92px; margin:0 auto 10px; color:#070B14; }
+.nv-hero-logo .nv-brand-logo { width:210px; max-width:70%; color:#070B14; }
+.nv-login-hero { padding-bottom:30px; }
+/* Le formulaire devient une carte claire posée sur le dégradé */
+.nv-login-body { position:relative; background:rgba(255,255,255,.92); border:1px solid rgba(255,255,255,.7); border-radius:22px;
+  padding:14px; margin:0 2px 32px; box-shadow:0 22px 50px rgba(10,40,120,.25); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.nv-login-body .card { background:transparent; border:none; box-shadow:none; padding:0; margin-bottom:0; }
+.nv-login-body .btn-accent { background:linear-gradient(135deg,#1a5fff,#0a46d6); box-shadow:0 10px 26px rgba(26,95,255,.35); }
+.nv-role.on { background:#fff; box-shadow:0 4px 14px rgba(26,95,255,.15); }
+
+/* Ordi / tablette (31/10) : login PLEIN ÉCRAN comme la maquette validée — dégradé et nid d'abeille
+   sur tout l'écran, logo + nom puis la carte de connexion au centre (plus de panneau en 2 colonnes). */
+@media (min-width:900px) {
+  body:has(#view-login.active) #nv-bg { display:block; }
+  body:has(#view-login.active) #main-container { max-width:none; width:100%; padding:0; margin:0; }
+  #view-login.active { display:flex; flex-direction:column; align-items:center; justify-content:center; max-width:none; min-height:100vh; padding:6vh 24px; box-sizing:border-box; }
+  #view-login .nv-login-hero { background:none; padding:0 0 22px !important; }
+  #view-login .nv-login-hex { display:none; }
+  .nv-hero-logo { position:relative; }
+  .nv-hero-logo .nvl-ic { width:110px; height:120px; margin-bottom:14px; }
+  .nv-hero-logo .nv-brand-logo { width:280px; }
+  #view-login .nv-login-body { width:100%; max-width:420px; margin:0 auto; }
+}
+
+/* ---- Login : nid d'abeille où des sports apparaissent puis s'effacent (validé 31/10) ----
+   Couleurs d'origine : dégradé blanc → bleu inchangé. Traits bleus sur la partie claire,
+   blancs sur la partie bleue ; apparitions éparses, lentes, semi-transparentes. */
+#nv-comb { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+/* Connexion (31/10) : fond BLEU ANIMÉ sur toute la page (maquette validée), nid d'abeille en traits blancs,
+   logo Novalyz en blanc / bleu clair pour rester lisible sur le bleu. */
+body:has(#view-login.active) { background:#0b2a8a; }
+body:has(#view-login.active) #nv-bg { display:none !important; }
+#view-login .nv-login-hex { display:none !important; }
+#nv-aurora { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:#0b2a8a; }
+#nv-aurora i { position:absolute; width:70vmax; height:70vmax; border-radius:50%; filter:blur(70px); opacity:.75; mix-blend-mode:screen; }
+#nv-aurora .a1 { background:#1A5FFF; left:-20vmax; top:-20vmax; animation:nva1 12s ease-in-out infinite; }
+#nv-aurora .a2 { background:#22d3ee; right:-25vmax; top:10vmax; animation:nva2 15s ease-in-out infinite; }
+#nv-aurora .a3 { background:#7c3aed; left:10vmax; bottom:-30vmax; animation:nva3 17s ease-in-out infinite; }
+#nv-aurora .a4 { background:#ffffff; right:10vmax; top:-30vmax; opacity:.3; animation:nva2 19s ease-in-out infinite reverse; }
+/* Les couleurs suivent la souris / le doigt (31/10) : halos décalés en parallaxe + une lueur sous le pointeur.
+   « translate » s'ajoute au « transform » de l'animation sans l'écraser. */
+#nv-aurora i { transition:translate 1.4s cubic-bezier(.2,.7,.2,1); }
+#nv-aurora .a1 { translate:calc(var(--px,0) * 9vmax) calc(var(--py,0) * 9vmax); }
+#nv-aurora .a2 { translate:calc(var(--px,0) * -7vmax) calc(var(--py,0) * 6vmax); }
+#nv-aurora .a3 { translate:calc(var(--px,0) * 6vmax) calc(var(--py,0) * -8vmax); }
+#nv-aurora .a4 { translate:calc(var(--px,0) * -5vmax) calc(var(--py,0) * -5vmax); }
+#nv-aurora .a5 { width:18vmax; height:18vmax; left:0; top:0; background:#5ab0ff; opacity:0; filter:blur(40px);
+  translate:calc(var(--mx,50vw) - 9vmax) calc(var(--my,50vh) - 9vmax); transition:translate .9s cubic-bezier(.2,.7,.2,1), opacity 1.2s ease; }
+#nv-aurora.suit .a5 { opacity:.4; }
+@keyframes nva1 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(18vmax,14vmax); } }
+@keyframes nva2 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(-16vmax,12vmax); } }
+@keyframes nva3 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(12vmax,-18vmax); } }
+/* Logo d'origine (noir + bleu #1A5FFF) posé dans le bloc blanc du formulaire, pour qu'il ressorte (31/10). */
+#view-login .nv-login-body > .nv-hero-logo { text-align:center; margin:4px 0 18px; }
+#view-login .nv-login-body > .nv-hero-logo .nvl-ic { width:64px; height:70px; margin:0 auto 8px; }
+#view-login .nv-login-body > .nv-hero-logo .nv-brand-logo { width:200px; max-width:80%; }
+@media (prefers-reduced-motion:reduce) { #nv-aurora i { animation:none; } }
+/* Mobile (01/11, retour « les couleurs clignotent ») : un flou de 70 px + mode de fusion sur des halos
+   de 70 vmax animés en continu fait clignoter le rendu GPU des téléphones Android. Même aspect avec
+   des dégradés radiaux (aucun filtre, aucune fusion), calques promus pour le GPU. */
+@media (pointer:coarse), (max-width:700px) {
+  #nv-aurora i { filter:none; mix-blend-mode:normal; will-change:transform; backface-visibility:hidden; transform:translateZ(0); }
+  #nv-aurora .a1 { background:radial-gradient(circle, rgba(26,95,255,.95) 0%, rgba(26,95,255,0) 68%); }
+  #nv-aurora .a2 { background:radial-gradient(circle, rgba(34,211,238,.70) 0%, rgba(34,211,238,0) 68%); }
+  #nv-aurora .a3 { background:radial-gradient(circle, rgba(124,58,237,.75) 0%, rgba(124,58,237,0) 68%); }
+  #nv-aurora .a4 { background:radial-gradient(circle, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 68%); }
+  #nv-aurora .a5 { filter:none; background:radial-gradient(circle, rgba(90,176,255,.9) 0%, rgba(90,176,255,0) 70%); }
+}
+/* Dans l'app : le dégradé reste, avec un nid d'abeille discret à la place des grands hexagones. */
+#nv-bg .nv-hex, #app-side > .nv-hex { display:none; }
+#nv-bg, body.has-bottom-nav #app-side { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"), var(--nv-grad); background-size:56px 97px, 100% 100%; }
+@media (min-width:992px) { #app-side { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"), var(--nv-grad); background-size:56px 97px, 100% 100%; } }
+.nv-login-hero > .nv-hero-logo, .nv-login-body { position:relative; z-index:1; }
+#nv-comb .c .h { fill:none; stroke-width:1.1; transition:stroke-opacity 1.8s ease, fill-opacity 1.8s ease; stroke-opacity:.1; fill-opacity:0; }
+#nv-comb .c use { opacity:0; stroke-dasharray:1; stroke-dashoffset:1; transition:opacity 1.8s ease, stroke-dashoffset 2.8s ease; }
+#nv-comb .c.on .h { stroke-opacity:.3; fill-opacity:.04; }
+#nv-comb .c.on use { opacity:.5; stroke-dashoffset:0; }
+#nv-comb .c.b { color:#1A5FFF; } #nv-comb .c.b.on use { opacity:.38; }
+#nv-comb .c.w { color:#ffffff; }
+#nv-comb .c .h { stroke:currentColor; fill:currentColor; }
+@media (prefers-reduced-motion:reduce) { #nv-comb .c .h, #nv-comb .c use { transition:none; } }
+
+/* ---- Écran de démarrage ---- */
+#nv-splash { position:fixed; inset:0; z-index:10000; background:var(--nv-grad); display:flex; align-items:center; justify-content:center;
+  transition:opacity .35s ease, visibility .35s; }
+#nv-splash.off { opacity:0; visibility:hidden; pointer-events:none; }
+#nv-splash .nv-splash-in { position:relative; text-align:center; margin-top:-12vh; }
+#nv-splash .nvl-ic { display:block; width:96px; height:105px; margin:0 auto 14px; color:#070B14; }
+#nv-splash .nv-brand-logo { width:220px; color:#070B14; }
+/* Démarrage (31/10) : même fond que la connexion — bleu + halos + nid d'abeille blanc, logo en blanc / bleu clair. */
+#nv-splash { background-color:#0b2a8a; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%23ffffff' stroke-opacity='.14' stroke-width='1.2'/%3E%3C/svg%3E"),
+  radial-gradient(60vmax 60vmax at 10% 5%, rgba(26,95,255,.85), transparent 70%),
+  radial-gradient(55vmax 55vmax at 95% 35%, rgba(34,211,238,.55), transparent 70%),
+  radial-gradient(60vmax 60vmax at 35% 105%, rgba(124,58,237,.55), transparent 70%);
+  background-size:56px 97px, 100% 100%, 100% 100%, 100% 100%; }
+#nv-splash > .nv-hex { display:none; }
+#nv-splash .nv-splash-in { background:rgba(255,255,255,.94); border-radius:22px; padding:26px 30px 20px; box-shadow:0 18px 50px rgba(5,20,80,.35); }
+
+/* ---- Loader : petit logo animé devant « Chargement… » ---- */
+.loader .nvl-ic { display:block; width:34px; height:37px; margin:0 auto 8px; color:var(--text); }
+
+/* ---- Logo animé : A2 (barres puis points puis traits) / B2 (courbe puis barres),
+   tiré au hasard. L'hexagone reste fixe. ---- */
+.nvl-ic { overflow:visible; }
+.nvl-ic .nvl-b, .nvl-ic .nvl-d { transform-box:fill-box; }
+.nvl-ic .nvl-b { transform-origin:50% 100%; }
+.nvl-ic .nvl-d { transform-origin:50% 50%; }
+.nvl-ic .nvl-l { stroke-dasharray:70; stroke-dashoffset:70; }
+.nvl-ic.nvl-X .nvl-l { stroke-dashoffset:0; }
+.nvl-A2 .nvl-b,.nvl-A2 .nvl-d,.nvl-A2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-A2 .nvl-b1{animation-name:nvl-a2b1}.nvl-A2 .nvl-b2{animation-name:nvl-a2b2}.nvl-A2 .nvl-b3{animation-name:nvl-a2b3}.nvl-A2 .nvl-b4{animation-name:nvl-a2b4}
+.nvl-A2 .nvl-d1{animation-name:nvl-a2d1}.nvl-A2 .nvl-d2{animation-name:nvl-a2d2}.nvl-A2 .nvl-d3{animation-name:nvl-a2d3}.nvl-A2 .nvl-d4{animation-name:nvl-a2d4}
+.nvl-A2 .nvl-l1{animation-name:nvl-a2l1}.nvl-A2 .nvl-l2{animation-name:nvl-a2l2}.nvl-A2 .nvl-l3{animation-name:nvl-a2l3}
+@keyframes nvl-a2b1{0%,2%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}14%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b2{0%,20%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}29%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b3{0%,33%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}40%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b4{0%,43%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}49%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2d1{0%,12%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}17%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}20%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}23%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d2{0%,27%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}32%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}35%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}38%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d3{0%,38%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}43%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}46%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}49%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d4{0%,48%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}53%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}56%{transform:translateY(-14px);animation-timing-function:ease-in}59%{transform:none}74%{transform:scale(1)}78%{transform:scale(1.7)}82%,86%{transform:scale(1)}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2l1{0%,60%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}65%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l2{0%,65%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}69%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l3{0%,69%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}74%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+.nvl-B2 .nvl-b,.nvl-B2 .nvl-d,.nvl-B2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-B2 .nvl-l1{animation-name:nvl-b2l1}.nvl-B2 .nvl-l2{animation-name:nvl-b2l2}.nvl-B2 .nvl-l3{animation-name:nvl-b2l3}
+.nvl-B2 .nvl-d1{animation-name:nvl-b2d1}.nvl-B2 .nvl-d2{animation-name:nvl-b2d2}.nvl-B2 .nvl-d3{animation-name:nvl-b2d3}.nvl-B2 .nvl-d4{animation-name:nvl-b2d4}
+.nvl-B2 .nvl-b1{animation-name:nvl-b2b1}.nvl-B2 .nvl-b2{animation-name:nvl-b2b2}.nvl-B2 .nvl-b3{animation-name:nvl-b2b3}.nvl-B2 .nvl-b4{animation-name:nvl-b2b4}
+@keyframes nvl-b2d1{0%,4%{transform:scale(0)}7%{transform:scale(1.8)}10%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l1{0%,8%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}20%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d2{0%,19%{transform:scale(0)}22%{transform:scale(1.8)}25%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l2{0%,22%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}29%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d3{0%,28%{transform:scale(0)}31%{transform:scale(1.8)}34%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l3{0%,31%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}36%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d4{0%,35%{transform:scale(0)}38%{transform:scale(1.8)}41%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2b1{0%,44%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}54%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b2{0%,48%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}57%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b3{0%,52%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}60%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b4{0%,56%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}63%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@media (prefers-reduced-motion:reduce) {
+  .nvl-ic .nvl-b, .nvl-ic .nvl-d, .nvl-ic .nvl-l { animation:none !important; transform:none !important; opacity:1 !important; stroke-dashoffset:0 !important; }
+}
+
+/* Fond d'écran mobile (retours 29/10) : les conteneurs d'écran ne doivent pas
+   repeindre un fond uni par-dessus le dégradé, et les textes posés directement
+   sur le fond (titres de section, aides) reçoivent une étiquette claire pour
+   rester lisibles quand ils défilent sur la partie bleue. */
+@media (max-width:991.98px) {
+  body.has-bottom-nav .dash,
+  body.has-bottom-nav #tab-conseils { background:transparent; }
+  body.has-bottom-nav :is(#tab-accueil .tj-sep, #tab-seance .en-sec, #tab-historique .ma-sec, #tab-etat .et-sec, .nv-loose) {
+    background:rgba(255,255,255,.9); border-radius:10px; padding:5px 10px; box-shadow:0 1px 3px rgba(13,20,36,.06); }
+  body.has-bottom-nav #tab-accueil .tj-sep::after { display:none; }
+  body.has-bottom-nav #tab-seance .en-add { background:rgba(255,255,255,.92); }
+  body.has-bottom-nav #tab-conseils .cv-chip { background:rgba(255,255,255,.94); }
+  body.has-bottom-nav #tab-seance h2.st { display:inline-flex; background:rgba(255,255,255,.9); border-radius:10px; padding:4px 10px; }
+  /* Retours 31/10 : légendes grises, sélecteur de période (« Période », mois en cours) et
+     onglets de métrique posés sur le bleu → étiquettes / cartes blanches. */
+  body.has-bottom-nav #tab-historique .ma-cap { background:rgba(255,255,255,.94); border-radius:10px; padding:8px 11px !important; margin:6px 0 2px; box-shadow:0 1px 3px rgba(13,20,36,.06); }
+  body.has-bottom-nav #tab-historique .ma-period-wrap { background:rgba(255,255,255,.94); border-radius:14px; padding:10px 10px 8px; box-shadow:0 1px 3px rgba(13,20,36,.06); }
+}
+
+/* ===== Identité coach — variante A validée 05/11 (mockups/coach-identite.html) ===== */
+/* Même famille que l'athlète (dégradé clair + nid d'abeille), en VIOLET coach. */
+:root { --nv-grad-coach:linear-gradient(180deg,#ffffff 0%,#ffffff 30%,#efeaff 50%,#a48bff 74%,#6a3df0 100%);
+  --nv-hex-coach:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%237C5CFF' stroke-opacity='.13' stroke-width='1.2'/%3E%3C/svg%3E"); }
+@media (min-width:992px){
+  body.coach-active #coach-rail{ background:#fff; }
+  body.coach-active #coach-rail .cs-side{ background-image:var(--nv-hex-coach), var(--nv-grad-coach); background-size:56px 97px, 100% 100%; color:#0E1A33; }
+  #coach-rail .cs-brand b{ color:#0E1A33; }
+  #coach-rail .cs-brand span{ color:#6a5bb0; }
+  #coach-rail .cs-item{ color:#24304a; }
+  #coach-rail .cs-item:hover{ background:rgba(124,92,255,.12); }
+  #coach-rail .cs-item.on{ background:linear-gradient(135deg,var(--accent),#7C5CFF); color:#fff; box-shadow:0 6px 16px rgba(90,60,230,.28); }
+  #coach-rail .cs-me{ border-top-color:rgba(255,255,255,.4); }
+  #coach-rail .cs-me b{ color:#fff; }
+  #coach-rail .cs-me span{ color:rgba(255,255,255,.85); }
+  #coach-rail .cs-av{ background:rgba(255,255,255,.22); color:#fff; }
+  #coach-rail .cs-logout{ color:#fff; }
+  #coach-rail .cs-logout:hover{ background:rgba(255,255,255,.16); color:#fff; }
+}
+/* Mobile : fond d'écran coach (dégradé violet + nid d'abeille), comme le fond athlète en bleu. */
+@media (max-width:991.98px){
+  body.coach-active{ background-color:#fff; background-image:var(--nv-hex-coach), var(--nv-grad-coach); background-size:56px 97px, 100% 100%; background-attachment:fixed; }
+}
+
+/* ===== Page de chargement (05/11) : logo animé en plein écran pendant les chargements longs ===== */
+#nv-loadpage { position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center;
+  background-color:#2a1d66; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%23ffffff' stroke-opacity='.14' stroke-width='1.2'/%3E%3C/svg%3E"),
+    radial-gradient(60vmax 60vmax at 10% 5%, rgba(26,95,255,.85), transparent 70%),
+    radial-gradient(55vmax 55vmax at 95% 35%, rgba(124,92,255,.7), transparent 70%),
+    radial-gradient(60vmax 60vmax at 35% 105%, rgba(106,61,240,.75), transparent 70%);
+  background-size:56px 97px, 100% 100%, 100% 100%, 100% 100%; transition:opacity .3s ease, visibility .3s; }
+#nv-loadpage.off { opacity:0; visibility:hidden; pointer-events:none; }
+#nv-loadpage .nv-lp-in { text-align:center; background:rgba(255,255,255,.94); border-radius:22px; padding:24px 30px 18px; box-shadow:0 18px 50px rgba(30,10,90,.35); margin-top:-8vh; }
+#nv-loadpage .nvl-ic { display:block; width:84px; height:92px; margin:0 auto 12px; color:#070B14; }
+#nv-loadpage .nv-lp-t { font-size:13px; font-weight:700; color:#55627E; }
