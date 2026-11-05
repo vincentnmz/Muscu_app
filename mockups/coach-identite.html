@@ -1,0 +1,51 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette identité coach</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Michroma&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.wrap{display:flex;gap:22px;padding:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.blk{display:flex;flex-direction:column;gap:8px}
+.t{font-size:14px;font-weight:800;margin-left:4px}.s{font-size:11.5px;color:#55627E;margin:-4px 0 4px 4px;max-width:520px;line-height:1.45}
+.desk{width:520px;height:340px;border-radius:16px;overflow:hidden;display:flex;box-shadow:0 8px 30px rgba(14,26,51,.14);background:#F4F7FF}
+.rail{width:170px;flex:none;padding:16px 12px;display:flex;flex-direction:column;gap:4px;position:relative}
+.brand{display:flex;gap:8px;align-items:center;margin-bottom:12px}.lg{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.brand b{font-family:Michroma;font-size:12px}.brand small{display:block;font-size:8px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.it{font-size:12px;font-weight:700;padding:8px 10px;border-radius:10px}
+.main{flex:1;padding:16px}.main h4{margin:0 0 10px;font-family:Michroma;font-size:15px}
+.card{background:#fff;border:1px solid #DCE4F5;border-radius:12px;padding:10px;margin-bottom:8px;font-size:11.5px;color:#55627E}
+.ph{width:250px;height:440px;border-radius:24px;overflow:hidden;position:relative;box-shadow:0 8px 30px rgba(14,26,51,.14)}
+.ph .hd{height:46px;display:flex;align-items:center;padding:0 14px;font-family:Michroma;font-size:12px;background:rgba(255,255,255,.85)}
+.ph .bd{padding:10px}.ph .card{font-size:10.5px}
+.ph .nav{position:absolute;left:0;right:0;bottom:0;height:46px;background:#fff;border-top:1px solid #DCE4F5;display:flex;justify-content:space-around;align-items:center;font-size:9px;font-weight:800;color:#8A96B0}
+.hex-b{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E")}
+/* athlète actuel */
+.ath{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#fff 0%,#fff 34%,#eaf0ff 52%,#7aa3ff 74%,#1A5FFF 100%);background-size:56px 97px,100% 100%;color:#0E1A33}
+.ath .lg{background:#1A5FFF;color:#fff}.ath .it.on{background:#1A5FFF;color:#fff}
+/* A : clair → violet */
+.A{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%237C5CFF' stroke-opacity='.13' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#fff 0%,#fff 30%,#efeaff 50%,#a48bff 74%,#6a3df0 100%);background-size:56px 97px,100% 100%;color:#0E1A33}
+.A .lg{background:linear-gradient(135deg,#1A5FFF,#7C5CFF);color:#fff}.A .it.on{background:linear-gradient(135deg,#1A5FFF,#7C5CFF);color:#fff}
+/* B : nuit → indigo, nid d'abeille blanc */
+.B{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%23ffffff' stroke-opacity='.08' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#0f1726 0%,#141d38 40%,#2a1d66 75%,#5b3df0 100%);background-size:56px 97px,100% 100%;color:#c7d0e0}
+.B .lg{background:linear-gradient(135deg,#1A5FFF,#7C5CFF);color:#fff}.B .it.on{background:linear-gradient(135deg,#1A5FFF,#7C5CFF);color:#fff}.B .brand b{color:#fff}
+.mobA{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%237C5CFF' stroke-opacity='.13' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#fff 0%,#fff 38%,#efeaff 58%,#a48bff 82%,#6a3df0 100%);background-size:56px 97px,100% 100%}
+.mobB{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%237C5CFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#F4F7FF 0%,#F4F7FF 45%,#e3dcff 75%,#b7a6ff 100%);background-size:56px 97px,100% 100%}
+.mobB .hd{background:linear-gradient(135deg,#0f1726,#2a1d66);color:#fff}
+.mobAth{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#fff 0%,#fff 34%,#eaf0ff 52%,#7aa3ff 74%,#1A5FFF 100%);background-size:56px 97px,100% 100%}
+.row{display:flex;gap:16px;align-items:flex-start}
+</style></head><body><div class="wrap">
+
+<div class="blk"><div class="t">Référence : espace athlète (actuel)</div><div class="s">Dégradé blanc → bleu + nid d'abeille bleu discret.</div>
+<div class="row"><div class="desk"><div class="rail ath"><div class="brand"><span class="lg">N</span><div><b>Novalyz</b></div></div><span class="it on">Aujourd'hui</span><span class="it">Entraînement</span><span class="it">Analyses</span><span class="it">Forme</span><span class="it">Coach</span></div>
+<div class="main"><h4>Aujourd'hui</h4><div class="card">Séance du jour…</div><div class="card">Ma semaine…</div></div></div>
+<div class="ph mobAth"><div class="hd">Aujourd'hui</div><div class="bd"><div class="card">Séance du jour…</div><div class="card">Ma semaine…</div></div><div class="nav"><span>Aujourd'hui</span><span>Entr.</span><span>Analyses</span><span>Forme</span></div></div></div></div>
+
+<div class="blk"><div class="t">Variante A — même famille, en violet (clair → violet)</div><div class="s">Même dégradé et même nid d'abeille que l'athlète, mais la couleur passe du bleu au <b>violet coach</b> (celui du bouton « Coach » à la connexion). On reconnaît tout de suite l'espace coach.</div>
+<div class="row"><div class="desk"><div class="rail A"><div class="brand"><span class="lg">N</span><div><b>Novalyz</b><small>Espace coach</small></div></div><span class="it on">Aujourd'hui</span><span class="it">Équipe</span><span class="it">Analyses</span><span class="it">Messages</span><span class="it">Profil</span></div>
+<div class="main"><h4>Aujourd'hui</h4><div class="card">2 à surveiller…</div><div class="card">Entraînement à regarder…</div></div></div>
+<div class="ph mobA"><div class="hd">Espace coach</div><div class="bd"><div class="card">2 à surveiller…</div><div class="card">Entraînement à regarder…</div></div><div class="nav"><span>Aujourd'hui</span><span>Équipe</span><span>Analyses</span><span>Messages</span></div></div></div></div>
+
+<div class="blk"><div class="t">Variante B — sombre « bureau du coach » (nuit → indigo)</div><div class="s">On garde la colonne sombre actuelle, avec un dégradé nuit → indigo → violet en bas et un nid d'abeille blanc très discret. Sur mobile : en-tête sombre, fond clair qui tire au violet en bas.</div>
+<div class="row"><div class="desk"><div class="rail B"><div class="brand"><span class="lg">N</span><div><b>Novalyz</b><small>Espace coach</small></div></div><span class="it on">Aujourd'hui</span><span class="it">Équipe</span><span class="it">Analyses</span><span class="it">Messages</span><span class="it">Profil</span></div>
+<div class="main"><h4>Aujourd'hui</h4><div class="card">2 à surveiller…</div><div class="card">Entraînement à regarder…</div></div></div>
+<div class="ph mobB"><div class="hd">Espace coach</div><div class="bd"><div class="card">2 à surveiller…</div><div class="card">Entraînement à regarder…</div></div><div class="nav"><span>Aujourd'hui</span><span>Équipe</span><span>Analyses</span><span>Messages</span></div></div></div></div>
+
+</div></body></html>
