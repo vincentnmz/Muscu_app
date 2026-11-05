@@ -1,0 +1,115 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette messagerie coach</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.wrap{display:flex;gap:24px;padding:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.ph{width:390px;background:#F4F7FF;border-radius:24px;box-shadow:0 8px 30px rgba(14,26,51,.12);padding:14px 0 16px;overflow:hidden}
+h3{margin:2px 16px 10px;font-size:13px;color:#55627E}
+.bar{display:flex;gap:6px;margin:0 14px 10px}.f{font-size:11.5px;font-weight:800;border:1px solid #CFDCFF;border-radius:999px;padding:5px 11px;background:#fff;color:#1A5FFF}.f.on{background:#1A5FFF;color:#fff;border-color:#1A5FFF}
+.srch{margin:0 14px 10px;background:#fff;border:1px solid #DCE4F5;border-radius:12px;padding:9px 12px;font-size:12.5px;color:#8A96B0}
+.it{display:flex;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid #E6ECF8;background:#fff}
+.it.nl{background:#EEF4FF}
+.av{width:40px;height:40px;border-radius:12px;background:#EEF2FB;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.nm{font-weight:800;font-size:14px;display:flex;gap:6px;align-items:center}.ap{font-size:12px;color:#55627E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-size:10.5px;color:#8A96B0;flex:none;text-align:right}
+.b{font-size:9.5px;font-weight:800;border-radius:6px;padding:2px 6px}.wa{background:#FFF4E5;color:#B86E00}.gr{background:#EEF2FB;color:#55627E}.ok{background:#E7F8EF;color:#0A8A55}.ba{background:#FDECEC;color:#C0303A}
+.badge{background:#1A5FFF;color:#fff;font-size:9px;font-weight:800;border-radius:8px;padding:1px 5px}
+.btn{font-size:11px;font-weight:800;color:#1A5FFF;border:1px solid #CFDCFF;border-radius:999px;padding:4px 10px;background:#fff;white-space:nowrap}
+.ctx{margin:0 12px 10px;background:#fff;border:1px solid #DCE4F5;border-radius:14px;padding:10px 12px;font-size:12px}
+.ctx .r{display:flex;gap:8px;align-items:center;padding:5px 0;border-top:1px solid #EEF2FB}.ctx .r:first-of-type{border-top:0}
+.ctx .r span.t{flex:1;line-height:1.4}
+.thread{padding:4px 12px;display:flex;flex-direction:column;gap:8px}
+.day{align-self:center;font-size:10px;font-weight:800;color:#55627E;background:#E6ECF8;border-radius:20px;padding:3px 10px}
+.m{max-width:78%;padding:8px 12px;border-radius:16px;font-size:13px;line-height:1.4}
+.me{align-self:flex-end;background:#1A5FFF;color:#fff;border-radius:16px 16px 4px 16px}
+.th{align-self:flex-start;background:#fff;border:1px solid #DCE4F5;border-radius:16px 16px 16px 4px}
+.meta{font-size:9.5px;color:#8A96B0;margin-top:-4px}.meta.r{align-self:flex-end}
+.qk{display:flex;gap:6px;overflow:hidden;padding:6px 12px 0}.qk span{flex:none;font-size:11px;font-weight:800;color:#1A5FFF;background:#EEF4FF;border:1px solid #CFDCFF;border-radius:999px;padding:5px 10px}
+.comp{display:flex;gap:8px;margin:8px 12px 0}.comp div{flex:1;background:#fff;border:1px solid #DCE4F5;border-radius:12px;padding:9px 11px;font-size:12.5px;color:#0E1A33;line-height:1.4}.comp b.s{background:#1A5FFF;color:#fff;border-radius:10px;padding:9px 13px;align-self:flex-end}
+.new{outline:2px dashed #1A5FFF;outline-offset:3px}.note{font-size:10.5px;color:#1A5FFF;font-weight:700;margin:6px 16px 8px;line-height:1.4}
+.desk{width:1180px;background:#fff;border-radius:18px;box-shadow:0 8px 30px rgba(14,26,51,.12);display:grid;grid-template-columns:300px 1fr 280px;overflow:hidden;height:640px}
+.col{border-right:1px solid #E6ECF8;display:flex;flex-direction:column;min-height:0}.col:last-child{border-right:0;background:#F8FAFF}
+.ch{padding:14px 16px;font-weight:800;font-size:15px;border-bottom:1px solid #E6ECF8}
+.tb{flex:1;background:#F4F7FF;padding:12px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.side{padding:14px 16px;font-size:12px;line-height:1.5}.side h4{margin:10px 0 4px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8A96B0}
+.modal{width:390px;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(14,26,51,.12);padding:16px}
+.chk{display:flex;gap:9px;align-items:center;padding:7px 0;border-top:1px solid #EEF2FB;font-size:13px}.chk i{width:16px;height:16px;border-radius:4px;border:2px solid #CFDCFF;flex:none}.chk i.on{background:#1A5FFF;border-color:#1A5FFF}
+.rules{max-width:1180px;margin:0 auto 26px;background:#fff;border:1px solid #DCE4F5;border-radius:14px;padding:14px 18px;font-size:12.5px;line-height:1.6}
+</style></head><body>
+<div class="wrap">
+
+<!-- ① Liste mobile -->
+<div class="ph"><h3>① Messages (mobile) · jeudi 5 nov.</h3>
+<div class="srch new">🔍 Rechercher un athlète…</div>
+<div class="bar new"><span class="f on">Tous</span><span class="f">Non lus · 1</span><span class="f">À surveiller · 2</span></div>
+<div class="it nl"><div class="av">A</div><div style="flex:1;min-width:0"><div class="nm">Alizé <span class="badge">1</span> <span class="b wa">gêne hanche · hier</span></div><div class="ap">Coucou, j'ai mal à la hanche depuis ce matin…</div></div><div class="tm">hier<br>08:10</div></div>
+<div class="it"><div class="av">V</div><div style="flex:1;min-width:0"><div class="nm">Vincent <span class="b wa">gêne · 30/10</span></div><div class="ap">Test</div></div><div class="tm new">12/09</div></div>
+<div class="it"><div class="av">J</div><div style="flex:1;min-width:0"><div class="nm">John <span class="b gr">49 j sans séance</span></div><div class="ap">Aucun message</div></div><span class="btn">Écrire</span></div>
+<div class="it"><div class="av">Y</div><div style="flex:1;min-width:0"><div class="nm">Yann <span class="b gr">pas de programme</span></div><div class="ap">Aucun message</div></div><span class="btn">Écrire</span></div>
+<div class="note">P2 date (« 12/09 », plus « 20:41 ») · P7 état, filtre Non lus, recherche, « Écrire » · <b>N2</b> : bouton « ✉ Message à plusieurs » en haut (④).</div>
+</div>
+
+<!-- ② Conversation mobile -->
+<div class="ph"><h3>② Conversation avec Alizé (mobile)</h3>
+<div class="ctx new"><div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A96B0;margin-bottom:4px">Contexte</div>
+ <div class="r"><span class="b wa">Douleur</span><span class="t">Hanche 2/5 · hier (ressenti + fin de séance)</span><span class="btn">Répondre</span><span class="btn" style="color:#0A8A55">✓</span></div>
+ <div class="r"><span class="b ok">Séance</span><span class="t">Full body hier · 14 séries · reprise après 4 sem.</span></div>
+ <div class="r"><span class="b gr">Ressenti</span><span class="t">Sommeil et fatigue dans sa normale</span></div>
+</div>
+<div class="note" style="margin-top:-4px">P4 : remplace « Alertes de la semaine » (icônes vides, sans action) · P6 : bloc morpho retiré du fil.</div>
+<div class="thread">
+ <span class="day">20/08/2026</span><div class="m me">Cc</div><div class="meta r">09:57 · lu</div>
+ <span class="day">Hier</span><div class="m th">Coucou, j'ai mal à la hanche depuis ce matin</div><div class="meta">08:10</div>
+</div>
+<div class="qk new"><span>Au sujet de ta hanche</span><span>Bravo pour la reprise</span><span>Ressenti du jour</span></div>
+<div class="comp new"><div>Au sujet de ta gêne à la hanche (2/5 hier) : </div><b class="s">➤</b></div>
+<div class="note">P1 : ouvrir le fil marque les messages lus (badge à 0) · P5 / N1 : préremplissage naturel avec le fait.</div>
+</div>
+
+<!-- ④ Message à plusieurs -->
+<div class="modal"><h3 style="margin:0 0 8px">④ Message à plusieurs</h3>
+<div class="bar" style="margin:0 0 8px"><span class="f on">Sans ressenti 7 j · 2</span><span class="f">Inactifs · 2</span><span class="f">Tous · 4</span></div>
+<div class="chk"><i class="on"></i>John <span class="b gr" style="margin-left:auto">aucun ressenti</span></div>
+<div class="chk"><i class="on"></i>Yann <span class="b gr" style="margin-left:auto">aucun ressenti</span></div>
+<div class="chk"><i></i>Vincent</div><div class="chk"><i></i>Alizé</div>
+<div class="comp" style="margin:10px 0 0"><div>Petit rappel : remplis ton ressenti du jour 🙂 (2 min, ça m'aide à adapter tes séances)</div></div>
+<div style="margin-top:10px;background:#1A5FFF;color:#fff;border-radius:12px;padding:11px;text-align:center;font-weight:800;font-size:13px">Envoyer à 2 athlètes</div>
+<div class="note" style="margin:8px 0 0">N2 : un message identique dans le fil de chacun (pas de groupe : chaque athlète ne voit que sa conversation).</div>
+</div>
+
+<!-- ③ Bureau -->
+<div class="desk new">
+ <div class="col"><div class="ch">Conversations</div>
+  <div class="srch" style="margin:10px 12px 8px">🔍 Rechercher…</div>
+  <div class="bar" style="margin:0 12px 8px"><span class="f on">Tous</span><span class="f">Non lus · 1</span><span class="f">✉ À plusieurs</span></div>
+  <div class="it nl"><div class="av">A</div><div style="flex:1;min-width:0"><div class="nm">Alizé <span class="badge">1</span></div><div class="ap">Coucou, j'ai mal à la hanche…</div></div><div class="tm">hier</div></div>
+  <div class="it"><div class="av">V</div><div style="flex:1;min-width:0"><div class="nm">Vincent</div><div class="ap">Test</div></div><div class="tm">12/09</div></div>
+  <div class="it"><div class="av">J</div><div style="flex:1;min-width:0"><div class="nm">John</div><div class="ap">Aucun message</div></div></div>
+  <div class="it"><div class="av">Y</div><div style="flex:1;min-width:0"><div class="nm">Yann</div><div class="ap">Aucun message</div></div></div>
+ </div>
+ <div class="col"><div class="ch">Alizé</div>
+  <div class="tb"><span class="day">20/08/2026</span><div class="m me">Cc</div><div class="meta r">09:57 · lu</div>
+   <span class="day">Hier</span><div class="m th">Coucou, j'ai mal à la hanche depuis ce matin</div><div class="meta">08:10</div></div>
+  <div class="qk" style="padding:8px 16px 0;background:#F4F7FF"><span>Au sujet de ta hanche</span><span>Bravo pour la reprise</span><span>Ressenti du jour</span></div>
+  <div class="comp" style="margin:0;padding:8px 16px 14px;background:#F4F7FF"><div>Message à Alizé…</div><b class="s">➤</b></div>
+ </div>
+ <div class="col"><div class="ch" style="font-size:13px">Contexte · Alizé <span class="b wa">à surveiller</span></div>
+  <div class="side">
+   <h4>Douleurs (7 j)</h4>Hanche 2/5 · hier <span class="btn" style="margin-left:4px">Répondre</span>
+   <h4>Dernière séance</h4>Full body · hier · 14 séries · RPE 8,2<br><span style="color:#55627E">reprise après 4 semaines</span>
+   <h4>Cette semaine</h4>1 faite sur 1 prévue · plan ✓ fait
+   <h4>Progression</h4>★ record Leg curl assis · ▲ Presse sumo, Tirage horizontal
+   <h4>Ressenti</h4>hier · sommeil et fatigue dans sa normale
+   <div style="margin-top:12px"><span class="btn">Ouvrir la fiche ›</span></div>
+  </div></div>
+</div>
+</div>
+<div class="note" style="text-align:center;margin:-10px 0 14px">③ Bureau : P3 bulles reçues avec fond · P8 volet Contexte à droite (mêmes faits que la fiche, cliquables).</div>
+
+<div class="rules"><b>Règles</b><br>
+• Ouvrir un fil (liste, accueil, onglet, bureau) = messages de l'athlète marqués lus, après chargement de SON fil.<br>
+• Date dans la liste : heure si aujourd'hui, « hier », sinon jj/mm.<br>
+• Contexte et messages rapides = faits du moteur (douleur dès 2/5, séance, plan, record, ressenti) — rien d'inventé ; le coach modifie le texte avant d'envoyer, rien n'est envoyé tout seul.<br>
+• Message à plusieurs = un message par fil (confidentialité : personne ne voit les autres destinataires).
+<p style="color:#55627E;margin:6px 0 0">Faits réels du 04-05/11 (Alizé, Vincent, John, Yann). Le message d'Alizé sur la hanche est un exemple (les vrais messages en base sont des tests). Front seulement, sauf « à plusieurs » qui réutilise l'envoi existant (pas de redéploiement).</p></div>
+</body></html>
