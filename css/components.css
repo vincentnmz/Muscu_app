@@ -1018,7 +1018,7 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 .ae-ct i{font-style:normal;text-transform:none;letter-spacing:0;color:var(--accent);font-weight:700;text-align:right}
 .ae-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:12.5px;cursor:pointer;flex-wrap:wrap}
 .ae-card .ae-row:first-of-type{border-top:0}
-.ae-nm{width:72px;flex:none;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ae-nm{width:64px;flex:none;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ae-mid{flex:1;min-width:150px;line-height:1.45}
 .ae-mut{color:var(--text-muted);font-size:11.5px}
 .ae-chip{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 7px;white-space:nowrap}
@@ -1028,7 +1028,7 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 .ae-chip.gr,.ae-c.gr{background:var(--surface2);color:var(--text-muted)}
 .ae-chip.bl{background:var(--accent-a12,#E8F0FF);color:var(--accent)}
 .ae-btn{font:inherit;font-size:11px;font-weight:800;color:var(--accent);border:1px solid var(--accent-a25,#CFDCFF);border-radius:999px;padding:4px 10px;background:var(--surface);white-space:nowrap;cursor:pointer}
-.ae-bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;width:80px;flex:none}
+.ae-bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;width:56px;flex:none}
 .ae-bar i{display:block;height:100%;border-radius:99px}.ae-bar i.ok{background:var(--good)}.ae-bar i.wa{background:var(--warn)}.ae-bar i.ba{background:var(--danger)}
 .ae-ets{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .ae-et{font:inherit;text-align:left;border:0;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;line-height:1.35}
@@ -1047,3 +1047,5 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 .ae-vide{color:var(--text-muted);font-size:12.5px;padding:6px 0}
 .ae-g2{display:grid;grid-template-columns:1fr;gap:12px}
 @media (min-width:992px){ .ae-row{flex-wrap:nowrap} .ae-mid{min-width:0} .ae-kpis{grid-template-columns:repeat(4,1fr)} .ae-ets{grid-template-columns:repeat(4,1fr)} .ae-g2{grid-template-columns:1fr 1fr} }
+
+.ae-exo{font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;cursor:pointer}
