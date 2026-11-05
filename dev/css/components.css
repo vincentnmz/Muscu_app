@@ -1220,3 +1220,26 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 }
 .sch-opt label { margin:0 !important; }
 .sch-opt input, .sch-rp .sch-r { margin:0 !important; }
+/* 05/11 — « Mon programme » athlète sur mobile : carte compacte (Séries · Reps · RPE sur une ligne, Repos dessous) */
+@media (max-width:600px) {
+  #prog-editor-overlay .pbc { padding:10px 10px; }
+  #prog-editor-overlay .pbc-pres { grid-template-columns:1fr 1.35fr 1fr; gap:6px; margin-top:8px; }
+  #prog-editor-overlay .pbc-repos { grid-column:1 / -1; }
+  #prog-editor-overlay .pbc-f { padding:4px 4px 5px; border-radius:10px; }
+  #prog-editor-overlay .pbc-l { font-size:8.5px; margin-bottom:2px; }
+  #prog-editor-overlay .pbc-v { gap:3px; }
+  #prog-editor-overlay .pbc-v b { font-size:15px; min-width:14px; }
+  #prog-editor-overlay .pbc-st { width:24px; height:24px; font-size:14px; border-radius:7px; }
+  #prog-editor-overlay .pbc .pb-in { width:40px; font-size:15px; padding:3px 2px; border-radius:7px; }
+  #prog-editor-overlay .pbc-reps .pb-in { width:36px; }
+  #prog-editor-overlay select.pbc-rpe { min-width:0 !important; width:100% !important; max-width:64px; padding:3px 2px; font-size:15px !important; }
+  #prog-editor-overlay .pbc-h { font-size:9px; margin-top:2px; }
+  #prog-editor-overlay .pbc-pus { gap:4px; }
+  #prog-editor-overlay .pbc-pu { padding:3px 7px; font-size:12px; }
+  #prog-editor-overlay .pbc-pus .pb-in { width:52px; }
+  #prog-editor-overlay .pbc .pb-in { margin:0 !important; }
+  #prog-editor-overlay .pbc-cat { padding:3px 9px; font-size:10.5px; }
+  #prog-editor-overlay .pbc-nm .pbc-exo { font-size:14px; }
+  /* la bulle « Novalyz IA » ne cache plus le bouton « + Ajouter » en bas de liste */
+  #prog-editor-content { padding-bottom:96px; }
+}
