@@ -1109,3 +1109,7 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 #nv-loadpage .nv-lp-in { text-align:center; background:rgba(255,255,255,.94); border-radius:22px; padding:24px 30px 18px; box-shadow:0 18px 50px rgba(30,10,90,.35); margin-top:-8vh; }
 #nv-loadpage .nvl-ic { display:block; width:84px; height:92px; margin:0 auto 12px; color:#070B14; }
 #nv-loadpage .nv-lp-t { font-size:13px; font-weight:700; color:#55627E; }
+/* Rail coach : logo Novalyz identique à l'espace athlète */
+#coach-rail .cs-brand .as-ic{ width:32px; height:35px; flex:none; color:#0E1A33; }
+#coach-rail .cs-brand .cs-bw{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+#coach-rail .cs-brand .as-wm{ height:15px; width:auto; max-width:140px; color:#0E1A33; display:block; }

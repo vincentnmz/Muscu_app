@@ -2450,6 +2450,10 @@ async function ouvrirEspaceCoach() {
   document.getElementById('header-nom-coach').textContent = coach.nom;
   try { _promptNotifNatifCoach(); } catch (e) {}   // app native : enregistrer le token FCM du coach (alertes athlètes)
   _setSportIco('ct-sport-ico-use', coach && coach.sport);   // icône du header selon le sport
+  // Logo Novalyz en tête du header coach (mobile), comme côté athlète.
+  try { var _ctb = document.getElementById('coach-topbar'), _bi = document.getElementById('brand-ico');
+    if (_ctb && _bi && !document.getElementById('ct-brand-ico')) { var _cl = _bi.cloneNode(true); _cl.id = 'ct-brand-ico'; _ctb.insertBefore(_cl, _ctb.firstChild); }
+    var _si = document.getElementById('ct-sport-ico'); if (_si) _si.style.display = 'none'; } catch (e) {}
   // Identité de rôle (couleur de header + pastille) — coach / prépa
   var _role = (coach && coach.role) || 'coach';
   document.body.dataset.role = _role;
@@ -3111,9 +3115,20 @@ async function _detecterConfirmEmail() {
       ['muscu_athlete', 'muscu_coach'].forEach(function (k) { try { var o = JSON.parse(localStorage.getItem(k) || 'null'); if (o) { o.email_verifie = true; localStorage.setItem(k, JSON.stringify(o)); } } catch (e) {} });
       if (athlete) athlete.email_verifie = true;
       if (coach) coach.email_verifie = true;
-      showToast('✓ Adresse e-mail confirmée');
-    } else showToast((d && d.error) || 'Lien invalide ou expiré.');
-  } catch (e) { showToast('Erreur réseau : la confirmation n\'a pas abouti.'); }
+      _apresChargement(function () { showToast('✓ Adresse e-mail confirmée'); try { document.querySelectorAll('.nv-email-manquant').forEach(function (b) { b.style.display = 'none'; }); } catch (e) {} });
+    } else _apresChargement(function () { showToast((d && d.error) || 'Lien invalide ou expiré.', 'var(--danger)'); });
+  } catch (e) { _apresChargement(function () { showToast('Erreur réseau : la confirmation n\'a pas abouti.', 'var(--danger)'); }); }
+}
+// Attend que l'écran de démarrage / la page de chargement aient disparu
+// (sinon le message est affiché dessous et l'utilisateur ne le voit pas). Max 20 s.
+function _apresChargement(fn) {
+  var t0 = Date.now();
+  (function tick() {
+    var sp = document.getElementById('nv-splash'), lp = document.getElementById('nv-loadpage');
+    var cache = (sp && !sp.classList.contains('off')) || (lp && lp.offsetParent !== null && getComputedStyle(lp).display !== 'none' && getComputedStyle(lp).opacity !== '0');
+    if (cache && Date.now() - t0 < 20000) return setTimeout(tick, 300);
+    setTimeout(fn, 400);
+  })();
 }
 
 // Au chargement : si l'URL contient ?reset_token=…, ouvre l'écran nouveau mdp
@@ -8650,7 +8665,10 @@ function renderCoachRail() {
     : (document.body.classList.contains('athlete-selected') ? 'equipe' : coachDeskSection);
   var navItem = function (sec, label) { return '<button class="cs-item' + (activeSec === sec ? ' on' : '') + '" data-tour="co-' + sec + '" onclick="coachDeskGo(\'' + sec + '\')">' + _COACH_NAVICO[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
   var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
-  rail.innerHTML = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
+  // Même logo que l'espace athlète (icône + mot « Novalyz »), repris du rail athlète.
+  var _asB = document.querySelector('#app-side .as-brand'), _ic = _asB && _asB.querySelector('.as-ic'), _wm = _asB && _asB.querySelector('.as-wm');
+  var _logo = (_ic && _wm) ? _ic.outerHTML + '<div class="cs-bw">' + _wm.outerHTML + '<span>Espace coach</span></div>' : '<span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div>';
+  rail.innerHTML = '<aside class="cs-side"><div class="cs-brand">' + _logo + '</div>'
     + '<nav class="cs-nav">' + navItem('aujourdhui', "Aujourd'hui") + navItem('equipe', 'Équipe') + navItem('analyses', 'Analyses') + navItem('messages', 'Messages') + navItem('profil', 'Profil') + '</nav>'
     + '<div class="cs-me"><span class="cs-av">' + _coachDeskInit(coachNom) + '</span><div style="flex:1;min-width:0"><b>' + escapeHtml(coachNom) + '</b><span>Coach · ' + (k.total || 0) + ' athlète' + ((k.total || 0) > 1 ? 's' : '') + '</span></div></div>'
     + '<button class="cs-logout" onclick="seDeconnecterCoach()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Déconnexion</button>'
@@ -9201,7 +9219,7 @@ function renderProgrammeCoach() {
         +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')"><i class=nv-ic-pencil></i></span>'
         + '</div>'
         + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, repsLbl, 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
-        + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]) + moveSel(l, seanceId))
+        + blocEditE(l, seanceId, null, '<button class="pbc-link" style="margin-top:10px" onclick="pbcEnchainer(' + l.row_index + ',\'' + String(seanceId).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">🔗 Enchaîner avec un exercice</button>' + moveSel(l, seanceId))
         + '</div>';
     };
     var carteCardio = function (l, seanceId) {
@@ -9226,7 +9244,8 @@ function renderProgrammeCoach() {
         else unites.push({ type: 'single', ligne: l });
       });
       var cartes = unites.map(function (u) {
-        if (u.type === 'single') return u.ligne.type === 'cardio' ? carteCardio(u.ligne, seanceId) : carteMuscu(u.ligne, seanceId);
+        if (u.type === 'single') return u.ligne.type === 'cardio' ? carteCardio(u.ligne, seanceId) : _pbcRowHtml(u.ligne, seanceId);   // 05/11 : carte commune
+        if (u.membres.every(function (m) { return m.type !== 'cardio'; })) return _pbcBlocHtml(u.membres, seanceId, u.groupeId);
         var coul = couleurGroupe(u.groupeId); var noms = u.membres.map(function (m) { return m.exercice; });
         return '<div class="prog-exc" style="border-left:4px solid ' + coul + '">'
           + '<div style="font-size:11px;font-weight:800;color:' + coul + ';margin-bottom:6px;letter-spacing:.3px">🔗 SUPERSET · ' + u.membres.length + ' exos</div>'
@@ -9266,28 +9285,9 @@ function renderProgrammeCoach() {
     var exoOptions = function (sel) { return exercicesData.map(function (e) { return '<option value="' + esc(e.exercice).replace(/"/g, '&quot;') + '"' + (e.exercice === sel ? ' selected' : '') + '>' + esc(e.exercice) + '</option>'; }).join(''); };
     var bNum = function (val, ph, handler) { return '<input type="number" class="pb-in" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + ph + '" onchange="' + handler + '">'; };
     var musColOf = function (lg) { for (var i = 0; i < lg.length; i++) { if (lg[i].type !== 'cardio') return _progMuscleCol(muscleDe(lg[i].exercice)); } return '#9D5FD3'; };
-    var rowMuscu = function (l, sid) {
-      var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/'/g, "\\'"), ri = l.row_index;
-      // Ligne en 2 niveaux : (1) nom complet + suppr ; (2) paramètres (séries/reps/%/RPE/repos)
-      // sur leur propre ligne qui peut s'enrouler → plus de débordement desktop (case RPE /
-      // repos) et le nom reste lisible en entier.
-      return '<div class="pb-row pb-row-muscu" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
-        + gripSvg
-        + '<div class="pb-exn"><span class="dot" style="background:' + gcol + '"></span><div class="pb-exn-c">'
-        +   '<select class="pb-exo" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
-        +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div></div>'
-        + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
-        + '<div class="pb-flds">'
-        +   '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
-        +   '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div>' + _pbFchNote(l) + '</div>'
-        +   '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
-        +   '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
-        +   '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
-        +   '<div class="pb-fld pb-cat"><span class="pb-l">Catégorie</span>' + _exoCatSelectHtml(l.exercice, 'pb-in') + '</div>'
-        + '</div>'
-        + _schemaControlsHtml(l, sid)
-        + '</div>';
-    };
+    // 05/11 (maquette carte-exercice-programme.html validée) : carte lisible — en-tête (nom, muscle, catégorie en
+    // 2 boutons, menu ⋯), ligne de prescription (séries ±, reps, RPE, repos en puces), résumé, réglages avancés repliés.
+    var rowMuscu = function (l, sid, lab) { return _pbcRowHtml(l, sid, lab); };   // carte commune (ordi + mobile, coach + athlète)
     var rowCardio = function (l, sid) {
       var ri = l.row_index;
       var actOpts = _PROG_CARDIO.map(function (a) { return '<option value="' + esc(a[0]).replace(/"/g, '&quot;') + '"' + (a[0] === l.exercice ? ' selected' : '') + '>' + a[1] + ' ' + esc(a[0]) + '</option>'; }).join('');
@@ -9309,10 +9309,7 @@ function renderProgrammeCoach() {
       });
       return unites.map(function (u) {
         if (u.type === 'single') return u.ligne.type === 'cardio' ? rowCardio(u.ligne, sid) : rowMuscu(u.ligne, sid);
-        var coul = couleurGroupe(u.groupeId);
-        return '<div class="pb-superset" style="border-left:3px solid ' + coul + '"><div class="pb-superset-h" style="color:' + coul + '">🔗 Superset · ' + u.membres.length + ' exos</div>'
-          + u.membres.map(function (m) { return rowMuscu(m, sid); }).join('')
-          + '<div class="pb-superset-lier">' + selLier(u.membres[0], sid, u.membres.map(function (m) { return m.exercice; })) + '</div></div>';
+        return _pbcBlocHtml(u.membres, sid, u.groupeId);
       }).join('');
     };
     // ── Rail des jours ──
@@ -9377,6 +9374,7 @@ function renderProgrammeCoach() {
       if (u.type === 'single') {
         const l = u.ligne;
         const isCard = l.type === 'cardio';
+        if (!ro && !isCard) return _pbcRowHtml(l, seanceId);   // 05/11 : carte commune
         return `
         <div style="background:var(--surface);border:1px solid var(--border);${isCard ? 'border-left:4px solid #9D5FD3;' : ''}border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
           ${ligneLecture(l)}
@@ -9384,6 +9382,7 @@ function renderProgrammeCoach() {
         </div>`;
       }
       // Superset : une seule carte avec tous les membres empilés
+      if (!ro && u.membres.every(m => m.type !== 'cardio')) return _pbcBlocHtml(u.membres, seanceId, u.groupeId);   // 05/11 : bloc commun
       const coul = couleurGroupe(u.groupeId);
       const nomsMembres = u.membres.map(m => m.exercice);
       return `
@@ -9574,6 +9573,119 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   return _cdPersistLigne(ligne);
 }
 
+// ═══ Carte d'exercice commune (05/11, maquette carte-exercice-programme.html) — ordi + mobile, coach + athlète ═══
+var _PBC_GRIP = '<span class="prog-grip" title="Glisser pour déplacer"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg></span>';
+function _pbcRpeOptions(cur) { var c = (cur == null) ? '' : String(cur); return '<option value=""' + (c === '' ? ' selected' : '') + '>—</option>' + [6, 7, 8, 9, 10].map(function (r) { return '<option value="' + r + '"' + (c === String(r) ? ' selected' : '') + '>' + r + '</option>'; }).join(''); }   // libellés courts : jamais coupés
+function _pbcNum(val, ph, handler) { return '<input type="number" inputmode="numeric" class="pb-in" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + ph + '" onchange="' + handler + '">'; }
+function _pbcExoOptions(sel) { var esc = escapeHtml, has = false; var o = (exercicesData || []).map(function (e) { if (e.exercice === sel) has = true; return '<option value="' + esc(e.exercice).replace(/"/g, '&quot;') + '"' + (e.exercice === sel ? ' selected' : '') + '>' + esc(e.exercice) + '</option>'; }).join(''); return (has || !sel ? '' : '<option selected value="' + esc(sel).replace(/"/g, '&quot;') + '">' + esc(sel) + '</option>') + o; }
+function _pbcRowHtml(l, sid, lab) {
+  var esc = escapeHtml, muscleDe = _pbcMuscle, bNum = _pbcNum, gripSvg = _PBC_GRIP, exoOptions = _pbcExoOptions;
+      var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/\\/g, '\\\\').replace(/'/g, "\\'"), ri = l.row_index;
+      var cat = ''; try { cat = _exoCat(l.exercice, _exoCatMap(_progAthleteId())); } catch (e) {}
+      var nomJs = String(l.exercice || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      var catBtn = function (k, t) { var on = (cat === k) || (k === 'moyen' && cat === 'gros'); return '<button class="pbc-cat' + (on ? ' on' : '') + '" onclick="_exoCatSet(\'' + nomJs + '\',\'' + (on ? '' : k) + '\')" title="' + (on ? 'Retirer la catégorie' : 'Classer l\'exercice') + '">' + t + '</button>'; };
+      var fx = null; try { fx = _exoFourchette(l.exercice, _numOk(l.reps_mini) ? Number(l.reps_mini) : null, _numOk(l.reps_max) ? Number(l.reps_max) : null, _exoCatMap(_progAthleteId())); } catch (e) {}
+      var rmin = fx && fx.rmin, rmax = fx && fx.rmax, nS = Number(l.series_prevues) || 0, rp = Number(l.repos_sec) || 0;
+      var reposTxt = function (x) { return !x ? '—' : (x < 60 ? x + ' s' : (x % 60 ? Math.floor(x / 60) + ' min ' + (x % 60) : (x / 60) + ' min')); };
+      var puce = function (v) { return '<button class="pbc-pu' + (rp === v ? ' on' : '') + '" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,' + v + ',null)">' + v + '</button>'; };
+      var res = (nS || '–') + ' × ' + (rmin && rmax ? (rmin === rmax ? rmin : rmin + '–' + rmax) : '–') + ' reps' + (l.rpe_cible ? ' · RPE ' + l.rpe_cible : '') + (rp ? ' · repos ' + reposTxt(rp) : '');
+      var adv = !!(window._pbcAdvOpen && window._pbcAdvOpen[ri]);
+      return '<div class="pb-row pb-row-muscu pbc" data-ri="' + ri + '" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+        + '<div class="pbc-hd">' + gripSvg + (lab ? '<span class="pbc-lab">' + esc(lab) + '</span>' : '')
+        +   '<div class="pbc-nm"><select class="pb-exo pbc-exo" title="Remplacer l\'exercice" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
+        +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div>'
+        +   '<div class="pbc-cats">' + catBtn('moyen', 'Lourd / moyen · 6–12') + catBtn('petit', 'Léger · 8–20') + '</div>'
+        +   '<button class="pbc-dots" title="Actions" onclick="pbcMenu(event,' + ri + ',\'' + sj + '\')">⋯</button></div>'
+        + '<div class="pbc-pres">'
+        +   '<div class="pbc-f"><span class="pbc-l">Séries</span><div class="pbc-v"><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.max(1, nS - 1) + ',null,null,null,null)">−</button><b>' + (nS || '–') + '</b><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.min(15, (nS || 0) + 1) + ',null,null,null,null)">+</button></div></div>'
+        +   '<div class="pbc-f pbc-reps"><span class="pbc-l">Reps</span><div class="pbc-v">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div>'
+        +     (fx && fx.src === 'cat' ? '<span class="pbc-h">appliqué : ' + rmin + '–' + rmax + ' (catégorie)</span>' : '') + '</div>'
+        +   '<div class="pbc-f"><span class="pbc-l">RPE cible</span><select class="pb-in pbc-rpe" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _pbcRpeOptions(l.rpe_cible) + '</select>'
+        +     (l.rpe_cible ? '<span class="pbc-h">≈ ' + Math.max(0, 10 - Number(l.rpe_cible)) + ' rep' + (10 - Number(l.rpe_cible) > 1 ? 's' : '') + ' en réserve</span>' : '') + '</div>'
+        +   '<div class="pbc-f pbc-repos"><span class="pbc-l">Repos (s)</span><div class="pbc-pus">' + [60, 90, 120, 180].map(puce).join('') + bNum(l.repos_sec, 's', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div></div>'
+        + '</div>'
+        + '<div class="pbc-sum">Résumé : <b>' + esc(res) + '</b></div>'
+        + (lab ? '' : '<button class="pbc-link" onclick="pbcEnchainer(' + ri + ',\'' + sj + '\')">🔗 Enchaîner avec un exercice (superset, biset…)</button>')
+        + '<button class="pbc-advt" onclick="pbcAdv(' + ri + ')">' + (adv ? '▾' : '▸') + ' Réglages avancés (% 1RM, schéma de séries, série par série)</button>'
+        + '<div class="pbc-adv"' + (adv ? '' : ' style="display:none"') + '><div class="pbc-f"><span class="pbc-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>' + _schemaControlsHtml(l, sid) + '</div>'
+        + '</div>';
+    }
+function _pbcBlocHtml(membres, sid, G0) {
+  var esc = escapeHtml;
+  // 05/11 : bloc enchaîné — nom automatique (biset / superset / triset / circuit), repères A1 / A2, tours, repos du bloc.
+        var G = String(G0), sjG = String(sid).replace(/\\/g, '\\\\').replace(/'/g, "\\'"), last = membres[membres.length - 1];
+        var tours = Number(membres[0].series_prevues) || 0, rpB = Number(last.repos_sec) || 0;
+        var rTxt = !rpB ? '' : (rpB < 60 ? rpB + ' s' : (rpB % 60 ? Math.floor(rpB / 60) + ' min ' + (rpB % 60) : (rpB / 60) + ' min'));
+        return '<div class="pbc-blk"><div class="pbc-blkh"><span class="pbc-blkl">' + esc(G) + '</span>' + esc(_blocNom(membres)) + (tours ? ' · ' + tours + ' tour' + (tours > 1 ? 's' : '') : '') + '<span class="pbc-blkr">' + (rTxt ? 'repos ' + rTxt + ' après le bloc · ' : '') + 'enchaîné sans repos</span></div>'
+          + membres.map(function (m, k) { return (k ? '<div class="pbc-arrow">↓ enchaîné sans repos</div>' : '') + _pbcRowHtml(m, sid, G + (k + 1)); }).join('')
+          + '<div class="pbc-blkf"><button class="pbc-link" onclick="pbcEnchainer(' + last.row_index + ',\'' + sjG + '\')">＋ Ajouter un exercice' + (membres.length === 2 ? ' (→ Triset)' : '') + '</button><button class="pbc-link pbc-gris" onclick="pbcDefaire(\'' + G.replace(/'/g, "\\'") + '\',\'' + sjG + '\')">Défaire le bloc</button></div></div>';
+}
+// ── Blocs enchaînés (05/11) ──
+function _pbcMuscle(nom) { try { var e = (exercicesData || []).filter(function (x) { return x && String(x.exercice).trim() === String(nom).trim(); })[0]; return (e && e.muscle) || ''; } catch (e) { return ''; } }
+function _blocNom(membres) {
+  var n = (membres || []).length; if (n >= 4) return 'Circuit'; if (n === 3) return 'Triset'; if (n < 2) return 'Bloc';
+  var a = _musKey(_pbcMuscle(membres[0].exercice)), b = _musKey(_pbcMuscle(membres[1].exercice));
+  return (a && b && a === b) ? 'Biset' : 'Superset';
+}
+window._pbcAdvOpen = window._pbcAdvOpen || {};
+function pbcAdv(ri) { window._pbcAdvOpen[ri] = !window._pbcAdvOpen[ri]; try { renderProgrammeCoach(); } catch (e) {} }
+function pbcDefaire(g, sid) {
+  var M = (cdProgrammeLignes || []).filter(function (l) { return String(l.seance_id) === String(sid) && String(l.groupe_id) === String(g); });
+  M.forEach(function (l) { l.groupe_id = ''; cdSauverLigne(l.row_index, sid, null, null, null, null, null, ''); });
+  try { renderProgrammeCoach(); } catch (e) {}
+}
+function _pbcClose() { var m = document.getElementById('pbc-menu'); if (m) m.remove(); document.removeEventListener('click', _pbcClose, true); }
+function pbcMenu(ev, ri, sid) {
+  try { ev.stopPropagation(); } catch (e) {}
+  _pbcClose();
+  var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === ri; })[0]; if (!l) return;
+  var autres = []; (cdProgrammeLignes || []).forEach(function (x) { var s2 = String(x.seance_id); if (s2 !== String(sid) && autres.indexOf(s2) < 0) autres.push(s2); });
+  var sj = String(sid).replace(/\\/g, '\\\\').replace(/'/g, "\\'"), esc = escapeHtml;
+  var m = document.createElement('div'); m.id = 'pbc-menu';
+  m.innerHTML = '<button onclick="_pbcClose();pbcEnchainer(' + ri + ',\'' + sj + '\')">🔗 Enchaîner avec…</button>'
+    + (autres.length ? '<div class="pbc-mt">⇅ Déplacer vers</div>' + autres.map(function (s2) { return '<button class="pbc-sub" onclick="_pbcClose();cdDeplacerLigne(' + ri + ',\'' + s2.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + esc(s2) + '</button>'; }).join('') : '')
+    + '<button onclick="_pbcClose();pbcDupliquer(' + ri + ')">⧉ Dupliquer</button>'
+    + '<button onclick="_pbcClose();var s=document.querySelector(\'.pbc[data-ri=&quot;' + ri + '&quot;] .pbc-exo\');if(s){s.focus();try{s.showPicker()}catch(e){}}">↔ Remplacer l\'exercice</button>'
+    + (l.groupe_id ? '<button onclick="_pbcClose();cdRetirerDuGroupe(' + ri + ',\'' + sj + '\')">⛓ Sortir du bloc</button>' : '')
+    + '<button class="pbc-red" onclick="_pbcClose();cdSupprimerLigne(' + ri + ')">✕ Supprimer</button>';
+  document.body.appendChild(m);
+  var r = ev.currentTarget ? ev.currentTarget.getBoundingClientRect() : { right: ev.clientX, bottom: ev.clientY };
+  m.style.top = Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 6) + 'px'; m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px';
+  setTimeout(function () { document.addEventListener('click', _pbcClose, true); }, 0);
+}
+async function pbcDupliquer(ri) {
+  var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === ri; })[0]; if (!l) return;
+  var body = { action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: l.seance_id, exercice: l.exercice, series_prevues: l.series_prevues, reps_mini: l.reps_mini, reps_max: l.reps_max, repos_sec: l.repos_sec, groupe_id: '', jour: l.jour != null ? l.jour : '', charge_pct_1rm: l.charge_pct_1rm != null ? l.charge_pct_1rm : '', rpe_cible: l.rpe_cible != null ? l.rpe_cible : '', type: l.type || 'muscu', schema: l.schema || '', backoff_pct: l.backoff_pct != null ? l.backoff_pct : '', series_json: l.series_json || '' };
+  try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); showToast('Exercice dupliqué'); } catch (e) { showToast('Erreur réseau', '#ff4444'); }
+  chargerProgrammeCoach();
+}
+// « Enchaîner avec… » : exercice de la séance ou du catalogue ; le type de bloc obtenu est affiché.
+var _pbcEnc = { ri: null, sid: null, onglet: 'seance', q: '' };
+function pbcEnchainer(ri, sid) { _pbcEnc = { ri: ri, sid: sid, onglet: 'seance', q: '' }; _pbcEncRender(); }
+function _pbcEncRender() {
+  var E = _pbcEnc, esc = escapeHtml;
+  var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === E.ri; })[0]; if (!l) return;
+  var membres = l.groupe_id ? (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.groupe_id === l.groupe_id; }) : [l];
+  var dans = membres.map(function (x) { return String(x.exercice).trim(); });
+  var typeSi = function (nom) { return _blocNom(membres.concat([{ exercice: nom }])); };
+  var liste = E.onglet === 'seance'
+    ? (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.type !== 'cardio' && dans.indexOf(String(x.exercice).trim()) < 0; }).map(function (x) { return x.exercice; })
+    : (exercicesData || []).map(function (x) { return x.exercice; }).filter(function (n) { return dans.indexOf(String(n).trim()) < 0 && (!E.q || String(n).toLowerCase().indexOf(E.q.toLowerCase()) >= 0); }).slice(0, 60);
+  var ov = document.getElementById('msgx-plus'); if (!ov) { ov = document.createElement('div'); ov.id = 'msgx-plus'; document.body.appendChild(ov); }
+  ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">Enchaîner ' + esc(l.exercice) + ' avec<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
+    + '<div class="msgx-chips"><button class="msgx-f' + (E.onglet === 'seance' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'seance\';_pbcEncRender()">Dans cette séance</button><button class="msgx-f' + (E.onglet === 'cat' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'cat\';_pbcEncRender()">Tout le catalogue</button></div>'
+    + (E.onglet === 'cat' ? '<input class="msgx-s" style="margin-top:8px" placeholder="Rechercher un exercice…" value="' + esc(E.q) + '" oninput="_pbcEnc.q=this.value;_pbcEncListe()">' : '')
+    + '<div id="pbc-enc-l">' + _pbcEncItems(liste, typeSi) + '</div>'
+    + '<div class="msgx-vide" style="padding:8px 0 0">Biset = même muscle · Superset = muscles différents · Triset = 3 · Circuit = 4 et plus. En séance, les exercices s\'enchaînent sans repos ; le repos vient après le bloc.</div></div>';
+  ov.onclick = msgPlusFermer; ov.style.display = 'flex';
+  if (E.onglet === 'cat') { var inp = ov.querySelector('.msgx-s'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+}
+function _pbcEncListe() { var c = document.getElementById('pbc-enc-l'); if (!c) return _pbcEncRender(); var E = _pbcEnc; var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === E.ri; })[0]; var membres = l && l.groupe_id ? (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.groupe_id === l.groupe_id; }) : [l]; var dans = membres.map(function (x) { return String(x.exercice).trim(); }); var liste = (exercicesData || []).map(function (x) { return x.exercice; }).filter(function (n) { return dans.indexOf(String(n).trim()) < 0 && (!E.q || String(n).toLowerCase().indexOf(E.q.toLowerCase()) >= 0); }).slice(0, 60); c.innerHTML = _pbcEncItems(liste, function (nom) { return _blocNom(membres.concat([{ exercice: nom }])); }); }
+function _pbcEncItems(liste, typeSi) {
+  if (!liste.length) return '<div class="msgx-vide">' + (_pbcEnc.onglet === 'seance' ? 'Aucun autre exercice dans cette séance : cherche dans le catalogue.' : 'Aucun exercice trouvé.') + '</div>';
+  return liste.map(function (n) { var nj = String(n).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); var mu = _pbcMuscle(n); return '<button class="pbc-it" onclick="pbcLier(\'' + nj + '\')"><span>' + escapeHtml(n) + '</span><span class="pbc-itt">' + (mu ? escapeHtml(mu) + ' → ' : '') + typeSi(n) + '</span></button>'; }).join('');
+}
+async function pbcLier(nom) { var E = _pbcEnc; msgPlusFermer(); await cdLierExerciceParNom(E.ri, E.sid, nom); try { renderProgrammeCoach(); } catch (e) {} }
 function genGroupeId(seanceId) {
   const utilises = new Set(cdProgrammeLignes.filter(l => l.seance_id === seanceId && l.groupe_id).map(l => l.groupe_id));
   const lettres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -12040,7 +12152,7 @@ function majBanniereSuperset() {
   const noms = supersetGroupe.map((p, i) => i === supersetIdx
     ? `<strong style="color:${couleur}">${p.exercice}</strong>`
     : `<span style="color:var(--text-muted)">${p.exercice}</span>`).join(' → ');
-  el.innerHTML = `<div style="font-size:13px;font-weight:800;color:${couleur}">${ic('link')} Superset · Tour ${supersetTour}/${supersetTotalTours}</div><div style="font-size:11px;margin-top:3px">${noms}</div>`;
+  el.innerHTML = `<div style="font-size:13px;font-weight:800;color:${couleur}">${ic('link')} ${_blocNom(supersetGroupe)} · Tour ${supersetTour}/${supersetTotalTours}</div><div style="font-size:11px;margin-top:3px">${noms}</div>`;
 }
 
 function avancerSuperset(reposVal) {

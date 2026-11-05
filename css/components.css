@@ -1109,3 +1109,79 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 #coach-reglages-drawer .sub-tabs, #coach-reglages-drawer .crg-panel, #coach-reglages-drawer .crg-panel > * { flex-shrink:0; }
 
 html.crg-open, html.crg-open body { overflow:hidden !important; }   /* Profil coach ouvert : pas de 2e barre de défilement (05/11) */
+
+/* ===== Carte d'exercice commune + blocs enchaînés (05/11, maquette carte-exercice-programme.html) =====
+   Ordi + mobile, coach + athlète. Aucune largeur fixe qui coupe le texte : grille auto qui passe à la ligne. */
+.pbc, #prog-editor-overlay .pb-row.pbc { display:block !important; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:11px 12px; margin-bottom:10px; box-sizing:border-box; min-width:0; }
+.pbc-hd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
+.pbc-hd .prog-grip { display:inline-flex; color:var(--text-subtle); flex:none; }
+.pbc-lab { flex:none; width:28px; height:28px; border-radius:8px; background:rgba(124,92,255,.12); color:#5B3DF0; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; }
+.pbc-nm { flex:1 1 180px; min-width:0; }
+.pbc-nm .pbc-exo { width:100%; max-width:100%; border:0; background:transparent; font:inherit; font-size:15px; font-weight:800; color:var(--text); padding:2px 0; cursor:pointer; text-overflow:ellipsis; -webkit-appearance:none; appearance:none; }
+.pbc-nm small { display:block; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; margin-top:1px; }
+.pbc-cats { display:flex; gap:6px; flex-wrap:wrap; }
+.pbc-cat { font:inherit; font-size:11px; font-weight:800; border-radius:999px; padding:4px 10px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; white-space:nowrap; }
+.pbc-cat.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+.pbc-dots { flex:none; width:32px; height:32px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:16px; font-weight:800; cursor:pointer; line-height:1; }
+.pbc-pres { display:grid; grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)); gap:8px; margin-top:10px; }
+.pbc-f { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:6px 8px 7px; text-align:center; min-width:0; box-sizing:border-box; }
+.pbc-l { display:block; font-size:9.5px; font-weight:800; color:var(--text-subtle); text-transform:uppercase; letter-spacing:.05em; margin-bottom:3px; white-space:nowrap; }
+.pbc-v { display:flex; align-items:center; justify-content:center; gap:6px; min-width:0; }
+.pbc-v b { font-size:17px; min-width:18px; }
+.pbc-v i { font-style:normal; color:var(--text-subtle); }
+.pbc-st { width:26px; height:26px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--accent); font:inherit; font-weight:800; font-size:15px; cursor:pointer; padding:0; flex:none; }
+.pbc .pb-in { width:52px; min-width:0; box-sizing:border-box; text-align:center; font:inherit; font-size:15px; font-weight:800; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:5px 4px; }
+.pbc-reps .pb-in { width:48px; }
+.pbc-rpe.pb-in, select.pbc-rpe { width:100%; max-width:110px; font-size:14px; padding:5px 6px; }
+.pbc-h { display:block; font-size:10px; color:var(--text-subtle); margin-top:3px; line-height:1.3; }
+.pbc-repos { grid-column:span 2; }
+.pbc-pus { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; align-items:center; }
+.pbc-pu { font:inherit; font-size:12px; font-weight:800; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:8px; padding:4px 7px; cursor:pointer; }
+.pbc-pu.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+.pbc-pus .pb-in { width:56px; font-size:13px; }
+.pbc-sum { margin-top:8px; font-size:12px; color:var(--text-muted); line-height:1.4; }
+.pbc-sum b { color:var(--text); }
+.pbc-link { display:inline-block; margin-top:8px; font:inherit; font-size:12px; font-weight:800; color:var(--accent); border:1px dashed var(--accent-a25,#9DB8FF); background:var(--accent-a08,#F7F9FF); border-radius:10px; padding:7px 10px; cursor:pointer; text-align:left; }
+.pbc-link.pbc-gris { color:var(--text-muted); border-color:var(--border); background:var(--surface); border-style:solid; }
+.pbc-advt { display:block; margin-top:8px; font:inherit; font-size:12px; font-weight:800; color:var(--accent); background:none; border:0; padding:0; cursor:pointer; text-align:left; }
+.pbc-adv { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start; }
+.pbc-adv > .pbc-f { flex:0 0 auto; }
+.pbc-adv .sch-wrap { flex:1 1 240px; min-width:0; }
+.pbc-blk { border-radius:16px; padding:10px; margin-bottom:12px; background:linear-gradient(180deg, rgba(124,92,255,.08), transparent); border:1px solid rgba(124,92,255,.28); }
+.pbc-blkh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 2px 8px; font-size:13px; font-weight:800; color:#5B3DF0; }
+.pbc-blkl { background:#5B3DF0; color:#fff; border-radius:7px; padding:2px 8px; font-size:11px; }
+.pbc-blkr { margin-left:auto; font-size:11px; font-weight:700; color:var(--text-muted); }
+.pbc-blk .pbc { margin-bottom:4px; }
+.pbc-arrow { text-align:center; color:#7C5CFF; font-size:11px; font-weight:800; margin:2px 0 6px; }
+.pbc-blkf { display:flex; gap:8px; flex-wrap:wrap; }
+#pbc-menu { position:fixed; z-index:1500; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 34px rgba(14,26,51,.18); padding:6px; min-width:210px; max-height:70vh; overflow:auto; }
+#pbc-menu button { display:block; width:100%; text-align:left; font:inherit; font-size:13px; background:none; border:0; border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--text); }
+#pbc-menu button:hover { background:var(--surface2); }
+#pbc-menu .pbc-sub { padding-left:22px; font-size:12.5px; color:var(--text-muted); }
+#pbc-menu .pbc-mt { font-size:10.5px; font-weight:800; color:var(--text-subtle); text-transform:uppercase; letter-spacing:.05em; padding:6px 10px 2px; }
+#pbc-menu .pbc-red { color:var(--danger); }
+.pbc-it { display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; font:inherit; font-size:13px; padding:9px 4px; border:0; border-top:1px solid var(--border); background:none; cursor:pointer; color:var(--text); }
+.pbc-itt { font-size:11px; font-weight:800; color:var(--text-muted); white-space:nowrap; }
+@media (max-width:420px) { .pbc-pres { grid-template-columns:1fr 1fr; } .pbc-repos { grid-column:1 / -1; } }
+/* 05/11 : RPE jamais coupé ; éditeur ordi étroit (coach : rail coach + fiche) → la colonne de droite passe sous le plan. */
+select.pbc-rpe { width:auto !important; min-width:96px; max-width:100%; }
+@media (min-width:992px) and (max-width:1359.98px) {
+  #prog-editor-overlay .pb-builder { grid-template-columns:200px minmax(0,1fr) !important; }
+  #prog-editor-overlay .pb-insp { grid-column:1 / -1; display:grid !important; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; border-left:0 !important; border-top:1px solid var(--border); }
+}
+
+/* 05/11 (mobile) : ⋯ en haut à droite (plus seul sur sa ligne), nom sur la ligne de la poignée, RPE court. */
+.pbc, #prog-editor-overlay .pb-row.pbc { position:relative; }
+.pbc-hd { padding-right:40px; }
+.pbc-dots { position:absolute; top:9px; right:9px; }
+.pbc-nm { flex:1 1 0; }
+.pbc-cats { flex:1 1 100%; }
+@media (min-width:1100px) { .pbc-cats { flex:0 1 auto; } }
+select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
+/* Carte exercice — très petit écran (≤420px) : champs Reps jamais coupés */
+@media (max-width:420px) {
+  .pbc-f { padding:6px 5px 7px; }
+  .pbc-reps .pbc-v { gap:3px; }
+  .pbc-reps .pb-in { width:42px; padding:5px 2px; }
+}
+#coach-topbar #ct-brand-ico { width:26px; height:28px; flex-shrink:0; color:var(--text); }
