@@ -1107,3 +1107,5 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 /* 05/11 (retour porteur) : dans le tiroir Profil coach (colonne flex qui défile), la barre d'onglets et les
    panneaux ne doivent jamais rétrécir — sinon, quand le contenu dépasse la hauteur, les onglets s'écrasaient à 4 px. */
 #coach-reglages-drawer .sub-tabs, #coach-reglages-drawer .crg-panel, #coach-reglages-drawer .crg-panel > * { flex-shrink:0; }
+
+html.crg-open, html.crg-open body { overflow:hidden !important; }   /* Profil coach ouvert : pas de 2e barre de défilement (05/11) */

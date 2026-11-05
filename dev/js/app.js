@@ -1861,7 +1861,7 @@ window.addEventListener('load', async () => {
     try {
       coach = JSON.parse(savedCoach);
       await ouvrirEspaceCoach();
-      _nvSplashHide();
+      // 05/11 : l'écran de démarrage (logo animé) reste jusqu'à la fin de l'analyse d'équipe (renderCoachSynthese) ; sécurité 12 s.
       return;
     } catch(e) { localStorage.removeItem('muscu_coach'); }
   }
@@ -2330,6 +2330,7 @@ function ouvrirReglagesCoach() {
   // estompé, panneau opaque en flex-colonne, contenu scrollable.
   if (overlay) { overlay.style.display = 'none'; }
   if (drawer)  { drawer.style.display = 'flex'; window.scrollTo({ top: 0, behavior: 'instant' }); }
+  try { document.documentElement.classList.add('crg-open'); } catch (_) {}   // 05/11 : la page derrière ne défile plus (une seule barre)
 }
 
 // Enregistre le sport choisi (backend col E) puis rafraîchit les libellés.
@@ -2380,6 +2381,7 @@ async function enregistrerRecapFreqCoach() {
 }
 
 function fermerReglagesCoach() {
+  try { document.documentElement.classList.remove('crg-open'); } catch (_) {}
   document.getElementById('coach-reglages-overlay').style.display = 'none';
   document.getElementById('coach-reglages-drawer').style.display = 'none';
   if (coachDeskOverlay === 'profil') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
@@ -4820,6 +4822,28 @@ function _coachEntrLigne(d) {
   return txt ? { txt: txt, P: P, exo: g ? g.exo : null } : null;
 }
 
+// Page de chargement plein écran avec le logo animé (05/11, demande porteur) — pendant les chargements longs.
+var _nvLpT0 = 0;
+function nvChargementPage(on, txt) {
+  try {
+    var el = document.getElementById('nv-loadpage');
+    if (on) {
+      if (document.getElementById('nv-splash') && !document.getElementById('nv-splash').classList.contains('off')) return;   // l'écran de démarrage est déjà là
+      if (!el) {
+        el = document.createElement('div'); el.id = 'nv-loadpage'; el.setAttribute('aria-live', 'polite');
+        var svg = '';
+        try { var src = document.querySelector('svg.nvl-ic'); if (src) svg = src.outerHTML.replace(/nvl-(X|A2|B2)/, Math.random() < .5 ? 'nvl-A2' : 'nvl-B2'); } catch (e) {}
+        el.innerHTML = '<div class="nv-lp-in">' + svg + '<div class="nv-lp-t"></div></div>';
+        document.body.appendChild(el);
+      }
+      el.querySelector('.nv-lp-t').textContent = txt || 'Chargement…';
+      el.classList.remove('off'); _nvLpT0 = Date.now();
+    } else if (el && !el.classList.contains('off')) {
+      var reste = 900 - (Date.now() - _nvLpT0);   // le temps de voir le logo se construire
+      setTimeout(function () { el.classList.add('off'); }, Math.max(0, reste));
+    }
+  } catch (e) {}
+}
 var _coachSynthCache = {};   // écran 9 (05/11) : données par athlète, réutilisées quand on change de groupe (pas de rechargement réseau)
 async function renderCoachSynthese(athletes, depuisCache) {
   const el = document.getElementById('coach-synthese');
@@ -4827,9 +4851,11 @@ async function renderCoachSynthese(athletes, depuisCache) {
   if (!el) return;
   if (!athletes || athletes.length === 0) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
+    try { _nvSplashHide(); } catch (_) {}
     return;
   }
-  if (!depuisCache) el.innerHTML = '<div class="loader">Analyse des athlètes…</div>';
+  if (!depuisCache) { el.innerHTML = '<div class="loader">Analyse des athlètes…</div>'; nvChargementPage(true, 'Analyse de ton équipe…'); }
+  try {
 
   // Charge les données de chaque athlète (mêmes calculs que la page détail)
   const datas = await Promise.all(athletes.map(async a => {
@@ -5271,6 +5297,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
     `<div id="coach-sec-analyses" style="display:none">${_coachGrpChips() + analysesHtml}</div>`;
   coachBandeauApply();
   try { coachEquipeFilter(); } catch (_) {}
+  } finally { nvChargementPage(false); try { _nvSplashHide(); } catch (_) {} }
 }
 
 // ===== Recherche + filtres de la section Équipe =============================
