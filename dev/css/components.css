@@ -1104,3 +1104,6 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
 .crgx-sel{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font:inherit;font-size:13px;box-sizing:border-box}
 .crgx-push{background:#1C2333;color:#fff;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.45;margin-bottom:6px}.crgx-push b{display:block;font-size:12.5px}
 .crgx-grps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+/* 05/11 (retour porteur) : dans le tiroir Profil coach (colonne flex qui défile), la barre d'onglets et les
+   panneaux ne doivent jamais rétrécir — sinon, quand le contenu dépasse la hauteur, les onglets s'écrasaient à 4 px. */
+#coach-reglages-drawer .sub-tabs, #coach-reglages-drawer .crg-panel, #coach-reglages-drawer .crg-panel > * { flex-shrink:0; }
