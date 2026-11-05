@@ -84,6 +84,11 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
     eq(await chk('getAppData', { athlete_id: 'A1', _t: tC1 }), 'coach C1 → son athlète A1');
     eq(!(await chk('getAppData', { athlete_id: 'A2', _t: tC1 })), 'coach C1 → athlète A2 (non lié) refusé');
     eq(await chk('getCoachAthletes', { coach_id: 'C1', _t: tC1 }), 'coach C1 → sa liste');
+    // 05/11 : jeton push du coach rangé sous « coach:<id> » (refus = déconnexion sur mobile).
+    eq(await chk('saveNativePushToken', { _t: tC1 }, { athlete_id: 'coach:C1', token: 'x' }), 'coach C1 → son jeton push (coach:C1)');
+    eq(!(await chk('saveNativePushToken', { _t: tC1 }, { athlete_id: 'coach:C2', token: 'x' })), 'coach C1 → jeton push de coach:C2 refusé');
+    eq(!(await chk('saveNativePushToken', { _t: tA1 }, { athlete_id: 'coach:C1', token: 'x' })), 'athlète A1 → jeton push coach:C1 refusé');
+    eq(await chk('deleteNativePushToken', { _t: tC1 }, { athlete_id: 'coach:C1', token: 'x' }), 'coach C1 → retirer son jeton push');
     eq(!(await chk('getCoachAthletes', { coach_id: 'C2', _t: tC1 })), 'coach C1 → liste de C2 refusée');
     eq(!(await chk('getCoachAthletes', { coach_id: 'C1', _t: tA1 })), 'athlète A1 → liste des athlètes de SON coach refusée');
     eq(await chk('envoyerMediaCoach', { _t: tA1 }, { athlete_id: 'A1', coach_id: 'C1' }), 'athlète A1 → média à son coach C1');

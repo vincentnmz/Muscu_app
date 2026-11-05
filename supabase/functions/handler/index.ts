@@ -7439,6 +7439,11 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
     return lr ? { ok: false, reason: 'athlète ' + sess.id + ' → ' + lr } : { ok: true }
   }
   if (cid && cid !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → coach ' + cid }
+  // Jeton push du coach : rangé sous « coach:<id> » (COACH_PUSH_PREFIX), pas un athlète.
+  // Seul le coach de la session peut l'écrire / le retirer (05/11 : avant, refus → déconnexion sur mobile).
+  if (aid && aid.startsWith(COACH_PUSH_PREFIX)) {
+    return aid === COACH_PUSH_PREFIX + sess.id ? { ok: true } : { ok: false, reason: 'coach ' + sess.id + ' → ' + aid }
+  }
   if (aid) {
     const { data } = await sb().from('athletes').select('coach_id').eq('id', aid).single()
     if (!data || String(data.coach_id || '') !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → athlète ' + aid + ' (non lié)' }

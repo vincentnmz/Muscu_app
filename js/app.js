@@ -870,6 +870,7 @@ const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth
 var _NVZ_TOK_KEY = 'nvz_tok';
 function _nvzTok() { try { return localStorage.getItem(_NVZ_TOK_KEY); } catch (e) { return null; } }
 function _nvzTokClear() { try { localStorage.removeItem(_NVZ_TOK_KEY); } catch (e) {} }
+var _NVZ_401_SANS_DECO = { saveNativePushToken: 1, removeNativePushToken: 1, deleteNativePushToken: 1 };
 var _nvzExpireDone = false;
 function _nvzSessionExpiree() {
   if (_nvzExpireDone) return; _nvzExpireDone = true;
@@ -900,6 +901,8 @@ function _nvzSessionExpiree() {
       if (AUTH[action] || JETON_NEUF[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
       // H1 (audit hors-ligne 02/11) : un 401 reçu en renvoyant la file hors-ligne ne déconnecte
       // pas (sinon boucle de rechargement infinie quand une séance attend et la session est finie).
+      // 05/11 : un refus sur l'enregistrement du jeton push (fonction annexe) ne déconnecte pas.
+      if (r.status === 401 && _NVZ_401_SANS_DECO[action]) return r;
       if (r.status === 401 && action !== 'saveSeance') r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
       else if (r.status === 401 && action === 'saveSeance' && !_flushingOffline) r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
       return r;
