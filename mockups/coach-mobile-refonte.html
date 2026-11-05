@@ -1,0 +1,93 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette coach mobile</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root{--ac:#1A5FFF;--vi:#7C5CFF;--tx:#0E1A33;--mu:#55627E;--su:#8A96B0;--bd:#DCE4F5;--s2:#F4F7FF}
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:var(--tx)}
+.wrap{display:flex;gap:22px;padding:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px;align-items:center}
+.cap{font-size:13px;font-weight:800}.cap small{display:block;font-weight:600;color:var(--mu);font-size:11px;max-width:300px;text-align:center;line-height:1.4}
+.ph{width:320px;height:690px;border-radius:28px;overflow:hidden;position:relative;box-shadow:0 10px 34px rgba(14,26,51,.18);
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%237C5CFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"),linear-gradient(180deg,#F4F7FF 0%,#F4F7FF 45%,#e3dcff 78%,#b7a6ff 100%);background-size:56px 97px,100% 100%}
+.hd{height:52px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fff;border-bottom:1px solid var(--bd)}
+.lg{width:24px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--ac),var(--vi));flex:none}
+.hd h1{margin:0;font-family:Michroma;font-size:15px;flex:1}
+.ib{width:30px;height:30px;border-radius:9px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mu);background:#fff}
+.bd{padding:10px 10px 70px;height:calc(100% - 52px);box-sizing:border-box;overflow:hidden}
+.nav{position:absolute;left:0;right:0;bottom:0;height:54px;background:#fff;border-top:1px solid var(--bd);display:flex;justify-content:space-around;align-items:center;font-size:9px;font-weight:800;color:var(--su)}
+.nav span{display:flex;flex-direction:column;align-items:center;gap:3px}.nav i{width:18px;height:18px;border-radius:5px;border:2px solid currentColor;display:block}.nav .on{color:var(--ac)}
+.card{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:10px 11px;margin-bottom:8px}
+.ct{font-size:9.5px;font-weight:800;color:var(--su);text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between;margin-bottom:6px}
+.ct a{color:var(--ac);text-transform:none;letter-spacing:0;font-size:10px}
+.hero{background:linear-gradient(135deg,#1A5FFF,#0f45d6);color:#fff;border-radius:16px;padding:12px;margin-bottom:8px}
+.hero small{font-size:9px;font-weight:800;letter-spacing:.08em;opacity:.85}.hero .r{display:flex;gap:10px;align-items:center;margin-top:6px}
+.ring{width:46px;height:46px;border-radius:50%;border:5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.kp{display:flex;gap:6px;margin-top:8px}.kp div{flex:1;background:rgba(255,255,255,.16);border-radius:10px;padding:5px;text-align:center;font-size:15px;font-weight:800}.kp small{display:block;font-size:8px}
+.row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid #EEF2FB;font-size:11.5px}.row:first-of-type{border-top:0}
+.av{width:28px;height:28px;border-radius:8px;background:#E6EDFF;color:var(--ac);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.row b{font-size:12px}.mu{color:var(--mu);font-size:10.5px}
+.pill{font-size:9px;font-weight:800;border-radius:999px;padding:2px 7px}.ok{background:#E3F7EC;color:#0f8a4b}.wa{background:#FFF1DE;color:#C77700}.re{background:#FFE5E7;color:#C0303A}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.chips{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}.chip{font-size:10px;font-weight:800;border:1px solid #CFDCFF;border-radius:999px;padding:3px 8px;color:var(--ac);background:#fff}.chip.on{background:var(--ac);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}.grid div{background:var(--s2);border-radius:8px;padding:4px 2px;text-align:center;font-size:11.5px;font-weight:800}.grid small{display:block;font-size:7.5px;color:var(--su);text-transform:uppercase}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}.k{background:#fff;border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:7px 8px}.k b{font-size:17px}.k div{font-size:10px;font-weight:700}.k small{font-size:8.5px;color:var(--su)}
+.tabs{display:flex;background:#fff;border:1px solid var(--bd);border-radius:12px;padding:3px;margin-bottom:8px;gap:2px}.tabs span{flex:1;text-align:center;font-size:9.5px;font-weight:800;color:var(--mu);padding:6px 0;border-radius:9px}.tabs .on{background:var(--ac);color:#fff}
+.fh{background:linear-gradient(135deg,#22c47a,#0b9a55);color:#fff;border-radius:16px;padding:10px 11px;margin-bottom:8px}.fh b{font-size:14px}.fh .t{font-size:18px;font-weight:800;margin-top:4px}.fh .p{display:flex;gap:4px;margin-top:6px}.fh .p span{background:rgba(255,255,255,.2);border-radius:8px;padding:2px 6px;font-size:9px;font-weight:800}
+.act{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px}.act span{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:6px 2px;text-align:center;font-size:9.5px;font-weight:800;color:var(--ac)}.act .p{background:var(--ac);color:#fff;border-color:var(--ac)}
+.dec{border-left:3px solid #E5484D}.dec .x{font-size:11.5px;font-weight:800}.btns{display:flex;gap:5px;margin-top:6px}.btns span{font-size:9.5px;font-weight:800;border-radius:8px;padding:4px 7px;border:1px solid var(--bd)}.btns .p{background:var(--ac);color:#fff;border-color:var(--ac)}
+.new{outline:2px dashed var(--vi);outline-offset:2px}
+.rules{max-width:1150px;margin:0 auto 26px;background:#fff;border:1px solid var(--bd);border-radius:14px;padding:14px 18px;font-size:12.5px;line-height:1.6}
+</style></head><body><div class="wrap">
+
+<!-- AUJOURD'HUI -->
+<div class="col"><div class="cap">Aujourd'hui<small>Mêmes blocs que l'ordi. Tout est dans des cartes blanches ; le titre est DANS la carte.</small></div>
+<div class="ph"><div class="hd"><span class="lg"></span><h1>Aujourd'hui</h1><span class="ib">＋</span><span class="ib">⎋</span></div><div class="bd">
+<div class="hero"><small>BONJOUR VINCENT · JEUDI 5 NOV.</small><div class="r"><span class="ring">100%</span><div><b style="font-size:20px">0</b><div style="font-size:11px">tout le monde est à jour</div></div></div>
+ <div class="kp"><div>0<small>À SURVEILLER</small></div><div>0<small>INTERVENTION</small></div></div></div>
+<div class="card new"><div class="ct">À surveiller en priorité</div><div class="mu">Tout le monde est à jour.</div></div>
+<div class="card new"><div class="ct">Entraînement à regarder <a>plan de la semaine</a></div>
+ <div class="row"><span class="av">V</span><div style="flex:1"><b>Vincent</b><div class="mu">Développé incliné Smith : sous la fourchette · proposé 75 kg</div></div>›</div></div>
+<div class="card new"><div class="ct">Questionnaires bien-être <a>2/2 · 7 j</a></div>
+ <div class="row"><span class="av">A</span><div style="flex:1"><b>Alizé</b> <span class="mu">· hier</span></div><span class="pill wa">fatigue 3/5</span></div>
+ <div class="row"><span class="av">V</span><div style="flex:1"><b>Vincent</b> <span class="mu">· il y a 6 j</span></div><span class="pill ok">fatigue 1/5</span></div></div>
+<div class="card new"><div class="ct">Messages non lus</div><div class="mu">Aucun message non lu.</div></div>
+</div><div class="nav"><span class="on"><i></i>Aujourd'hui</span><span><i></i>Équipe</span><span><i></i>Analyses</span><span><i></i>Messages</span><span><i></i>Profil</span></div></div></div>
+
+<!-- EQUIPE -->
+<div class="col"><div class="cap">Équipe<small>Mêmes infos que le tableau ordi (niveau, état, dernière activité, assiduité, plan) en carte compacte.</small></div>
+<div class="ph"><div class="hd"><span class="lg"></span><h1>Équipe</h1><span class="ib">🔍</span><span class="ib" style="background:var(--ac);color:#fff;border-color:var(--ac)">＋</span></div><div class="bd">
+<div class="chips"><span class="chip on">Tous 2</span><span class="chip">À surveiller 0</span><span class="chip">Prêts 2</span><span class="chip">Inactifs 0</span></div>
+<div class="card new"><div class="row" style="padding-top:0"><span class="av">A</span><div style="flex:1"><b>Alizé</b><div class="mu">Débutant · hier</div></div><span class="pill ok">Prêt</span> ›</div>
+ <div class="grid"><div>1/1<small>Assiduité</small></div><div>1/1<small>Plan</small></div><div>8,2<small>RPE 7 j</small></div><div>6,6 t<small>Tonnage</small></div></div></div>
+<div class="card new"><div class="row" style="padding-top:0"><span class="av">V</span><div style="flex:1"><b>Vincent</b><div class="mu">Intermédiaire · aujourd'hui</div></div><span class="pill ok">Prêt</span> ›</div>
+ <div class="grid"><div>2/4<small>Assiduité</small></div><div>0/3<small>Plan</small></div><div>8,2<small>RPE 7 j</small></div><div style="color:#C77700">19,1 t<small>Tonnage −9 %</small></div></div></div>
+<div class="mu" style="text-align:center;font-size:10px">Même libellé partout : « Assiduité » (plus « Régul. »). Le tableau ordi gagne RPE 7 j et tonnage.</div>
+</div><div class="nav"><span><i></i>Aujourd'hui</span><span class="on"><i></i>Équipe</span><span><i></i>Analyses</span><span><i></i>Messages</span><span><i></i>Profil</span></div></div></div>
+
+<!-- ANALYSES EQUIPE -->
+<div class="col"><div class="cap">Analyses équipe<small>Une colonne propre : chaque bloc = une carte, une ligne par athlète (nom à gauche, chiffre/pastille à droite, détail dessous).</small></div>
+<div class="ph"><div class="hd"><span class="lg"></span><h1>Analyses</h1></div><div class="bd">
+<div class="kpis"><div class="k" style="border-left-color:#16a34a"><b>65 %</b><div>Régularité · 4 sem.</div><small>13 / 20 prévues</small></div><div class="k"><b>3</b><div>Séances cette sem.</div><small>1 en retard · 1 à venir</small></div><div class="k" style="border-left-color:#f59f00"><b>2/2</b><div>Actifs · 7 j</div><small>tout le monde</small></div><div class="k" style="border-left-color:#E5484D"><b>2</b><div>Douleurs · 7 j</div><small>0 blessure</small></div></div>
+<div class="card new"><div class="ct">Assiduité <a>cette semaine</a></div>
+ <div class="row"><span class="av">V</span><div style="flex:1"><b>Vincent</b><div class="mu">2 faites · <span style="color:#C77700;font-weight:800">1 en retard</span> · 1 à venir</div></div><span class="pill ok">12/16</span></div>
+ <div class="row"><span class="av">A</span><div style="flex:1"><b>Alizé</b><div class="mu">1 faite sur 1 · reprise</div></div><span class="pill re">1/4</span></div></div>
+<div class="card new"><div class="ct">Douleurs &amp; blessures <a>7 j</a></div>
+ <div class="row"><span class="av">V</span><div style="flex:1"><b>Vincent</b><div class="mu">Gêne 2/5 · 29/10, 30/10</div></div><span class="pill re">2 fois</span></div>
+ <div class="row"><span class="av">A</span><div style="flex:1"><b>Alizé</b><div class="mu">Hanche 2/5 · 04/11</div></div></div></div>
+<div class="card new"><div class="ct">Progression <a>même classement que la fiche</a></div>
+ <div class="row"><span class="av">V</span><div style="flex:1"><b>Vincent</b><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px"><span class="pill wa">1 bloqué</span><span class="pill ok">6 records</span><span class="pill" style="background:#E6EDFF;color:var(--ac)">13 en progrès</span></div></div>›</div></div>
+</div><div class="nav"><span><i></i>Aujourd'hui</span><span><i></i>Équipe</span><span class="on"><i></i>Analyses</span><span><i></i>Messages</span><span><i></i>Profil</span></div></div></div>
+
+<!-- FICHE -->
+<div class="col"><div class="cap">Fiche athlète<small>Sous-onglets comme sur ordi (Aperçu · Analyses · Séances · Programme · Messages), mêmes noms que les pages. Barre du bas conservée.</small></div>
+<div class="ph"><div class="hd"><span class="ib">←</span><h1>Vincent</h1><span class="ib">💬</span></div><div class="bd">
+<div class="tabs new"><span class="on">Aperçu</span><span>Analyses</span><span>Séances</span><span>Programme</span><span>Messages</span></div>
+<div class="fh"><b>Vincent</b> <span style="font-size:10px;opacity:.85">· Intermédiaire · 83 kg</span><div class="t">Prêt</div><div style="font-size:10px;opacity:.9">récup excellente · 2/4 séances · dernière 05/11</div><div class="p"><span>Sommeil : bon</span><span>Fatigue : aucune</span><span>Douleur : légère</span></div></div>
+<div class="act new"><span class="p">▶ Saisir sa séance</span><span>✉ Message</span><span>Proposer un déload</span></div>
+<div class="card dec new"><div class="ct">À décider <a>2</a></div><div class="x">Développé incliné Smith : sous la fourchette</div><div class="mu">29/10 : 80 kg × 1 à RPE 10 · proposé 75 kg (ou 70)</div><div class="btns"><span class="p">Modifier le programme</span><span>Écrire</span><span>Traité</span></div></div>
+<div class="card new"><div class="ct">Charge &amp; assiduité</div><div class="grid"><div>8,2<small>RPE 7 j</small></div><div>19,1 t<small>Tonnage</small></div><div>2/4<small>Assiduité</small></div><div>1,16<small>ACWR</small></div></div></div>
+<div class="card new"><div class="ct">Contexte de performance</div><div style="font-size:11.5px"><b>Saison normale</b> <span class="mu">· analyses standard</span></div></div>
+</div><div class="nav"><span><i></i>Aujourd'hui</span><span class="on"><i></i>Équipe</span><span><i></i>Analyses</span><span><i></i>Messages</span><span><i></i>Profil</span></div></div></div>
+
+</div>
+<div class="rules"><b>Socle commun (lot 1)</b> : un seul en-tête blanc (logo + titre de la page + actions), plus de bandeau bleu (Messages, Profil) ; un seul style d'avatar (carré arrondi), de carte (blanche, titre en capitales DANS la carte, lien bleu à droite) et de pastille ; police Quicksand partout ; même ordre et mêmes noms que sur ordi. <b>Lot 2</b> : Aujourd'hui, Équipe, Analyses équipe comme ci-dessus. <b>Lot 3</b> : fiche avec sous-onglets, mêmes blocs que l'ordi (Contexte de performance, Proposer un déload, Charge &amp; assiduité, Ma montre, Dernières séances) empilés dans le même ordre. En pointillé violet = ce qui change. Les chiffres sont ceux des captures (Vincent / Alizé).</div>
+</body></html>
