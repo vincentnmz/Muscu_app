@@ -8865,9 +8865,11 @@ function _derivePlanSeries(l, rm) {
   var kgOf = function (pct) { return (rm && pct != null) ? Math.round(rm * pct / 100 / 2.5) * 2.5 : null; };
   var out = [];
   if (schema === 'pyramidal' && Array.isArray(l.series_json) && l.series_json.length) {
-    l.series_json.slice(0, 12).forEach(function (s, i) {
-      out.push({ serie: i + 1, reps: (s && s.reps != null ? String(s.reps) : repsTxt), pct: (s && s.pct != null ? Number(s.pct) : null), kg: kgOf(s && s.pct != null ? Number(s.pct) : null), rpe: (s && s.rpe != null ? Number(s.rpe) : null), tag: '' });
-    });
+    var nP = Math.min(12, n || l.series_json.length);
+    for (var q = 0; q < nP; q++) {
+      var s = l.series_json[q] || {};
+      out.push({ serie: q + 1, reps: (s.reps != null ? String(s.reps) : repsTxt), pct: (s.pct != null ? Number(s.pct) : null), kg: kgOf(s.pct != null ? Number(s.pct) : null), rpe: (s.rpe != null ? Number(s.rpe) : null), tag: '' });
+    }
     return { series: out, note: 'Pyramidal : charge et reps propres à chaque série.' };
   }
   if (schema === 'topbackoff' && n > 0) {
@@ -8876,13 +8878,26 @@ function _derivePlanSeries(l, rm) {
     var boPct = topPct != null ? Math.round(topPct * (1 - bo / 100)) : null;
     out.push({ serie: 1, reps: (rMin != null && rMin !== '' ? String(rMin) : repsTxt), pct: topPct, kg: kgOf(topPct), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: 'lourde' });
     for (var k = 2; k <= n; k++) out.push({ serie: k, reps: (rMax != null && rMax !== '' ? String(rMax) : repsTxt), pct: boPct, kg: kgOf(boPct), rpe: null, tag: 'back-off' });
+    _seriesPerso(out, l, kgOf);
     return { series: out, note: 'Top-set + back-off : 1 série lourde, puis −' + bo + '% en volume.' };
   }
   // fixe / double : même cible pour toutes les séries
   var pctF = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
   for (var j = 1; j <= n; j++) out.push({ serie: j, reps: repsTxt, pct: pctF, kg: kgOf(pctF), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: '' });
+  _seriesPerso(out, l, kgOf);
   var noteCat = fCat ? ('Fourchette de la catégorie ' + (_EXO_CAT_LBL[fCat] || fCat) + '.') : '';
   return { series: out, note: [schema === 'double' ? 'Double progression : monte d\'abord les reps, puis la charge.' : '', noteCat].filter(Boolean).join(' ') };
+}
+// 05/11 — Série par série (tous schémas) : une valeur saisie pour une série (series_json[i])
+// remplace celle du schéma pour CETTE série (reps d'abord ; % 1RM / RPE optionnels). s.perso = retouchée.
+function _seriesPerso(out, l, kgOf) {
+  var sj = Array.isArray(l.series_json) ? l.series_json : [];
+  out.forEach(function (s, i) {
+    var o = sj[i]; if (!o) return;
+    if (o.reps != null && o.reps !== '') { s.reps = String(o.reps); s.perso = true; }
+    if (o.pct != null && o.pct !== '') { s.pct = Number(o.pct); s.kg = kgOf(s.pct); s.perso = true; }
+    if (o.rpe != null && o.rpe !== '') { s.rpe = Number(o.rpe); s.perso = true; }
+  });
 }
 // Libellé court d'une charge dérivée (kg si 1RM connu, sinon % 1RM).
 function _planLoadTxt(s) { return s.kg != null ? (s.kg + ' kg') : (s.pct != null ? (s.pct + ' %') : ''); }
@@ -8893,7 +8908,7 @@ var _SCHEMA_OPTS = [['fixe', 'Séries fixes'], ['double', 'Double progression'],
 function _schemaControlsHtml(l, seanceId) {
   if (!l || l.type === 'cardio') return '';
   var sj = String(seanceId).replace(/'/g, "\\'"), ri = l.row_index, sch = l.schema || 'fixe';
-  var sel = '<label class="sch-sel"><span class="sch-l">Schéma de séries</span>'
+  var sel = '<label class="sch-sel"><span class="sch-l">Schéma de séries <small>(pré-remplit les séries)</small></span>'
     + '<select onchange="cdSetSchema(' + ri + ',\'' + sj + '\',this.value)">'
     + _SCHEMA_OPTS.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === sch ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
     + '</select></label>';
@@ -8903,26 +8918,26 @@ function _schemaControlsHtml(l, seanceId) {
     extra = '<label class="sch-sel sch-bo"><span class="sch-l">Back-off (−% sur les séries de volume)</span>'
       + '<input type="number" value="' + bo + '" min="0" max="50" onchange="cdSetBackoff(' + ri + ',\'' + sj + '\',this.value)"></label>';
   }
-  var table = '';
-  if (sch === 'pyramidal') {
-    var n = Number(l.series_prevues) || (Array.isArray(l.series_json) ? l.series_json.length : 0) || 3;
-    var arr = Array.isArray(l.series_json) ? l.series_json : [];
-    var rows = '';
-    for (var k = 0; k < n; k++) {
-      var s = arr[k] || {};
-      rows += '<div class="sch-pyr-row"><span class="sch-pyr-s">S' + (k + 1) + '</span>'
-        + '<input type="number" placeholder="% 1RM" value="' + (s.pct != null ? s.pct : '') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + k + ',\'pct\',this.value)">'
-        + '<input type="number" placeholder="reps" value="' + (s.reps != null ? s.reps : '') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + k + ',\'reps\',this.value)">'
-        + '</div>';
-    }
-    table = '<div class="sch-pyr"><div class="sch-pyr-hd">Cible par série (% 1RM · reps)</div>' + rows + '</div>';
-  }
-  // Aperçu dérivé (ce que verra l'athlète au démarrage).
+  // 05/11 : série par série pour TOUS les schémas — reps d'abord (− / +), % 1RM et RPE repliés.
   var plan = _derivePlanSeries(l, _est1RM(l.exercice));
-  var prev = plan.series.length ? '<div class="sch-prev">' + plan.series.map(function (s) {
-    var load = _planLoadTxt(s);
-    return '<span class="sch-chip' + (s.tag === 'lourde' ? ' top' : '') + '">S' + s.serie + ' <small>' + escapeHtml([s.reps + ' reps', load].filter(Boolean).join(' · ')) + '</small></span>';
-  }).join('') + '</div>' : '';
+  var arr = Array.isArray(l.series_json) ? l.series_json : [];
+  var anyPerso = false;
+  var rows = plan.series.map(function (s, i) {
+    var o = arr[i] || {}, hasR = (o.reps != null && o.reps !== ''), open = !!(window._pbcSetOpen && window._pbcSetOpen[ri + '_' + i]);
+    if (s.perso) anyPerso = true;
+    var tag = s.tag === 'lourde' ? ' · lourde' : (s.tag === 'back-off' ? ' · back-off' : '');
+    var opt = open ? '<div class="sch-opt"><label>% 1RM<input type="number" min="0" max="110" value="' + (o.pct != null ? o.pct : '') + '" placeholder="' + (s.pct != null ? s.pct : '—') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + i + ',\'pct\',this.value)"></label>'
+      + '<label>RPE<input type="number" min="5" max="10" step="0.5" value="' + (o.rpe != null ? o.rpe : '') + '" placeholder="' + (s.rpe != null ? s.rpe : '—') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + i + ',\'rpe\',this.value)"></label></div>' : '';
+    return '<div class="sch-set' + (s.tag === 'lourde' ? ' top' : '') + '"><span class="sch-k">S' + (i + 1) + '</span>'
+      + '<span class="sch-rp"><button class="pbc-st" onclick="cdSerieReps(' + ri + ',\'' + sj + '\',' + i + ',-1)">−</button>'
+      + '<input type="number" class="sch-r" min="1" max="50" value="' + (hasR ? o.reps : '') + '" placeholder="' + escapeHtml(String(s.reps)) + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + i + ',\'reps\',this.value)">'
+      + '<button class="pbc-st" onclick="cdSerieReps(' + ri + ',\'' + sj + '\',' + i + ',1)">+</button>'
+      + '<span class="sch-u">reps' + tag + '</span>' + (s.perso && sch !== 'pyramidal' ? '<span class="sch-perso">perso</span>' : '') + '</span>'
+      + '<button class="sch-plus" onclick="pbcSetOpt(' + ri + ',' + i + ')">' + (open ? '−' : '+') + ' charge / RPE</button>' + opt + '</div>';
+  }).join('');
+  var table = rows ? '<div class="sch-sets"><div class="sch-l">Série par série</div>' + rows
+    + (anyPerso && sch !== 'pyramidal' ? '<button class="sch-reset" onclick="cdSeriesReset(' + ri + ',\'' + sj + '\')">Remettre comme le schéma</button>' : '') + '</div>' : '';
+  var prev = '';
   return '<div class="sch-wrap">' + sel + extra + table + prev + '</div>';
 }
 function cdSetSchema(rowIndex, seanceId, val) {
@@ -8939,6 +8954,20 @@ function cdSetBackoff(rowIndex, seanceId, val) {
   var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
   l.backoff_pct = (val === '' ? null : Number(val)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
 }
+// − / + sur les reps d'une série : part de la valeur saisie, sinon du 1er nombre du schéma.
+function cdSerieReps(rowIndex, seanceId, idx, d) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  var o = Array.isArray(l.series_json) && l.series_json[idx];
+  var cur = (o && o.reps != null && o.reps !== '') ? Number(o.reps) : NaN;
+  if (!(cur > 0)) { var p = _derivePlanSeries(l, null).series[idx]; cur = p ? parseInt(String(p.reps), 10) : NaN; if (!(cur > 0)) cur = 10; }
+  cdSetPyramidCell(rowIndex, seanceId, idx, 'reps', String(Math.max(1, Math.min(50, cur + d))));
+}
+function cdSeriesReset(rowIndex, seanceId) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  l.series_json = null; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+window._pbcSetOpen = window._pbcSetOpen || {};
+function pbcSetOpt(ri, i) { window._pbcSetOpen[ri + '_' + i] = !window._pbcSetOpen[ri + '_' + i]; try { renderProgrammeCoach(); } catch (e) {} }
 function cdSetPyramidCell(rowIndex, seanceId, idx, field, val) {
   var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
   if (!Array.isArray(l.series_json)) l.series_json = [];
@@ -9592,6 +9621,8 @@ function _pbcRowHtml(l, sid, lab) {
       var reposTxt = function (x) { return !x ? '—' : (x < 60 ? x + ' s' : (x % 60 ? Math.floor(x / 60) + ' min ' + (x % 60) : (x / 60) + ' min')); };
       var puce = function (v) { return '<button class="pbc-pu' + (rp === v ? ' on' : '') + '" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,' + v + ',null)">' + v + '</button>'; };
       var res = (nS || '–') + ' × ' + (rmin && rmax ? (rmin === rmax ? rmin : rmin + '–' + rmax) : '–') + ' reps' + (l.rpe_cible ? ' · RPE ' + l.rpe_cible : '') + (rp ? ' · repos ' + reposTxt(rp) : '');
+      // 05/11 : séries retouchées (ou pyramidal) → le résumé liste les reps de chaque série.
+      try { var _pl = _derivePlanSeries(l, null).series; if (_pl.length && (l.schema === 'pyramidal' || _pl.some(function (x) { return x.perso; }))) res = _pl.length + ' série' + (_pl.length > 1 ? 's' : '') + ' · ' + _pl.map(function (x) { return x.reps; }).join(' · ') + ' reps' + (rp ? ' · repos ' + reposTxt(rp) : ''); } catch (e) {}
       var adv = !!(window._pbcAdvOpen && window._pbcAdvOpen[ri]);
       return '<div class="pb-row pb-row-muscu pbc" data-ri="' + ri + '" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
         + '<div class="pbc-hd">' + gripSvg + (lab ? '<span class="pbc-lab">' + esc(lab) + '</span>' : '')
@@ -9609,7 +9640,7 @@ function _pbcRowHtml(l, sid, lab) {
         + '</div>'
         + '<div class="pbc-sum">Résumé : <b>' + esc(res) + '</b></div>'
         + (lab ? '' : '<button class="pbc-link" onclick="pbcEnchainer(' + ri + ',\'' + sj + '\')">🔗 Enchaîner avec un exercice (superset, biset…)</button>')
-        + '<button class="pbc-advt" onclick="pbcAdv(' + ri + ')">' + (adv ? '▾' : '▸') + ' Réglages avancés (% 1RM, schéma de séries, série par série)</button>'
+        + '<button class="pbc-advt" onclick="pbcAdv(' + ri + ')">' + (adv ? '▾' : '▸') + ' Réglages avancés (série par série, schéma, % 1RM)</button>'
         + '<div class="pbc-adv"' + (adv ? '' : ' style="display:none"') + '><div class="pbc-f"><span class="pbc-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>' + _schemaControlsHtml(l, sid) + '</div>'
         + '</div>';
     }
@@ -9665,28 +9696,64 @@ async function pbcDupliquer(ri) {
 // « Enchaîner avec… » : exercice de la séance ou du catalogue ; le type de bloc obtenu est affiché.
 var _pbcEnc = { ri: null, sid: null, onglet: 'seance', q: '' };
 function pbcEnchainer(ri, sid) { _pbcEnc = { ri: ri, sid: sid, onglet: 'seance', q: '' }; _pbcEncRender(); }
-function _pbcEncRender() {
-  var E = _pbcEnc, esc = escapeHtml;
-  var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === E.ri; })[0]; if (!l) return;
+// 05/11 — Muscles affichés (regroupe les fautes de saisie du catalogue : « Moletts », « fessier », « Triceps␣ »).
+var _PBC_MUS = [['pectora', 'Pectoraux'], ['dos', 'Dos'], ['epaul', 'Épaules'], ['biceps', 'Biceps'], ['triceps', 'Triceps'], ['quadri', 'Quadriceps'], ['ischio', 'Ischios'], ['fess', 'Fessiers'], ['adduct', 'Adducteurs'], ['mol', 'Mollets'], ['abdo', 'Abdos'], ['lomb', 'Lombaires'], ['trap', 'Trapèzes'], ['avant-bras', 'Avant-bras']];
+function _pbcMusAff(m) { var k = _normTxt(m || ''); if (!k) return 'Autres'; for (var i = 0; i < _PBC_MUS.length; i++) if (k.indexOf(_PBC_MUS[i][0]) === 0) return _PBC_MUS[i][1]; return _musCap(String(m).trim()); }
+// Muscle « opposé » proposé en superset (agoniste / antagoniste).
+var _PBC_OPP = { 'Pectoraux': 'Dos', 'Dos': 'Pectoraux', 'Biceps': 'Triceps', 'Triceps': 'Biceps', 'Quadriceps': 'Ischios', 'Ischios': 'Quadriceps', 'Épaules': 'Dos', 'Fessiers': 'Quadriceps', 'Mollets': 'Abdos', 'Abdos': 'Lombaires' };
+function _pbcEncCtx() {
+  var E = _pbcEnc;
+  var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === E.ri; })[0]; if (!l) return null;
   var membres = l.groupe_id ? (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.groupe_id === l.groupe_id; }) : [l];
-  var dans = membres.map(function (x) { return String(x.exercice).trim(); });
-  var typeSi = function (nom) { return _blocNom(membres.concat([{ exercice: nom }])); };
-  var liste = E.onglet === 'seance'
-    ? (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.type !== 'cardio' && dans.indexOf(String(x.exercice).trim()) < 0; }).map(function (x) { return x.exercice; })
-    : (exercicesData || []).map(function (x) { return x.exercice; }).filter(function (n) { return dans.indexOf(String(n).trim()) < 0 && (!E.q || String(n).toLowerCase().indexOf(E.q.toLowerCase()) >= 0); }).slice(0, 60);
-  var ov = document.getElementById('msgx-plus'); if (!ov) { ov = document.createElement('div'); ov.id = 'msgx-plus'; document.body.appendChild(ov); }
-  ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">Enchaîner ' + esc(l.exercice) + ' avec<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
-    + '<div class="msgx-chips"><button class="msgx-f' + (E.onglet === 'seance' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'seance\';_pbcEncRender()">Dans cette séance</button><button class="msgx-f' + (E.onglet === 'cat' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'cat\';_pbcEncRender()">Tout le catalogue</button></div>'
-    + (E.onglet === 'cat' ? '<input class="msgx-s" style="margin-top:8px" placeholder="Rechercher un exercice…" value="' + esc(E.q) + '" oninput="_pbcEnc.q=this.value;_pbcEncListe()">' : '')
-    + '<div id="pbc-enc-l">' + _pbcEncItems(liste, typeSi) + '</div>'
-    + '<div class="msgx-vide" style="padding:8px 0 0">Biset = même muscle · Superset = muscles différents · Triset = 3 · Circuit = 4 et plus. En séance, les exercices s\'enchaînent sans repos ; le repos vient après le bloc.</div></div>';
-  ov.onclick = msgPlusFermer; ov.style.display = 'flex';
-  if (E.onglet === 'cat') { var inp = ov.querySelector('.msgx-s'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+  return { l: l, membres: membres, dans: membres.map(function (x) { return String(x.exercice).trim(); }), typeSi: function (nom) { return _blocNom(membres.concat([{ exercice: nom }])); }, mu0: _pbcMusAff(_pbcMuscle(l.exercice)) };
 }
-function _pbcEncListe() { var c = document.getElementById('pbc-enc-l'); if (!c) return _pbcEncRender(); var E = _pbcEnc; var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === E.ri; })[0]; var membres = l && l.groupe_id ? (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.groupe_id === l.groupe_id; }) : [l]; var dans = membres.map(function (x) { return String(x.exercice).trim(); }); var liste = (exercicesData || []).map(function (x) { return x.exercice; }).filter(function (n) { return dans.indexOf(String(n).trim()) < 0 && (!E.q || String(n).toLowerCase().indexOf(E.q.toLowerCase()) >= 0); }).slice(0, 60); c.innerHTML = _pbcEncItems(liste, function (nom) { return _blocNom(membres.concat([{ exercice: nom }])); }); }
+function _pbcEncRender() {
+  var E = _pbcEnc, esc = escapeHtml, C = _pbcEncCtx(); if (!C) return;
+  var ov = document.getElementById('msgx-plus'); if (!ov) { ov = document.createElement('div'); ov.id = 'msgx-plus'; document.body.appendChild(ov); }
+  var chips = '';
+  if (E.onglet === 'cat') {
+    var mus = {}; (exercicesData || []).forEach(function (x) { mus[_pbcMusAff(x.muscle)] = 1; });
+    var opp = _PBC_OPP[C.mu0];
+    var ordre = [C.mu0].concat(opp && mus[opp] ? [opp] : []).concat(_PBC_MUS.map(function (m) { return m[1]; }).filter(function (m) { return mus[m] && m !== C.mu0 && m !== opp; })).concat(Object.keys(mus).filter(function (m) { return m !== C.mu0 && m !== opp && !_PBC_MUS.some(function (x) { return x[1] === m; }); }));
+    chips = '<div class="msgx-chips pbc-muschips">' + ordre.filter(function (m) { return mus[m]; }).map(function (m) {
+      var sug = m === C.mu0 ? ' · biset' : (m === opp ? ' · superset' : '');
+      return '<button class="msgx-f' + (E.mu === m ? ' on' : '') + (sug ? ' pbc-sug' : '') + '" onclick="_pbcEnc.mu=(_pbcEnc.mu===\'' + m.replace(/'/g, "\\'") + '\'?\'\':\'' + m.replace(/'/g, "\\'") + '\');_pbcEncRender()">' + esc(m + sug) + '</button>';
+    }).join('') + '<button class="msgx-f' + (!E.mu ? ' on' : '') + '" onclick="_pbcEnc.mu=\'\';_pbcEncRender()">Tous</button></div>';
+  }
+  ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">Enchaîner ' + esc(C.l.exercice) + ' avec<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
+    + '<div class="msgx-chips"><button class="msgx-f' + (E.onglet === 'seance' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'seance\';_pbcEncRender()">Dans cette séance</button><button class="msgx-f' + (E.onglet === 'cat' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'cat\';_pbcEncRender()">Catalogue</button></div>'
+    + (E.onglet === 'cat' ? '<input class="msgx-s" style="margin-top:8px" placeholder="Rechercher un exercice…" value="' + esc(E.q || '') + '" oninput="_pbcEnc.q=this.value;_pbcEncListe()">' + chips : '')
+    + '<div id="pbc-enc-l">' + _pbcEncListeHtml(C) + '</div>'
+    + '<div class="msgx-vide" style="padding:8px 0 0">Biset = même muscle · Superset = muscles différents · Triset = 3 · Circuit = 4 et plus. En séance, les exercices s\'enchaînent sans repos ; le repos vient après le bloc.</div></div>';
+  ov.style.display = 'flex'; ov.onclick = msgPlusFermer;
+  // Focus sur la recherche à l'ouverture du catalogue (ordi seulement : sur mobile, le clavier cacherait les muscles).
+  if (E.onglet === 'cat' && !E._foc && window.innerWidth >= 992) { E._foc = true; var inp = ov.querySelector('.msgx-s'); if (inp) inp.focus(); }
+}
+function _pbcEncListe() { var c = document.getElementById('pbc-enc-l'), C = _pbcEncCtx(); if (!c || !C) return _pbcEncRender(); c.innerHTML = _pbcEncListeHtml(C); }
+function _pbcEncListeHtml(C) {
+  var E = _pbcEnc;
+  if (E.onglet === 'seance') {
+    var ls = (cdProgrammeLignes || []).filter(function (x) { return String(x.seance_id) === String(E.sid) && x.type !== 'cardio' && C.dans.indexOf(String(x.exercice).trim()) < 0; }).map(function (x) { return x.exercice; });
+    return _pbcEncItems(ls, C.typeSi);
+  }
+  // Catalogue complet (plus de limite à 60), rangé par muscle ; le muscle de l'exercice puis son opposé en premier.
+  var q = _normTxt(E.q || ''), G = {};
+  (exercicesData || []).forEach(function (x) {
+    var n = String(x.exercice || '').trim(); if (!n || C.dans.indexOf(n) >= 0) return;
+    var m = _pbcMusAff(x.muscle); if (E.mu && m !== E.mu) return;
+    if (q && _normTxt(n).indexOf(q) < 0 && _normTxt(m).indexOf(q) < 0) return;
+    (G[m] = G[m] || []).push(n);
+  });
+  var opp = _PBC_OPP[C.mu0], cles = Object.keys(G).sort(function (a, b) { var r = function (m) { return m === C.mu0 ? 0 : (m === opp ? 1 : 2); }; return r(a) - r(b) || a.localeCompare(b, 'fr'); });
+  if (!cles.length) return _pbcEncItems([], C.typeSi);
+  return cles.map(function (m) {
+    var L = G[m].sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+    return '<div class="pbc-grp"><div class="pbc-grph"><span>' + escapeHtml(m) + '</span><span>→ ' + escapeHtml(C.typeSi(L[0])) + '</span></div>' + _pbcEncItems(L, C.typeSi) + '</div>';
+  }).join('');
+}
 function _pbcEncItems(liste, typeSi) {
   if (!liste.length) return '<div class="msgx-vide">' + (_pbcEnc.onglet === 'seance' ? 'Aucun autre exercice dans cette séance : cherche dans le catalogue.' : 'Aucun exercice trouvé.') + '</div>';
-  return liste.map(function (n) { var nj = String(n).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); var mu = _pbcMuscle(n); return '<button class="pbc-it" onclick="pbcLier(\'' + nj + '\')"><span>' + escapeHtml(n) + '</span><span class="pbc-itt">' + (mu ? escapeHtml(mu) + ' → ' : '') + typeSi(n) + '</span></button>'; }).join('');
+  return liste.map(function (n) { var nj = String(n).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); var mu = _pbcMusAff(_pbcMuscle(n)); return '<button class="pbc-it" onclick="pbcLier(\'' + nj + '\')"><span>' + escapeHtml(n) + '</span><span class="pbc-itt">' + (mu ? escapeHtml(mu) + ' → ' : '') + typeSi(n) + '</span></button>'; }).join('');
 }
 async function pbcLier(nom) { var E = _pbcEnc; msgPlusFermer(); await cdLierExerciceParNom(E.ri, E.sid, nom); try { renderProgrammeCoach(); } catch (e) {} }
 function genGroupeId(seanceId) {
@@ -13068,6 +13135,22 @@ function majPlanSeries() {
   var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _jss, deload: _ctxAttendu(_dlData) === 'déload',
     nPrevues: pProg && _numOk(pProg.series_prevues) ? Number(pProg.series_prevues) : 0, pas: _petitPas(exoEnCours.exerciceNom),
     reposRef: _reposRef(lastSeries, pProg ? pProg.repos_sec : null), bornes: _reposBornes(exoEnCours.exerciceNom) });
+  // 05/11 — Cibles série par série du programme (ex. S1 6 · S2 8 · S3 15) : chaque série suit SA cible.
+  // Cible atteinte la dernière fois (RPE ≤ seuil) → + petit pas sur cette série ; sinon même charge, +1 rep
+  // vers la cible. Séries sans cible propre : règle habituelle. Vigilance / déload / reprise / échec : inchangé.
+  var _pRepsS = ps.map(function (s) { return (s && s.perso && /^\d+$/.test(String(s.reps))) ? Number(s.reps) : null; });
+  if (!_offNv && lastSeries && _pRepsS.some(function (x) { return x != null; }) && ['charge', 'choix', 'reps', 'sous'].indexOf(dec.mode) >= 0) {
+    var _cib0 = dec.cible, _pasS = _petitPas(exoEnCours.exerciceNom);
+    dec.mode = 'perso'; dec.options = null;
+    dec.cible = function (k) {
+      var T = _pRepsS[k - 1], r = _refSerie(lastSeries, k);
+      if (T == null || !r) return _cib0(k, 'charge');
+      var ch = Number(r.charge) || 0, rp = Number(r.reps) || 0, R = dec.reposRef;
+      if (Number(r.rpe) > dec.seuil) return { charge: ch, reps: rp, repos: R, tenue: true };
+      if (rp >= T && ch > 0) return _pasS > 0 ? { charge: _r025(ch + _pasS), reps: T, repos: R, up: 'charge' } : { charge: ch, reps: T, repos: R, up: 'cibleOk' };
+      return { charge: ch, reps: Math.min(T, rp + 1), repos: R, up: 'reps' };
+    };
+  }
   if (dec.mode === 'deload') n = Math.max(done, 1, n - 1);   // X2 : 1 série de moins en déload
   var choix = exoEnCours._progChoix || 'charge';
   if (dec.options && !dec.options.some(function (o) { return o.id === choix && o.ok; })) choix = 'charge';
@@ -13120,6 +13203,14 @@ function majPlanSeries() {
   var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
   if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || dec.mode === 'reprise' || dec.mode === 'deload' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
   else if (dec.mode === 'sous') { var _c1s = dec.cible(1) || {}; msg = 'Proposition : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + '. Au choix : un petit pas en dessous (' + _kgTxt(_c1s.charge) + ' kg, déjà pré-rempli' + (dec.alt ? ', attends-toi à ≈ ' + dec.alt.repsAuPetitPas + ' reps' : '') + ')' + (dec.alt ? ', ' + _kgTxt(dec.alt.charge) + ' kg pour assurer ' + rminP + ' reps' : '') + ', ou garder la charge et viser +1 rep. C\'est toi qui choisis.'; }
+  else if (dec.mode === 'perso') {
+    var _nUp = 0, _nRep = 0, _nTen = 0; for (var _k = 1; _k <= n; _k++) { var _cc = dec.cible(_k); if (!_cc) continue; if (_cc.up === 'charge' || _cc.up === 'cibleOk') _nUp++; else if (_cc.up === 'reps') _nRep++; else if (_cc.tenue) _nTen++; }
+    var _pl = function (x) { return x > 1 ? 's' : ''; }, _parts = [];
+    if (_nUp) _parts.push(_nUp + ' série' + _pl(_nUp) + ' à la cible la dernière fois → ' + (_pasS > 0 ? '+' + String(_pasS).replace('.', ',') + ' kg dessus' : 'monte la charge du plus petit pas possible dessus'));
+    if (_nRep) _parts.push(_nRep + ' série' + _pl(_nRep) + ' sous la cible → même charge, +1 rep');
+    if (_nTen) _parts.push(_nTen + ' série' + _pl(_nTen) + ' trop dure la dernière fois (RPE au-dessus de ' + dec.seuil + ') → gardée' + _pl(_nTen) + ' telle' + _pl(_nTen) + ' quelle' + _pl(_nTen));
+    msg = 'Ton programme fixe une cible de reps pour chaque série. ' + (_parts.length ? _parts.join(' ; ') + '.' : 'Garde tes charges.');
+  }
   else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
   else if (dec.mode === 'choix') {
     var R0 = dec.reposRef;
