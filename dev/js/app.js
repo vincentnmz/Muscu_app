@@ -4589,14 +4589,27 @@ function _coachTonTxt(t) {
   const ev = t.evol_pct != null ? t.evol_pct : t.evol;
   return { txt: String(v).replace('.', ',') + ' t' + (ev != null ? ' · ' + (ev >= 0 ? '+' : '−') + Math.abs(Math.round(ev)) + ' %' : ''), color: ev != null ? (ev >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)' };
 }
+// Date (ms) du dernier signalement de douleur ≥ 2/5 (ressenti ou bilan de séance) — 0 si aucun.
+function _coachDerniereDouleur(d) {
+  var best = 0;
+  try {
+    ((d && d.bien_etre) || []).forEach(function (b) { if (Number(b.douleur) >= 2) { var t = parseChatDate(b.date); if (t > best) best = t; } });
+    var A = (d && d.analyses) || {};
+    (A.douleurs_muscu || []).concat(A.douleurs_cardio || []).forEach(function (x) { if (Number(x.valeur) >= 2) { var t = new Date(String(x.date || '').slice(0, 10) + 'T12:00:00').getTime(); if (t > best) best = t; } });
+  } catch (e) {}
+  return best;
+}
+function _coachJourTxt(t) { var a = new Date(t), n = new Date(), y = new Date(); y.setDate(n.getDate() - 1); if (a.toDateString() === n.toDateString()) return 'aujourd\'hui'; if (a.toDateString() === y.toDateString()) return 'hier'; return String(a.getDate()).padStart(2, '0') + '/' + String(a.getMonth() + 1).padStart(2, '0'); }
 // A2 : libellé lisible d'une alerte (titre du moteur + date), au lieu du type brut (« douleur »).
 function _coachAlerteTxt(a, d) {
   var al = alertesActives(a); if (!al.length) return null;
   var p = al.find(function (x) { return x.severite === 'haute'; }) || al[0];
   var c = ((d && d.alertes_centre) || []).filter(function (x) { return x && x.type === p.type; })[0];
   if (c && c.title) {
-    var dt = String(c.id || '').split('|')[1] || '', mm = dt.match(/^\d{4}-(\d{2})-(\d{2})$/);
-    return c.title + (mm ? ' · ' + mm[2] + '/' + mm[1] : '');
+    // 05/11 : la date de l'id (« douleur|2026-11-02 ») est le LUNDI de la semaine de l'alerte, pas la date de
+    // l'événement (Alizé : hanche signalée le 04/11 affichée « 02/11 »). Douleur → date réelle du dernier signalement.
+    var dd = (p.type === 'douleur') ? _coachDerniereDouleur(d) : 0;
+    return c.title + (dd ? ' · ' + _coachJourTxt(dd) : '');
   }
   return labelAlerteCourt(a);
 }
@@ -8063,7 +8076,8 @@ function _aeModele(enrich, datas) {
     r.L = null; try { r.L = _lectureExos(d); } catch (x) {}
     // Bien-être : dernier ressenti vs SA normale
     var be = (d.bien_etre || [])[0]; r.be = be ? { t: parseChatDate(be.date), date: be.date } : null;
-    r.hors = []; try { if (be) _beNormale(d).forEach(function (n) { if (n.etat && n.etat !== 'ok' && n.etat !== 'nd') r.hors.push(n); }); } catch (x) {}
+    r.hors = []; r.okN = []; try { if (be) _beNormale(d).forEach(function (n) { if (n.etat === 'ok') r.okN.push(n); else if (n.etat && n.etat !== 'nd') r.hors.push(n); }); } catch (x) {}
+    r.beDouleur = be && Number(be.douleur) >= 2 ? { niv: Number(be.douleur), zone: (typeof _zoneDouleur === 'function') ? _zoneDouleur(be.zone) : '' } : null;
     // Volume par muscle (4 semaines terminées)
     r.vol = null;
     r.sans4 = !r.sem.slice(2).some(function (x) { return x.n > 0; });   // aucune séance sur les 4 sem. terminées (retour porteur : John « 0/10 » au lieu de « — »)
@@ -8074,7 +8088,7 @@ function _aeModele(enrich, datas) {
         var c = ((d.volume_obti || []).filter(function (o) { return o && _musKey(o.muscle) === _musKey(g[0]); })[0]) || null, min = c ? Number(c.series_min) : 0;
         if (!min) return null;
         var v = _lv3Volume(d, g[0], lun.getTime()).parSem;
-        return { v: v, min: min, txt: fmt(v) + '/' + min, st: v >= min ? 'ok' : (v >= 0.8 * min ? 'wa' : 'ba') };
+        return { v: v, min: min, txt: fmt(v) + '/' + min, st: r.reprise ? 'gr' : (v >= min ? 'ok' : (v >= 0.8 * min ? 'wa' : 'ba')) };   // reprise : non jugé (même règle que l'alerte volume)
       });
       if (!r.vol.some(Boolean)) r.vol = null;
     }
@@ -8140,7 +8154,7 @@ function _aeHtml(M, desk) {
     var mid, right = '';
     if (r.et.cat === 'inactifs') { mid = '<b style="color:var(--danger)">' + esc(r.et.court) + '</b>'; right = r.nbProg ? btn('Écrire', 'ouvrirConversationDepuisMessagerie(\'' + r.i + '\')') : btn('Programme', 'aeOuvrir(\'' + r.i + '\',\'programme\')'); }
     else {
-      var p = ['Cette semaine : ' + r.faitesSem + ' faite' + (r.faitesSem > 1 ? 's' : '') + (!r.date && r.obj ? ' sur ' + r.obj + ' prévue' + (r.obj > 1 ? 's' : '') : '')];
+      var p = [r.faitesSem + ' faite' + (r.faitesSem > 1 ? 's' : '') + (!r.date && r.obj ? ' sur ' + r.obj + ' prévue' + (r.obj > 1 ? 's' : '') : '') + ' cette semaine'];
       if (r.retard.length) p.push('<b style="color:var(--warn)">' + r.retard.length + ' en retard</b> (' + esc(r.retard.map(function (x) { return x.sid + ', ' + _PROG_JOURS_LONG[x.jour - 1]; }).join(' · ')) + ')');
       if (r.date && r.avenir) p.push(r.avenir + ' à venir');
       mid = p.join(' · ') + (r.reprise ? ' <span class="ae-mut">· reprise</span>' : '');
@@ -8164,34 +8178,47 @@ function _aeHtml(M, desk) {
   }).join('');
   var dlBody = (dl || vide('Aucune douleur signalée sur 7 jours.')) + (K.blessures ? '' : '<div class="ae-mut" style="margin-top:6px">Blessures déclarées : aucune en cours.</div>');
   // Progression
+  // Progression : chaque exercice est un lien vers la fiche ▸ Progression SUR CET exercice (retour porteur 05/11 :
+  // le clic ouvrait n'importe quel exercice). Pastille = 1er exercice de la catégorie.
+  var exoLien = function (r, exo, col) { var ex = String(exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); return '<a class="ae-exo" style="color:' + col + '" onclick="event.stopPropagation();coachOuvrirProgression(\'' + r.i + '\',\'' + ex + '\')">' + esc(exo) + '</a>'; };
   var prog = act.filter(function (r) { return r.L && (r.L.records.length + r.L.progresse.length + r.L.bloque.length + r.L.recule.length); }).map(function (r) {
-    var L = r.L, c = [];
-    if (L.records.length) c.push(chip('★ ' + L.records.length + ' record' + (L.records.length > 1 ? 's' : ''), 'ok'));
-    if (L.progresse.length) c.push(chip('▲ ' + L.progresse.length + ' en progrès', 'bl'));
-    c.push(chip('■ ' + L.bloque.length + ' bloqué' + (L.bloque.length > 1 ? 's' : ''), L.bloque.length ? 'wa' : 'gr'));
-    c.push(chip('▼ ' + L.recule.length + ' recule' + (L.recule.length > 1 ? 'nt' : ''), L.recule.length ? 'ba' : 'gr'));
+    var L = r.L, c = [], det = [];
+    var cat = function (arr, sym, lab, cls, col, nMax) {
+      if (!arr.length) { if (cls !== 'ok' && cls !== 'bl') c.push(chip(sym + ' 0 ' + lab(0), 'gr')); return; }
+      var ex = String(arr[0].exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      c.push('<span class="ae-chip ' + cls + '" style="cursor:pointer" onclick="event.stopPropagation();coachOuvrirProgression(\'' + r.i + '\',\'' + ex + '\')">' + sym + ' ' + arr.length + ' ' + lab(arr.length) + '</span>');
+      det.push('<b>' + lab(arr.length).charAt(0).toUpperCase() + lab(arr.length).slice(1) + '</b> : ' + arr.slice(0, nMax).map(function (x) { return exoLien(r, x.exo, col); }).join(', ') + (arr.length > nMax ? ' <span class="ae-mut">+' + (arr.length - nMax) + '</span>' : ''));
+    };
+    cat(L.bloque, '■', function (n) { return n > 1 ? 'bloqués' : 'bloqué'; }, 'wa', 'var(--warn)', 4);
+    cat(L.recule, '▼', function (n) { return n > 1 ? 'reculent' : 'recule'; }, 'ba', 'var(--danger)', 4);
+    cat(L.records, '★', function (n) { return n > 1 ? 'records' : 'record'; }, 'ok', 'var(--good)', 4);
+    cat(L.progresse, '▲', function () { return 'en progrès'; }, 'bl', 'var(--accent)', 3);
     if (r.reprise) c.push(chip('reprise', 'gr'));
-    var det = [];
-    if (L.bloque.length) det.push('Bloqué : ' + L.bloque.slice(0, 3).map(function (x) { return x.exo; }).join(', '));
-    if (L.recule.length) det.push('Recule : ' + L.recule.slice(0, 3).map(function (x) { return x.exo; }).join(', '));
-    if (L.records.length) det.push('Record' + (L.records.length > 1 ? 's' : '') + ' : ' + L.records.slice(0, 4).map(function (x) { return x.exo; }).join(', '));
-    return row(r, c.join(' ') + (det.length ? '<div class="ae-mut" style="margin-top:3px">' + esc(det.join(' · ')) + '</div>' : ''), '', 'prog');
+    return row(r, c.join(' ') + (det.length ? '<div class="ae-mut" style="margin-top:4px;line-height:1.55">' + det.join('<br>') + '</div>' : ''), '', 'prog');
   }).join('');
   // Bien-être
   var NOMS = { sommeil: 'sommeil', fatigue: 'fatigue', stress: 'stress', motivation: 'motivation', courbatures: 'courbatures', douleur: 'douleur', energie: 'énergie' };
   var nbR = 0;
   var bien = act.map(function (r) {
-    if (!r.be || !r.be.t) return row(r, '<span class="ae-mut">Aucun ressenti</span>', btn('Relancer', 'coachRelancerRessenti(\'' + r.i + '\')'));
+    if (!r.be || !r.be.t) return row(r, '<span class="ae-mut">Aucun ressenti</span>', r.et.cat === 'inactifs' ? chip('inactif', 'gr') : btn('Relancer', 'coachRelancerRessenti(\'' + r.i + '\')'));   // inactif : c'est l'absence qu'on traite, pas le ressenti
     var age = Math.floor((now - r.be.t) / D); if (age <= 7) nbR++;
     var quand = age <= 0 ? 'Aujourd\'hui' : fmtD(r.be.t) + ' (il y a ' + age + ' j)';
-    var mid = quand + ' · ' + (r.hors.length ? '<b style="color:var(--warn)">' + esc(r.hors.map(function (n) { return (NOMS[n.key] || n.key) + (n.etat === 'bas' ? ' sous' : ' au-dessus de') + ' sa normale'; }).join(', ')) + '</b>' : 'dans sa normale');
-    var right = age > 7 ? chip('ancien', 'wa') + btn('Relancer', 'coachRelancerRessenti(\'' + r.i + '\')') : chip(r.hors.length ? 'à regarder' : 'normal', r.hors.length ? 'wa' : 'ok');
+    // 05/11 : on n'écrit que ce qui est réellement comparé (normale établie), + la gêne du même ressenti.
+    var lst = function (L) { var n = L.map(function (x) { return NOMS[x.key] || x.key; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' et ' + n[n.length - 1] : n.join(''); };
+    var parts = [];
+    if (r.hors.length) parts.push('<b style="color:var(--warn)">' + esc(r.hors.map(function (n) { return (NOMS[n.key] || n.key) + (n.etat === 'bas' ? ' sous' : ' au-dessus de') + ' sa normale'; }).join(', ')) + '</b>');
+    if (r.okN.length) parts.push(esc(lst(r.okN)) + ' dans sa normale');
+    if (!r.hors.length && !r.okN.length) parts.push('<span class="ae-mut">pas encore assez de ressentis pour sa normale</span>');
+    if (r.beDouleur) parts.push('<b style="color:var(--warn)">gêne ' + r.beDouleur.niv + '/5' + (r.beDouleur.zone ? ' (' + esc(r.beDouleur.zone) + ')' : '') + '</b>');
+    var mid = quand + ' · ' + parts.join(' · ');
+    var aRegarder = r.hors.length || r.beDouleur;
+    var right = age > 7 ? chip('ancien', 'wa') + btn('Relancer', 'coachRelancerRessenti(\'' + r.i + '\')') : chip(aRegarder ? 'à regarder' : 'normal', aRegarder ? 'wa' : 'ok');
     return row(r, mid, right);
   }).join('') + '<div class="ae-mut" style="margin-top:6px">Ressenti sur 7 j : ' + nbR + '/' + act.length + '</div>';
   // Volume par muscle
   var vrows = act.filter(function (r) { return r.vol || (r.sans4 && r.nbProg); });
   var vol = vrows.length ? '<div class="ae-tw"><table class="ae-t"><tr><th>Athlète</th>' + _AE_GRP.map(function (g) { return '<th>' + g[1] + '</th>'; }).join('') + '</tr>'
-    + vrows.map(function (r) { if (!r.vol) return '<tr onclick="aeOuvrir(\'' + r.i + '\')"><td>' + esc(r.nom) + '</td><td colspan="' + _AE_GRP.length + '"><span class="ae-c gr">— aucune séance sur 4 semaines</span></td></tr>'; return '<tr onclick="aeOuvrir(\'' + r.i + '\',\'prog\')"><td>' + esc(r.nom) + (r.reprise ? ' ' + chip('reprise', 'gr') : '') + '</td>' + r.vol.map(function (c) { return '<td>' + (c ? '<span class="ae-c ' + c.st + '">' + c.txt + '</span>' : '<span class="ae-c gr">—</span>') + '</td>'; }).join('') + '</tr>'; }).join('')
+    + vrows.map(function (r) { if (!r.vol) return '<tr onclick="aeOuvrir(\'' + r.i + '\')"><td>' + esc(r.nom) + '</td><td colspan="' + _AE_GRP.length + '"><span class="ae-c gr">— aucune séance sur 4 semaines</span></td></tr>'; return '<tr onclick="aeOuvrir(\'' + r.i + '\',\'prog\')"><td>' + esc(r.nom) + (r.reprise ? ' ' + chip('reprise · non jugé', 'gr') : '') + '</td>' + r.vol.map(function (c) { return '<td>' + (c ? '<span class="ae-c ' + c.st + '">' + c.txt + '</span>' : '<span class="ae-c gr">—</span>') + '</td>'; }).join('') + '</tr>'; }).join('')
     + '</table></div><div class="ae-mut" style="margin-top:6px">Séries / semaine, moyenne des 4 dernières semaines terminées, vs le minimum de chacun. « — » = muscle absent de son programme.</div>'
     : vide('Pas encore 3 semaines de données.');
   // Charge
@@ -8215,7 +8242,7 @@ function _aeHtml(M, desk) {
   var g = function (a, b) { return '<div class="ae-g2">' + a + b + '</div>'; };
   return '<div class="ae">' + kpis
     + card('État de l\'équipe', 'même règle que l\'accueil · touche pour filtrer', _aeEtatsHtml(M, false))
-    + g(card('Assiduité', 'cette semaine à date · régularité 4 sem.', assid || vide('Aucun athlète actif.')), card('Douleurs &amp; blessures', '7 jours · dès 2/5', dlBody))
+    + g(card('Assiduité', 'cette semaine à date · régularité 4 sem.', assid || vide('Aucun athlète actif.')), card('Douleurs &amp; blessures', 'signalées sur 7 j · dès 2/5 · dates sur 10 j', dlBody))
     + g(card('Progression', 'même classement que la fiche', prog || vide('Pas assez de séances pour classer les exercices.')), card('Bien-être', 'dernier ressenti · comparé à sa normale', bien))
     + card('Volume par muscle', '4 semaines terminées', vol)
     + g(card('Charge d\'entraînement', 'séries / semaine · 6 sem.', chargeBody), card('Programmes', 'suivi', progs))
