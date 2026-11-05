@@ -16,7 +16,7 @@ function extractFn(name) {
 }
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext([extractFn('_repsRange'), extractFn('_derivePlanSeries'), extractFn('_planLoadTxt'),
+vm.runInContext([extractFn('_repsRange'), extractFn('_derivePlanSeries'), extractFn('_seriesPerso'), extractFn('_planLoadTxt'),
   'this._derivePlanSeries=_derivePlanSeries; this._planLoadTxt=_planLoadTxt;'].join('\n'), sandbox);
 const derive = sandbox._derivePlanSeries, loadTxt = sandbox._planLoadTxt;
 const RM = 107;   // 1RM estimé → 75% ≈ 80 kg
@@ -66,6 +66,20 @@ check('F: 0 série', f.series.length === 0);
 // G — schema absent → traité comme « fixe ».
 let g = derive({ series_prevues: 2, reps_mini: 8, reps_max: 8, charge_pct_1rm: 60 }, RM);
 check('G: défaut fixe (2 séries identiques)', g.series.length === 2 && g.series.every(s => s.pct === 60));
+
+// H — 05/11 série par série (tous schémas) : reps par série saisies → remplacent le schéma pour CETTE série.
+let h = derive({ schema: 'fixe', series_prevues: 3, reps_mini: 8, reps_max: 20, series_json: [{ reps: 6 }, { reps: 8 }, { reps: 15 }] }, RM);
+check('H: fixe 6 · 8 · 15', h.series.map(s => s.reps).join(',') === '6,8,15');
+check('H: séries marquées perso', h.series.every(s => s.perso));
+let h2 = derive({ schema: 'double', series_prevues: 3, reps_mini: 8, reps_max: 12, series_json: [null, { reps: 10 }] }, RM);
+check('H2: seule S2 retouchée', h2.series[0].reps === '8–12' && h2.series[1].reps === '10' && h2.series[2].reps === '8–12' && !h2.series[0].perso && h2.series[1].perso);
+let h3 = derive({ schema: 'topbackoff', series_prevues: 3, reps_mini: 6, reps_max: 8, charge_pct_1rm: 85, backoff_pct: 10, series_json: [{ reps: 5, rpe: 9 }, { reps: 10 }] }, RM);
+check('H3: top-set S1 = 5 reps RPE 9, tag lourde gardé', h3.series[0].reps === '5' && h3.series[0].rpe === 9 && h3.series[0].tag === 'lourde');
+check('H3: S2 10 reps, S3 du schéma (8)', h3.series[1].reps === '10' && h3.series[2].reps === '8');
+let h4 = derive({ schema: 'fixe', series_prevues: 2, reps_mini: 8, reps_max: 12, series_json: [{ reps: 6 }, { reps: 8 }, { reps: 15 }] }, RM);
+check('H4: plus de cibles que de séries → seulement 2 séries', h4.series.length === 2);
+let h5 = derive({ schema: 'pyramidal', series_prevues: 2, series_json: [{ reps: 12 }, { reps: 8 }, { reps: 5 }] }, RM);
+check('H5: pyramidal suit le nombre de séries (2)', h5.series.length === 2);
 
 console.log('-'.repeat(78));
 console.log('#4 — _derivePlanSeries : ' + ok + ' vérifs OK / ' + ko + ' échec(s).');
