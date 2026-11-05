@@ -1,0 +1,103 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette réglages coach</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.wrap{display:flex;gap:22px;padding:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.ph{width:390px;background:#F4F7FF;border-radius:24px;box-shadow:0 8px 30px rgba(14,26,51,.12);padding:14px 0 16px}
+h3{margin:2px 16px 10px;font-size:13px;color:#55627E}
+.tabs{display:flex;gap:4px;margin:0 12px 10px;overflow:hidden}.tabs span{font-size:11px;font-weight:800;padding:6px 9px;border-radius:999px;background:#fff;border:1px solid #DCE4F5;color:#55627E;white-space:nowrap}.tabs span.on{background:#1A5FFF;color:#fff;border-color:#1A5FFF}
+.lab{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A96B0;margin:12px 16px 6px}
+.c{background:#fff;border:1px solid #DCE4F5;border-radius:16px;padding:12px 14px;margin:0 14px 8px;font-size:12.5px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #EEF2FB}.row:first-child{border-top:0}
+.row .t{flex:1;line-height:1.4}.row .t small{display:block;color:#8A96B0;font-size:11px}
+.sw{width:36px;height:20px;border-radius:99px;background:#CFDCFF;position:relative;flex:none}.sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.on{background:#1A5FFF}.sw.on::after{left:18px}
+.inp{background:#F4F7FF;border:1px solid #DCE4F5;border-radius:10px;padding:8px 10px;font-size:12.5px;color:#8A96B0}
+.btn{display:block;text-align:center;background:#1A5FFF;color:#fff;border-radius:10px;padding:10px;font-weight:800;font-size:12.5px;margin-top:8px}
+.btn2{display:block;text-align:center;background:#fff;color:#1A5FFF;border:1px solid #CFDCFF;border-radius:10px;padding:9px;font-weight:800;font-size:12.5px;margin-top:8px}
+.rad{display:flex;gap:6px;align-items:center;padding:4px 0}.rad i{width:14px;height:14px;border-radius:50%;border:2px solid #CFDCFF;flex:none}.rad i.on{border:5px solid #1A5FFF}
+.ban{margin:0 14px 10px;background:#FFF7EB;border:1px solid #F5D7A1;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.45;display:flex;gap:10px;align-items:center}
+.ban b.a{background:#1A5FFF;color:#fff;border-radius:9px;padding:6px 10px;font-size:11.5px;flex:none}
+.chip{font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 7px;background:#EEF2FB;color:#55627E}
+.grp{display:flex;gap:6px;flex-wrap:wrap;margin:0 14px 8px}.grp span{font-size:11.5px;font-weight:800;border:1px solid #CFDCFF;border-radius:999px;padding:5px 10px;background:#fff;color:#1A5FFF}.grp span.on{background:#1A5FFF;color:#fff}
+.new{outline:2px dashed #1A5FFF;outline-offset:3px}.note{font-size:10.5px;color:#1A5FFF;font-weight:700;margin:4px 16px 8px;line-height:1.4}
+.modal{margin:6px 14px;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(14,26,51,.18);padding:14px;font-size:12.5px;line-height:1.5}
+.push{margin:0 14px 8px;background:#1C2333;color:#fff;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.45}.push b{display:block;font-size:12.5px}
+.rules{max-width:1250px;margin:0 auto 26px;background:#fff;border:1px solid #DCE4F5;border-radius:14px;padding:14px 18px;font-size:12.5px;line-height:1.6}
+</style></head><body><div class="wrap">
+
+<!-- ① Accueil + Mon compte -->
+<div class="ph"><h3>① Accueil coach · bandeau e-mail (P1)</h3>
+<div class="ban new">✉️ <span style="flex:1"><b>Ajoute ton e-mail</b> : récupération du mot de passe et résumé d'équipe.</span><b class="a">Ajouter</b></div>
+<div class="note">Visible tant qu'il n'y a pas d'e-mail (ton compte coach n'en a pas aujourd'hui).</div>
+<h3 style="margin-top:14px">Mon profil ▸ Mon compte</h3>
+<div class="tabs"><span class="on">Mon compte</span><span>Notifications</span><span>Athlètes</span><span>Données</span><span>À propos</span></div>
+<div class="lab">Profil coach</div>
+<div class="c">Nom affiché<div class="inp" style="margin:4px 0 8px">Vincent</div>E-mail<div class="inp" style="margin-top:4px">ton@email.com</div><span class="btn">Enregistrer</span></div>
+<div class="lab">Sport</div>
+<div class="c new"><div class="row"><span class="t">Musculation<small>vocabulaire et écrans de ton espace</small></span><span class="btn2" style="margin:0;padding:6px 10px">Changer</span></div></div>
+<div class="modal new">Ton espace passe en vocabulaire <b>Football</b> (joueurs, matchs…). Tes athlètes et leurs données ne changent pas.<div style="display:flex;gap:8px;margin-top:8px"><span class="btn2" style="flex:1;margin:0">Annuler</span><span class="btn" style="flex:1;margin:0">Confirmer</span></div></div>
+<div class="note">P5 : déplacé ici, avec confirmation (avant : un menu dans Préférences, sans confirmation).</div>
+<div class="lab">Mot de passe</div><div class="c" style="color:#8A96B0">… inchangé</div>
+</div>
+
+<!-- ② Notifications -->
+<div class="ph"><h3>② Mon profil ▸ Notifications (P2-P4)</h3>
+<div class="tabs"><span>Mon compte</span><span class="on">Notifications</span><span>Athlètes</span><span>Données</span><span>À propos</span></div>
+<div class="c new"><div class="row"><span class="t"><b>Ce téléphone</b><small>aucun téléphone coach enregistré pour l'instant</small></span><span class="btn" style="margin:0;padding:7px 10px">Activer</span></div></div>
+<div class="lab">Ce que tu reçois</div>
+<div class="c new">
+ <div class="row"><span class="t">Messages de tes athlètes<small>tout de suite</small></span><span class="sw on"></span></div>
+ <div class="row"><span class="t">Douleur signalée ≥ 3/5<small>tout de suite</small></span><span class="sw on"></span></div>
+ <div class="row"><span class="t">Résumé du matin<small>1 seule notif à 8 h (réglable)</small></span><span class="sw on"></span></div>
+ <div class="row"><span class="t">Chaque alerte séparément<small>absence, séance en retard, volume… (1 par athlète)</small></span><span class="sw"></span></div>
+</div>
+<div class="lab">Heures calmes</div>
+<div class="c"><div class="row"><span class="t">Pas de notification de 22 h à 7 h<small>reportées au résumé du matin</small></span><span class="sw on"></span></div></div>
+<div class="lab">Aperçu du résumé du matin</div>
+<div class="push new"><b>Novalyz · ton équipe ce matin</b>2 à surveiller (Vincent, Alizé) · 1 séance en retard · 1 message non lu</div>
+<div class="note">Les alertes coach ne dépendent plus des notifications de l'athlète (serveur). Sur ordi : résumé par e-mail (onglet suivant) en attendant les notifs web.</div>
+<div class="lab">Résumé d'équipe par e-mail</div>
+<div class="c"><div class="rad"><i></i>Jamais</div><div class="rad"><i class="on"></i>Chaque semaine (lundi)</div><div class="rad"><i></i>Chaque mois</div></div>
+</div>
+
+<!-- ③ Athlètes : défauts + groupes -->
+<div class="ph"><h3>③ Mon profil ▸ Athlètes (P6-P7)</h3>
+<div class="tabs"><span>Mon compte</span><span>Notifications</span><span class="on">Athlètes</span><span>Données</span><span>À propos</span></div>
+<div class="lab">Par défaut pour mes nouveaux athlètes</div>
+<div class="c new">
+ <div style="font-weight:800;margin-bottom:4px">Propositions Novalyz</div>
+ <div class="rad"><i class="on"></i>Au coach seulement</div><div class="rad"><i></i>Aussi à l'athlète</div>
+ <div style="font-weight:800;margin:10px 0 4px">Semaine de l'athlète</div>
+ <div class="rad"><i class="on"></i>Lundi → dimanche</div><div class="rad"><i></i>7 derniers jours glissants</div>
+ <div style="font-size:11px;color:#8A96B0;margin-top:6px">Modifiable ensuite pour chaque athlète dans sa fiche.</div>
+</div>
+<div class="lab">Groupes</div>
+<div class="c new">
+ <div class="row"><span class="t"><b>Prépa marathon</b><small>Vincent, Alizé</small></span><span class="chip">2</span><span class="btn2" style="margin:0;padding:5px 9px">Modifier</span></div>
+ <div class="row"><span class="t"><b>Sans groupe</b><small>John, Yann</small></span><span class="chip">2</span></div>
+ <span class="btn2">＋ Nouveau groupe</span>
+</div>
+<div class="note">Exemple de groupe (aucun n'existe aujourd'hui). Un athlète peut être dans plusieurs groupes.</div>
+<h3 style="margin-top:12px">Utilisation : Aujourd'hui / Équipe / Analyses / À plusieurs</h3>
+<div class="grp new"><span class="on">Tous · 4</span><span>Prépa marathon · 2</span><span>Sans groupe · 2</span></div>
+<div class="note">Filtre « groupe » en tête de ces écrans (le club / la catégorie restent pour plus tard).</div>
+</div>
+
+<!-- ④ Données + À propos -->
+<div class="ph"><h3>④ Mon profil ▸ Données · À propos (P8-P9)</h3>
+<div class="tabs"><span>Mon compte</span><span>Notifications</span><span>Athlètes</span><span class="on">Données</span><span>À propos</span></div>
+<div class="lab">Bilan d'un client</div><div class="c" style="color:#8A96B0">… inchangé (page imprimable / e-mail)</div>
+<div class="lab">Exporter</div>
+<div class="c new">Toute l'équipe ou un groupe, sur une période<div class="inp" style="margin:6px 0">Tous · 3 derniers mois</div>
+ <div style="font-size:11px;color:#8A96B0">Fichier CSV (Excel) : séances et séries, ressentis, douleurs, mesures.</div><span class="btn">Exporter (CSV)</span></div>
+<div class="lab">Importer</div>
+<div class="c new"><div class="row"><span class="t"><b>Historique d'un client</b><small>depuis Excel / CSV — bientôt</small></span><span class="chip" style="background:rgba(122,90,248,.12);color:#7A5AF8">BIENTÔT</span></div></div>
+<div class="lab">Zone dangereuse</div><div class="c" style="color:#C0303A">Supprimer mon compte coach … inchangé</div>
+<div class="tabs" style="margin-top:14px"><span>Mon compte</span><span>Notifications</span><span>Athlètes</span><span>Données</span><span class="on">À propos</span></div>
+<div class="c new"><b>Envoyer un retour</b><div class="inp" style="margin:6px 0;height:46px">Ton message…</div><span class="btn">Envoyer</span><div style="font-size:11px;color:#8A96B0;margin-top:6px">Arrive à l'équipe Novalyz par e-mail (ton adresse n'apparaît plus dans l'app).</div></div>
+<div class="note">IA (P10) : rien tant qu'elle n'est pas activée ; carte « Bientôt » de la fiche inchangée.</div>
+</div>
+</div>
+<div class="rules"><b>Technique</b> — Front : bandeau e-mail, onglets (Notifications, Athlètes), sport avec confirmation, défauts, groupes (filtres), export CSV, formulaire de retour. <b>Serveur (index.ts, à redéployer)</b> : réglages de notifications du coach, alertes coach indépendantes des notifs de l'athlète, résumé du matin (passage quotidien à 8 h) et heures calmes, groupes (stockés côté coach), défauts appliqués à la liaison d'un athlète, envoi du retour (Resend, déjà configuré). L'import d'historique reste au backlog.</div>
+</body></html>
