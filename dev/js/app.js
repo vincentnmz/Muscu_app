@@ -2147,6 +2147,168 @@ async function seConnecterCoach() {
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
 }
 
+// ===================== RÉGLAGES COACH v2 (écran 9, 05/11 — maquette reglages-coach.html validée) =====================
+var _coachPrefs = { notif: { messages: true, douleur: true, resume: true, chaque: false, calme: true }, groupes: [], defauts: { novalyz_athlete: false, semaine_type: 'calendaire' }, telephone: false, charge: false };
+var _coachGrp = null;   // filtre « groupe » (nom) sur Aujourd'hui / Équipe / Analyses
+async function chargerCoachPrefs() {
+  if (typeof coach === 'undefined' || !coach || !coach.coach_id) return _coachPrefs;
+  try {
+    var d = await nvFetchJSON(SCRIPT_URL + '?action=getCoachPrefs&coach_id=' + encodeURIComponent(coach.coach_id));
+    if (d && d.success) { _coachPrefs = { notif: d.notif || _coachPrefs.notif, groupes: d.groupes || [], defauts: d.defauts || _coachPrefs.defauts, telephone: !!d.telephone, charge: true }; }
+  } catch (e) {}
+  return _coachPrefs;
+}
+async function _coachPrefSave(cle, valeur) {
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCoachPref', coach_id: coach.coach_id, cle: cle, valeur: valeur }) });
+    var j = await r.json(); if (j && j.success) { _coachPrefs[cle] = j.valeur; return true; }
+    showToast('Réglage non enregistré' + (j && j.error ? ' : ' + j.error : ''), '#ff4444');
+  } catch (e) { showToast('Erreur réseau', '#ff4444'); }
+  return false;
+}
+// ── Bandeau e-mail (P1) ──
+function _coachBanEmail() {
+  if (typeof coach === 'undefined' || !coach || coach.email) return '';
+  return '<div class="crgx-ban"><span>✉️</span><span style="flex:1"><b>Ajoute ton e-mail</b> : récupération du mot de passe et résumé d\'équipe.</span><button onclick="coachAllerEmail()">Ajouter</button></div>';
+}
+function coachAllerEmail() { try { if (_coachDeskAny()) coachDeskGo('profil'); else ouvrirReglagesCoach(); } catch (e) { ouvrirReglagesCoach(); } setTimeout(function () { try { switchCoachReglagesTab('compte'); var i = document.getElementById('coach-prof-email'); if (i) i.focus(); } catch (e) {} }, 250); }
+// ── Sport avec confirmation (P5) ──
+function coachChangerSport() {
+  var sel = document.getElementById('coach-sport-select'); if (!sel) return;
+  var nv = sel.value, ancien = (coach && coach.sport) || 'muscu';
+  if (nv === ancien) return;
+  var nom = (SPORTS[nv] && SPORTS[nv].nom) || nv;
+  if (!confirm('Ton espace passe en vocabulaire ' + nom + '.\n\nTes athlètes et leurs données ne changent pas. Confirmer ?')) { sel.value = ancien; return; }
+  enregistrerSportCoach();
+}
+// ── Notifications (P2-P4) ──
+function _crgSw(on, js) { return '<button class="crgx-sw' + (on ? ' on' : '') + '" role="switch" aria-checked="' + !!on + '" onclick="' + js + '"></button>'; }
+function renderCoachNotifs() {
+  var el = document.getElementById('crgx-notif'); if (!el) return;
+  var n = _coachPrefs.notif || {};
+  var row = function (k, t, s) { return '<div class="crgx-row"><span class="crgx-t">' + t + '<small>' + s + '</small></span>' + _crgSw(n[k], 'coachNotifToggle(\'' + k + '\')') + '</div>'; };
+  var tel = _coachPrefs.telephone;
+  el.innerHTML = '<div class="crgx-lab">Ce que tu reçois</div><div class="card crgx-card">'
+    + row('messages', 'Messages de tes athlètes', 'tout de suite')
+    + row('douleur', 'Douleur signalée ≥ 3/5', 'tout de suite')
+    + row('resume', 'Résumé du matin', 'une seule notification vers 8 h')
+    + row('chaque', 'Chaque alerte séparément', 'absence, séance en retard, volume… (une par athlète)')
+    + '</div><div class="crgx-lab">Heures calmes</div><div class="card crgx-card">' + row('calme', 'Pas de notification de 22 h à 7 h', 'les messages restent dans l\'app ; le résumé du matin les reprend')
+    + '</div><div class="crgx-lab">Exemple de résumé du matin</div><div class="crgx-push"><b>Novalyz · ton équipe ce matin</b>2 à surveiller (Vincent, Alizé) · 1 séance en retard · 1 message non lu</div>'
+    + '<div class="crgx-note">' + (tel ? 'Un téléphone coach est enregistré.' : 'Aucun téléphone coach enregistré : active les notifications ci-dessus (app Android). Sur ordi, choisis le résumé par e-mail ci-dessous.') + ' Les alertes de tes athlètes t\'arrivent même s\'ils n\'ont pas activé leurs propres notifications.</div>';
+}
+async function coachNotifToggle(k) {
+  var n = Object.assign({}, _coachPrefs.notif); n[k] = !n[k];
+  _coachPrefs.notif = n; renderCoachNotifs();
+  var ok = await _coachPrefSave('notif', n); if (!ok) { n[k] = !n[k]; _coachPrefs.notif = n; renderCoachNotifs(); }
+}
+// ── Athlètes : défauts (P7) + groupes (P6) ──
+function renderCoachAthletesRg() {
+  var el = document.getElementById('crgx-athletes'); if (!el) return;
+  var d = _coachPrefs.defauts || {}, esc = escapeHtml;
+  var rad = function (on, js, t) { return '<div role="radio" aria-checked="' + !!on + '" class="crgx-rad" onclick="' + js + '"><i class="' + (on ? 'on' : '') + '"></i>' + t + '</div>'; };
+  var grp = (_coachPrefs.groupes || []);
+  var noms = function (ids) { return (athletesCoach || []).filter(function (a) { return ids.indexOf(String(a.athlete_id)) >= 0; }).map(function (a) { return a.nom; }).join(', ') || 'aucun athlète'; };
+  var dans = {}; grp.forEach(function (g) { (g.ids || []).forEach(function (id) { dans[id] = 1; }); });
+  var sans = (athletesCoach || []).filter(function (a) { return !dans[String(a.athlete_id)]; });
+  el.innerHTML = '<div class="crgx-lab">Par défaut pour mes nouveaux athlètes</div><div class="card crgx-card">'
+    + '<div class="crgx-sub">Propositions Novalyz</div>' + rad(!d.novalyz_athlete, 'coachDefaut(\'novalyz_athlete\',false)', 'Au coach seulement') + rad(!!d.novalyz_athlete, 'coachDefaut(\'novalyz_athlete\',true)', 'Aussi à l\'athlète')
+    + '<div class="crgx-sub" style="margin-top:10px">Semaine de l\'athlète</div>' + rad(d.semaine_type !== 'glissant', 'coachDefaut(\'semaine_type\',\'calendaire\')', 'Lundi → dimanche') + rad(d.semaine_type === 'glissant', 'coachDefaut(\'semaine_type\',\'glissant\')', '7 derniers jours glissants')
+    + '<div class="crgx-note">Appliqué quand un athlète accepte ton suivi. Modifiable ensuite dans sa fiche.</div></div>'
+    + '<div class="crgx-lab">Groupes</div><div class="card crgx-card">'
+    + (grp.length ? grp.map(function (g, k) { return '<div class="crgx-row"><span class="crgx-t"><b>' + esc(g.nom) + '</b><small>' + esc(noms(g.ids || [])) + '</small></span><span class="crgx-chip">' + (g.ids || []).length + '</span><button class="ae-btn" onclick="coachGroupeEditer(' + k + ')">Modifier</button></div>'; }).join('') : '<div class="crgx-note" style="margin:0 0 6px">Aucun groupe. Exemple : « Prépa marathon », « U17 »…</div>')
+    + (grp.length && sans.length ? '<div class="crgx-row"><span class="crgx-t"><b>Sans groupe</b><small>' + esc(sans.map(function (a) { return a.nom; }).join(', ')) + '</small></span><span class="crgx-chip">' + sans.length + '</span></div>' : '')
+    + '<button class="crgx-btn2" onclick="coachGroupeEditer(-1)">＋ Nouveau groupe</button>'
+    + '<div class="crgx-note">Un groupe sert de filtre dans Aujourd\'hui, Équipe, Analyses et le message à plusieurs. Un athlète peut être dans plusieurs groupes.</div></div>';
+}
+async function coachDefaut(k, v) { var d = Object.assign({}, _coachPrefs.defauts); d[k] = v; _coachPrefs.defauts = d; renderCoachAthletesRg(); await _coachPrefSave('defauts', d); renderCoachAthletesRg(); }
+function coachGroupeEditer(k) {
+  var g = k >= 0 ? (_coachPrefs.groupes[k] || { nom: '', ids: [] }) : { nom: '', ids: [] }, esc = escapeHtml;
+  var ov = document.getElementById('msgx-plus'); if (!ov) { ov = document.createElement('div'); ov.id = 'msgx-plus'; document.body.appendChild(ov); }
+  ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">' + (k >= 0 ? 'Modifier le groupe' : 'Nouveau groupe') + '<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
+    + '<input id="crgx-gnom" class="msgx-s" maxlength="40" placeholder="Nom du groupe (ex. Prépa marathon)" value="' + esc(g.nom) + '">'
+    + (athletesCoach || []).map(function (a) { return '<label class="msgx-ck"><input type="checkbox" class="crgx-gck" value="' + esc(String(a.athlete_id)) + '" ' + ((g.ids || []).indexOf(String(a.athlete_id)) >= 0 ? 'checked' : '') + '> ' + esc(a.nom) + '</label>'; }).join('')
+    + '<button class="msgx-send" onclick="coachGroupeEnregistrer(' + k + ')">Enregistrer</button>'
+    + (k >= 0 ? '<button class="crgx-btn2" style="color:var(--danger);border-color:var(--danger)" onclick="coachGroupeSupprimer(' + k + ')">Supprimer le groupe</button>' : '') + '</div>';
+  ov.onclick = msgPlusFermer; ov.style.display = 'flex';
+}
+async function coachGroupeEnregistrer(k) {
+  var nom = ((document.getElementById('crgx-gnom') || {}).value || '').trim(); if (!nom) { showToast('Donne un nom au groupe', '#ff4444'); return; }
+  var ids = [].slice.call(document.querySelectorAll('.crgx-gck')).filter(function (x) { return x.checked; }).map(function (x) { return x.value; });
+  var G = (_coachPrefs.groupes || []).slice(); if (k >= 0) G[k] = { nom: nom, ids: ids }; else G.push({ nom: nom, ids: ids });
+  if (await _coachPrefSave('groupes', G)) { msgPlusFermer(); renderCoachAthletesRg(); _coachGrpRefresh(); showToast('Groupe enregistré'); }
+}
+async function coachGroupeSupprimer(k) {
+  if (!confirm('Supprimer ce groupe ? Les athlètes ne sont pas touchés.')) return;
+  var G = (_coachPrefs.groupes || []).slice(); var nom = G[k] && G[k].nom; G.splice(k, 1);
+  if (await _coachPrefSave('groupes', G)) { if (_coachGrp === nom) _coachGrp = null; msgPlusFermer(); renderCoachAthletesRg(); _coachGrpRefresh(); }
+}
+// Filtre « groupe » (P6) en tête d'Aujourd'hui / Équipe / Analyses.
+function _coachGrpIds(nom) { var g = (_coachPrefs.groupes || []).filter(function (x) { return x.nom === nom; })[0]; return new Set(g ? (g.ids || []).map(String) : []); }
+function _coachGrpChips() {
+  var G = _coachPrefs.groupes || []; if (!G.length) return '';
+  var tous = (athletesCoach || []).length, esc = escapeHtml;
+  var dans = {}; G.forEach(function (g) { (g.ids || []).forEach(function (id) { dans[id] = 1; }); });
+  var nSans = (athletesCoach || []).filter(function (a) { return !dans[String(a.athlete_id)]; }).length;
+  var c = function (v, t) { return '<button class="msgx-f' + ((_coachGrp || '') === v ? ' on' : '') + '" onclick="coachGrpFiltre(' + (v ? '\'' + String(v).replace(/'/g, "\\'") + '\'' : 'null') + ')">' + t + '</button>'; };
+  return '<div class="crgx-grps">' + c('', 'Tous · ' + tous) + G.map(function (g) { return c(g.nom, esc(g.nom) + ' · ' + (g.ids || []).length); }).join('') + (nSans ? c('__sans', 'Sans groupe · ' + nSans) : '') + '</div>';
+}
+function coachGrpFiltre(v) { _coachGrp = v || null; _coachGrpRefresh(); }
+function _coachGrpRefresh() { try { renderCoachSynthese(athletesCoach, true); } catch (e) {} }
+function _coachGrpGarde(a) {
+  if (!_coachGrp) return true;
+  if (_coachGrp === '__sans') { var dans = {}; (_coachPrefs.groupes || []).forEach(function (g) { (g.ids || []).forEach(function (id) { dans[id] = 1; }); }); return !dans[String(a.athlete_id)]; }
+  return _coachGrpIds(_coachGrp).has(String(a.athlete_id));
+}
+// ── Export CSV (P8) ──
+function renderCoachExport() {
+  var el = document.getElementById('crgx-export'); if (!el) return;
+  var G = _coachPrefs.groupes || [], esc = escapeHtml;
+  el.innerHTML = '<div class="crgx-lab">Exporter</div><div class="card crgx-card">'
+    + '<div class="crgx-sub">Athlètes</div><select id="crgx-exp-qui" class="crgx-sel"><option value="">Toute l\'équipe</option>' + G.map(function (g) { return '<option value="' + esc(g.nom) + '">Groupe : ' + esc(g.nom) + '</option>'; }).join('') + (athletesCoach || []).map(function (a) { return '<option value="id:' + esc(String(a.athlete_id)) + '">' + esc(a.nom) + '</option>'; }).join('') + '</select>'
+    + '<div class="crgx-sub" style="margin-top:8px">Période</div><select id="crgx-exp-per" class="crgx-sel"><option value="30">30 derniers jours</option><option value="90" selected>3 derniers mois</option><option value="365">12 derniers mois</option><option value="0">Tout</option></select>'
+    + '<div class="crgx-note">Fichier CSV (Excel) : une ligne par série (date, séance, exercice, muscle, charge, reps, RPE) + ressentis et douleurs.</div>'
+    + '<button class="crgx-btn" onclick="coachExporterCSV()">Exporter (CSV)</button><div id="crgx-exp-msg" class="crgx-note"></div></div>'
+    + '<div class="crgx-lab">Importer</div><div class="card crgx-card"><div class="crgx-row"><span class="crgx-t"><b>Historique d\'un client</b><small>depuis Excel / CSV</small></span><span class="crgx-chip crgx-soon">BIENTÔT</span></div></div>';
+}
+async function coachExporterCSV() {
+  var qui = (document.getElementById('crgx-exp-qui') || {}).value || '', per = Number((document.getElementById('crgx-exp-per') || {}).value || 90);
+  var msg = document.getElementById('crgx-exp-msg');
+  var L = (athletesCoach || []).filter(function (a) { if (!qui) return true; if (qui.indexOf('id:') === 0) return String(a.athlete_id) === qui.slice(3); return _coachGrpIds(qui).has(String(a.athlete_id)); });
+  if (!L.length) { if (msg) msg.textContent = 'Aucun athlète dans ce choix.'; return; }
+  if (msg) msg.textContent = 'Préparation…';
+  var lim = per ? new Date(Date.now() - per * 864e5) : null, limIso = lim ? lim.toISOString().slice(0, 10) : '';
+  var esc = function (v) { var t = v == null ? '' : String(v); return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  var rows = [['athlete', 'type', 'date', 'seance', 'exercice', 'muscle', 'serie', 'charge_kg', 'reps', 'rpe', 'sommeil', 'fatigue', 'stress', 'douleur', 'zone']];
+  for (var i = 0; i < L.length; i++) {
+    var a = L[i], d = null;
+    try { d = await nvFetchJSON(SCRIPT_URL + '?action=getSeancesDetail&athlete_id=' + encodeURIComponent(a.athlete_id)); } catch (e) {}
+    ((d && d.seances) || []).forEach(function (s) {
+      var iso = String(s.date_iso || s.date || ''); var m = iso.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if (m) iso = m[3] + '-' + m[2] + '-' + m[1]; iso = iso.slice(0, 10);
+      if (limIso && iso < limIso) return;
+      (s.exos || s.exercices || []).forEach(function (e) { (e.series || []).forEach(function (x, k) { rows.push([a.nom, 'serie', iso, s.seance_id || '', String(e.exo || e.nom || '').trim(), e.muscle || '', x.serie || (k + 1), x.charge, x.reps, x.rpe, '', '', '', '', '']); }); });
+    });
+    var ad = _msgData(a.athlete_id);
+    ((ad && ad.bien_etre) || []).forEach(function (b) { var m = String(b.date || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); var iso = m ? m[3] + '-' + m[2] + '-' + m[1] : ''; if (limIso && iso && iso < limIso) return; rows.push([a.nom, 'ressenti', iso, '', '', '', '', '', '', '', b.sommeil, b.fatigue, b.stress, b.douleur, _zoneDouleur(b.zone)]); });
+  }
+  var csv = '﻿' + rows.map(function (r) { return r.map(esc).join(';'); }).join('\n');
+  try {
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob), aEl = document.createElement('a');
+    aEl.href = url; aEl.download = 'novalyz-export-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(aEl); aEl.click(); setTimeout(function () { URL.revokeObjectURL(url); aEl.remove(); }, 1000);
+    if (msg) msg.textContent = (rows.length - 1) + ' lignes exportées (' + L.length + ' athlète' + (L.length > 1 ? 's' : '') + ').';
+  } catch (e) { if (msg) msg.textContent = 'Export impossible sur cet appareil : essaie depuis un ordinateur.'; }
+}
+// ── Retour (P9) ──
+async function envoyerRetourNovalyz(elId) {
+  var t = document.getElementById(elId || 'crgx-retour'); var m = t ? t.value.trim() : '';
+  if (m.length < 3) { showToast('Écris ton message', '#ff4444'); return; }
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', message: m }) });
+    var j = await r.json();
+    if (j && j.success) { t.value = ''; showToast('Merci ! Ton retour est envoyé à hello@novalyz.fr'); } else showToast('Envoi impossible : ' + ((j && j.error) || 'réessaie'), '#ff4444');
+  } catch (e) { showToast('Erreur réseau', '#ff4444'); }
+}
+function renderCoachReglagesV2() { renderCoachNotifs(); renderCoachAthletesRg(); renderCoachExport(); }
 function ouvrirReglagesCoach() {
   const overlay = document.getElementById('coach-reglages-overlay');
   const drawer  = document.getElementById('coach-reglages-drawer');
@@ -2162,6 +2324,7 @@ function ouvrirReglagesCoach() {
   }
   try { prefillCoachReglages(); } catch (_) {}
   try { switchCoachReglagesTab('compte'); } catch (_) {}
+  try { renderCoachReglagesV2(); chargerCoachPrefs().then(function () { renderCoachReglagesV2(); try { majUiPushCoach(); } catch (e) {} }); } catch (_) {}   // écran 9 (05/11)
   try { majUiCockpitPref(); } catch (_) {}
   // Réglages coach = vraie page plein écran (comme la vue athlète) : pas de fond
   // estompé, panneau opaque en flex-colonne, contenu scrollable.
@@ -4657,26 +4820,33 @@ function _coachEntrLigne(d) {
   return txt ? { txt: txt, P: P, exo: g ? g.exo : null } : null;
 }
 
-async function renderCoachSynthese(athletes) {
+var _coachSynthCache = {};   // écran 9 (05/11) : données par athlète, réutilisées quand on change de groupe (pas de rechargement réseau)
+async function renderCoachSynthese(athletes, depuisCache) {
   const el = document.getElementById('coach-synthese');
+  try { if (!_coachPrefs.charge) await chargerCoachPrefs(); } catch (_) {}
   if (!el) return;
   if (!athletes || athletes.length === 0) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
     return;
   }
-  el.innerHTML = '<div class="loader">Analyse des athlètes…</div>';
+  if (!depuisCache) el.innerHTML = '<div class="loader">Analyse des athlètes…</div>';
 
   // Charge les données de chaque athlète (mêmes calculs que la page détail)
   const datas = await Promise.all(athletes.map(async a => {
-    try { return await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); }
+    const c = _coachSynthCache[a.athlete_id];
+    if (depuisCache && c && c.d !== undefined) return c.d;
+    try { const d = await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); (_coachSynthCache[a.athlete_id] = _coachSynthCache[a.athlete_id] || {}).d = d; return d; }
     catch(e) { return null; }
   }));
 
   // Messages non lus par athlète (auteur = athlète, non lus côté coach) → notif dès l'accueil
   const msgNonLus = await Promise.all(athletes.map(async a => {
+    const c = _coachSynthCache[a.athlete_id];
+    if (depuisCache && c && c.nl !== undefined) return c.nl;
     try {
       const d = await nvFetchJSON(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
-      return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+      const nl = (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+      (_coachSynthCache[a.athlete_id] = _coachSynthCache[a.athlete_id] || {}).nl = nl; return nl;
     } catch(e) { return 0; }
   }));
   // Badge total de messages non lus — header de l'accueil coach + bandeau
@@ -4710,6 +4880,8 @@ async function renderCoachSynthese(athletes) {
     const streak = d.dashboard && d.dashboard.streak ? d.dashboard.streak.semaines : null;
     return { a, i, m, rpe, seancesSem, regPrevues, spark, tonnage, streak, msgNonLus: msgNonLus[i] || 0, enPause: estEnPause(d.pause) };
   });
+  // Écran 9 (05/11) : filtre « groupe » — on garde les index d'origine (e.i → athletesCoach / datas).
+  if (_coachGrp) { const keep = enrich.filter(e => _coachGrpGarde(e.a)); enrich.splice(0, enrich.length, ...keep); athletes = athletes.filter(a => _coachGrpGarde(a)); }
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
     return (ry - rx) || String(x.a.nom).localeCompare(String(y.a.nom));
@@ -5094,9 +5266,9 @@ async function renderCoachSynthese(athletes) {
   // Ordre (audit coach A7, 03/11) : À traiter → Messages → Entraînement à regarder → Questionnaires → Analyse Novalyz.
   // (« Résumé équipe » retiré d'ici : l'info de répartition reste dans l'onglet Analyses.)
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + messagesHtml + entrHtml + questHtml + briefingHtml}</div>` +
-    `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
-    `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
+    `<div id="coach-sec-aujourdhui">${_coachBanEmail() + _coachGrpChips() + heroHtml + prioHtml + messagesHtml + entrHtml + questHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-equipe" style="display:none">${_coachGrpChips() + listeHtml}</div>` +
+    `<div id="coach-sec-analyses" style="display:none">${_coachGrpChips() + analysesHtml}</div>`;
   coachBandeauApply();
   try { coachEquipeFilter(); } catch (_) {}
 }
@@ -5330,6 +5502,7 @@ function _msgPlusCands(f) {
     var d = _coachDesk.datas[e.i] || {};
     if (f === 'ressenti') { var be = (d.bien_etre || [])[0], t = be ? parseChatDate(be.date) : 0; return !t || (Date.now() - t) / 864e5 > 7; }
     if (f === 'inactifs') { var et = null; try { et = _coachEtatEquipe(e, d); } catch (x) {} return et && et.cat === 'inactifs'; }
+    if (String(f).indexOf('g:') === 0) return _coachGrpIds(String(f).slice(2)).has(String(e.a.athlete_id));   // écran 9 : groupe
     return true;
   });
 }
@@ -5338,9 +5511,9 @@ function msgPlusieurs(f) {
   var C = _msgPlusCands(_msgPlus.f); _msgPlus.sel = {}; C.forEach(function (e) { _msgPlus.sel[e.a.athlete_id] = true; });
   var ov = document.getElementById('msgx-plus'); if (!ov) { ov = document.createElement('div'); ov.id = 'msgx-plus'; document.body.appendChild(ov); }
   var tous = ((_coachDesk && _coachDesk.enrich) || []), esc = escapeHtml;
-  var chip = function (k, l) { return '<button class="msgx-f' + (_msgPlus.f === k ? ' on' : '') + '" onclick="msgPlusieurs(\'' + k + '\')">' + l + ' · ' + _msgPlusCands(k).length + '</button>'; };
+  var chip = function (k, l) { return '<button class="msgx-f' + (_msgPlus.f === k ? ' on' : '') + '" onclick="msgPlusieurs(\'' + String(k).replace(/'/g, "\\'") + '\')">' + l + ' · ' + _msgPlusCands(k).length + '</button>'; };
   ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">Message à plusieurs<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
-    + '<div class="msgx-chips">' + chip('ressenti', 'Sans ressenti 7 j') + chip('inactifs', 'Inactifs') + chip('tous', 'Tous') + '</div>'
+    + '<div class="msgx-chips">' + chip('ressenti', 'Sans ressenti 7 j') + chip('inactifs', 'Inactifs') + chip('tous', 'Tous') + ((typeof _coachPrefs !== 'undefined' && _coachPrefs.groupes) || []).map(function (g) { return chip('g:' + g.nom, esc(g.nom)); }).join('') + '</div>'
     + tous.map(function (e) { var on = !!_msgPlus.sel[e.a.athlete_id]; return '<label class="msgx-ck"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="_msgPlus.sel[\'' + e.a.athlete_id + '\']=this.checked;_msgPlusMaj()"> ' + esc(e.a.nom) + '</label>'; }).join('')
     + '<textarea id="msgx-txt" rows="3" placeholder="Ton message…">' + (_msgPlus.f === 'ressenti' ? esc(RELANCE_RESSENTI_MSG) : '') + '</textarea>'
     + '<button id="msgx-send" class="msgx-send" onclick="msgPlusEnvoyer()"></button>'
@@ -8469,7 +8642,7 @@ function renderCoachHome() {
     : '';
   shell.innerHTML = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
     + searchBox
-    + action + '</header><div class="cs-body">' + body + '</div></div>';
+    + action + '</header><div class="cs-body">' + (coachDeskSection === 'aujourdhui' ? _coachBanEmail() : '') + _coachGrpChips() + body + '</div></div>';   // écran 9 : bandeau e-mail + filtre groupe
 }
 function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail(); if (!document.body.classList.contains('athlete-selected')) renderCoachHome(); }
 // Fiche athlète desktop (nouvelle identité) : replie chaque titre de section

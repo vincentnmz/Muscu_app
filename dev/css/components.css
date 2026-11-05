@@ -1081,3 +1081,26 @@ body.saisie-coach #en-suivi ~ .v2-sec, body.saisie-coach [data-tour="ath-agenda"
   body.coach-active #coach-msg2 .msg2-ctx-pane{display:block;width:290px;flex:none;border-left:1px solid var(--border);background:var(--surface);padding:16px;overflow:auto}
   body.coach-active #coach-msg2 .msg2-ctx-pane:empty{display:none}
 }
+
+/* ===== Réglages coach v2 (écran 9, 05/11) ===== */
+.crgx-ban{display:flex;gap:10px;align-items:center;background:#FFF7EB;border:1px solid #F5D7A1;border-radius:14px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:12px;color:#5A3A00}
+.crgx-ban button{flex:none;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.crgx-lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:4px 0 6px}
+.crgx-card{padding:6px 16px 10px !important;margin:0 0 10px !important}
+.crgx-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:13px}
+.crgx-card .crgx-row:first-child{border-top:0}
+.crgx-t{flex:1;min-width:0;line-height:1.35}.crgx-t small{display:block;color:var(--text-muted);font-size:11px;font-weight:500;margin-top:1px}
+.crgx-sw{width:40px;height:22px;border-radius:99px;background:var(--border);position:relative;flex:none;border:0;cursor:pointer;padding:0}
+.crgx-sw::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.crgx-sw.on{background:var(--accent)}.crgx-sw.on::after{left:21px}
+.crgx-sub{font-size:12.5px;font-weight:800;margin:8px 0 2px}
+.crgx-rad{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:13px;cursor:pointer}
+.crgx-rad i{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex:none;box-sizing:border-box}.crgx-rad i.on{border:5px solid var(--accent)}
+.crgx-note{font-size:11px;color:var(--text-muted);line-height:1.45;margin:8px 0 2px}
+.crgx-chip{font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 7px;background:var(--surface2);color:var(--text-muted)}
+.crgx-soon{background:rgba(122,90,248,.12);color:#7A5AF8}
+.crgx-btn{width:100%;margin-top:8px;background:var(--accent);border:0;color:var(--on-accent);border-radius:10px;padding:11px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.crgx-btn2{width:100%;margin-top:8px;background:var(--surface);border:1px solid var(--accent-a25,#CFDCFF);color:var(--accent);border-radius:10px;padding:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.crgx-sel{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font:inherit;font-size:13px;box-sizing:border-box}
+.crgx-push{background:#1C2333;color:#fff;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.45;margin-bottom:6px}.crgx-push b{display:block;font-size:12.5px}
+.crgx-grps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
