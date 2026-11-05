@@ -1,0 +1,111 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maquette série par série et catalogue</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:#0E1A33}
+.wrap{display:flex;gap:24px;padding:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{width:560px;display:flex;flex-direction:column;gap:12px}
+h3{margin:0 0 2px;font-size:14px}.s{font-size:11.5px;color:#55627E;line-height:1.45;margin:0 0 4px}
+.card{background:#fff;border:1px solid #DCE4F5;border-radius:16px;padding:12px 14px}
+.nm{font-weight:800;font-size:15px}.nm small{display:block;font-size:10.5px;font-weight:800;color:#1A5FFF;letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+.sum{margin-top:8px;font-size:12px;color:#55627E}.sum b{color:#0E1A33}
+.adv{margin-top:8px;font-size:12px;font-weight:800;color:#1A5FFF}
+.sch{margin-top:8px;border-top:1px dashed #DCE4F5;padding-top:10px}
+.lab{font-size:9.5px;font-weight:800;color:#8A96B0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.sel{background:#F4F7FF;border:1px solid #E1E8F7;border-radius:10px;padding:8px 10px;font-weight:800;font-size:13px;display:flex;justify-content:space-between}
+.sel span{color:#55627E;font-weight:600;font-size:11.5px}
+.sets{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.set{display:grid;grid-template-columns:38px 1fr auto;gap:8px;align-items:center;background:#F7F9FF;border:1px solid #E1E8F7;border-radius:12px;padding:7px 9px}
+.set.top{background:#FFF6EA;border-color:#F6D7A8}
+.k{font-weight:800;font-size:13px;color:#1A5FFF}.set.top .k{color:#C77700}
+.rp{display:flex;align-items:center;gap:6px;font-size:12px;color:#55627E}
+.rp i{font-style:normal;width:26px;height:26px;border-radius:8px;background:#fff;border:1px solid #DCE4F5;color:#1A5FFF;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.rp b{min-width:34px;text-align:center;font-size:16px;color:#0E1A33;background:#fff;border:1px solid #DCE4F5;border-radius:8px;padding:3px 0}
+.perso{font-size:10px;font-weight:800;color:#7C5CFF;background:#EFEAFF;border-radius:999px;padding:2px 7px}
+.plus{font-size:11px;font-weight:800;color:#1A5FFF}
+.opt{grid-column:2 / -1;display:flex;gap:6px;font-size:11.5px;color:#55627E}
+.opt span{background:#fff;border:1px solid #DCE4F5;border-radius:8px;padding:3px 8px}
+.reset{margin-top:8px;font-size:11.5px;font-weight:800;color:#55627E;text-decoration:underline}
+.note{font-size:10.5px;color:#1A5FFF;font-weight:700;line-height:1.45}
+.new{outline:2px dashed #1A5FFF;outline-offset:3px}
+.pick{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(14,26,51,.15);padding:14px;font-size:12.5px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;border:1px solid #CFDCFF;color:#1A5FFF;background:#fff;white-space:nowrap}
+.chip.on{background:#1A5FFF;color:#fff;border-color:#1A5FFF}.chip.g{color:#55627E;border-color:#DCE4F5}
+.chip.sug{border-color:#D7CBFF;color:#5B3DF0;background:#F6F2FF}
+.srch{border:1px solid #DCE4F5;border-radius:10px;padding:8px 10px;color:#8A96B0;font-size:12.5px}
+.grp{margin-top:8px}.grp h4{margin:6px 0 2px;font-size:11px;color:#8A96B0;text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between}
+.it{display:flex;justify-content:space-between;padding:8px 4px;border-top:1px solid #EEF2FB}
+.it em{font-style:normal;font-size:11px;font-weight:800;color:#55627E}
+.seance{margin-top:6px;background:#fff;border:1px solid #DCE4F5;border-radius:14px;overflow:hidden;font-size:12px}
+.seance table{width:100%;border-collapse:collapse}.seance th,.seance td{padding:7px 8px;text-align:left;border-top:1px solid #EEF2FB}
+.seance th{font-size:9.5px;color:#8A96B0;text-transform:uppercase;border-top:0}
+.rules{max-width:1150px;margin:0 auto 26px;background:#fff;border:1px solid #DCE4F5;border-radius:14px;padding:14px 18px;font-size:12.5px;line-height:1.6}
+</style></head><body><div class="wrap">
+
+<div class="col">
+<h3>① Série par série — pour tous les schémas</h3>
+<div class="s">Dans « Réglages avancés ». Une ligne par série, <b>le nombre de reps d'abord</b> (− / +). Charge (% 1RM) et RPE restent possibles mais repliés.</div>
+<div class="card new">
+ <div class="nm">Développé décliné à la Smith<small>Pectoraux</small></div>
+ <div class="sum">Résumé : <b>3 séries · 6 · 8 · 15 reps · repos 2 min</b></div>
+ <div class="adv">▾ Réglages avancés</div>
+ <div class="sch">
+  <div class="lab">Schéma de séries</div>
+  <div class="sel">Séries fixes ▾ <span>sert à pré-remplir les séries</span></div>
+  <div class="sets">
+   <div class="set"><span class="k">S1</span><span class="rp"><i>−</i><b>6</b><i>+</i> reps <span class="perso">perso</span></span><span class="plus">+ charge / RPE</span></div>
+   <div class="set"><span class="k">S2</span><span class="rp"><i>−</i><b>8</b><i>+</i> reps <span class="perso">perso</span></span><span class="plus">+ charge / RPE</span></div>
+   <div class="set"><span class="k">S3</span><span class="rp"><i>−</i><b>15</b><i>+</i> reps <span class="perso">perso</span></span><span class="plus">+ charge / RPE</span></div>
+  </div>
+  <div class="reset">Remettre comme le schéma (8–20 reps partout)</div>
+ </div>
+</div>
+<div class="note">Sans retouche, les séries suivent le schéma (pas d'étiquette « perso »). Changer le nombre de séries (− / +) ajoute ou retire une ligne.</div>
+
+<h3 style="margin-top:6px">Top-set + back-off, avec charge ouverte sur S1</h3>
+<div class="card">
+ <div class="sch" style="border:0;padding-top:0;margin-top:0">
+  <div class="lab">Schéma de séries</div>
+  <div class="sel">Top-set + back-off ▾ <span>back-off −10 %</span></div>
+  <div class="sets">
+   <div class="set top"><span class="k">S1</span><span class="rp"><i>−</i><b>5</b><i>+</i> reps · lourde</span><span class="plus">− charge / RPE</span>
+    <div class="opt"><span>% 1RM : 85</span><span>RPE : 9</span></div></div>
+   <div class="set"><span class="k">S2</span><span class="rp"><i>−</i><b>10</b><i>+</i> reps · back-off</span><span class="plus">+ charge / RPE</span></div>
+   <div class="set"><span class="k">S3</span><span class="rp"><i>−</i><b>10</b><i>+</i> reps · back-off</span><span class="plus">+ charge / RPE</span></div>
+  </div>
+ </div>
+</div>
+
+<h3 style="margin-top:6px">En séance (côté athlète)</h3>
+<div class="seance new"><table>
+ <tr><th>Série</th><th>Dernière fois</th><th>Cible</th><th>Aujourd'hui</th></tr>
+ <tr><td><b>S1</b></td><td>60 kg × 6</td><td><b>62,5 kg × 6</b><br><small>6 reps atteints → +charge</small></td><td>à faire</td></tr>
+ <tr><td><b>S2</b></td><td>55 kg × 7</td><td><b>55 kg × 8</b><br><small>vise ta cible 8</small></td><td>—</td></tr>
+ <tr><td><b>S3</b></td><td>40 kg × 15</td><td><b>42,5 kg × 15</b></td><td>—</td></tr>
+</table></div>
+<div class="note">Chaque série a sa propre cible. Cible atteinte avec un RPE correct → Novalyz propose un peu plus de charge sur cette série ; sinon même charge, +1 rep jusqu'à la cible. Si le coach a la main : on affiche sa cible telle quelle.</div>
+</div>
+
+<div class="col">
+<h3>② « Enchaîner avec… » — catalogue par muscle</h3>
+<div class="s">On choisit d'abord le muscle (puces), la liste est rangée par muscle. Les muscles du même exercice / complémentaires sont proposés en premier.</div>
+<div class="pick new"><b>Enchaîner Développé décliné à la Smith avec</b>
+ <div class="chips"><span class="chip g">Dans cette séance</span><span class="chip on">Catalogue</span></div>
+ <div class="srch">🔍 Rechercher un exercice…</div>
+ <div class="chips"><span class="chip sug">Pectoraux · biset</span><span class="chip sug">Dos · superset</span><span class="chip g">Épaules</span><span class="chip g">Biceps</span><span class="chip g">Triceps</span><span class="chip g">Quadriceps</span><span class="chip g">Ischios</span><span class="chip g">Fessiers</span><span class="chip g">Mollets</span><span class="chip g">Abdos</span><span class="chip g">Tous</span></div>
+ <div class="grp"><h4>Pectoraux <span>→ Biset</span></h4>
+  <div class="it">Écarté machine <em>Pectoraux</em></div>
+  <div class="it">Développé incliné haltères <em>Pectoraux</em></div>
+  <div class="it">Pompes <em>Pectoraux</em></div></div>
+ <div class="grp"><h4>Dos <span>→ Superset</span></h4>
+  <div class="it">Tirage horizontal prise large <em>Dos</em></div>
+  <div class="it">Rowing haltère <em>Dos</em></div></div>
+</div>
+<div class="note">Plus de limite à 60 exercices : tout le catalogue est accessible, rangé par muscle. Les noms de muscles mal saisis en base (« Moletts », « fessier ») sont regroupés à l'affichage (Mollets, Fessiers). La refonte complète du catalogue est notée « avant le test fermé » (roadmap).</div>
+
+<h3 style="margin-top:6px">Sur mobile</h3>
+<div class="s">Même fenêtre en plein écran ; les puces de muscles défilent sur une ligne.</div>
+</div>
+</div>
+<div class="rules"><b>Vérifié dans le code</b> : aujourd'hui seul « Pyramidal » a une ligne par série (% 1RM d'abord) ; en séance, la proposition Novalyz utilise la fourchette globale (les cibles par série sont ignorées). <b>Ce qui change</b> : séries par série pour tous les schémas, reps d'abord ; en séance, cible par série ; catalogue par muscle. <b>Front seulement</b> (les cibles par série sont déjà enregistrées pour tout schéma, un nombre de reps par série) — pas de redéploiement.</div>
+</body></html>

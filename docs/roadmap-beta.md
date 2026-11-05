@@ -69,6 +69,8 @@
 
 ## 🟠 P1 — Solidité (avant d'ouvrir large)
 
+- ⏳ **Améliorer le catalogue d'exercices — À FAIRE AVANT LE TEST FERMÉ** (demande porteur 05/11). Constaté sur la base (91 exercices) : noms de muscles incohérents (« Moletts », « fessier » / « Fessier », « Triceps␣ » avec espace), un seul exercice d'adducteurs, 3 d'abdominaux ; la liste « Tout le catalogue » d'« Enchaîner avec… » coupait à 60. À prévoir : muscles normalisés (liste fermée), parcours **par muscle** partout où on choisit un exercice (ajout, remplacement, enchaîner), recherche tolérante (accents, pluriels), compléter les groupes pauvres, muscle secondaire renseigné, matériel (barre / haltères / machine / poulie / poids du corps) pour filtrer. Lien : bibliothèque d'exercices (backlog).
+
 - ✅ **Gestion des erreurs réseau** (5-6 oct. 2026) : helper `nvFetchJSON` (timeout
   dur → aucun fetch ne pend), fallbacks « Réessayer » sur l'accueil + la fiche
   coach (plus de loader figé), timers « serveur en démarrage » nettoyés en cas
