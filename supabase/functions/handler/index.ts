@@ -3269,6 +3269,7 @@ async function handleRepondreDemandeCoach(body: any): Promise<Response> {
   if (!cRow) return jsonResp({ success: false, error: 'Ce coach n\'existe plus.' })
   const { error } = await sb().from('athletes').update({ coach_id: coachId }).eq('id', athleteId)
   if (error) return jsonResp({ success: false, error: error.message })
+  await _appliquerDefautsCoach(coachId, athleteId)   // P7 (05/11) : défauts du coach pour ses nouveaux athlètes
   const { data: aRow } = await sb().from('athletes').select('nom').eq('id', athleteId).single()
   await notifyCoach(coachId, { title: String((aRow as any)?.nom || 'Ton athlète') + ' a accepté ton suivi', body: 'Il apparaît maintenant dans ton équipe.', tag: 'novalyz-coach-demande', target: 'coach' }).catch(() => {})
   return jsonResp({ success: true, accepte: true, coach: { coach_id: coachId, nom: String((cRow as any).nom || '') } })
@@ -4456,7 +4457,7 @@ function _vapidInit(): boolean {
   const priv = Deno.env.get('VAPID_PRIVATE_KEY')
   if (!pub || !priv) { _vapidReady = false; return false }
   try {
-    webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') || 'mailto:portefaixvincent@gmail.com', pub, priv)
+    webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') || 'mailto:hello@novalyz.fr', pub, priv)
     _vapidReady = true
   } catch (_) { _vapidReady = false }
   return _vapidReady
@@ -4608,6 +4609,120 @@ async function notifyCoach(coach_id: string, payload: Record<string, unknown>): 
   return await notifyAthlete(COACH_PUSH_PREFIX + coach_id, payload)
 }
 
+
+// ══════════ Réglages coach (écran 9, 05/11) ══════════
+// coachs.prefs (jsonb, migration coachs_prefs) : notif, groupes, defauts, resume_dernier.
+const COACH_NOTIF_DEFAUT: Record<string, boolean> = { messages: true, douleur: true, resume: true, chaque: false, calme: true }
+const COACH_DEFAUTS_DEFAUT = { novalyz_athlete: false, semaine_type: 'calendaire' }
+const _coachPrefsCache: Record<string, any> = {}
+async function _coachPrefs(coachId: string): Promise<any> {
+  const out: any = { notif: { ...COACH_NOTIF_DEFAUT }, groupes: [], defauts: { ...COACH_DEFAUTS_DEFAUT }, resume_dernier: '' }
+  if (!coachId) return out
+  try {
+    const { data, error } = await sb().from('coachs').select('prefs').eq('coach_id', coachId).single()
+    const pr: any = (!error && data && (data as any).prefs) || {}
+    if (pr.notif && typeof pr.notif === 'object') for (const k of Object.keys(COACH_NOTIF_DEFAUT)) if (typeof pr.notif[k] === 'boolean') out.notif[k] = pr.notif[k]
+    if (Array.isArray(pr.groupes)) out.groupes = pr.groupes
+    if (pr.defauts && typeof pr.defauts === 'object') out.defauts = { ...out.defauts, ...pr.defauts }
+    out.resume_dernier = String(pr.resume_dernier || '')
+  } catch (_) {}
+  return out
+}
+async function _coachPrefsEcrire(coachId: string, patch: Record<string, unknown>): Promise<string | null> {
+  const { data, error } = await sb().from('coachs').select('prefs').eq('coach_id', coachId).single()
+  if (error) return error.message
+  const cur = ((data as any) && (data as any).prefs) || {}
+  const { error: e2 } = await sb().from('coachs').update({ prefs: { ...cur, ...patch } }).eq('coach_id', coachId)
+  return e2 ? e2.message : null
+}
+// Heure de Paris (heures calmes 22 h – 7 h).
+function _heureParis(d: Date): number { try { return Number(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(d)) } catch (_) { return d.getUTCHours() + 1 } }
+function _heuresCalmes(prefs: any, d = new Date()): boolean { if (!prefs || !prefs.notif || !prefs.notif.calme) return false; const h = _heureParis(d); return h >= 22 || h < 7 }
+async function handleGetCoachPrefs(params: URLSearchParams): Promise<Response> {
+  const coachId = String(params.get('coach_id') || '')
+  if (!coachId) return jsonResp({ success: false, error: 'coach_id manquant' })
+  const pr = await _coachPrefs(coachId)
+  // Téléphone coach enregistré ? (notifications natives ou web)
+  let tel = false
+  try {
+    const [{ data: n }, { data: w }] = await Promise.all([
+      sb().from('native_push_tokens').select('athlete_id').eq('athlete_id', COACH_PUSH_PREFIX + coachId).limit(1),
+      sb().from('push_subscriptions').select('athlete_id').eq('athlete_id', COACH_PUSH_PREFIX + coachId).limit(1),
+    ])
+    tel = !!((n && n.length) || (w && w.length))
+  } catch (_) {}
+  return jsonResp({ success: true, notif: pr.notif, groupes: pr.groupes, defauts: pr.defauts, telephone: tel })
+}
+async function handleSaveCoachPref(body: any): Promise<Response> {
+  const coachId = String(body.coach_id || ''), cle = String(body.cle || ''), v = body.valeur
+  if (!coachId) return jsonResp({ success: false, error: 'coach_id manquant' })
+  if (body._sessRole && body._sessRole !== 'c') return jsonResp({ success: false, error: 'Réservé au coach' })
+  let val: any = null
+  if (cle === 'notif') {
+    val = {}; for (const k of Object.keys(COACH_NOTIF_DEFAUT)) val[k] = !!(v && v[k])
+  } else if (cle === 'defauts') {
+    val = { novalyz_athlete: !!(v && v.novalyz_athlete), semaine_type: (v && v.semaine_type === 'glissant') ? 'glissant' : 'calendaire' }
+  } else if (cle === 'groupes') {
+    if (!Array.isArray(v) || v.length > 30) return jsonResp({ success: false, error: 'Groupes invalides' })
+    const { data: mine } = await sb().from('athletes').select('id').eq('coach_id', coachId)
+    const ok = new Set((mine || []).map((r: any) => String(r.id)))
+    val = v.map((g: any) => ({ nom: String((g && g.nom) || '').trim().slice(0, 40), ids: [...new Set(((g && g.ids) || []).map(String))].filter((id: string) => ok.has(id)).slice(0, 300) })).filter((g: any) => g.nom)
+  } else return jsonResp({ success: false, error: 'Réglage inconnu' })
+  const err = await _coachPrefsEcrire(coachId, { [cle]: val })
+  return err ? jsonResp({ success: false, error: err }) : jsonResp({ success: true, valeur: val })
+}
+// Défauts du coach appliqués quand un athlète accepte son suivi (P7).
+async function _prefAthleteUpsert(aid: string, cle: string, valeur: string): Promise<void> {
+  const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle).limit(1)
+  if (ex && ex.length) await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle)
+  else await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur, unite: '', source: 'coach' })
+}
+async function _appliquerDefautsCoach(coachId: string, aid: string): Promise<void> {
+  try {
+    const pr = await _coachPrefs(coachId)
+    if (pr.defauts.novalyz_athlete) await _prefAthleteUpsert(aid, 'novalyz_athlete', '1')
+    if (pr.defauts.semaine_type === 'glissant') await _prefAthleteUpsert(aid, 'semaine_type', 'glissant')
+  } catch (_) { /* best-effort */ }
+}
+// Notification immédiate au coach (douleur forte), selon ses réglages + heures calmes. 1 par athlète et par jour.
+async function _notifCoachDouleur(aid: string, niv: number, zone: string): Promise<void> {
+  try {
+    const { data: aRow } = await sb().from('athletes').select('coach_id,nom').eq('id', aid).single()
+    const cId = aRow && (aRow as any).coach_id ? String((aRow as any).coach_id) : ''
+    if (!cId) return
+    const pr = await _coachPrefs(cId)
+    if (!pr.notif.douleur || _heuresCalmes(pr)) return
+    const ckey = 'c|' + cId + '|douleur_imm|' + fmtYMD(new Date())
+    const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'alerte_push_coach').eq('cle', ckey).limit(1)
+    if (deja && deja.length) return
+    const who = String((aRow as any).nom || 'Ton athlète').trim().split(/\s+/)[0]
+    const n = await notifyCoach(cId, { title: '⚠️ ' + who + ' · douleur ' + niv + '/5' + (zone ? ' (' + zone + ')' : ''), body: 'Signalée à l\'instant. Ouvre sa fiche pour adapter la suite.', tag: 'novalyz-coach-douleur', target: 'coach' })
+    if (n > 0) await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'app' })
+  } catch (_) {}
+}
+// Séances en retard cette semaine (agenda, sinon jour conseillé ; « annule » = pas cette semaine) — même règle que l'app.
+function _seancesEnRetard(data: any, now: Date): number {
+  try {
+    const j = (now.getUTCDay() + 6) % 7 + 1
+    const lun = new Date(now); lun.setUTCHours(0, 0, 0, 0); lun.setUTCDate(lun.getUTCDate() - (j - 1))
+    const lunIso = fmtYMD(lun), todayIso = fmtYMD(now)
+    const key = (x: any) => String(x || '').trim().toLowerCase()
+    const faites = new Set(((data && data.seances_detail) || []).filter((x: any) => x && x.date >= lunIso).map((x: any) => key(x.seance_id)))
+    const plan: Record<string, string[]> = {}, annul: Record<string, boolean> = {}
+    for (const r of ((data && data.planning) || [])) { const iso = String(r.date_iso || '').slice(0, 10); if (iso < lunIso) continue; if (r.statut === 'annule') annul[key(r.seance_id)] = true; else (plan[key(r.seance_id)] = plan[key(r.seance_id)] || []).push(iso) }
+    const jours: Record<string, number> = {}
+    for (const p of ((data && data.programme) || [])) { if (!p || !p.seance_id || p.type === 'cardio') continue; const k = key(p.seance_id); if (p.jour != null && p.jour !== '' && jours[k] == null) jours[k] = Number(p.jour) }
+    let n = 0
+    const sids = new Set([...Object.keys(jours), ...Object.keys(plan)])
+    for (const k of sids) {
+      if (faites.has(k) || annul[k]) continue
+      const dates = plan[k] || (jours[k] != null ? [fmtYMD(new Date(lun.getTime() + (jours[k] - 1) * 864e5))] : [])
+      if (dates.some((d) => d < todayIso)) n++
+    }
+    return n
+  } catch (_) { return 0 }
+}
+
 // Rappel d'absence dû aujourd'hui ? (audit Notifications N3, 01/11) — J7, J10, J14, J21, J28 puis stop.
 // derniereActivite / dernierPush : 'YYYY-MM-DD' (dernierPush = dernier rappel d'absence APRÈS la dernière activité).
 function _rythmeAbsence(derniereActivite: string | null, dernierPush: string | null, now: Date): boolean {
@@ -4634,7 +4749,15 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
     sb().from('native_push_tokens').select('athlete_id'),
     sb().from('push_subscriptions').select('athlete_id'),
   ])
-  const ids = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
+  const tok = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
+  // P2/P3 (05/11) : les alertes du COACH ne dépendent plus des notifications de l'athlète → on parcourt aussi
+  // les athlètes des coachs qui ont un téléphone enregistré. L'athlète n'est notifié que s'il a lui-même un jeton.
+  const tokAth = new Set(tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) !== 0))
+  const coachsTel = tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) === 0).map((x) => x.slice(COACH_PUSH_PREFIX.length))
+  let athCoachs: string[] = []
+  if (coachsTel.length) { const { data: ac } = await sb().from('athletes').select('id').in('coach_id', coachsTel); athCoachs = (ac || []).map((r: any) => String(r.id)) }
+  const ids = [...new Set([...tokAth, ...athCoachs])]
+  const resume: Record<string, { surv: string[]; retard: number }> = {}
   // Rappel QUOTIDIEN : tant qu'une alerte « haute » reste active, on re-notifie
   // chaque jour (1 push/jour/athlète, la plus sévère). Clé anti-doublon par JOUR
   // (avant : par semaine → une seule notif/semaine, d'où l'impression « ça ne
@@ -4647,6 +4770,16 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
     try {
       const res = await handleGetAppData(new URLSearchParams({ athlete_id: id }))
       const data: any = await res.json()
+      // Résumé du matin du coach (P4) : athlètes avec une alerte active + séances en retard.
+      try {
+        const { data: aR } = await sb().from('athletes').select('coach_id,nom').eq('id', id).single()
+        const cR = aR && (aR as any).coach_id ? String((aR as any).coach_id) : ''
+        if (cR) {
+          const r = resume[cR] || (resume[cR] = { surv: [], retard: 0 })
+          if (((data && data.alertes_centre) || []).some((a: any) => a && !a.read)) r.surv.push(String((aR as any).nom || '').trim().split(/\s+/)[0])
+          r.retard += _seancesEnRetard(data, new Date())
+        }
+      } catch (_) {}
       // Politique de notification (demande porteur) : on pousse les alertes HAUTES
       // (douleur forte, charge très élevée, absence prolongée) ET deux cas de sévérité
       // moyenne explicitement voulus : séance manquée / régularité, et volume trop bas
@@ -4671,9 +4804,9 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
         const { data: recent } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').like('cle', top.type + '|%').gte('date', since).limit(1)
         if (recent && recent.length) continue
       }
-      // 1) Notifier l'ATHLÈTE — anti-spam par (athlète, alerte, jour).
+      // 1) Notifier l'ATHLÈTE (s'il a lui-même activé les notifications) — anti-spam par (athlète, alerte, jour).
       const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').eq('cle', key).limit(1)
-      if (!(deja && deja.length)) {
+      if (tokAth.has(id) && !(deja && deja.length)) {
         const nA = await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
         // N1 : « envoyée » seulement si au moins un appareil l'a acceptée.
         if (nA > 0) { await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push', cle: key, valeur: '1', unite: '', source: 'cron' }); pushed++ }
@@ -4683,7 +4816,9 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       try {
         const { data: aRow } = await sb().from('athletes').select('coach_id,nom').eq('id', id).single()
         const coachId = aRow && (aRow as any).coach_id ? String((aRow as any).coach_id) : ''
-        if (coachId) {
+        // P4 : alerte par alerte seulement si le coach l'a choisi (sinon : résumé du matin).
+        const prC = coachId ? (_coachPrefsCache[coachId] || (_coachPrefsCache[coachId] = await _coachPrefs(coachId))) : null
+        if (coachId && prC && prC.notif.chaque && !_heuresCalmes(prC)) {
           const ckey = 'c|' + coachId + '|' + key
           const { data: dejaC } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push_coach').eq('cle', ckey).limit(1)
           if (!(dejaC && dejaC.length)) {
@@ -4695,7 +4830,25 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       } catch (_) { /* coach best-effort */ }
     } catch (_) { /* best-effort : un athlète en échec ne bloque pas les autres */ }
   }
-  return jsonResp({ ok: true, scanned, pushed, pushedCoach })
+  // Résumé du matin (P4) : UNE notification par coach (téléphone enregistré + réglage actif), 1 fois par jour.
+  let resumes = 0
+  for (const cId of coachsTel) {
+    try {
+      const pr = await _coachPrefs(cId)
+      if (!pr.notif.resume || pr.resume_dernier === dayKey) continue
+      const r = resume[cId] || { surv: [], retard: 0 }
+      const { data: nl } = await sb().from('commentaires').select('comment_id').eq('coach_id', cId).eq('auteur', 'athlete').eq('lu', false)
+      const nMsg = (nl || []).length
+      const parts: string[] = []
+      if (r.surv.length) parts.push(r.surv.length + ' à surveiller (' + r.surv.slice(0, 3).join(', ') + (r.surv.length > 3 ? '…' : '') + ')')
+      if (r.retard) parts.push(r.retard + ' séance' + (r.retard > 1 ? 's' : '') + ' en retard')
+      if (nMsg) parts.push(nMsg + ' message' + (nMsg > 1 ? 's' : '') + ' non lu' + (nMsg > 1 ? 's' : ''))
+      if (!parts.length) continue   // rien à dire → pas de notification
+      const n = await notifyCoach(cId, { title: 'Novalyz · ton équipe ce matin', body: parts.join(' · '), tag: 'novalyz-coach-resume', target: 'coach' })
+      if (n > 0) { resumes++; await _coachPrefsEcrire(cId, { resume_dernier: dayKey }) }
+    } catch (_) {}
+  }
+  return jsonResp({ ok: true, scanned, pushed, pushedCoach, resumes })
 }
 
 // ── Résumés e-mail (cron) — coach (équipe) + athlète (bilan) ─────────────────
@@ -5471,6 +5624,23 @@ async function handleCronResumes(body: any): Promise<Response> {
 
 // Enregistre la fréquence de recap choisie (athlète OU coach). Valeurs acceptées :
 // 'off' | 'semaine' | 'mois' | '3mois'. Le front envoie athlete_id OU coach_id.
+// P9 (05/11) : formulaire « Envoyer un retour » → hello@novalyz.fr (l'adresse perso n'apparaît plus dans l'app).
+const CONTACT_NOVALYZ = 'hello@novalyz.fr'
+async function handleEnvoyerRetour(body: any): Promise<Response> {
+  const msg = String(body.message || '').trim().slice(0, 3000)
+  if (msg.length < 3) return jsonResp({ success: false, error: 'Message vide' })
+  const role = body._sessRole === 'c' ? 'c' : (body._sessRole === 'a' ? 'a' : ''), id = String(body._sessId || '')
+  let qui = 'inconnu', mail = ''
+  try {
+    if (role === 'c') { const { data } = await sb().from('coachs').select('nom,email').eq('coach_id', id).single(); qui = 'Coach ' + String((data as any)?.nom || id) + ' (id ' + id + ')'; mail = String((data as any)?.email || '') }
+    else if (role === 'a') { const { data } = await sb().from('athletes').select('nom,email').eq('id', id).single(); qui = 'Athlète ' + String((data as any)?.nom || id) + ' (id ' + id + ')'; mail = String((data as any)?.email || '') }
+  } catch (_) {}
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Retour depuis l'app</b> — ${esc(qui)}${mail ? ' · ' + esc(mail) : ''}</p><p style="white-space:pre-wrap">${esc(msg)}</p></div>`
+  const ok = await _envoyerEmail(CONTACT_NOVALYZ, 'Retour Novalyz — ' + qui, html)
+  return jsonResp(ok ? { success: true } : { success: false, error: 'Envoi impossible pour le moment' })
+}
+
 async function handleSaveRecapFreq(body: any): Promise<Response> {
   const freq = ['off', 'semaine', 'mois', '3mois'].indexOf(String(body.freq || '')) >= 0 ? String(body.freq) : null
   if (!freq) return jsonResp({ success: false, error: 'Fréquence invalide' })
@@ -5584,7 +5754,8 @@ async function handleSaveCommentaire(body: any): Promise<Response> {
     try {
       const { data: aRow } = await sb().from('athletes').select('coach_id,nom').eq('id', String(athlete_id)).single()
       const cId = aRow && (aRow as any).coach_id ? String((aRow as any).coach_id) : ''
-      if (cId) {
+      const prM = cId ? await _coachPrefs(cId) : null
+      if (cId && prM && prM.notif.messages && !_heuresCalmes(prM)) {   // P4 (05/11) : réglage + heures calmes (sinon : résumé du matin)
         const who = (aRow && (aRow as any).nom) ? String((aRow as any).nom).trim().split(/\s+/)[0] : 'Ton athlète'
         const apercuA = msg.length > 90 ? msg.slice(0, 87) + '…' : msg
         await notifyCoach(cId, { title: `💬 ${who}`, body: apercuA, tag: 'novalyz-msg-coach', target: 'coach-messages' })
@@ -6002,10 +6173,12 @@ async function handleSaveBienEtre(body: any): Promise<Response> {
     if (!Object.keys(patch).length) return jsonResp({ ok: true, success: true, updated: false })
     const { error } = await sb().from('bien_etre').update(patch).eq('athlete_id', athlete_id).eq('date', d)
     if (error) return jsonResp({ success: false, error: error.message })
+    if (row.douleur != null && row.douleur >= 3 && typeof _notifCoachDouleur === 'function') await _notifCoachDouleur(String(athlete_id), row.douleur, String(row.zone_douloureuse || ''))   // P4 (05/11)
     return jsonResp({ ok: true, success: true, updated: true })
   }
   const { error } = await sb().from('bien_etre').insert(row)
   if (error) return jsonResp({ success: false, error: error.message })
+  if (row.douleur != null && row.douleur >= 3 && typeof _notifCoachDouleur === 'function') await _notifCoachDouleur(String(athlete_id), row.douleur, String(row.zone_douloureuse || ''))   // P4 (05/11)
   return jsonResp({ ok: true, success: true })
 }
 
@@ -7317,6 +7490,7 @@ Deno.serve(async (req: Request) => {
         case 'loginCoach':            return withSession(await handleLoginCoach(params), 'c')
         case 'getCoachAthletes':      return handleGetCoachAthletes(params)
         case 'getCommentaires':       return handleGetCommentaires(params)
+        case 'getCoachPrefs':         return handleGetCoachPrefs(params)
         case 'getCoachProgramme':     return handleGetCoachProgramme(params)
         case 'getSeancesDetail':      return handleGetSeancesDetail(params)
         case 'getAlertesTraitees':    return handleGetAlertesTraitees(params)
@@ -7356,6 +7530,8 @@ Deno.serve(async (req: Request) => {
         case 'bilanClient':              return handleBilanClient(body)
         case 'envoyerBilanMail':         return handleEnvoyerBilanMail(body)
         case 'saveRecapFreq':            return handleSaveRecapFreq(body)
+        case 'saveCoachPref':            return handleSaveCoachPref(body)
+        case 'envoyerRetour':            return handleEnvoyerRetour(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
         case 'confirmerEmail':           return handleConfirmerEmail(body)
