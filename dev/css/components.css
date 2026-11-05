@@ -1243,3 +1243,9 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
   /* la bulle « Novalyz IA » ne cache plus le bouton « + Ajouter » en bas de liste */
   #prog-editor-content { padding-bottom:96px; }
 }
+/* 05/11 — Coach mobile : Messages et Profil gardent la barre d'onglets du bas */
+@media (max-width:991.98px) {
+  body.coach-active.cb-panel #coach-bandeau { display:flex !important; z-index:1001; }
+  body.coach-active.cb-panel #coach-messagerie-drawer,
+  body.coach-active.cb-panel #coach-reglages-drawer { bottom:var(--cb-h, 62px) !important; }
+}
