@@ -6449,7 +6449,15 @@ function renderCoachCoupDoeil(data) {
       var _nmTx = function (k, inv) { var r = _nm[k]; if (!r || r.etat === 'nd') return trd(k, inv); return ' · <b style="color:' + (r.etat === 'ok' ? 'var(--good)' : 'var(--warn)') + '">' + (r.etat === 'ok' ? 'dans sa normale' : (r.etat === 'bas' ? 'sous sa normale' : 'au-dessus de sa normale')) + '</b> (' + _fmt1(r.base) + ')'; };
       if (be.sommeil != null) etat += _cdCoupRow(colv(be.sommeil), '●', '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + _nmTx('sommeil', false));
       if (be.energie != null) etat += _cdCoupRow(colv(be.energie), '●', '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false));
-      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true));
+      // 06/11 (validé) : le verdict suit la réponse du jour ; le coach voit en INFO (sans alerte) les jours à fatigue ≥ 4/5 sur 7 j.
+      var _fH = ''; try {
+        var _J = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+        var _hj = (data.bien_etre || []).filter(function (x) { var t = pd(x && x.date); return t && (nowT - t) / 864e5 <= 7 && Number(x.fatigue) >= 4; })
+          .map(function (x) { var d = new Date(pd(x.date)); return { t: d.getTime(), s: _J[d.getDay()] + ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), v: Number(x.fatigue) }; })
+          .sort(function (a, b) { return a.t - b.t; });
+        if (_hj.length) _fH = ' <span class="cdcp-sub">(info : ' + _hj.map(function (h) { return h.v + '/5 ' + h.s; }).join(', ') + ' · 7 j)</span>';
+      } catch (e) {}
+      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true) + _fH);
     }
     if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
     if (be) {   // F1 (03/11) : niveau du questionnaire + zone (avant : zone seule → « aucune » alors que 2/5)
@@ -15050,7 +15058,7 @@ var _MA_TON_COACH = [
   [/\bta fourchette\b/g, 'sa fourchette'], [/\bta meilleure série\b/g, 'sa meilleure série'], [/\bTa meilleure série\b/g, 'Sa meilleure série'],
   [/\bqu'il te restait\b/g, 'qu\'il lui restait'], [/\btes séries\b/g, 'ses séries'], [/\btes séances\b/g, 'ses séances'], [/\btu vois\b/g, 'on voit'],
   [/\bsi tu montes\b/g, 's\'il monte'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\bta progression\b/g, 'sa progression'],
-  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire']
+  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire'], [/\bTous tes exercices\b/g, 'Tous ses exercices']
 ];
 function _maCoachTon(root) {
   if (!root || typeof _maCoach === 'undefined' || !_maCoach) return;
@@ -15333,13 +15341,22 @@ function _maFreqMuscleBloc(data) {
   var w = _maWin(), daily = (data.historique && data.historique.daily_muscu) || {};
   // G3 (03/11) : période en cours → on divise par les jours ÉCOULÉS (avant : le mois entier → « 0,3×/sem » en rouge le 3 du mois).
   var _ecoul = w.isCurrent ? Math.max(1, Math.round((Math.min(Date.now(), w.end.getTime()) - w.start.getTime()) / 86400000)) : w.days;
-  if (_ecoul < 7) return _maSec('Fréquence par muscle', w.plabel, 'frequence') + _maEmpty('Pas encore assez de recul sur la période (' + _ecoul + ' jour' + (_ecoul > 1 ? 's' : '') + ') : la fréquence s\'affiche à partir de 7 jours.');
-  var weeks = Math.max(1, Math.round(_ecoul / 7)), dayc = {};
+  // 06/11 : période trop courte (début de semaine) → on montre les 4 DERNIÈRES SEMAINES TERMINÉES
+  // (même fenêtre que le volume des alertes) au lieu d'un bloc vide.
+  var _sISO = w.startISO, _eISO = w.endISO, _lab = w.plabel, weeks = Math.max(1, Math.round(_ecoul / 7));
+  if (_ecoul < 7) {
+    var _l = new Date(); _l.setHours(0, 0, 0, 0); _l.setDate(_l.getDate() - ((_l.getDay() + 6) % 7));
+    var _d0 = new Date(_l.getTime()); _d0.setDate(_d0.getDate() - 28);
+    var _iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    _sISO = _iso(_d0); _eISO = _iso(_l); _lab = '4 dernières semaines terminées'; weeks = 4;
+  }
+  var dayc = {};
   Object.keys(daily).forEach(function (d) {
-    if (d >= w.startISO && d < w.endISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
+    if (d >= _sISO && d < _eISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
   });
   var rows = Object.keys(dayc).map(function (m) { return { m: m, f: dayc[m] / weeks }; }).sort(function (a, b) { return b.f - a.f; });
   if (!rows.length) return _maSec('Fréquence par muscle', null, 'frequence') + _maEmpty('Pas encore de séances sur la période.');
+  w = Object.assign({}, w, { plabel: _lab });
   var html = rows.map(function (r) {
     var C = r.f >= 2 ? '#00A854' : r.f >= 1 ? '#E07800' : '#DC3545';
     var ft = (Math.round(r.f * 10) / 10).toString().replace('.', ',');
@@ -15484,6 +15501,9 @@ function _levierRepos(data, exo) {
   return 'un repos un peu plus long (tu prends ' + _fmtRepos(r) + ', essaie ' + _fmtRepos(Math.min(180, r + 30)) + ')';
 }
 function _leviersBlocage(data, exo) {
+  // 06/11 (validé) : un seul discours pour un exercice bloqué — le levier du diagnostic (cause trouvée dans les
+  // données : repos, effort, gêne, série d'avant, marche…) ; texte générique seulement si pas de diagnostic.
+  try { if (typeof _lv3Diags === 'function') { var _dg = _lv3Diags(data).filter(function (d) { return String(d.exo).trim() === String(exo).trim() && d.kind === 'bloque'; })[0]; if (_dg && _dg.levier) return _dg.levier; } } catch (e) {}
   var rep = _levierRepos(data, exo);
   return 'à titre indicatif : ' + (rep ? rep + ', ' : '') + 'le placer plus tôt dans ta séance pour être plus frais, ou persister en visant la bonne intensité (RPE 8-9 sur toutes tes séries).';
 }
@@ -20319,7 +20339,7 @@ function _cdNvSeanceHtml(seanceId) {
     if (!A.length) return '';
     return '<div style="margin:-6px 0 12px;background:var(--accent-a08,#EEF4FF);border:1px dashed var(--accent-dim,#9DB8FF);border-radius:10px;padding:8px 10px;font-size:11.5px;line-height:1.45">➜ <b>Novalyz propose cette semaine</b> : '
       + A.map(function (a) {
-        var tc = function (x) { return String(x || '').replace(/ : proposé /, ' : ').replace(/\bton minimum\b/g, 'son minimum').replace(/\bta fourchette\b/g, 'sa fourchette').replace(/si tu veux être sûr de faire/g, 'pour assurer').replace(/\.\s*$/, ''); };
+        var tc = function (x) { return String(x || '').replace(/ : proposé /, ' : ').replace(/\bton minimum\b/g, 'son minimum').replace(/\bTous tes exercices\b/g, 'Tous ses exercices').replace(/\bta fourchette\b/g, 'sa fourchette').replace(/si tu veux être sûr de faire/g, 'pour assurer').replace(/\.\s*$/, ''); };
         return escapeHtml(tc(a.titre)) + (a.raison ? ' <span style="color:var(--text-subtle)">(' + escapeHtml(tc(a.raison)) + ')</span>' : ''); }).join(' · ') + '</div>';
   } catch (e) { return ''; }
 }
