@@ -114,3 +114,10 @@ Tests : `tests/audit-0611-corrections.test.js` (9 cas), suite complète 82/82. C
 **Défaut caché, non visible** : `getCoachAthletes` renvoie `en_pause: true` pour Vincent (la dernière pause, 19/08 → 02/09, est lue comme en cours). Le front n'utilise pas ce champ ; seul le calcul d'alertes de secours (si le moteur central échoue) le lit. À corriger dans `index.ts` au prochain passage.
 
 **À discuter** : l'alerte coach « Volume sous le minimum » cite Fessier 1,5/10 (uniquement des demi-séries du Pendulum), Biceps et Triceps : l'athlète, lui, ne voit pas ces 3 muscles dans son plan. Règle du 04/11 (secondaires inclus) appliquée ; à confirmer.
+
+## 6. Passage sur tous les écrans (06/11)
+Script `.work/v8/crawl.mjs` : 29 écrans athlète (dont Analyses Muscu / Cardio / Croisé × sous-onglets) + 29 écrans coach (Aujourd'hui, Équipe, Analyses, Messages, Profil, fiche × onglets), à **390 · 820 (tablette portrait) · 1024 (tablette paysage) · 1280 px** = 232 rendus. Relevé automatique : erreurs JavaScript, débordement horizontal, blocs coupés au bord → **0**. Captures relues à la main en planches.
+- ❌ → ✅ **Tablette paysage (992-1279 px), Analyses équipe** : la ligne « Assiduité » s'écrasait (un mot par ligne). Ligne rangée comme sur mobile entre 992 et 1279 px ; ≥ 1280 px inchangé.
+- Déjà connu (audit cohérence S1, lot coach restant) : fiche coach ▸ Analyses sur ordi/tablette paysage = contenu sur ~360-620 px, colonne de droite vide.
+- Artefacts du script, pas des défauts : onglet « Conversation » de la fiche ouvert par un autre bouton (`ouvrirConversationCoach`) ; « 0 exo » quand la simulation renvoyait le mauvais format.
+- Messages coach en tablette portrait : panneau centré (480 px) au-dessus de la page, comme prévu.
