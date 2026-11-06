@@ -2447,17 +2447,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
   const pauseRow = pauseRows?.[0]
-  let enPause = false
-  let pauseObj: any = null
-  if (pauseRow && pauseRow.valeur && pauseRow.valeur !== 'fin') {
-    const debut = normDate(pauseRow.valeur) || null
-    const fin = pauseRow.unite ? normDate(pauseRow.unite) : null
-    const today0 = fmtYMD(now)
-    if ((!debut || today0 >= debut) && (!fin || today0 <= fin)) {
-      enPause = true
-      pauseObj = { debut, fin }
-    }
-  }
+  const pauseObj: any = pauseActive(pauseRow, now)
+  const enPause = !!pauseObj
 
   const globalData = computeGlobal(perfs)
   const recentData = computeRecent(perfs, now)
@@ -3062,6 +3053,16 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
   return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', email_verifie: !!coach.email_verifie, club: coach.club || '', categorie_defaut: coach.categorie_defaut || '', recap_freq: coach.recap_freq || 'off' } })
 }
 
+// Pause active = aujourd'hui dans [debut, fin] (valeur = début, unite = fin, 'fin' = pause levée). Une source pour
+// getAppData et getCoachAthletes (audit 06/11 : getCoachAthletes disait « en pause » pour toute pause jamais levée,
+// ex. Vincent, pause du 19/08 au 02/09 encore lue comme en cours le 06/11).
+function pauseActive(row: any, now: Date): { debut: string | null, fin: string | null } | null {
+  if (!row || !row.valeur || row.valeur === 'fin') return null
+  const debut = normDate(row.valeur) || null
+  const fin = row.unite ? normDate(row.unite) : null
+  const today0 = fmtYMD(now)
+  return ((!debut || today0 >= debut) && (!fin || today0 <= fin)) ? { debut, fin } : null
+}
 async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response> {
   const coachId = params.get('coach_id')
   if (!coachId) return jsonResp({ erreur: 'coach_id manquant' })
@@ -3096,7 +3097,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
   const result = athletes.map(ath => {
     const perfs = (perfsAll || []).filter(r => r.athlete_id === ath.id)
     const pauses = (pauseAll || []).filter(r => r.athlete_id === ath.id)
-    const enPause = pauses.length > 0 && pauses[0].valeur !== 'fin'
+    const enPause = !!pauseActive(pauses[0], now)
     const dates = [...new Set(perfs.map(r => normDate(r.date)))].sort()
     const anneesA = anneesEffectives(ath.annees, ath.created_at, now)   // N2 : ancienneté effective (évolue dans le temps)
     const alertes = centreByAth[String(ath.id)] || calculerAlertes(perfs, ath.id, anneesA, enPause)
