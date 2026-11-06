@@ -106,3 +106,8 @@ Puis onboarding (où la morpho sera mise en avant).
 - Consignes : premier jet Novalyz pour 24 exercices (`mockups/consignes-premier-jet.html`), à valider.
 - 29 exercices à ajouter (choix du porteur) : Curl poignet barre, Curl poignet inversé, Curl inversé barre, Extension lombaire au banc 45°, Good morning, Crunch machine, Relevé de genoux suspendu, Crunch au sol, Pallof press, Adducteur à la poulie, Squat sumo haltère, Mollets à la Smith, Mollets unilatéral haltère, Développé épaules machine, Oiseau machine, Face pull, Développé Arnold, Barre au front, Kickback haltère, Extension nuque haltère, Dips machine, Curl pupitre, Curl machine, Nordic curl, Leg curl unilatéral, Pull-through à la poulie, Abduction à la poulie, Front squat, Sissy squat.
 - Trouvé en plus : le programme de **John** (athlete 3) contient 15 noms absents du catalogue (« Développé couché », « Tractions », « Gainage »…), aucune série faite.
+
+## Point 2 — migration exécutée (06/11, « OK migration » du porteur)
+Essai à blanc d'abord (transaction annulée), puis exécution : 120 exercices (91 + 29), matériel rempli partout, 0 séance / 0 ligne de programme hors catalogue, « Leg curl » → 29 assis (Alizé 18 + Vincent août 11) / 16 allongé, 16 exercices avec Fessiers en secondaire, John rattaché au catalogue (« Gainage » supprimé). Script : `supabase/migration-catalogue-2026-11.sql` (+ `scripts/catalogue_migration.py`).
+Effets vérifiés sur copie (Vincent) : ischios 6 → 4 séries cette semaine, fessiers 0 → 2, dos 15,3 → 12,5/sem (tirage trapèze → Trapèzes), records 5 → 4 (leg curl allongé 37,5 kg n'est plus un record : 40 kg le 18/09), −40 points.
+Reste : libellés de muscles en minuscules dans certains textes d'analyse (« epaule ») ; disciplines = champs prêts, écrans à maquetter.
