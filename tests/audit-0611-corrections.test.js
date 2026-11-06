@@ -48,4 +48,27 @@ eq(sb._cdFmtKg(1.25) === '1,25' && sb._cdFmtKg(7.5) === '7,5' && sb._cdFmtKg(80)
   const L3 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('02/11/2026', 60, 8), P('29/10/2026', 60, 8)] } } }, now6);
   eq(L3.bloque.length === 1, '6 : 3 séances identiques (débutant) → bloqué', L3);
 }
+
+// 7 — Séances libres rattachées (Ma semaine) : choix explicite, automatique ≥ 50 %, sinon « en plus ».
+{
+  const sb3 = { Math, Number, String, Object, Array, JSON, Date, console, _PROG_JOURS_LONG: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'] };
+  vm.createContext(sb3); vm.runInContext(['_rattNorm', '_rattExos', '_rattLundiIso', '_rattProgramme', '_rattAid', '_rattLocalAll', '_rattLocalGet', '_rattachements', '_faitesPeriode', '_sjIso', '_seanceDuJour', '_rattCandidats'].map(pick).join('\n'), sb3);
+  const L = (sid, j, exos) => exos.map((e) => ({ seance_id: sid, jour: j, exercice: e }));
+  const programme = [].concat(L('pec epaule', 1, ['A', 'B', 'C', 'D']), L('dos jambes', 2, ['E', 'F', 'G', 'H']), L('pec epaule 2', 4, ['A', 'B', 'I', 'J']), L('dos jambe 2', 5, ['E', 'K', 'L', 'M']));
+  const S = (date, sid, ex, extra) => Object.assign({ date, seance_id: sid, exercices: ex.map((n) => ({ nom: n })) }, extra || {});
+  const base = [S('2026-11-02', 'pec epaule', ['A', 'B', 'C', 'D'])];
+  // 05/11 libre : A, B, E, F, X, Y → 2/6 avec pec epaule 2 (33 %) ; 06/11 libre : E, K, Z → 2/3 avec dos jambe 2 (67 %)
+  const lib5 = S('2026-11-05', 'Libre', ['A', 'B', 'E', 'F', 'X', 'Y']), lib6 = S('2026-11-06', 'Libre', ['E', 'K', 'Z']);
+  let R = sb3._rattachements({ programme, seances_detail: base.concat([lib5, lib6]) });
+  eq(R['2026-11-05|Libre'].cible === '__plus__' && R['2026-11-06|Libre'].cible === 'dos jambe 2', '7 : auto — 33 % → en plus ; 67 % → dos jambe 2', R);
+  R = sb3._rattachements({ programme, seances_detail: base.concat([S('2026-11-05', 'Libre', lib5.exercices.map((e) => e.nom), { rattache: 'pec epaule 2' }), lib6]) });
+  eq(R['2026-11-05|Libre'].cible === 'pec epaule 2' && R['2026-11-05|Libre'].src === 'choix', '7 : choix explicite prioritaire', R);
+  const F = sb3._faitesPeriode({ programme, seances_detail: base.concat([S('2026-11-05', 'Libre', lib5.exercices.map((e) => e.nom), { rattache: 'pec epaule 2' }), lib6]) }, '2026-11-02', '2026-11-08');
+  eq(F.faites['pec epaule'] === 'prog' && F.faites['pec epaule 2'] === 'libre' && F.faites['dos jambe 2'] === 'libre' && !F.faites['dos jambes'] && F.plus.length === 0, '7 : lundi faite, jeudi + vendredi « en séance libre », mardi non faite', F);
+  // une séance prévue n'est cochée qu'une fois : 2e libre identique → en plus
+  R = sb3._rattachements({ programme, seances_detail: base.concat([lib6, S('2026-11-07', 'Libre', ['E', 'K', 'Z'])]) });
+  eq(R['2026-11-07|Libre'].cible === '__plus__', '7 : séance prévue déjà cochée → la 2e libre compte en plus', R);
+  const C = sb3._rattCandidats({ programme, seances_detail: base }, '2026-11-05', ['A', 'B', 'E', 'F', 'X', 'Y'], 'Libre');
+  eq(C[0].sid === 'pec epaule 2' && C[0].memeJour && !C.some((c) => c.sid === 'pec epaule'), '7 : fin de séance jeudi → pec epaule 2 proposée (prévue ce jour), pec epaule (faite) absente', C);
+}
 console.log('-'.repeat(70)); console.log('audit 06/11 corrections : ' + ok + ' OK / ' + ko + ' KO'); if (ko) process.exitCode = 1;

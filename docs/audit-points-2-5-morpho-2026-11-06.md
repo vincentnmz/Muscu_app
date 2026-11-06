@@ -89,3 +89,11 @@ Test d'une règle automatique sur tes vraies séances Libre (exercices en commun
 ## Ordre proposé
 5 (Ma semaine, petit) → 2 (catalogue, gros, avant test fermé) → morpho (vente) → 4 (montre) → 3 (fiche ordi).
 Puis onboarding (où la morpho sera mise en avant).
+
+## Point 5 — codé (06/11, maquette validée « oui pour tout »)
+- Fin de séance libre : « Cette séance remplace laquelle ? » (proposé = séance prévue du jour avec ≥ 1 exercice commun, sinon le plus d'exercices communs ; « Aucune, séance en plus »).
+- Sans choix : rattachement auto si ≥ 50 % des exercices en commun avec une séance prévue non faite de la semaine, sinon « en plus ». Une séance prévue n'est cochée qu'une fois par semaine.
+- Ma semaine (« en séance libre », « ✓ en plus » en pointillé), Entraînement (« ✓ ven. · libre »), Historique (« → dos jambe 2 » + Changer), coach : agenda « ✓ libre », Séances « → … » + « ⇄ Remplace quelle séance ? » (le coach peut changer).
+- Stockage : `indicateurs` cle `rattache` (seance_id = séance réelle, date, valeur = séance prévue ou `__plus__`, unite = athlete/coach). Action `setRattachement` (index.ts, à redéployer). Hors-ligne : choix gardé sur le téléphone 3 j et renvoyé.
+- Base : 05/11 → pec epaule 2, 06/11 → dos jambe 2 (à la demande du porteur).
+- Limite : l'automatique compare avec le programme **actuel** ; une ancienne séance libre peut être rattachée à une séance d'un programme qui a changé depuis (rien n'est écrit en base, c'est un calcul d'affichage).

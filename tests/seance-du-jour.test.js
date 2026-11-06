@@ -5,7 +5,7 @@ let ok = 0, ko = 0; const eq = (c, n) => { if (c) ok++; else { ko++; console.err
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const pick = (n) => { const i = src.indexOf('function ' + n + '('); let d = 0; for (let k = src.indexOf('{', i); k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } } };
 const sb = { _PROG_JOURS_LONG: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'] };
-vm.createContext(sb); vm.runInContext(pick('_sjIso') + ';' + pick('_seanceDuJour') + ';' + pick('_manqueesTxt') + '; this.SJ = _seanceDuJour; this.MQ = _manqueesTxt;', sb);
+vm.createContext(sb); vm.runInContext(['_rattNorm', '_rattExos', '_rattLundiIso', '_rattProgramme', '_rattAid', '_rattLocalAll', '_rattLocalGet', '_rattachements', '_faitesPeriode'].map(pick).join(';') + ';' + pick('_sjIso') + ';' + pick('_seanceDuJour') + ';' + pick('_manqueesTxt') + '; this.SJ = _seanceDuJour; this.MQ = _manqueesTxt;', sb);
 const prog = [['pec epaule', 1], ['dos jambes', 2], ['pec epaule 2', 4], ['dos jambe 2', 5]].map(([s, j]) => ({ seance_id: s, jour: j, exercice: 'x' }));
 const faite = (s, d) => ({ seance_id: s, date: d });
 const T = (iso) => new Date(iso + 'T10:00:00').getTime();

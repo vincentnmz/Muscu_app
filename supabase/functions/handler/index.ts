@@ -2852,6 +2852,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const sp = new Set((spRows || []).map((r: any) => normDate(r.date) + '|' + String(r.seance_id ?? '')))
     for (const sd of seancesDetailArr as any[]) if (sp.has(sd.date + '|' + sd.seance_id)) sd.saisi_par_coach = true
   } catch (_) {}
+  // 06/11 — séance libre rattachée à la séance prévue qu'elle remplace (« Ma semaine ») : indicateurs cle 'rattache',
+  // seance_id = séance réelle (ex. « Libre »), date = date de la séance, valeur = séance prévue ou '__plus__'.
+  try {
+    const { data: raRows } = await sb().from('indicateurs').select('date,seance_id,valeur,unite').eq('athlete_id', athleteId).eq('cle', 'rattache')
+    const ra: Record<string, any> = {}
+    for (const r of (raRows || []) as any[]) ra[normDate(r.date) + '|' + String(r.seance_id ?? '')] = r
+    for (const sd of seancesDetailArr as any[]) { const r = ra[sd.date + '|' + sd.seance_id]; if (r) { sd.rattache = String(r.valeur || ''); sd.rattache_par = String(r.unite || '') } }
+  } catch (_) {}
   const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
   // Temps de repos entre séries (levier B) : moyenne des repos RÉELLEMENT loggés (>0)
   // sur 28 j. Fait factuel vérifié → alimente un levier « mot de Novalyz » conditionnel.
@@ -6070,6 +6078,23 @@ async function handleGetPlanning(body: any): Promise<Response> {
 }
 
 // Poser une séance un jour donné (upsert sur l'index unique → idempotent).
+// 06/11 — « Cette séance remplace laquelle ? » : rattache une séance réelle (souvent « Libre ») à une séance prévue
+// du programme, ou '__plus__' (séance en plus), ou '' pour revenir au calcul automatique. Athlète ou son coach.
+async function handleSetRattachement(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const date = normDate(String(body.date || ''))
+  const seance_id = String(body.seance_id ?? '')
+  const cible = String(body.cible ?? '').trim()
+  if (!athlete_id || !date || !seance_id) return jsonResp({ erreur: 'Paramètres manquants' })
+  const par = body._sessRole === 'c' ? 'coach' : 'athlete'
+  const { error: e1 } = await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('cle', 'rattache').eq('date', date).eq('seance_id', seance_id)
+  if (e1) return jsonResp({ erreur: e1.message })
+  if (cible) {
+    const { error } = await sb().from('indicateurs').insert({ date, athlete_id, seance_id, cle: 'rattache', valeur: cible, unite: par, source: 'app' })
+    if (error) return jsonResp({ erreur: error.message })
+  }
+  return jsonResp({ ok: true, par })
+}
 async function handlePlanSeance(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const date = String(body.date || '')
@@ -7597,6 +7622,7 @@ Deno.serve(async (req: Request) => {
         case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
         case 'getPlanning':              return handleGetPlanning(body)
         case 'planSeance':               return handlePlanSeance(body)
+        case 'setRattachement':          return handleSetRattachement(body)
         case 'movePlanning':             return handleMovePlanning(body)
         case 'unplanPlanning':           return handleUnplanPlanning(body)
         case 'genererProgramme':         return _progMajTrace(action, body, () => handleGenererProgramme(body))
