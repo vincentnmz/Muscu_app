@@ -5871,11 +5871,11 @@ function retourCoachDetail() {
   }
 }
 
-const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Entraînement', prog: 'Analyses', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
+const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Séances', prog: 'Analyses', volume: 'Volume', cal: 'Agenda', conseils: 'Messages', programme: 'Programme', forme: 'Forme' };
 function switchCoachDetailTab(tab) {
   if (tab === 'volume') tab = 'prog';   // Volume fusionné dans Progression
   if (tab !== 'conseils') _cdDepuisMessages = false;
-  ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
+  ['overview','seances','prog','volume','cal','conseils','programme','forme'].forEach(t => {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
   });
@@ -5883,7 +5883,8 @@ function switchCoachDetailTab(tab) {
   // sur l'Aperçu (sinon il crée une 3e colonne sur Progression/Séances/etc.).
   const cdBody = document.getElementById('cd-body'); if (cdBody) cdBody.setAttribute('data-tab', tab);
   const ttl = document.getElementById('cd-tab-title');
-  if (ttl && CD_TAB_LABELS[tab]) ttl.textContent = CD_TAB_LABELS[tab];
+  // 06/11 (fiche courte) : le titre = le nom de l'athlète ; l'onglet actif est visible dans la barre.
+  if (ttl) ttl.textContent = (coachAthleteCourant && coachAthleteCourant.nom) ? coachAthleteCourant.nom : (CD_TAB_LABELS[tab] || '');
   const cdH = document.getElementById('cd-header'); if (cdH) cdH.style.transform = 'translateY(0)'; // header visible au changement d'onglet
   // Repart en haut du contenu à chaque changement d'onglet (évite les sauts de scroll)
   window.scrollTo(0, 0);
@@ -6033,6 +6034,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   try { fermerMessagerie2(); } catch (e) {}  // rend la carte conversation à la fiche
   try { _maCoachDetach(); } catch (e) {}   // état analyses propre avant de charger un autre athlète
   coachAthleteCourant = a;
+  // 06/11 : la barre du bas reste visible dans la fiche (mobile) → « Équipe » allumé.
+  try { ['aujourdhui', 'equipe', 'analyses', 'messages', 'profil'].forEach(function (k) { var b = document.getElementById('coach-band-' + k); if (b) b.classList.toggle('on', k === 'equipe'); }); } catch (e) {}
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
   document.body.classList.add('cd-nav');
@@ -6124,6 +6127,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
     try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
     try { _cdV3Grid(); } catch (_) {}                    // Aperçu v3 : 6 cartes égales dans la grille
+    try { _cdFicheCourte(data); } catch (_e) { console.warn('[fiche courte]', _e); }   // 06/11 : Aperçu en 6 blocs + onglet Forme
     // N13 — l'ancienne « Lecture Novalyz » (phrases adressées à l'athlète, « tu… ») est
     // remplacée par la synthèse COACH en tête (#cd-coupdoeil). On masque ce doublon.
     try { ['cd-analyse-sec', 'cd-analyse-card'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; }); } catch (_) {}
@@ -6533,9 +6537,23 @@ function renderCoachCoupDoeil(data) {
     if (compl) reco += ' ' + compl;
 
     // F5/F6 (03/11) : plus de « Lecture Novalyz » ni de « Reco » (consignes au coach, redites) — les faits seuls.
-    el.innerHTML = '<div class="cdcp-wrap">'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">② Entraînement</div>' + entr + '</div>'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">③ État &amp; récup</div>' + etat + '</div></div>';
+    // 06/11 (fiche courte) : « Entraînement » → onglet Analyses ; « État & récup » → onglet Forme ;
+    // l'Aperçu garde un résumé « Depuis la dernière fois » (mêmes listes _lectureExos, rien de recalculé).
+    el.innerHTML = '<div class="dash-card cdcp-card"><div class="cdcp-h">Entraînement</div>' + entr + '</div>';
+    var _fe = document.getElementById('cd-forme-etat'); if (_fe) _fe.innerHTML = '<div class="dash-card cdcp-card"><div class="cdcp-h">État &amp; récup</div>' + etat + '</div>';
+    var _dp = document.getElementById('cd-depuis');
+    if (_dp) {
+      var _pl2 = function (n, s1, s2) { return n + ' ' + (n > 1 ? s2 : s1); };
+      var _bits = [];
+      if (records.length) _bits.push('<span style="color:var(--good)">★</span> ' + _pl2(records.length, 'record', 'records'));
+      if (progresse.length) _bits.push('<span style="color:var(--good)">▲</span> ' + _pl2(progresse.length, 'exercice en progrès', 'exercices en progrès'));
+      if (stagne.length) _bits.push('<span style="color:var(--warn)">■</span> ' + _pl2(stagne.length, 'bloqué', 'bloqués'));
+      if (recule.length) _bits.push('<span style="color:var(--danger)">▼</span> ' + _pl2(recule.length, 'recule', 'reculent'));
+      _dp.innerHTML = '<div class="dash-card cdx-card"><div class="cdx-ct">Depuis la dernière fois<a onclick="switchCoachDetailTab(\'prog\')">Analyses →</a></div>'
+        + '<div class="cdx-l">' + (_bits.length ? _bits.join(' · ') : 'Rien de nouveau sur ses exercices.') + '</div>'
+        + '<div class="cdx-s">' + (absent.length ? 'Pas travaillé sur 7 j : <b>' + esc(absent.join(', ')) + '</b>' : 'Les 5 grands groupes travaillés sur 7 j.') + '</div>'
+        + '<div class="cdx-n">Dernière séance de chaque exercice comparée aux précédentes.</div></div>';
+    }
   } catch (e) { try { el.innerHTML = ''; } catch (_) {} }
 }
 
@@ -6639,7 +6657,10 @@ function renderCoachProchaineSeance(data) {
   var exos = prog.filter(function (l) { return l && String(l.seance_id) === nom; });
   // F8 (03/11) : ce que Novalyz va proposer à l'athlète sur chaque exercice (plan de la semaine).
   var _pN = {}; try { var _P = (typeof _lv3Plan === 'function') ? _lv3Plan(data) : null; (_P && !_P.reprise ? _P.actions : []).forEach(function (a) { if (a.fait || !a.exo) return; _pN[String(a.exo).trim()] = a.type === 'series' ? '+' + a.add + ' série' + (a.add > 1 ? 's' : '') : a.type === 'charge' ? _cdFmtKg(a.charge) + ' kg' + (a.alt ? ' (ou ' + _cdFmtKg(a.alt) + ')' : '') : a.type === 'rpe' ? 'viser RPE 8' : a.type === 'cible' ? _cdFmtKg(a.charge) + ' kg × ' + a.reps : ''; }); } catch (e) {}
-  var lignes = exos.map(function (l) {
+  // 06/11 (fiche courte) : on ne liste que les exercices où Novalyz propose quelque chose ; le reste → « +N exercices ».
+  var _nTot = exos.length, _avecN = exos.filter(function (l) { return _pN[String(l.exercice || '').trim()]; });
+  var _reste = _nTot - _avecN.length;
+  var lignes = _avecN.map(function (l) {
     var reps = (l.reps_mini && l.reps_max) ? (l.reps_mini + '–' + l.reps_max) : (l.reps_mini || l.reps_max || '');
     var meta = l.series_prevues ? (l.series_prevues + ' × ' + (reps || '?')) : (reps ? (reps + ' reps') : '');
     var nv = _pN[String(l.exercice || '').trim()];
@@ -6653,9 +6674,10 @@ function renderCoachProchaineSeance(data) {
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text-subtle);">Prochaine séance à faire</div>'
     + '<div onclick="switchCoachDetailTab(\'programme\')" style="cursor:pointer;color:var(--accent);font-weight:700;font-size:11px;">Programme →</div>'
     + '</div>'
-    + '<div style="font-size:16px;font-weight:900;letter-spacing:-.01em;">' + esc(nom) + '</div>'
-    + (lignes ? '<div style="margin-top:8px;">' + lignes + '</div>'
-              : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Programme sans détail d\'exercices pour cette séance.</div>');
+    + '<div style="font-size:16px;font-weight:900;letter-spacing:-.01em;">' + esc(nom) + (_nTot ? ' <span style="font-size:12.5px;font-weight:700;color:var(--text-muted)">· ' + _nTot + ' exercice' + (_nTot > 1 ? 's' : '') + '</span>' : '') + '</div>'
+    + (lignes ? '<div style="margin-top:8px;">' + lignes + '</div>' : '')
+    + (!_nTot ? '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Programme sans détail d\'exercices pour cette séance.</div>'
+       : (_reste ? '<div onclick="switchCoachDetailTab(\'programme\')" style="cursor:pointer;font-size:12px;color:var(--text-muted);margin-top:6px;">' + (lignes ? '+' + _reste + ' autre' + (_reste > 1 ? 's' : '') + ' exercice' + (_reste > 1 ? 's' : '') + ' sans changement' : 'Rien de nouveau proposé par Novalyz sur cette séance') + ' · voir le programme</div>' : ''));
 }
 
 // ===================== AGENDA DATÉ (coach) ================================
@@ -23830,18 +23852,21 @@ function renderCoachChargeCard(data) {
   var tile = function (v, l, col) { return '<div class="cd-k"><div class="cd-kv"' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</div><div class="cd-kl">' + l + '</div></div>'; };
   var rpe = (dash.recuperation && dash.recuperation.rpe_moyen != null) ? dash.recuperation.rpe_moyen
           : (data.recent && data.recent.j7 && data.recent.j7.rpe_moyen != null ? data.recent.j7.rpe_moyen : null);
-  if (rpe != null && rpe !== 'N/A') { var rc = rpe >= 8.5 ? 'var(--danger)' : rpe >= 7.5 ? 'var(--warn)' : 'var(--text)'; tiles.push(tile(String(rpe).replace('.', ','), 'RPE moy · 7j', rc)); }
+  if (rpe != null && rpe !== 'N/A') { var rc = rpe >= 8.5 ? 'var(--danger)' : rpe >= 7.5 ? 'var(--warn)' : 'var(--text)'; tiles.push(tile(String(rpe).replace('.', ','), 'RPE 7 j', rc)); }
   if (dash.tonnage) {
     var tv = dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine;
     if (tv != null) {
       var ev = dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol;
       var sub = (ev != null) ? ' <small style="font-size:10px;color:' + (ev >= 0 ? 'var(--good)' : 'var(--warn)') + '">' + (ev >= 0 ? '▲' : '▼') + Math.abs(ev) + '%</small>' : '';
-      tiles.push(tile(String(tv).replace('.', ',') + ' t' + sub, 'Tonnage 7j'));
+      tiles.push(tile(String(tv).replace('.', ',') + ' t' + sub, 'Tonnage 7 j'));
     }
   }
   var reg = dash.regularite;
-  if (reg) { var f = _seancesFaites(reg), pv = reg.seances_prevues; if (f != null) tiles.push(tile(f + (pv != null ? '/' + pv : ''), 'Régularité')); }
+  if (reg) { var f = _seancesFaites(reg), pv = reg.seances_prevues; if (f != null) tiles.push(tile(f + (pv != null ? '/' + pv : ''), 'Assiduité')); }
   if (dash.acwr != null && mot.acwr_fiable !== false) tiles.push(tile(String(dash.acwr).replace('.', ','), 'ACWR'));
+  // 06/11 (fiche courte) : « Repères » fusionné ici → plan de la semaine + dernière séance.
+  try { var _pX = _coachPlanXN(data); if (_pX) tiles.push(tile(_pX, 'Plan')); } catch (e) {}
+  if (dash.derniere_seance && dash.derniere_seance.date) tiles.push(tile(escapeHtml(String(dash.derniere_seance.date).slice(0, 5)), 'Dernière séance'));
   if (!tiles.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Pas encore assez de séances.</div>'; _cfCardShow('cd-charge-card', true); return; }
   var streak = dash.streak && dash.streak.semaines;
   el.innerHTML = '<div class="cd-k4">' + tiles.join('') + '</div>'
@@ -23892,18 +23917,86 @@ var _cdAsideMoved = null;
 function _cdAsideDeskLayout() {
   var slots = document.getElementById('cd-aside-slots'); if (!slots) return;
   var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) {}
-  var ctx = document.getElementById('cd-contexte'), proch = document.getElementById('cd-prochaine');
-  if (!_cdAsideMoved) { _cdAsideMoved = []; [ctx, proch].forEach(function (n) { if (n) _cdAsideMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
-  if (desk) { if (proch) slots.appendChild(proch); if (ctx) slots.appendChild(ctx); }
-  else { _cdAsideMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} }); }
+  // 06/11 (fiche courte) : ordi = colonne droite « Prochaine séance · Charge & assiduité · Depuis la dernière fois » ;
+  // mobile = les mêmes blocs, dans le même ordre, sous « À décider » (#cd-ov-court). Le contexte part dans Forme.
+  var ids = ['cd-prochaine', 'cd-charge-card', 'cd-depuis'], host = desk ? slots : document.getElementById('cd-ov-court');
+  if (!host) return;
+  ids.forEach(function (id) { var n = document.getElementById(id); if (n && n.parentNode !== host) host.appendChild(n); });
 }
 
+// ═══ 06/11 — Fiche athlète COURTE (maquette coach-fiche-courte.html validée) ═══
+// Aperçu = 1 état du jour (+ ligne Contexte) · 2 actions · 3 À décider (+ alertes) · 4 prochaine séance ·
+// 5 charge & assiduité · 6 depuis la dernière fois. Le reste est RANGÉ (pas supprimé) dans son onglet :
+// Entraînement + séries 7 j → Analyses ; État & récup, contexte, montre, poids, nutrition, IA → Forme.
+// Les blocs sont remplis par leurs rendus habituels (par id) : on ne fait que les déplacer.
+function _cdFicheCourte(data) {
+  var $ = function (id) { return document.getElementById(id); };
+  var ov = $('cdtab-overview'), fo = $('cdtab-forme'), pr = $('cdtab-prog'), court = $('cd-ov-court');
+  if (!ov || !fo || !court) return;
+  // 2 · Actions : Saisir sa séance · Modifier le programme · Planifier la semaine
+  var act = $('cd-act3');
+  if (!act) {
+    act = document.createElement('div'); act.id = 'cd-act3'; act.className = 'cd-act3';
+    var sb = ov.querySelector('.cd-saisie-btn'); if (sb) act.appendChild(sb);
+    act.insertAdjacentHTML('beforeend', '<button class="cd-act3-b" onclick="switchCoachDetailTab(\'programme\')">Modifier le programme</button><button class="cd-act3-b" onclick="cdPlanifierSemaine()">Planifier la semaine</button>');
+  }
+  var dec = $('cd-decider'); if (dec && act.nextSibling !== dec) ov.insertBefore(act, dec);
+  // 4-5-6 : prochaine · charge · depuis (ordi : colonne droite, mobile : sous À décider)
+  try { _cdAsideDeskLayout(); } catch (e) {}
+  // → Analyses : Entraînement (records, progrès, plan de la semaine) + séries des 7 derniers jours
+  var host = $('cd-analyses-host');
+  ['cd-coupdoeil', 'cd-hub-volume-sec', 'cd-hub-volume'].forEach(function (id) { var n = $(id); if (n && pr && host && n.parentNode !== pr) pr.insertBefore(n, host); });
+  // → Forme : état & récup (déjà dans #cd-forme-etat), contexte & bilan, montre, poids, nutrition, IA
+  ['cd-etat-group', 'cd-montre-card', 'cd-hub-nutrition-sec', 'cd-hub-nutrition', 'cd-ia-card'].forEach(function (id) { var n = $(id); if (n && n.parentNode !== fo) fo.appendChild(n); });
+  var pw = document.querySelector('.cd-rail-weight'); if (pw && pw.parentNode !== fo) fo.appendChild(pw);
+  // Doublons retirés de l'Aperçu (l'info existe ailleurs) : hub mobile, Repères (fusionné dans Charge),
+  // « Comment il s'entraîne » (= onglet Séances), carte Actions et Repères du rail ordi, lien mot de passe (→ menu ⋯).
+  var hide = function (n) { if (n) n.style.display = 'none'; };
+  hide(ov.querySelector('.cd-hub-actions'));
+  var ind = $('cd-indicateurs-card'); hide(ind); if (ind && ind.previousElementSibling && ind.previousElementSibling.classList.contains('v2-sec')) hide(ind.previousElementSibling);
+  hide($('cd-hub-seances-sec')); hide($('cd-hub-seances'));
+  hide($('cd-reperes-card')); hide($('cd-aside-montre'));
+  var rail = $('cd-rail'); if (rail) { var qa = rail.querySelector('.cd-aside-qa'); if (qa && qa.closest('.cd-aside')) hide(qa.closest('.cd-aside')); }
+  var rb = ov.querySelector('button[onclick^="ouvrirResetMdp"]'); if (rb && rb.parentNode) hide(rb.parentNode);
+  // Forme : « État de forme » redit « État & récup » (mêmes données) → masqué ; titre Nutrition = en-tête de sa carte.
+  var rc = $('cd-recup-card'); hide(rc); if (rc && rc.previousElementSibling && rc.previousElementSibling.classList.contains('v2-sec')) hide(rc.previousElementSibling);
+  hide($('cd-hub-nutrition-sec'));
+  // 1 · Ligne « Contexte : … · changer › » dans l'état du jour
+  try {
+    var hero = $('cd-hero'), aid = coachAthleteCourant && coachAthleteCourant.athlete_id, cx = data && data.contexte;
+    var cle = _ctxActif(cx) ? cx.etat : 'saison_normale';
+    var line = $('cd-hero-ctx');
+    if (hero) {
+      if (!line) { line = document.createElement('button'); line.id = 'cd-hero-ctx'; line.className = 'cd-hero-ctx'; hero.appendChild(line); }
+      line.textContent = 'Contexte : ' + _ctxLibelle(cle).toLowerCase() + ' · changer ›';
+      line.onclick = function () { try { ouvrirModaleContexte(String(aid), 'muscu'); } catch (e) { switchCoachDetailTab('forme'); } };
+    }
+  } catch (e) {}
+}
+// « Planifier la semaine » : onglet Programme, sur l'agenda de la semaine.
+function cdPlanifierSemaine() {
+  switchCoachDetailTab('programme');
+  setTimeout(function () { var a = document.getElementById('cd-prog-agenda-root') || document.querySelector('.cd-ag, [id^="cd-ag"]'); if (a) { var y = a.getBoundingClientRect().top + window.pageYOffset - 118; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } }, 600);
+}
+// Menu ⋯ de la fiche : mot de passe de l'athlète, analyse IA (onglet Forme).
+function cdMenuFiche(ev) {
+  try { ev.stopPropagation(); } catch (e) {}
+  var old = document.getElementById('cd-menu-fiche'); if (old) { old.remove(); return; }
+  var a = coachAthleteCourant || {}, m = document.createElement('div'); m.id = 'cd-menu-fiche';
+  var r = ev && ev.currentTarget ? ev.currentTarget.getBoundingClientRect() : { bottom: 56, right: window.innerWidth - 10 };
+  m.style.top = Math.round(r.bottom + 6) + 'px'; m.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px';
+  m.innerHTML = '<button onclick="document.getElementById(\'cd-menu-fiche\').remove();switchCoachDetailTab(\'forme\');setTimeout(function(){var c=document.getElementById(\'cd-ia-card\');if(c)c.scrollIntoView({behavior:\'smooth\'});},300)">Demander une analyse (IA)</button>'
+    + '<button onclick="document.getElementById(\'cd-menu-fiche\').remove();ouvrirResetMdp(coachAthleteCourant && coachAthleteCourant.athlete_id, coachAthleteCourant && coachAthleteCourant.nom)">Réinitialiser son mot de passe</button>';
+  document.body.appendChild(m);
+  setTimeout(function () { document.addEventListener('click', function f() { var x = document.getElementById('cd-menu-fiche'); if (x) x.remove(); document.removeEventListener('click', f); }); }, 0);
+}
 // Aperçu v3 : les 6 cartes d'analyse (sous Alertes) sont regroupées dans une
 // grille à cellules ÉGALES (#cd-ov-grid). Reparentage desktop-only, restauré en
 // mobile (les cartes retrouvent leur place d'origine dans #cdtab-overview).
 var _cdGridMoved = null;
-var _CD_GRID_IDS = ['cd-forme-recup', 'cd-charge-card', 'cd-montre-card', 'cd-hub-volume', 'cd-hub-seances', 'cd-hub-nutrition'];
+var _CD_GRID_IDS = [];   // 06/11 (fiche courte) : plus de grille — chaque carte est rangée dans son onglet (_cdFicheCourte)
 function _cdV3Grid() {
+  if (!_CD_GRID_IDS.length) { var _g0 = document.getElementById('cd-ov-grid'); if (_g0 && _g0.parentNode) _g0.parentNode.removeChild(_g0); return; }
   var ov = document.getElementById('cdtab-overview'); if (!ov) return;
   var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active') && document.body.classList.contains('athlete-selected'); } catch (e) {}
   var grid = document.getElementById('cd-ov-grid');
