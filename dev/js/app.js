@@ -6303,7 +6303,8 @@ function _lectureExos(data, nowT) {
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (_ctxA ? R.attendu : R.recule).push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
     // Séances identiques avant « bloqué » selon le niveau (03/11) : débutant 2 · intermédiaire 3 · avancé 4.
     var _NB = (typeof LV3_BLOQUE_N !== 'undefined' && typeof _lv3Niveau === 'function') ? (LV3_BLOQUE_N[_lv3Niveau(data)] || 3) : 3;
-    var _memes = pts.length >= _NB; for (var q = 1; _memes && q < _NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) _memes = false; }
+    // Audit 06/11 (porteur) : jamais « bloqué » sur les 2 premières séances d'un exercice (compte neuf) — au moins 3 séances.
+    var _memes = pts.length >= Math.max(_NB, 3); for (var q = 1; _memes && q < _NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) _memes = false; }
     if (_memes) {
       if (c0 === c1 && r0 <= r1) {
         // Bloqué seulement si AUCUN progrès secondaire (plus de séries au top / RPE plus bas) dans la chaîne.
@@ -6359,7 +6360,7 @@ function renderCoachDecider(data) {
     return '<div class="dash-card" style="padding:12px 14px;margin-bottom:10px;border-left:4px solid ' + col + '">'
       + '<span style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:6px;background:' + col + '1a;color:' + tcol + '">' + tag + '</span>'
       + '<div style="font-size:13.5px;font-weight:800;margin-top:5px">' + esc(g.exo) + ' : ' + KIND[g.kind] + '</div>'
-      + (faits.length ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">' + faits.join(' · ') + ' <span style="color:var(--text-subtle)">(' + g.n + ' séance' + (g.n > 1 ? 's' : '') + ' sur 6 sem.)</span></div>' : '')
+      + (faits.length ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">' + faits.join(' · ') + ' <span style="color:var(--text-subtle)">(' + g.n + ' séance' + (g.n > 1 ? 's' : '') + ' en ' + (g.sem || 1) + ' sem.)</span></div>' : '')
       + '<div style="margin-top:7px;background:var(--accent-a08,rgba(26,95,255,.08));border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45">' + (prop ? 'Proposé à l\'athlète : <b style="color:var(--accent)">' + esc(prop) + '</b>' : (g.cause && g.levier ? 'Piste trouvée dans ses données, à lui proposer : « ' + esc(String(g.levier).replace(/<[^>]+>/g, '')) + ' »' : 'Aucune cause visible dans ses données : rien de proposé automatiquement.')) + '</div>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'
       + '<button class="cda-btn cda-primary" onclick="switchCoachDetailTab(\'programme\')">✎ Modifier dans le programme</button>'
@@ -6449,7 +6450,7 @@ function renderCoachCoupDoeil(data) {
     var trd = function (key, inv) { var a = avgBE(key); if (a == null || !be || be[key] == null) return ''; var d = Number(be[key]) - a; if (Math.abs(d) <= 0.5) return ' · stable'; return ((d > 0) !== !!inv) ? ' · en hausse' : ' · en baisse'; };
     var colv = function (val) { var n = Number(val); return n >= 4 ? 'var(--good)' : (n <= 2 ? 'var(--warn)' : 'var(--text-subtle)'); };
     var sh = Array.isArray(data.sante_historique) ? data.sante_historique : [];
-    var pasArr = sh.filter(function (x) { var t = pd(x && x.date); return t && (nowT - t) / 864e5 <= 8; }).map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
+    var pasArr = sh.filter(function (x) { var t = pd(x && x.date); return t && (nowT - t) / 864e5 < 7; }).map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
     var pasAvg = pasArr.length ? Math.round(pasArr.reduce(function (a, b) { return a + b; }, 0) / pasArr.length) : null;
     var etat = '';
     if (recup) etat += _cdCoupRow((recup === 'Faible' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', '●', '<b>Récupération</b> ' + esc(String(recup).toLowerCase()));
@@ -6480,7 +6481,7 @@ function renderCoachCoupDoeil(data) {
     try {
       var _mo = _montreNormale(data);
       if (_mo && _mo.sommeil) etat += _cdCoupRow('var(--good)', '●', '<b>Sommeil (montre)</b> ' + _fmtHmin(_mo.sommeil.moy) + ' / nuit <span class="cdcp-sub">(7 j, ' + _mo.sommeil.n + ' nuit' + (_mo.sommeil.n > 1 ? 's' : '') + ')</span>' + (_mo.sommeil.base != null ? ' · normale ' + _fmtHmin(_mo.sommeil.base) : ''));
-      if (_mo && _mo.fc) { var _f = _mo.fc; etat += _cdCoupRow(_f.degrade ? 'var(--warn)' : 'var(--good)', '●', '<b>FC repos (montre)</b> ' + _fmt1(_f.recente) + ' bpm' + (_f.evaluable ? ' · ' + (_f.degrade ? '<b>au-dessus de sa normale</b>' : 'normale') + ' ' + _fmt1(_f.normale) : ' <span class="cdcp-sub">(' + ((_f.mesuresBase || 0) < 14 ? 'normale après 14 mesures' : 'normale ' + _fmt1(_f.normale) + ' · comparaison dès 2 mesures sur 3 j') + ')</span>')); }
+      if (_mo && _mo.fc) { var _f = _mo.fc; etat += _cdCoupRow(_f.degrade ? 'var(--warn)' : 'var(--good)', '●', '<b>FC repos (montre)</b> ' + _fmt1(_f.recente) + ' bpm <span class="cdcp-sub">(3 j)</span>' + (_f.evaluable ? ' · ' + (_f.degrade ? '<b>au-dessus de sa normale</b>' : 'normale') + ' ' + _fmt1(_f.normale) : ' <span class="cdcp-sub">(' + ((_f.mesuresBase || 0) < 14 ? 'normale après 14 mesures' : 'normale ' + _fmt1(_f.normale) + ' · comparaison dès 2 mesures sur 3 j') + ')</span>')); }
     } catch (e) {}
     if (pasAvg != null) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + ' / jour <span class="cdcp-sub">(montre, 7 j)</span>');   // F5 : fait seul
     // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
@@ -7446,7 +7447,16 @@ function renderCoachHubNutrition(data) {
   if (!el) return;
   var hist = (data && Array.isArray(data.nutri_historique)) ? data.nutri_historique : [];
   if (!hist.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
-  var last = hist.slice(0, 7);
+  // Audit 06/11 : « Nutrition · 7 j » = saisies des 7 DERNIERS JOURS (avant : les 7 dernières saisies, même vieilles
+  // d'un mois → 1 665 kcal affichées pour 2 saisies des 29/09 et 02/10).
+  var _t0 = new Date(); _t0.setHours(0, 0, 0, 0); var _lim = _t0.getTime() - 6 * 864e5;
+  var _tN = function (d) { try { var t = parseChatDate(d.date); return t ? new Date(t).setHours(0, 0, 0, 0) : 0; } catch (e) { return 0; } };
+  var last = hist.filter(function (d) { return d && _tN(d) >= _lim; });
+  if (!last.length) {
+    var _dl = hist.map(_tN).filter(Boolean).sort(function (a, b) { return b - a; })[0];
+    el.innerHTML = '<div class="dash-label cd-deskonly">Nutrition · 7 j</div><div style="font-size:13px;color:var(--text-muted);line-height:1.45">Aucun repas saisi sur les 7 derniers jours' + (_dl ? ' (dernière saisie le ' + String(new Date(_dl).getDate()).padStart(2, '0') + '/' + String(new Date(_dl).getMonth() + 1).padStart(2, '0') + ')' : '') + '.</div>';
+    el.style.display = ''; if (sec) sec.style.display = ''; return;
+  }
   function avg(k) {
     var v = last.map(function (d) { return Number(d[k]); }).filter(function (x) { return !isNaN(x) && x > 0; });
     return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length) : null;
@@ -7485,7 +7495,7 @@ function renderCoachHubNutrition(data) {
     macCol('Lipides', aL, obj.lip, 'g') +
     macCol('Énergie', aK, obj.kcal, 'kcal') +
     '</div>';
-  el.innerHTML = '<div class="dash-label cd-deskonly">Nutrition · 7 j</div>' + kcalLine + grid;
+  el.innerHTML = '<div class="dash-label cd-deskonly">Nutrition · 7 j</div>' + kcalLine + grid + '<div style="font-size:11px;color:var(--text-subtle);margin-top:9px">Moyenne des ' + last.length + ' jour' + (last.length > 1 ? 's' : '') + ' saisi' + (last.length > 1 ? 's' : '') + ' sur 7.</div>';
   if (sec) sec.style.display = '';
   el.style.display = '';
 }
@@ -15066,7 +15076,9 @@ var _MA_TON_COACH = [
   [/\bta fourchette\b/g, 'sa fourchette'], [/\bta meilleure série\b/g, 'sa meilleure série'], [/\bTa meilleure série\b/g, 'Sa meilleure série'],
   [/\bqu'il te restait\b/g, 'qu\'il lui restait'], [/\btes séries\b/g, 'ses séries'], [/\btes séances\b/g, 'ses séances'], [/\btu vois\b/g, 'on voit'],
   [/\bsi tu montes\b/g, 's\'il monte'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\bta progression\b/g, 'sa progression'],
-  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire'], [/\bTous tes exercices\b/g, 'Tous ses exercices']
+  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire'], [/\bTous tes exercices\b/g, 'Tous ses exercices'],
+  // Audit 06/11 : phrases du diagnostic « Pourquoi ça bloque » encore à la 2ᵉ personne dans la fiche coach.
+  [/\bPossible : ta série\b/g, 'Possible : sa série'], [/\btu pousses déjà/g, 'il pousse déjà'], [/\bde ta charge\b/g, 'de sa charge'], [/\bdans tes données\b/g, 'dans ses données']
 ];
 function _maCoachTon(root) {
   if (!root || typeof _maCoach === 'undefined' || !_maCoach) return;
@@ -15417,7 +15429,9 @@ function _maProgresData(data) {
       faits[k] = (faits[k] || 0) + 1;
       var q = pts[i + 1]; if (!q) continue;
       var c0 = Number(pts[i].charge) || 0, r0 = Number(pts[i].reps) || 0, c1 = Number(q.charge) || 0, r1 = Number(q.reps) || 0;
-      if (c0 > c1 || (c0 === c1 && r0 > r1)) up[k] = (up[k] || 0) + 1;
+      // Audit 06/11 (porteur) : même règle que le Résumé (_lectureExos) — charge ou reps en hausse OU progrès secondaire
+      // (plus de séries au top, même niveau à RPE plus bas). Avant : meilleure série seule (0 contre 2 pour un compte neuf).
+      if (c0 > c1 || (c0 === c1 && r0 > r1) || (typeof _progSecondaire === 'function' && _progSecondaire(pts[i], q))) up[k] = (up[k] || 0) + 1;
     }
   });
   return { up: up, faits: faits };
@@ -15479,7 +15493,10 @@ function _lxVolume(data) {
     return { muscle: o.muscle, lbl: (o.prio ? '★ ' : '') + o.muscle, prio: !!o.prio, fait: fait, min: mn, opt: opt, attendu: attendu, retard: mn > 0 && fait < attendu };
   });
   // Muscles ciblés par le moteur mais absents du programme et à 0 cette semaine (retour 31/10).
-  var horsProg = filtre ? obti.filter(function (o) { return o && o.muscle && !progMus[_musKey(o.muscle)] && !(Number(o.series_semaine) > 0); }).map(function (o) { return o.muscle; }) : [];
+  // Audit 06/11 : « pas dans ton programme » = ni muscle principal NI secondaire d'un exercice du programme (même règle que
+  // l'alerte coach) — avant, Fessier (secondaire du Pendulum) était dit « hors programme » côté athlète.
+  var _pmAll = {}; try { _pmAll = _musclesDuProgramme(data) || {}; } catch (e) {}
+  var horsProg = filtre ? obti.filter(function (o) { return o && o.muscle && !progMus[_musKey(o.muscle)] && !_pmAll[_musKey(o.muscle)] && !(Number(o.series_semaine) > 0); }).map(function (o) { return o.muscle; }) : [];
   return { rows: rows, faites: faites, prevues: prevues, prorata: prorata, horsProg: horsProg };
 }
 // Jusqu'à 3 recos NOMMÉES, par priorité : sous la fourchette → bloqué → volume en retard.
@@ -16083,7 +16100,8 @@ function _maMusNonTravailles(data, musclesVus) {
       var m = e && e.muscle; if (!m) return; var k = _musKey(m);
       if (!have[k] && !seen[k]) { seen[k] = 1; out.push(m); }
     });
-    (data.volume_obti || []).forEach(function (o) { var k = o && _musKey(o.muscle); if (k && !have[k] && !seen[k]) { seen[k] = 1; out.push(o.muscle + ' (hors programme)'); } });
+    var _pmA = {}; try { _pmA = _musclesDuProgramme(data) || {}; } catch (e) {}   // audit 06/11 : secondaire du programme ≠ « hors programme »
+    (data.volume_obti || []).forEach(function (o) { var k = o && _musKey(o.muscle); if (k && !have[k] && !seen[k]) { seen[k] = 1; out.push(o.muscle + (_pmA[k] ? '' : ' (hors programme)')); } });
   } catch (e) {}
   return out;
 }
@@ -23933,7 +23951,7 @@ function renderCoachChargeCard(data) {
   if (!tiles.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Pas encore assez de séances.</div>'; _cfCardShow('cd-charge-card', true); return; }
   var streak = dash.streak && dash.streak.semaines;
   el.innerHTML = '<div class="cd-k4">' + tiles.join('') + '</div>'
-    + (streak ? '<div class="cd-charge-streak"><span>Série de semaines</span><b>' + streak + ' sem.</b></div>' : '');
+    + (streak ? '<div class="cd-charge-streak"><span>Semaines d\'affilée avec au moins 1 séance</span><b>' + streak + ' sem.</b></div>' : '');
   _cfCardShow('cd-charge-card', true);
 }
 
