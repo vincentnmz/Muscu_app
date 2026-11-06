@@ -1325,3 +1325,9 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
   #cdtab-forme > #cd-ia-card { grid-column:1 / -1; }
   #cdtab-forme #cd-etat-group > * { margin-bottom:12px; }
 }
+/* 06/11 — Lot 4 Programme : mêmes blocs ordi / mobile */
+.pb-nvsem > div { margin:10px 22px 0 !important; }
+.pb-vol-mob { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 10px; padding:9px 10px; background:var(--surface2); border-radius:11px; }
+.pb-vol-mob .pb-vol-t { flex:1 1 100%; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--text-subtle); }
+.pb-vol-mob .pb-vol-t b { color:var(--text); }
+.pb-vol-mob .pb-volchip { font-size:11.5px; font-weight:700; border:1px solid; border-radius:999px; padding:2px 9px; background:var(--surface); }

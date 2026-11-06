@@ -9419,6 +9419,7 @@ function renderProgrammeCoach() {
       + '<span class="pb-sub">' + (aJour ? '· ' + _PROG_JOURS_LONG[aJour - 1] + ' ' : '') + '· ' + activeLignes.length + ' exercice' + (activeLignes.length > 1 ? 's' : '') + '</span>'
       + '<button class="pb-seance-del" onclick=\'cdSupprimerSeance(' + JSON.stringify(activeSid) + ')\' title="Supprimer la séance"><svg class="ico" style="width:17px;height:17px"><use href="#i-trash"/></svg></button></div>'
       + '<div style="padding:12px 22px 0">' + _progJourPicker(activeSid, activeLignes) + '</div>'
+      + ((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) ? '<div class="pb-nvsem">' + _cdNvSeanceHtml(activeSid) + '</div>' : '')
       + '<div class="pb-rows">' + renderUnites(activeLignes, activeSid)
       +   '<button class="pb-addexo" onclick="cdAjouterExercice(\'' + String(activeSid).replace(/'/g, "\\'") + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button></div></div>';
     // ── Inspecteur ──
@@ -9428,8 +9429,9 @@ function renderProgrammeCoach() {
     // Agenda daté : UNIQUEMENT côté coach (fiche athlète). En tête de la colonne droite.
     var _agCoach = (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id);
     var insp = '<div class="pb-insp">'
-      + (_agCoach ? '<div class="pb-card" id="cd-zones-desk" style="padding:14px"><div class="loader">Chargement...</div></div>' : '')
+      // 06/11 (lot 4) : même ordre que sur mobile — 1 cette semaine · 2 (séances au centre) · 3 réglages · 4 volume.
       + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
+      + (_agCoach ? '<div class="pb-card" id="cd-zones-desk" style="padding:14px"><div class="loader">Chargement...</div></div>' : '')
       + '<div class="pb-card" style="padding:12px 14px">' + _semBlockHtml() + '</div>'
       + (!_agCoach && _nvPropsAthlete() ? '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>' : '')
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
@@ -9504,6 +9506,7 @@ function renderProgrammeCoach() {
       <div id="prog-body-${si}" style="padding:12px 14px;border-top:1px solid var(--border);${ouvert?'':'display:none'}">
         ${ro ? '' : _progJourPicker(seanceId, lignes)}
         ${cartes}
+        ${(!ro && progCtx && progCtx.el === 'cd-programme-content') ? _progVolSeanceHtml(lignes) : ''}
         ${ro
           ? `<button onclick='demarrerRenfoJoueur(${JSON.stringify(seanceId)})' style="width:100%;margin-top:4px;padding:13px;border:none;border-radius:11px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(26,95,255,.28);"><span style="font-size:16px;line-height:1;">▶</span> Démarrer cette séance</button>`
           : `<button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>`}
@@ -9514,7 +9517,24 @@ function renderProgrammeCoach() {
   if (!ro && progCtx && progCtx.el === 'cd-programme-content' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) {
     el.insertAdjacentHTML('afterbegin', '<div class="dash-card" id="cd-prog-agenda-root" style="padding:14px;margin-bottom:12px"></div>');
     try { cdAgRender(); } catch (e) {}
+    // 06/11 (lot 4) : réglages APRÈS les séances (comme sur ordi) : propositions + zones, puis « Ma semaine ».
+    try {
+      var _tp = document.getElementById('cdtab-programme'), _z = document.getElementById('cd-zones'), _cc = el.closest('.card');
+      if (_tp && _z && _cc && _cc.nextSibling !== _z) _tp.insertBefore(_z, _cc.nextSibling);
+      var _sb = document.getElementById('cd-sem-mob');
+      if (!_sb && _z) { _sb = document.createElement('div'); _sb.id = 'cd-sem-mob'; _sb.className = 'card'; _sb.style.marginTop = '10px'; _z.parentNode.insertBefore(_sb, _z.nextSibling); }
+      if (_sb) _sb.innerHTML = _semBlockHtml();
+    } catch (e) {}
   }
+}
+// Volume de la séance (séries par groupe musculaire) — même calcul que l'inspecteur du constructeur ordi.
+function _progVolSeanceHtml(lignes) {
+  try {
+    var vol = {}, tot = 0;
+    (lignes || []).forEach(function (l) { if (!l || l.type === 'cardio') return; var sr = Number(l.series_prevues) || 0; tot += sr; var mg = _exoGrpOf(_pbcMuscle(l.exercice)); var meta = mg ? _exoGrpMeta(mg) : null; var key = meta ? meta.label : (_pbcMuscle(l.exercice) || 'Autre'); var col = meta ? meta.col : '#8a94a6'; (vol[key] = vol[key] || { s: 0, col: col }).s += sr; });
+    if (!tot) return '';
+    return '<div class="pb-vol-mob"><span class="pb-vol-t">Volume de la séance · <b>' + tot + ' séries</b></span>' + Object.keys(vol).map(function (k) { return '<span class="pb-volchip" style="border-color:' + vol[k].col + '66;color:' + vol[k].col + '"><b>' + vol[k].s + '</b> ' + escapeHtml(k) + '</span>'; }).join('') + '</div>';
+  } catch (e) { return ''; }
 }
 
 // État d'ouverture des exercices (mode édition via crayon) — conservé entre les re-rendus
