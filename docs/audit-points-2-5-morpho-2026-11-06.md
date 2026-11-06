@@ -97,3 +97,12 @@ Puis onboarding (où la morpho sera mise en avant).
 - Stockage : `indicateurs` cle `rattache` (seance_id = séance réelle, date, valeur = séance prévue ou `__plus__`, unite = athlete/coach). Action `setRattachement` (index.ts, à redéployer). Hors-ligne : choix gardé sur le téléphone 3 j et renvoyé.
 - Base : 05/11 → pec epaule 2, 06/11 → dos jambe 2 (à la demande du porteur).
 - Limite : l'automatique compare avec le programme **actuel** ; une ancienne séance libre peut être rattachée à une séance d'un programme qui a changé depuis (rien n'est écrit en base, c'est un calcul d'affichage).
+
+## Point 2 — décisions du porteur (06/11)
+- 14 muscles validés ; squats / presses / hack / belt squat / fente courte → secondaire **Fessiers** ; relevé de jambe → aucun.
+- « Leg curl » (45 séries hors catalogue) : Vincent 05/08 → 17/08 = **Leg curl assis** ; le reste (Vincent juin + sept., Alizé) = **Leg curl allongé**.
+- Un coach **peut créer** un exercice (muscle choisi dans la liste).
+- Champs ajoutés : matériel, consignes, **disciplines** (muscu, hyrox, crossfit, street workout, hybride — plusieurs possibles) et **type de mesure** (charge × reps, reps, temps, distance, calories). Seule la muscu est remplie ; les autres disciplines = chantier à part.
+- Consignes : premier jet Novalyz pour 24 exercices (`mockups/consignes-premier-jet.html`), à valider.
+- 29 exercices à ajouter (choix du porteur) : Curl poignet barre, Curl poignet inversé, Curl inversé barre, Extension lombaire au banc 45°, Good morning, Crunch machine, Relevé de genoux suspendu, Crunch au sol, Pallof press, Adducteur à la poulie, Squat sumo haltère, Mollets à la Smith, Mollets unilatéral haltère, Développé épaules machine, Oiseau machine, Face pull, Développé Arnold, Barre au front, Kickback haltère, Extension nuque haltère, Dips machine, Curl pupitre, Curl machine, Nordic curl, Leg curl unilatéral, Pull-through à la poulie, Abduction à la poulie, Front squat, Sissy squat.
+- Trouvé en plus : le programme de **John** (athlete 3) contient 15 noms absents du catalogue (« Développé couché », « Tractions », « Gainage »…), aucune série faite.

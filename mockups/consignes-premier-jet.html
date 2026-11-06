@@ -1,0 +1,130 @@
+<title>Novalyz · consignes exercices</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : colonne étroite (lecture sur téléphone) — une carte par exercice, texte modifiable, OK / à revoir ; regroupé par muscle ; envoi en bas */
+:root{
+  --bg:#f4f7ff; --surface:#ffffff; --fg:#14213d; --muted:#5b6785; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --ok:#0a9a52; --ok-soft:#e3f6ec; --ko:#c77700; --ko-soft:#fff3e0;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1324; --surface:#151d33; --fg:#e8edfa; --muted:#9aa6c4; --line:#26314d;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --ok:#3ccf86; --ok-soft:#123326; --ko:#ffb14a; --ko-soft:#3a2a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1324; --surface:#151d33; --fg:#e8edfa; --muted:#9aa6c4; --line:#26314d;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --ok:#3ccf86; --ok-soft:#123326; --ko:#ffb14a; --ko-soft:#3a2a12; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,5vw,24px);margin:4px 0 6px;text-wrap:balance}
+.lead{color:var(--muted);margin:0}
+.leg{display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px;color:var(--muted)}
+.leg span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
+.c{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.c[data-s="ok"]{border-color:var(--ok);background:var(--ok-soft)}
+.c[data-s="ko"]{border-color:var(--ko);background:var(--ko-soft)}
+.hd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.nm{font-weight:700}
+.who{font-size:11.5px;color:var(--muted);white-space:nowrap}
+textarea{width:100%;font:inherit;font-size:14px;line-height:1.45;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);color:var(--fg);resize:vertical;min-height:84px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns button{font:inherit;font-size:13px;font-weight:700;border-radius:999px;padding:5px 14px;cursor:pointer;border:1.5px solid var(--line);background:var(--surface);color:var(--fg)}
+.btns button:focus-visible,.send button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btns .o[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btns .k[aria-pressed="true"]{background:var(--ko);border-color:var(--ko);color:var(--surface)}
+.send{background:var(--accent-soft);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.send button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 16px;background:var(--accent);color:var(--surface);cursor:pointer;align-self:flex-start}
+.okc{color:var(--ok);font-weight:700}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · À VALIDER</div>
+    <h1>Consignes : premier jet</h1>
+    <p class="lead">24 exercices de vos programmes (toi, Alizé) et de tes dernières séances. 2 ou 3 phrases courtes, affichées dans la fiche de l'exercice puis en séance pour les débutants. Corrige directement dans les cases, touche <b>OK</b> ou <b>À revoir</b>, puis envoie-moi le tout en bas. Rien n'apparaît dans l'app sans ton OK.</p>
+    <div class="leg"><span>★ = tes mots (06/11)</span><span>le reste = proposé par Novalyz</span></div>
+  </header>
+  <div class="bar" id="bar">0 / 24 validées</div>
+  <div id="list"></div>
+  <div class="send">
+    <b>Envoyer à Claude</b>
+    <button type="button" id="copier">Copier mes consignes</button>
+    <span class="okc" id="okc" hidden>Copié. Colle-le dans la conversation.</span>
+    <textarea id="txt" readonly hidden style="min-height:180px"></textarea>
+  </div>
+</div>
+
+<script>
+var D = [
+  ['Pectoraux', [
+    ['Développé incliné à la Smith', 'Toi', '★ Sors la cage, resserre les omoplates.\nDescends la barre sur le haut des pectoraux, coudes un peu rentrés (pas à 90° du buste).\nPieds au sol, fesses sur le banc tout du long.'],
+    ['Développé décliné à la Smith', 'Toi', '★ Sors la cage, resserre les omoplates.\nDescends la barre vers le bas des pectoraux, en contrôle.\nNe verrouille pas les coudes en haut.'],
+    ['Développé machine', 'Toi', '★ Sors la cage, resserre les omoplates.\nDos et omoplates collés au dossier ; poignées à hauteur du milieu des pectoraux.\nPousse sans décoller les épaules du dossier.'],
+    ['Développé décliné machine', 'Toi', '★ Sors la cage, resserre les omoplates.\nDos collé au dossier, poignées vers le bas des pectoraux.\nRetour lent jusqu\'à l\'étirement.'],
+    ['Écarté machine', 'Toi', 'Coudes légèrement fléchis, ils ne bougent pas pendant le mouvement.\nRamène les bras en arc de cercle et serre les pectoraux 1 seconde.\nÉpaules basses, dos collé au dossier.'],
+    ['Écarté poulie basse', 'Toi', 'Coudes légèrement fléchis et fixes.\nMonte les mains en arc vers le haut des pectoraux, sans hausser les épaules.\nRedescends lentement jusqu\'à l\'étirement.']
+  ]],
+  ['Dos', [
+    ['Traction', 'Toi', '★ Baisse les épaules avant de tirer.\nTire les coudes vers les hanches, poitrine vers la barre.\nRedescends bras tendus, en contrôle, sans balancer.'],
+    ['Tirage vertical uni à la poulie', 'Toi', '★ Baisse l\'épaule avant de tirer.\nTire le coude vers la hanche, buste immobile.\nRemonte lentement jusqu\'au bras tendu.'],
+    ['Tirage horizontal prise large', 'Toi, Alizé', '★ Baisse les épaules.\nPoitrine sortie, tire les coudes vers l\'arrière.\nLe buste ne bascule pas d\'avant en arrière.'],
+    ['T-bar row', 'Toi', '★ Baisse les épaules.\nDos plat, hanches en arrière, genoux souples.\nTire vers le bas du ventre, sans arrondir le dos.'],
+    ['T-bar row prise basse', 'Toi', '★ Baisse les épaules.\nDos plat, hanches en arrière.\nTire les coudes le long du corps vers les hanches.'],
+    ['Tirage trapèze machine', 'Toi', 'Monte les épaules vers les oreilles, tiens 1 seconde en haut.\nBras relâchés : ne plie pas les coudes.\nRedescends lentement.']
+  ]],
+  ['Épaules', [
+    ['Élévation latérale uni à la poulie', 'Toi', '★ Baisse l\'épaule.\nMonte le bras jusqu\'à l\'horizontale, coude légèrement fléchi.\nPas d\'élan avec le buste.'],
+    ['Élévation frontale à la poulie', 'Toi', '★ Baisse les épaules.\nMonte jusqu\'à hauteur des yeux au maximum.\nGainé, pas de balancier.'],
+    ['Arrière épaule à la poulie', 'Toi', '★ Baisse les épaules.\nOuvre les bras vers l\'arrière, presque tendus.\nPense à écarter les mains, pas à serrer les omoplates.']
+  ]],
+  ['Quadriceps', [
+    ['Pendulum', 'Toi', '★ Descends sous 90°.\nDos collé au dossier, poussée dans tout le pied.\nGenoux dans l\'axe des pieds.'],
+    ['Belt squat', 'Toi', '★ Descends sous 90°.\nBuste droit, genoux dans l\'axe des pieds.\nPousse dans tout le pied, talons au sol.'],
+    ['Leg extension', 'Toi', 'Axe de la machine aligné avec le genou, dos collé.\nTends complètement et serre 1 seconde en haut.\nDescente contrôlée, sans laisser tomber la charge.']
+  ]],
+  ['Ischios', [
+    ['Leg curl allongé', 'Toi', 'Hanches plaquées sur le banc tout du long.\nRamène les talons vers les fesses.\nDescente lente, sans claquer les poids.'],
+    ['Leg curl assis', 'Alizé', 'Cuisses bloquées sous le rembourrage, axe aligné avec le genou.\nRamène les talons sous le siège.\nRemonte lentement.'],
+    ['RDL barre', 'Alizé', 'Dos plat, genoux légèrement fléchis.\nRecule les hanches, la barre glisse le long des cuisses.\nDescends tant que le dos reste plat, puis remonte en poussant les hanches.']
+  ]],
+  ['Fessiers', [
+    ['Hip thrust', 'Alizé', 'Haut du dos sur le banc, menton rentré.\nPousse dans les talons, serre les fessiers 1 seconde en haut.\nNe creuse pas le bas du dos.'],
+    ['Presse sumo', 'Alizé', 'Pieds larges, pointes vers l\'extérieur.\nGenoux dans l\'axe des pieds.\nDescends jusqu\'où le bassin ne se décolle pas.'],
+    ['Abduction machine', 'Alizé', 'Bassin calé contre le dossier.\nÉcarte les jambes et tiens 1 seconde.\nRetour lent, sans laisser les plaques se toucher.']
+  ]]
+];
+var KEY = 'nv-consignes-0611', st = {}; try { st = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { st = {}; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+var list = document.getElementById('list'), n = 0, total = 0;
+D.forEach(function (g) {
+  var h = document.createElement('h2'); h.textContent = g[0]; list.appendChild(h);
+  g[1].forEach(function (x) {
+    n++; total++; var id = 'e' + n, cur = st[id] || {};
+    var c = document.createElement('div'); c.className = 'c'; c.dataset.s = cur.s || ''; c.style.marginTop = '10px';
+    c.innerHTML = '<div class="hd"><span class="nm"></span><span class="who"></span></div><textarea id="' + id + '-t"></textarea><div class="btns"><button type="button" class="o" aria-pressed="false">OK</button><button type="button" class="k" aria-pressed="false">À revoir</button></div>';
+    c.querySelector('.nm').textContent = x[0]; c.querySelector('.who').textContent = x[1];
+    var ta = c.querySelector('textarea'); ta.value = cur.t != null ? cur.t : x[2]; ta.dataset.n = x[0];
+    ta.addEventListener('input', function () { st[id] = st[id] || {}; st[id].t = ta.value; save(); });
+    var bo = c.querySelector('.o'), bk = c.querySelector('.k');
+    function upd() { bo.setAttribute('aria-pressed', c.dataset.s === 'ok'); bk.setAttribute('aria-pressed', c.dataset.s === 'ko'); }
+    function set(v) { st[id] = st[id] || {}; st[id].s = st[id].s === v ? '' : v; c.dataset.s = st[id].s; save(); upd(); compte(); }
+    bo.addEventListener('click', function () { set('ok'); }); bk.addEventListener('click', function () { set('ko'); });
+    upd(); list.appendChild(c);
+  });
+});
+function compte() { var o = 0, k = 0; Object.keys(st).forEach(function (i) { if (st[i].s === 'ok') o++; else if (st[i].s === 'ko') k++; }); document.getElementById('bar').textContent = o + ' / ' + total + ' validées' + (k ? ' · ' + k + ' à revoir' : ''); }
+compte();
+document.getElementById('copier').addEventListener('click', function () {
+  var out = ['Consignes — mes réponses'];
+  [].slice.call(document.querySelectorAll('.c')).forEach(function (c) { var ta = c.querySelector('textarea'); out.push('', '## ' + ta.dataset.n + ' : ' + (c.dataset.s === 'ok' ? 'OK' : c.dataset.s === 'ko' ? 'À REVOIR' : 'non vu'), ta.value.trim()); });
+  var t = out.join('\n'), x = document.getElementById('txt'); x.value = t;
+  function repli() { x.hidden = false; document.getElementById('okc').hidden = true; try { x.focus(); x.select(); } catch (e) {} }
+  try { navigator.clipboard.writeText(t).then(function () { document.getElementById('okc').hidden = false; }, repli); } catch (e) { repli(); }
+});
+</script>
