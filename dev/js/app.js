@@ -6733,9 +6733,10 @@ function _cdAgUnplanned() { var placed = {}; (_cdAgRows || []).forEach(function 
 // Semaine type : séances avec jour conseillé, ni posées ni « pas cette semaine » la semaine affichée.
 function _cdAgGhosts() { var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; }); return _cdAgSeances().filter(function (s) { return !placed[s.id] && s.jour != null && s.jour >= 1 && s.jour <= 7; }); }
 function _cdAgFaite(sid, iso) {   // faite la semaine affichée (n'importe quel jour) ?
-  var d = (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.seances_detail) || [];
+  // 06/11 : renvoie 'prog' (faite telle quelle), 'libre' (une séance libre l'a remplacée) ou false.
+  var D = (typeof coachAthleteData !== 'undefined' && coachAthleteData) || null; if (!D) return false;
   var a = _cdAgYmd(_cdAgMonday(_cdAgOff)), b = _cdAgYmd(_cdAgDateOf(6)), k = String(sid).trim().toLowerCase();
-  return d.some(function (x) { return x && x.date >= a && x.date <= b && String(x.seance_id || '').trim().toLowerCase() === k; });
+  try { return _faitesPeriode(D, a, b).faites[k] || false; } catch (e) { return false; }
 }
 
 // Chargement de la semaine affichée.
@@ -6780,7 +6781,7 @@ function cdAgRender() {
   for (var i = 0; i < 7; i++) {
     var dt = _cdAgDateOf(i), iso = _cdAgYmd(dt), dayRows = _cdAgRowsForDay(iso);
     var _tIso = _cdAgYmd(new Date()), _prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'l\'athlète';
-    var _etat = function (sid) { return _cdAgFaite(sid) ? '<span class="cdag-ok">✓ faite</span>' : (iso < _tIso ? '<span class="cdag-ko">non faite</span>' : ''); };
+    var _etat = function (sid) { var _f = _cdAgFaite(sid); return _f ? '<span class="cdag-ok">' + (_f === 'libre' ? '✓ libre' : '✓ faite') + '</span>' : (iso < _tIso ? '<span class="cdag-ko">non faite</span>' : ''); };
     var pills = dayRows.map(function (r) {
       var s = smap[String(r.seance_id)], col = s ? s.col : '#64748b', nom = s ? s.nom : String(r.seance_id);
       if (r.statut === 'annule') return '<span class="cdag-pill cdag-annule">' + _cdAgEsc(nom) + ' <small>pas cette semaine</small><span class="cdag-x" data-rm="' + r.id + '" title="Annuler">✕</span></span>';
@@ -7923,6 +7924,11 @@ function seancesCardsHTML(entries, prog, all) {
     const PA = _cdPlanSeance(s);
     const planHtml = PA.length ? `<div style="margin:2px 0 10px;background:var(--accent-a08, rgba(26,95,255,.08));border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45">➜ <b>Proposé par Novalyz pour cette séance</b> : ${PA.map(a => escapeHtml(a.titre) + (a.fait ? ' <b style="color:var(--good)">✓ fait</b>' : ' <span style="color:var(--text-subtle)">· pas encore</span>')).join(' · ')}</div>` : '';
     const _sidJs = String(s.seance || '').replace(/\\/g, '').replace(/'/g, ' ').replace(/"/g, ' ');
+    // 06/11 : séance libre → séance prévue qu'elle remplace (le coach peut changer).
+    let _raT = '', _raBtn = '';
+    try { if (_rattEstLibre(coachAthleteData, s.seance)) { const _iso = _cdIsoDeDmy(s.date), _ra = _rattachements(coachAthleteData)[_iso + '|' + s.seance];
+      _raT = _ra ? ' <span style="font-size:12px;color:var(--accent);font-weight:700">→ ' + escapeHtml(_ra.cible === '__plus__' ? 'en plus' : _ra.cible) + '</span>' : '';
+      _raBtn = `<button class="cda-btn cda-ghost" style="margin-top:4px;margin-left:6px" onclick="ouvrirRattachement('${_iso}', ${JSON.stringify(String(s.seance)).replace(/"/g, '&quot;')}, 'c')">⇄ Remplace quelle séance ?</button>`; } } catch (e) {}
     const comBtn = `<button class="cda-btn cda-ghost" style="margin-top:4px" onclick="coachEcrireA('Au sujet de ta séance du ${escapeHtml(String(s.date).slice(0, 5))} (${escapeHtml(_sidJs)}) : ')">✉ Commenter cette séance</button>`;
     const resume = [nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' série' + (nbSeries > 1 ? 's' : ''), tonnage > 0 ? '<b style="color:var(--text)">' + tonnageTxt + '</b>' : '', rpeMoy != null ? 'RPE séries <b style="color:var(--text)">' + rpeMoy + '</b>' : '', B && B.note != null ? 'séance <b style="color:var(--text)">' + B.note + '/10</b>' + (B.duree ? ' · ' + _cdFmtDuree(B.duree) : '') : '', B && B.douleur ? '<b style="color:var(--warn)">⚠ douleur ' + B.douleur + '/5' + (B.zone ? ' · ' + escapeHtml(B.zone.toLowerCase()) : '') + '</b>' : ''].filter(Boolean).map(x => '<span>' + x + '</span>').join('');
 
@@ -7930,7 +7936,7 @@ function seancesCardsHTML(entries, prog, all) {
       <div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);">
         <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:13px;cursor:pointer;">
           <div style="min-width:0;">
-            <div style="font-size:14px;font-weight:800;">${escapeHtml(String(s.seance))} <span style="font-size:11px;color:var(--text-muted);font-weight:600;">· ${escapeHtml(String(s.date))}</span></div>
+            <div style="font-size:14px;font-weight:800;">${escapeHtml(String(s.seance))}${_raT} <span style="font-size:11px;color:var(--text-muted);font-weight:600;">· ${escapeHtml(String(s.date))}</span></div>
             <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:3px 10px;">${resume}</div>
           </div>
           <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;">
@@ -7938,7 +7944,7 @@ function seancesCardsHTML(entries, prog, all) {
           </div>
         </div>
         <div id="seance-detail-${idx}" style="display:none;padding:2px 13px 13px;">
-          ${bilanHtml}${recapStrip}${planHtml}${exoBlocks}${comBtn}
+          ${bilanHtml}${recapStrip}${planHtml}${exoBlocks}${comBtn}${_raBtn}
         </div>
       </div>`;
   }).join('');
@@ -13951,6 +13957,19 @@ function _confirmerFinSeance() {
   const totalVol    = seance.reduce((a,e) => a + e.series.reduce((b,s) => b + s.volume, 0), 0);
   var old = document.getElementById('_confirm-fin-seance');
   if (old) old.remove();
+  // 06/11 — séance libre : « Cette séance remplace laquelle ? » (réponse proposée par Novalyz, maquette validée).
+  var _rattHtml = ''; _rattChoix = null;
+  try {
+    var _sidF = (document.getElementById('sel-seance-id') || {}).value || '', _dF = _rattIso((document.getElementById('inp-date') || {}).value || _todayLocalStr());
+    if (dernierAppData && _rattEstLibre(dernierAppData, _sidF)) {
+      var _cF = _rattCandidats(dernierAppData, _dF, seance.map(function (e) { return e.exerciceNom; }), null);
+      if (_cF.length) {
+        var _defF = _cF[0].commun > 0 ? _cF[0].sid : '__plus__';
+        _rattChoix = { aid: String(athlete && athlete.athlete_id || ''), date: _dF, sid: _sidF, cible: _defF, role: _saisieCoach ? 'c' : 'a', fin: true };
+        _rattHtml = '<div style="margin:-6px 0 16px">' + _rattBlocHtml(_cF, _defF) + '</div>';
+      }
+    }
+  } catch (e) { _rattChoix = null; _rattHtml = ''; }
   var ov = document.createElement('div');
   ov.id = '_confirm-fin-seance';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
@@ -13970,6 +13989,7 @@ function _confirmerFinSeance() {
         + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalVol + ' kg</div>'
         + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">volume</div></div>'
     + '</div>'
+    + _rattHtml
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="_annulerFinSeance()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">↩ Continuer</button>'
       + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Terminer</button>'
@@ -13988,6 +14008,8 @@ function _annulerFinSeance() {
 function _validerFinSeance() {
   var ov = document.getElementById('_confirm-fin-seance');
   if (ov) ov.remove();
+  // 06/11 : choix « remplace laquelle ? » envoyé tout de suite (gardé sur le téléphone si pas de réseau).
+  try { if (_rattChoix && _rattChoix.fin && _rattChoix.aid) { var _c = _rattChoix; _rattChoix = null; _rattEnvoyer(_c.aid, _c.date, _c.sid, _c.cible); } } catch (e) {}
   // Saisie coach : la séance compte dès que le coach valide. Le bilan (ressenti, douleur)
   // reste à l'athlète, dans son app — le coach ne le remplit pas à sa place.
   if (_saisieCoach) { _validationEnCours = true; _bloquerBoutonsValidation(); _envoyerSeance(); return; }
@@ -16483,9 +16505,14 @@ function _maMuscuHistorique(data) {
     var rv = rs[s.seance_id + '|' + s.date]; if (rv == null) rv = null;
     var dot = (rv != null) ? '<div class="ma-rdot" title="RPE de séance ' + rv + '/10" style="background:' + _maRpeCol(rv) + ';width:auto;padding:0 7px;border-radius:10px;white-space:nowrap">RPE ' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle);width:auto;padding:0 7px;border-radius:10px;white-space:nowrap">RPE –</div>';
     var det = '<div class="nv-seancedet">' + _nvExoRows(s.exercices) + '</div>';
+    // 06/11 : séance libre → « Libre → pec épaule 2 » + « Changer » (athlète ; le coach via sa fiche).
+    var _raN = '', _raB = '';
+    try { if (!(typeof _maCoach !== 'undefined' && _maCoach) && _rattEstLibre(data, s.seance_id)) { var _ra = _rattachements(data)[s.date + '|' + s.seance_id];
+      if (_ra) _raN = ' → ' + (_ra.cible === '__plus__' ? 'en plus' : _ra.cible);
+      _raB = '<button type="button" class="ma-hchg" onclick="event.stopPropagation();ouvrirRattachement(\'' + s.date + '\',' + JSON.stringify(String(s.seance_id)).replace(/"/g, '&quot;') + ',\'a\')">Changer</button>'; } } catch (e) {}
     return '<div class="ma-hcard"><div class="ma-hhd" style="cursor:pointer" onclick="maToggleHS(' + i + ')"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div>'
-      + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + String(Math.round((s.tonnage || 0) / 100) / 10).replace('.', ',') + ' t</div></div>'
-      + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
+      + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div>' + (_raN ? '<div class="ma-hra">' + _maE(_raN.replace(/^ /, '')) + '</div>' : '') + '<div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + String(Math.round((s.tonnage || 0) / 100) / 10).replace('.', ',') + ' t</div></div>'
+      + _raB + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
   _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maNovaAsk() + '</div></div>');
@@ -17305,11 +17332,16 @@ function renderTjPlanning(data) {
   if (SJ && SJ.semaine.length) {
     var escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
     var _ord = []; (data.programme || []).forEach(function (l) { var x = l && String(l.seance_id || '').trim(); if (x && _ord.indexOf(x) === -1) _ord.push(x); });
-    var it = SJ.semaine.map(function (e) {
+    // 06/11 : séances libres « en plus » affichées à leur jour (bord pointillé), mêlées aux séances prévues.
+    var _items = SJ.semaine.map(function (e) { return { e: e }; }).concat((SJ.plus || []).map(function (x) { return { plus: x, jour: x.jour }; }));
+    _items.sort(function (a, b) { return (a.e ? a.e.jour : a.jour) - (b.e ? b.e.jour : b.jour) || (a.e ? 0 : 1) - (b.e ? 0 : 1); });
+    var it = _items.map(function (o) {
+      if (o.plus) { var x = o.plus; return '<div class="tjp-item done extra' + (x.jour === SJ.j ? ' today' : '') + '"><div class="tjp-d">' + (x.jour === SJ.j ? "Aujourd'hui" : _PROG_JOURS_LONG[x.jour - 1]) + ' · ✓ en plus</div><div class="tjp-n">' + escS(String(x.seance_id) === 'Libre' ? 'Séance libre' : x.seance_id) + '</div><div class="tjp-x">' + x.nExos + ' exercice' + (x.nExos > 1 ? 's' : '') + '</div></div>'; }
+      var e = o.e;
       var st = e.fait ? ' · ✓ faite' : (e.jour < SJ.j ? ' · non faite' : '');
       return '<div class="tjp-item' + (e.jour === SJ.j ? ' today' : '') + (e.fait ? ' done' : '') + (!e.fait && e.jour < SJ.j ? ' missed' : '') + '" style="border-left-color:' + (e.fait ? 'var(--tj-good)' : _TJP_PAL[Math.max(0, _ord.indexOf(String(e.sid).trim())) % _TJP_PAL.length]) + '">'
         + '<div class="tjp-d">' + (e.jour === SJ.j ? "Aujourd'hui" : _PROG_JOURS_LONG[e.jour - 1]) + st + (e.deplacee || e.src === 'athlete' ? ' · déplacée' : '') + '</div>'
-        + '<div class="tjp-n">' + escS(e.sid) + '</div></div>';
+        + '<div class="tjp-n">' + escS(e.sid) + '</div>' + (e.libre ? '<div class="tjp-x">en séance libre</div>' : '') + '</div>';
     }).join('');
     host.style.display = '';
     host.innerHTML = '<div class="tj-label">Ma semaine</div><div class="tjp-row">' + it + '</div>';
@@ -21784,6 +21816,147 @@ function _enSetMode(m) {
 // Renvoie null si rien n'est daté (programme sans jours ET agenda vide) → comportement d'avant.
 // { aujourdhui, suivante, jourSuivante, manquees:[{sid,jour,id}], semaine:[{sid,jour,iso,fait,id,src,deplacee}], j, lunIso }
 function _sjIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+// ── 06/11 — Séances libres rattachées à la séance prévue qu'elles remplacent (maquette « Ma semaine », validée) ──
+// Une séance réelle dont le nom n'est pas une séance du programme (ex. « Libre ») :
+//  1. choix explicite (fin de séance, « Changer » ; athlète ou coach) → sd.rattache = séance prévue | '__plus__' ;
+//  2. sinon automatique : séance prévue non faite de la même semaine (lundi → dimanche) qui partage le plus
+//     d'exercices, si au moins 50 % des exercices de la séance libre sont en commun ; sinon « séance en plus ».
+// Une séance prévue n'est cochée qu'une fois par semaine. Renvoie { 'date|seance_id': { cible, src } }.
+function _rattNorm(x) { return String(x || '').trim().toLowerCase(); }
+function _rattExos(sd) { return ((sd && (sd.exercices || sd.exos)) || []).map(function (e) { return _rattNorm(e && (e.nom || e.exo || e.exercice)); }).filter(Boolean); }
+function _rattLundiIso(iso) { var d = new Date(String(iso).slice(0, 10) + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return _sjIso(d); }
+function _rattProgramme(data) {
+  var ordre = [], exos = {};
+  ((data && data.programme) || []).forEach(function (p) { if (!p || !p.seance_id || p.type === 'cardio') return; var sid = String(p.seance_id); if (ordre.indexOf(sid) === -1) { ordre.push(sid); exos[sid] = []; } if (p.exercice) exos[sid].push(_rattNorm(p.exercice)); });
+  return { ordre: ordre, exos: exos };
+}
+// Candidats pour une séance libre (fin de séance / « Changer ») : séances prévues de la semaine pas encore faites
+// (en ignorant cette séance-ci), triées : séance prévue ce jour-là avec ≥ 1 exercice commun, puis le plus d'exercices communs.
+function _rattCandidats(data, dateIso, exosNoms, seanceIdIgnore) {
+  var P = _rattProgramme(data); if (!P.ordre.length) return [];
+  var lun = _rattLundiIso(dateIso), d = new Date(lun + 'T00:00:00'); d.setDate(d.getDate() + 6); var dim = _sjIso(d);
+  var R = _rattachements(data, { ignorer: dateIso + '|' + (seanceIdIgnore || '') });
+  var faites = {};
+  ((data && data.seances_detail) || []).forEach(function (x) {
+    if (!x || !x.date || x.date < lun || x.date > dim) return;
+    if (seanceIdIgnore != null && x.date === dateIso && String(x.seance_id) === String(seanceIdIgnore)) return;
+    var k = _rattNorm(x.seance_id); if (P.exos[P.ordre.filter(function (o) { return _rattNorm(o) === k; })[0]]) faites[k] = 1;
+    var r = R[x.date + '|' + x.seance_id]; if (r && r.cible && r.cible !== '__plus__') faites[_rattNorm(r.cible)] = 1;
+  });
+  var jourPrevu = {}; try { var SJ = _seanceDuJour(data, new Date(dateIso + 'T12:00:00').getTime()); (SJ ? SJ.semaine : []).forEach(function (e) { jourPrevu[_rattNorm(e.sid)] = e; }); } catch (e) {}
+  var ex = (exosNoms || []).map(_rattNorm), set = {}; ex.forEach(function (n) { set[n] = 1; });
+  var out = P.ordre.filter(function (sid) { return !faites[_rattNorm(sid)]; }).map(function (sid) {
+    var n = 0, vu = {}; (P.exos[sid] || []).forEach(function (e) { if (set[e] && !vu[e]) { vu[e] = 1; n++; } });
+    var jp = jourPrevu[_rattNorm(sid)];
+    return { sid: sid, commun: n, total: ex.length, iso: jp ? jp.iso : null, jour: jp ? jp.jour : null, memeJour: !!(jp && jp.iso === dateIso) };
+  });
+  out.sort(function (a, b) { var ja = a.memeJour && a.commun > 0, jb = b.memeJour && b.commun > 0; if (ja !== jb) return ja ? -1 : 1; return (b.commun - a.commun) || ((a.jour || 9) - (b.jour || 9)); });
+  return out;
+}
+function _rattachements(data, opt) {
+  var P = _rattProgramme(data), R = {}; if (!data) return R;
+  var estProg = {}; P.ordre.forEach(function (o) { estProg[_rattNorm(o)] = o; });
+  var sds = ((data.seances_detail) || []).filter(function (x) { return x && x.date && x.seance_id != null; }).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var faitesSem = {};   // lundi → { séance prévue (clé) : 1 }
+  var mark = function (iso, k) { var l = _rattLundiIso(iso); (faitesSem[l] = faitesSem[l] || {})[k] = 1; };
+  sds.forEach(function (x) { if (estProg[_rattNorm(x.seance_id)]) mark(x.date, _rattNorm(x.seance_id)); });
+  // 1) choix explicites d'abord (ils réservent leur séance prévue), 2) puis l'automatique, dans l'ordre des dates.
+  sds.forEach(function (x) {
+    var _loc = _rattLocalGet(data, x.date, x.seance_id);
+    if (estProg[_rattNorm(x.seance_id)] || !(x.rattache || _loc)) return;
+    if (opt && opt.ignorer === x.date + '|' + x.seance_id) return;
+    var c = String(x.rattache || _loc); R[x.date + '|' + x.seance_id] = { cible: c === '__plus__' ? '__plus__' : (estProg[_rattNorm(c)] || c), src: 'choix', par: x.rattache_par || '' };
+    if (c !== '__plus__') mark(x.date, _rattNorm(c));
+  });
+  sds.forEach(function (x) {
+    var key = x.date + '|' + x.seance_id;
+    if (estProg[_rattNorm(x.seance_id)] || R[key] || (opt && opt.ignorer === key)) return;
+    var ex = _rattExos(x), set = {}; ex.forEach(function (n) { set[n] = 1; });
+    var l = _rattLundiIso(x.date), best = null;
+    if (ex.length) P.ordre.forEach(function (sid) {
+      if ((faitesSem[l] || {})[_rattNorm(sid)]) return;
+      var n = 0, vu = {}; (P.exos[sid] || []).forEach(function (e) { if (set[e] && !vu[e]) { vu[e] = 1; n++; } });
+      if (n / ex.length >= 0.5 && (!best || n > best.n)) best = { sid: sid, n: n };
+    });
+    if (best) { R[key] = { cible: best.sid, src: 'auto' }; mark(x.date, _rattNorm(best.sid)); }
+    else R[key] = { cible: '__plus__', src: 'auto' };
+  });
+  return R;
+}
+// Séances prévues faites dans [a, b] (dates ISO) : { clé : 'prog' | 'libre' } + séances « en plus ».
+function _faitesPeriode(data, a, b) {
+  var P = _rattProgramme(data), estProg = {}; P.ordre.forEach(function (o) { estProg[_rattNorm(o)] = 1; });
+  var R = _rattachements(data), f = {}, plus = [];
+  ((data && data.seances_detail) || []).forEach(function (x) {
+    if (!x || !x.date || x.date < a || x.date > b || x.seance_id == null) return;
+    var k = _rattNorm(x.seance_id);
+    if (estProg[k] || !P.ordre.length) { f[k] = 'prog'; return; }
+    var r = R[x.date + '|' + x.seance_id];
+    if (r && r.cible !== '__plus__') { if (!f[_rattNorm(r.cible)]) f[_rattNorm(r.cible)] = 'libre'; }
+    else plus.push({ date: x.date, seance_id: x.seance_id, nExos: _rattExos(x).length });
+  });
+  return { faites: f, plus: plus };
+}
+// Choix posé dans l'app pas encore relu du serveur (réseau lent / hors-ligne) : gardé 3 jours en local et renvoyé.
+function _rattAid(data) { try { return String((data && data._aid) || (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || ''); } catch (e) { return ''; } }
+function _rattLocalAll() { try { var o = JSON.parse(localStorage.getItem('nv_ratt_local') || '{}') || {}, t = Date.now(), ch = false; Object.keys(o).forEach(function (k) { if (!o[k] || t - (o[k].ts || 0) > 3 * 864e5) { delete o[k]; ch = true; } }); if (ch) localStorage.setItem('nv_ratt_local', JSON.stringify(o)); return o; } catch (e) { return {}; } }
+function _rattLocalGet(data, date, sid) { var o = _rattLocalAll()[_rattAid(data) + '|' + date + '|' + sid]; return o ? (o.cible || null) : null; }
+async function _rattEnvoyer(aid, date, sid, cible) {
+  var k = aid + '|' + date + '|' + sid, o = _rattLocalAll();
+  o[k] = { cible: cible, ts: Date.now(), ok: false }; try { localStorage.setItem('nv_ratt_local', JSON.stringify(o)); } catch (e) {}
+  var r = null; try { r = await _cdPost({ action: 'setRattachement', athlete_id: aid, date: date, seance_id: sid, cible: cible }); } catch (e) {}
+  if (r && r.ok) { o = _rattLocalAll(); if (o[k]) { o[k].ok = true; try { localStorage.setItem('nv_ratt_local', JSON.stringify(o)); } catch (e) {} } }
+  return !!(r && r.ok);
+}
+function _rattRenvoyer() { var o = _rattLocalAll(); Object.keys(o).forEach(function (k) { if (o[k].ok) return; var p = k.split('|'); if (p.length >= 3) _rattEnvoyer(p[0], p[1], p.slice(2).join('|'), o[k].cible); }); }
+function _rattIso(d) { var m = String(d || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : String(d || '').slice(0, 10); }
+function _rattEstLibre(data, sid) { var P = _rattProgramme(data); return P.ordre.length > 0 && !P.ordre.some(function (o) { return _rattNorm(o) === _rattNorm(sid); }); }
+var _rattChoix = null;
+function _rattChoisir(c) { if (_rattChoix) _rattChoix.cible = c; document.querySelectorAll('.ratt-opt').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-c') === c); }); }
+// Bloc « Cette séance remplace laquelle ? » (fin de séance libre, « Changer »).
+function _rattBlocHtml(cands, cible) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var opt = function (c, t, sub, reco) { return '<button type="button" class="ratt-opt' + (c === cible ? ' on' : '') + '" data-c="' + esc(c) + '" onclick="_rattChoisir(this.getAttribute(\'data-c\'))"><span class="ratt-rd"></span><span><b>' + esc(t) + (reco ? ' <span class="ratt-reco">proposé</span>' : '') + '</b><small>' + esc(sub) + '</small></span></button>'; };
+  var html = cands.map(function (c, i) {
+    var quand = c.memeJour ? 'prévue ce jour-là' : (c.jour ? 'prévue ' + _PROG_JOURS_LONG[c.jour - 1] : 'au programme');
+    return opt(c.sid, c.sid, quand + ' · ' + c.commun + ' exercice' + (c.commun > 1 ? 's' : '') + ' en commun sur ' + c.total, i === 0 && c.commun > 0);
+  }).join('') + opt('__plus__', 'Aucune, séance en plus', 'compte dans ta régularité, ne coche rien', false);
+  return '<div class="ratt-q"><div class="ratt-t">Cette séance remplace laquelle ?</div>' + html
+    + '<div class="ratt-n">Seules les séances prévues cette semaine et pas encore faites sont listées. Tu peux changer plus tard.</div></div>';
+}
+// « Changer » (Historique athlète, séances coach) : feuille avec la même question.
+function ouvrirRattachement(dateIso, sid, role) {
+  var data = role === 'c' ? (typeof coachAthleteData !== 'undefined' ? coachAthleteData : null) : (typeof dernierAppData !== 'undefined' ? dernierAppData : null);
+  if (!data) return;
+  dateIso = _rattIso(dateIso);
+  var sd = (data.seances_detail || []).filter(function (x) { return x && x.date === dateIso && String(x.seance_id) === String(sid); })[0];
+  var cands = _rattCandidats(data, dateIso, sd ? _rattExos(sd) : [], sid);
+  var cur = (_rattachements(data)[dateIso + '|' + sid] || {}).cible || (cands[0] && cands[0].commun > 0 ? cands[0].sid : '__plus__');
+  // La séance déjà rattachée doit rester proposée (elle est « faite » par cette séance-ci).
+  if (cur !== '__plus__' && !cands.some(function (c) { return c.sid === cur; })) cands.unshift({ sid: cur, commun: 0, total: sd ? _rattExos(sd).length : 0, jour: null, memeJour: false });
+  _rattChoix = { aid: role === 'c' ? String(data._aid || (coachAthleteCourant && coachAthleteCourant.athlete_id) || '') : _rattAid(data), date: dateIso, sid: sid, cible: cur, role: role };
+  var old = document.getElementById('_ratt-sheet'); if (old) old.remove();
+  var ov = document.createElement('div'); ov.id = '_ratt-sheet';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+  var j = new Date(dateIso + 'T00:00:00');
+  ov.innerHTML = '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(7,11,20,.18);">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 16px;"></div>'
+    + '<div style="font-size:15px;font-weight:800;margin-bottom:10px">Séance « ' + escapeHtml(String(sid)) + ' » du ' + String(j.getDate()).padStart(2, '0') + '/' + String(j.getMonth() + 1).padStart(2, '0') + '</div>'
+    + _rattBlocHtml(cands, cur)
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px"><button onclick="document.getElementById(\'_ratt-sheet\').remove()" style="padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;cursor:pointer">Annuler</button>'
+    + '<button onclick="_rattValiderChangement()" style="padding:12px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer">Enregistrer</button></div></div>';
+  document.body.appendChild(ov);
+}
+async function _rattValiderChangement() {
+  var c = _rattChoix; if (!c) return;
+  var ov = document.getElementById('_ratt-sheet'); if (ov) ov.remove();
+  var data = c.role === 'c' ? coachAthleteData : dernierAppData;
+  (data.seances_detail || []).forEach(function (x) { if (x.date === c.date && String(x.seance_id) === String(c.sid)) { x.rattache = c.cible; x.rattache_par = c.role === 'c' ? 'coach' : 'athlete'; } });
+  var ok = await _rattEnvoyer(c.aid, c.date, c.sid, c.cible);
+  showToast(ok ? (c.cible === '__plus__' ? '✓ Comptée comme séance en plus' : '✓ Rattachée à « ' + c.cible + ' »') : 'Hors-ligne : enregistré sur ce téléphone, envoyé au retour du réseau');
+  try { if (c.role === 'c') { if (typeof renderCoachSeancesListe === 'function') renderCoachSeancesListe(); if (typeof cdAgRender === 'function') cdAgRender(); try { renderCoachProchaineSeance(coachAthleteData); } catch (e) {} } else { renderAujourdhui(dernierAppData); try { maRenderData(); } catch (e) {} } } catch (e) {}
+}
 function _seanceDuJour(data, nowT) {
   try {
     var prog = (data && data.programme) || [], jours = {}, ordre = [];
@@ -21801,12 +21974,13 @@ function _seanceDuJour(data, nowT) {
       var k = key(r.seance_id); if (!k) return;
       if (r.statut === 'annule') annul[k] = true; else (plan[k] = plan[k] || []).push({ iso: iso, id: r.id, src: r.source || '' });
     });
-    var faites = {}; ((data && data.seances_detail) || []).forEach(function (x) { if (x && x.date && String(x.date) >= lunIso && String(x.date) <= dimIso && x.seance_id) faites[key(x.seance_id)] = 1; });
+    // 06/11 : séances libres rattachées comptent (faites[k] = 'libre') ; « en plus » → SJ.plus.
+    var _FP = _faitesPeriode(data, lunIso, dimIso), faites = _FP.faites;
     var semaine = [];
     ordre.forEach(function (sid) {
       var k = key(sid);
-      if (plan[k]) plan[k].forEach(function (pr) { var jr = jourOf(pr.iso); semaine.push({ sid: sid, jour: jr, iso: pr.iso, fait: !!faites[k], id: pr.id, src: pr.src, deplacee: jours[sid] != null && jours[sid] !== jr }); });
-      else if (jours[sid] != null && !annul[k]) { var d = new Date(lun); d.setDate(d.getDate() + jours[sid] - 1); semaine.push({ sid: sid, jour: jours[sid], iso: _sjIso(d), fait: !!faites[k], id: null, src: 'type', deplacee: false }); }
+      if (plan[k]) plan[k].forEach(function (pr) { var jr = jourOf(pr.iso); semaine.push({ sid: sid, jour: jr, iso: pr.iso, fait: !!faites[k], libre: faites[k] === 'libre', id: pr.id, src: pr.src, deplacee: jours[sid] != null && jours[sid] !== jr }); });
+      else if (jours[sid] != null && !annul[k]) { var d = new Date(lun); d.setDate(d.getDate() + jours[sid] - 1); semaine.push({ sid: sid, jour: jours[sid], iso: _sjIso(d), fait: !!faites[k], libre: faites[k] === 'libre', id: null, src: 'type', deplacee: false }); }
     });
     if (!semaine.length) return null;
     semaine.sort(function (a, b) { return a.jour - b.jour; });
@@ -21815,7 +21989,7 @@ function _seanceDuJour(data, nowT) {
     var sansJour = ordre.filter(function (sid) { return !dates[key(sid)] && !annul[key(sid)] && !faites[key(sid)]; });
     var suiv = auj || semaine.filter(function (e) { return e.jour > j && !e.fait; })[0];
     var manquees = semaine.filter(function (e) { return e.jour < j && !e.fait; }).map(function (e) { return { sid: e.sid, jour: e.jour, id: e.id }; });
-    return { aujourdhui: auj ? auj.sid : (sansJour[0] || null), suivante: suiv ? suiv.sid : (sansJour[0] || null), jourSuivante: suiv ? suiv.jour : null, manquees: manquees, semaine: semaine, j: j, lunIso: lunIso };
+    return { aujourdhui: auj ? auj.sid : (sansJour[0] || null), suivante: suiv ? suiv.sid : (sansJour[0] || null), jourSuivante: suiv ? suiv.jour : null, manquees: manquees, semaine: semaine, j: j, lunIso: lunIso, plus: _FP.plus.map(function (x) { return { date: x.date, seance_id: x.seance_id, nExos: x.nExos, jour: jourOf(x.date) }; }) };
   } catch (e) { return null; }
 }
 function _manqueesTxt(m) {
@@ -21879,6 +22053,8 @@ function _enRenderSelMuscu() {
   // Réalisé cette semaine (n'importe quel jour) → statut ✓/○ directement sur la carte.
   var cut = _maCut('semaine'), doneByType = {};
   ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.seances_detail) || []).forEach(function (s) { if ((s.date || '') >= cut && s.seance_id) { if (!doneByType[s.seance_id] || s.date > doneByType[s.seance_id]) doneByType[s.seance_id] = s.date; } });
+  // 06/11 : une séance libre rattachée coche la séance prévue qu'elle remplace (même règle que Ma semaine).
+  var _libreDe = {}; try { var _RA = _rattachements(dernierAppData); ((dernierAppData && dernierAppData.seances_detail) || []).forEach(function (s) { var r = _RA[s.date + '|' + s.seance_id]; if ((s.date || '') >= cut && r && r.cible !== '__plus__' && !doneByType[r.cible]) { doneByType[r.cible] = s.date; _libreDe[r.cible] = 1; } }); } catch (e) {}
   // Ordre : par jour conseillé (planifiées d'abord, lun→dim), puis ordre du programme.
   var ordre = _enOrder.slice().map(function (sid, i) { var j = _seanceJour(_enByS[sid]); return { sid: sid, j: j == null ? 99 : j, i: i }; })
     .sort(function (a, b) { return a.j - b.j || a.i - b.i; }).map(function (x) { return x.sid; });
@@ -21889,7 +22065,7 @@ function _enRenderSelMuscu() {
     var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
     var jr = _seanceJour(exos), dDate = doneByType[sid];
     var jhint = jr ? '<span style="color:var(--accent);font-weight:700">' + _PROG_JOURS_LONG[jr - 1] + '</span> · ' : '';
-    var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
+    var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + (_libreDe[sid] ? ' · libre' : '') + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
     return '<div class="en-sel' + (on ? ' on' : '') + '" onclick=\'_enSelectSeance(' + JSON.stringify(String(sid)) + ')\'>'
       + '<span class="ic">' + svgD + '</span>'
       + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div>' + (_plS[sid] ? '<div class="b" style="color:var(--accent);font-weight:700">Novalyz propose : ' + esc(_plS[sid].join(' · ')) + '</div>' : '') + '</div>'
@@ -22044,6 +22220,7 @@ function renderEnSuivi(data) {
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
+  try { _rattRenvoyer(); } catch (e) {}   // 06/11 : rattachements restés sur le téléphone (hors-ligne) → renvoyés
   _nvSplashHide();
   _safe('coach-lie', function () { _syncCoachLie(data); });
   // Onboarding 1re connexion (une fois par session, après le 1er chargement).
