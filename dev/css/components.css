@@ -1269,6 +1269,15 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
   .ae-k b { font-size:20px; }
   .ae-card { padding:11px 12px; }
 }
+/* 06/11 (audit tablette paysage 992-1279 px) : dans les cartes à 2 colonnes, la ligne nom | détail | barre
+   écrasait le détail (un mot par ligne). On reprend la ligne rangée du mobile ; ≥ 1280 px inchangé. */
+@media (min-width:992px) and (max-width:1279.98px) {
+  .ae-g2 .ae-row { display:grid; grid-template-columns:30px minmax(0,1fr) auto; column-gap:10px; row-gap:3px; align-items:center; }
+  .ae-g2 .ae-row > :first-child { grid-row:1 / span 2; align-self:start; margin-top:1px; }
+  .ae-g2 .ae-row .ae-nm { width:auto; grid-column:2; grid-row:1; }
+  .ae-g2 .ae-row .ae-right { grid-column:3; grid-row:1; justify-self:end; }
+  .ae-g2 .ae-row .ae-mid { grid-column:2 / 4; grid-row:2; min-width:0; }
+}
 /* 06/11 — Socle coach mobile : un seul en-tête blanc (logo + titre de la page + actions) */
 #coach-topbar .ct-title { display:none; font-family:'Michroma',sans-serif; font-size:17px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 @media (max-width:991.98px) {
