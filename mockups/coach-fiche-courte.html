@@ -31,11 +31,11 @@ body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:var(--tx)}
 .del{color:#C0303A;font-weight:800}.add{color:#0f8a4b;font-weight:800}
 .new{outline:2px dashed var(--vi);outline-offset:2px}
 </style></head><body><div class="wrap">
-<div class="col"><div class="cap">Aperçu court (proposé)<small>Ce qu'il faut décider aujourd'hui, en 6 blocs. Le détail est dans les onglets.</small></div>
-<div class="ph" style="margin-left:26px"><div class="hd"><span class="ib">←</span><h1>Vincent</h1><span class="ib">⋯</span></div><div class="bd">
-<div class="tabs new"><span class="on">Aperçu</span><span>Analyses</span><span>Séances</span><span>Programme</span><span>Forme</span><span>Messages</span></div>
+<div class="col"><div class="cap">Aperçu court (proposé)<small>Ce qu'il faut décider aujourd'hui, en 6 blocs. 5 onglets (plus de « Messages » : déjà dans la barre du bas). ✉ en haut = écrire à cet athlète.</small></div>
+<div class="ph" style="margin-left:26px"><div class="hd"><span class="ib">←</span><h1>Vincent</h1><span class="ib new" title="Écrire à Vincent">✉</span><span class="ib">⋯</span></div><div class="bd">
+<div class="tabs new"><span class="on">Aperçu</span><span>Analyses</span><span>Séances</span><span>Programme</span><span>Forme</span></div>
 <div class="fh"><span class="n">1</span><b>Vincent</b> <span style="font-size:10px;opacity:.85">· Intermédiaire · 83 kg</span><div class="t">Prêt</div><div style="font-size:10px;opacity:.9">récup excellente · 2/4 séances · dernière 05/11</div><div class="p"><span>Sommeil : bon</span><span>Fatigue : aucune</span><span>Douleur : légère</span></div><div class="new" style="font-size:9.5px;margin-top:6px;background:rgba(255,255,255,.18);border-radius:8px;padding:3px 7px;display:inline-block">Contexte : saison normale · changer ›</div></div>
-<div class="act"><span class="n">2</span><span class="p">▶ Saisir sa séance</span><span>Modifier le programme</span><span>Proposer un déload</span></div>
+<div class="act"><span class="n">2</span><span class="p">▶ Saisir sa séance</span><span>Modifier le programme</span><span class="new">Planifier la semaine</span></div>
 <div class="card new" style="border-left:3px solid #E5484D"><span class="n">3</span><div class="ct">À décider <a>3</a></div><div class="x">Développé incliné Smith : sous la fourchette</div><div class="mu">29/10 : 80 kg × 1 à RPE 10 · proposé 75 kg (ou 70)</div><div class="btns"><span class="p">Modifier le programme</span><span>Écrire</span><span>Traité</span></div>
  <div class="x" style="margin-top:8px;padding-top:8px;border-top:1px solid #EEF2FB">Arrière épaule poulie : bloqué</div><div class="mu">rien de proposé automatiquement</div>
  <div class="x" style="margin-top:8px;padding-top:8px;border-top:1px solid #EEF2FB">Volume sous le minimum <span class="pill" style="font-size:8.5px;background:#FFF1DE;color:#C77700;border-radius:999px;padding:1px 6px">alerte</span></div><div class="mu">Fessier 1,5/10 · Ischio 4,3/10 · +3</div></div>
@@ -54,8 +54,10 @@ body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial;color:var(--tx)}
 <tr><td>Dernières séances</td><td>onglet <b>Séances</b> (c'est déjà la même liste)</td></tr>
 <tr><td>État &amp; récup · Ma montre · Évolution du poids · Nutrition</td><td><span class="add">nouvel onglet « Forme »</span> (même nom que côté athlète)</td></tr>
 <tr><td>Analyse Novalyz IA · ce client</td><td>onglet <b>Forme</b> en bas, ou menu ⋯ « Demander une analyse »</td></tr>
+<tr><td>Proposer un déload (bouton)</td><td><span class="del">retiré</span> : il ouvrait seulement un message « Au sujet de fatigue élevée : » (même sans fatigue). Le vrai déload = <b>Contexte</b> (adapte le moteur : même charge, 1 série de moins). Remplacé par <span class="add">« Planifier la semaine »</span> (agenda du programme)</td></tr>
+<tr><td>Onglet Messages</td><td><span class="del">retiré</span> (doublon de « Messages » dans la barre du bas) → icône ✉ en haut de la fiche = la conversation de cet athlète ; « Écrire » sur une décision reste (message pré-rempli)</td></tr>
 <tr><td>Compte de l'athlète (mot de passe)</td><td>menu <b>⋯</b> de l'en-tête</td></tr>
 <tr><td>Prochaine séance (6 lignes)</td><td>1 ligne + la seule ligne où Novalyz propose quelque chose ; le reste → Programme</td></tr>
 </table>
-<div class="mu" style="margin-top:8px">Même chose sur ordi : Aperçu en 2 colonnes avec ces 6 blocs, et le même onglet « Forme ». Sur mobile, 6 onglets : la barre défile si l'écran est étroit (360 px).</div>
+<div class="mu" style="margin-top:8px">Même chose sur ordi : Aperçu en 2 colonnes avec ces 6 blocs, et le même onglet « Forme ». 5 onglets sur les deux formats : ils tiennent en largeur, même en 360 px.</div>
 </div></div></body></html>
