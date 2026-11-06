@@ -94,3 +94,23 @@ Non couvert à ce stade : écran de saisie rendu, fiche coach (textes), clic de 
 5. **Tendances ▸ Exercices en progrès** (question du porteur) : en vue Mois, un point = une semaine ; début novembre = 1 seule semaine → courbe vide avec le message faux « dès 2 séances ». Maintenant : « Sur cette semaine : 5 exercices en progrès sur 17 exercices réalisés… La courbe apparaît à partir de 2 semaines ».
 
 Tests : `tests/audit-0611-corrections.test.js` (9 cas), suite complète 82/82. Captures ordi et mobile contrôlées. `index.ts` à redéployer pour le point 3.
+
+## 5. Fiche coach de Vincent (06/11, serveur v228 = repo) — vérifiée, ordi + mobile
+**Juste** (recalculé) : état Prêt, sommeil/fatigue/douleur, bloqué élévation latérale (même pourquoi/levier que l'athlète), records, progrès, plan 1/3, RPE 8,6, tonnage 18,4 t ▲0 % (18,43 vs 18,38 t), assiduité 3/4, ACWR 1,08, séries 7 j (Pec 15 · Dos 10 · Quad 6 · Ischio 6 · Épaule 18 · Biceps 5 · Triceps 4,5 → 4 sous le minimum), dernières séances RPE 9,0 / 8,5 / 8,4, cardio « dernière sortie il y a 34 j » (03/10), 127 séances cardio, poids 83 kg −1 kg depuis le 23/06 (84 → 83), sommeil montre 7 h 25 / normale 7 h 41, séances (exos, séries, tonnage, RPE, note, douleur).
+
+**Corrigé :**
+- ❌ **Nutrition · 7 j : 1 665 kcal** = moyenne des 2 dernières saisies (29/09 et 02/10). → seulement les 7 derniers jours ; sinon « Aucun repas saisi sur les 7 derniers jours (dernière saisie le 02/10) » ; sinon « Moyenne des N jours saisis sur 7 ».
+- Pas « 5 621 / jour (7 j) » calculé sur 8 jours → 7 jours : **5 584**, comme la carte montre.
+- FC repos 60,3 (3 derniers jours) à côté de « 61 bpm moy. 7 j » → fenêtre affichée « (3 j) ».
+- « (9 séances sur 6 sem.) » → « en 5 sem. », comme l'athlète.
+- « Série de semaines 6 sem. » (à côté de « série à l'objectif 1 » chez l'athlète) → « Semaines d'affilée avec au moins 1 séance ».
+- Analyses côté coach : « ta série », « tu pousses déjà » → « sa série », « il pousse déjà ».
+- Côté athlète : Fessier dit « hors programme » alors qu'il est muscle secondaire du Pendulum (programme) et que le coach a une alerte dessus → même règle partout (principal ou secondaire = dans le programme).
+
+**Décisions du porteur (codées) :**
+- Graphique « Exercices en progrès » = même règle que le Résumé (charge/reps en hausse **ou** progrès secondaire). Nouveau compte : 2 et 2 (avant 2 et 0).
+- « Bloqué » : jamais sur les 2 premières séances d'un exercice (au moins 3 séances, tous niveaux).
+
+**Défaut caché, non visible** : `getCoachAthletes` renvoie `en_pause: true` pour Vincent (la dernière pause, 19/08 → 02/09, est lue comme en cours). Le front n'utilise pas ce champ ; seul le calcul d'alertes de secours (si le moteur central échoue) le lit. À corriger dans `index.ts` au prochain passage.
+
+**À discuter** : l'alerte coach « Volume sous le minimum » cite Fessier 1,5/10 (uniquement des demi-séries du Pendulum), Biceps et Triceps : l'athlète, lui, ne voit pas ces 3 muscles dans son plan. Règle du 04/11 (secondaires inclus) appliquée ; à confirmer.

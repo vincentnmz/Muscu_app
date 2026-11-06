@@ -34,4 +34,18 @@ const V3 = sb._lv3Volume({ historique: { daily_muscu: dm3 } }, 'Epaule', new Dat
 eq(V3.recul === 3 && V3.parSem === 9, '4 : 3 semaines d\'historique → 27 / 3 = 9 (et non 6,75)', V3);
 // 5 — kg : les quarts restent exacts.
 eq(sb._cdFmtKg(1.25) === '1,25' && sb._cdFmtKg(7.5) === '7,5' && sb._cdFmtKg(80) === '80' && sb._cdFmtKg(83.333) === '83,3', '5 : 1,25 · 7,5 · 80 · 83,3', [sb._cdFmtKg(1.25), sb._cdFmtKg(83.333)]);
+
+// 6 — Bloqué : jamais sur les 2 premières séances d'un exercice (débutant, compte neuf) ; 3 séances identiques → bloqué.
+{
+  const sb2 = { Math, Number, String, Object, Array, JSON, Date, console, LV3_BLOQUE_N: { debutant: 2, intermediaire: 3 },
+    _lv3Niveau: () => 'debutant', _ctxAttendu: () => null, _exoFourchette: () => ({ rmin: 8, rmax: 12 }), _petitPas: () => 2.5,
+    parseChatDate: (d) => { const [j, m, a] = String(d).split('/'); return new Date(+a, +m - 1, +j).getTime(); } };
+  vm.createContext(sb2); vm.runInContext(['_lectureExos', '_progSecondaire', '_cdAvgRpe'].map(pick).join('\n'), sb2);
+  const P = (d, c, r) => ({ date: d, charge: c, reps: r, series: [{ charge: c, reps: r, rpe: 9 }, { charge: c, reps: r, rpe: 9 }] });
+  const now6 = new Date(2026, 10, 6, 14).getTime();
+  const L2 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('02/11/2026', 60, 8)] } } }, now6);
+  eq(L2.bloque.length === 0, '6 : 2 séances identiques (compte neuf) → pas « bloqué »', L2);
+  const L3 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('02/11/2026', 60, 8), P('29/10/2026', 60, 8)] } } }, now6);
+  eq(L3.bloque.length === 1, '6 : 3 séances identiques (débutant) → bloqué', L3);
+}
 console.log('-'.repeat(70)); console.log('audit 06/11 corrections : ' + ok + ' OK / ' + ko + ' KO'); if (ko) process.exitCode = 1;
