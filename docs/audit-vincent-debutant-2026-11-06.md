@@ -121,3 +121,6 @@ Script `.work/v8/crawl.mjs` : 29 écrans athlète (dont Analyses Muscu / Cardio 
 - Déjà connu (audit cohérence S1, lot coach restant) : fiche coach ▸ Analyses sur ordi/tablette paysage = contenu sur ~360-620 px, colonne de droite vide.
 - Artefacts du script, pas des défauts : onglet « Conversation » de la fiche ouvert par un autre bouton (`ouvrirConversationCoach`) ; « 0 exo » quand la simulation renvoyait le mauvais format.
 - Messages coach en tablette portrait : panneau centré (480 px) au-dessus de la page, comme prévu.
+
+## 7. Test sur téléphone (porteur, 06/11 soir) — 18/18
+17 OK du premier coup. Point 13 (pas ≈ 6 114 au lieu de 5 584 annoncés) : **app juste**. La montre a synchronisé la journée du 06/11 depuis ma copie de la base (3 133 → 6 840 pas) : moyenne 31/10 → 06/11 = 42 796 / 7 = **6 114**. C'est mon chiffre attendu qui était daté.
