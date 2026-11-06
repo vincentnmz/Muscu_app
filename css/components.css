@@ -1303,8 +1303,10 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 #cd-menu-fiche button { display:block; width:100%; text-align:left; font:inherit; font-size:13px; background:none; border:0; border-radius:8px; padding:9px 10px; cursor:pointer; color:var(--text); }
 #cd-menu-fiche button:hover { background:var(--surface2); }
 /* En-tête de la fiche : réglages et déconnexion sont dans « Profil » (barre / rail) → retirés ici */
-#cd-header .cd-hbtn[onclick^="ouvrirReglagesCoach"], #cd-header .cd-deco { display:none !important; }
-#cd-sport-ico { display:none !important; }
+@media (max-width:991.98px) {
+  #cd-header .cd-hbtn[onclick^="ouvrirReglagesCoach"], #cd-header .cd-deco { display:none !important; }
+  #cd-sport-ico { display:none !important; }
+}
 /* Mobile : onglets EN HAUT (comme sur ordi) + barre générale du bas conservée dans la fiche */
 @media (max-width:991.98px) {
   body.coach-active.athlete-selected.cd-nav { padding-bottom:86px !important; }
@@ -1331,3 +1333,23 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .pb-vol-mob .pb-vol-t { flex:1 1 100%; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--text-subtle); }
 .pb-vol-mob .pb-vol-t b { color:var(--text); }
 .pb-vol-mob .pb-volchip { font-size:11.5px; font-weight:700; border:1px solid; border-radius:999px; padding:2px 9px; background:var(--surface); }
+
+/* 06/11 (porteur) : la fiche athlète ORDI reste comme avant les lots ; la fiche courte est MOBILE seulement. */
+@media (min-width:992px) { .cd-mob-only { display:none !important; } .lbl-m { display:none !important; } }
+@media (max-width:991.98px) { .cd-desk-only { display:none !important; } .lbl-d { display:none !important; } }
+/* 06/11 (porteur) — fiche courte MOBILE : un seul bloc « À décider » (diagnostics + alertes), puis Entraînement, Séries 7 j */
+@media (max-width:991.98px) {
+  .cd-num { display:none; }
+  #cd-coupdoeil .cdcp-etat { display:none !important; }
+  #cd-coupdoeil .cdcp-wrap { display:block !important; }
+  #cd-coupdoeil .cdcp-entr, #cdtab-overview #cd-hub-volume { margin-bottom:10px; }
+  #cd-decider { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:12px 13px 6px; margin-bottom:10px; }
+  #cd-decider .cdcp-lab { font-size:10.5px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--text-subtle); margin:0 0 8px; }
+  #cd-decider .cdcp-tag { display:none; }
+  #cd-decider-diags > .dash-card { box-shadow:none !important; border-top:0 !important; border-right:0 !important; border-bottom:1px solid var(--border) !important; border-radius:0 !important; padding:10px 0 12px 10px !important; margin:0 !important; background:none !important; }
+  #cd-decider #cd-alertes-card { box-shadow:none !important; border:0 !important; border-radius:0 !important; padding:10px 0 4px !important; margin:0 !important; background:none !important; }
+  #cd-decider #cd-alertes-card > .dash-label, #cd-decider .cda-head, #cd-decider .cda-breakdown { display:none !important; }
+}
+@media (max-width:991.98px) {
+  body.cd-from-msg #view-coach-detail .sub-tabs, body.cd-from-msg #cd-hbtn-plus, body.cd-from-msg #cd-hbtn-msg { display:none !important; }
+}
