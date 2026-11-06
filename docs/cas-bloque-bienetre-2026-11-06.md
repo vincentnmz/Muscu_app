@@ -1,7 +1,9 @@
 # Tableaux de cas — « bloqué » et « bien-être » (06/11/2026)
 
 Données : base Supabase **à jour** (lecture seule, 06/11), compte Vincent — 317 séries, 32 exercices depuis le 20/09 ; réponses bien-être depuis le 15/10.
-Aucun code n'est livré tant que ces tableaux ne sont pas validés.
+**Validé par le porteur le 06/11** (« oui pour tout », gêne comptée à partir de **3/5**). Codé et vérifié sur les données réelles :
+- Élévation latérale → *Pourquoi* : « Possible : ta série à 5 kg est passée de 16 à 19 reps pendant que tes séries à 7,5 kg sont redescendues de 11 à 10 » ; *Levier* : « garde ta série à 5 kg au niveau d'avant (≈ 16 reps, sans aller au bout) pour arriver plus frais sur 7,5 kg » ; vérifiés pas en cause : volume, fréquence, repos (2 min stable), effort (RPE 9). La gêne d'épaule à 2/5 ne compte pas (seuil 3/5).
+- Même levier partout (diagnostic, recos Analyses, message en séance). Tests : `tests/lecture-v3.test.js`, `tests/bienetre-jour.test.js` (8 cas du tableau B).
 
 ---
 

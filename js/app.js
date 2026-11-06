@@ -6449,7 +6449,15 @@ function renderCoachCoupDoeil(data) {
       var _nmTx = function (k, inv) { var r = _nm[k]; if (!r || r.etat === 'nd') return trd(k, inv); return ' · <b style="color:' + (r.etat === 'ok' ? 'var(--good)' : 'var(--warn)') + '">' + (r.etat === 'ok' ? 'dans sa normale' : (r.etat === 'bas' ? 'sous sa normale' : 'au-dessus de sa normale')) + '</b> (' + _fmt1(r.base) + ')'; };
       if (be.sommeil != null) etat += _cdCoupRow(colv(be.sommeil), '●', '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + _nmTx('sommeil', false));
       if (be.energie != null) etat += _cdCoupRow(colv(be.energie), '●', '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false));
-      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true));
+      // 06/11 (validé) : le verdict suit la réponse du jour ; le coach voit en INFO (sans alerte) les jours à fatigue ≥ 4/5 sur 7 j.
+      var _fH = ''; try {
+        var _J = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+        var _hj = (data.bien_etre || []).filter(function (x) { var t = pd(x && x.date); return t && (nowT - t) / 864e5 <= 7 && Number(x.fatigue) >= 4; })
+          .map(function (x) { var d = new Date(pd(x.date)); return { t: d.getTime(), s: _J[d.getDay()] + ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), v: Number(x.fatigue) }; })
+          .sort(function (a, b) { return a.t - b.t; });
+        if (_hj.length) _fH = ' <span class="cdcp-sub">(info : ' + _hj.map(function (h) { return h.v + '/5 ' + h.s; }).join(', ') + ' · 7 j)</span>';
+      } catch (e) {}
+      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true) + _fH);
     }
     if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
     if (be) {   // F1 (03/11) : niveau du questionnaire + zone (avant : zone seule → « aucune » alors que 2/5)
@@ -15493,6 +15501,9 @@ function _levierRepos(data, exo) {
   return 'un repos un peu plus long (tu prends ' + _fmtRepos(r) + ', essaie ' + _fmtRepos(Math.min(180, r + 30)) + ')';
 }
 function _leviersBlocage(data, exo) {
+  // 06/11 (validé) : un seul discours pour un exercice bloqué — le levier du diagnostic (cause trouvée dans les
+  // données : repos, effort, gêne, série d'avant, marche…) ; texte générique seulement si pas de diagnostic.
+  try { if (typeof _lv3Diags === 'function') { var _dg = _lv3Diags(data).filter(function (d) { return String(d.exo).trim() === String(exo).trim() && d.kind === 'bloque'; })[0]; if (_dg && _dg.levier) return _dg.levier; } } catch (e) {}
   var rep = _levierRepos(data, exo);
   return 'à titre indicatif : ' + (rep ? rep + ', ' : '') + 'le placer plus tôt dans ta séance pour être plus frais, ou persister en visant la bonne intensité (RPE 8-9 sur toutes tes séries).';
 }

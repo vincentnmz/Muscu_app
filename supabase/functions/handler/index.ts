@@ -3349,7 +3349,7 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
     if (last.d >= recent) return last.v
     const vals = a.map(x => x.v).filter(v => !isNaN(v)), moy = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
     if (vals.filter(mauvais).length >= 2) return moy
-    if (moy != null && mauvais(moy)) return moy
+    if (vals.length >= 2 && moy != null && mauvais(moy)) return moy   // une moyenne = au moins 2 réponses (1 vieille réponse seule ne compte pas)
     return null
   }
   const fatigueVerdict = verdict(fatD, v => v >= 4)

@@ -134,7 +134,7 @@ function _lv3Diag(data, exo, kind, nowT) {
     else checks.push({ s: 'ok', t: 'Fréquence : ' + _lv3Fmt(V.freq) + '×/sem — pas en cause' });
   }
   // 6) Bas de fourchette (bloqué sur le minimum de reps) : levier reps avant la charge.
-  if (!cause && kind === 'bloque' && r0 <= rmin) { cause = 'bas'; levier = 'garde ' + kg(c0) + ' kg et vise +1 rep par séance (jusqu\'à ' + rmax + ') avant d\'ajouter du poids.'; }
+  // (06/11, validé) Plus de « +1 rep » sur un exercice BLOQUÉ : il bloque déjà, on cherche la cause (étapes 6-10).
   // 7-9) (06/11, retour porteur) Exercice BLOQUÉ : « +1 rep » ne sert à rien s'il bloque déjà — on cherche POURQUOI
   // dans les séries de travail (charge du jour) des dernières séances : repos raccourci, effort laissé en réserve,
   // marche de charge trop grosse. Chaque cause trouvée est affichée ; le levier vient de la première.
@@ -159,6 +159,37 @@ function _lv3Diag(data, exo, kind, nowT) {
       else levier += ' Et sur ta dernière série, va jusqu\'à RPE 9-10 : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve.';
     } else if (rpeT != null) checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
     // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
+    // 8) (validé 06/11) Gêne ≥ 3/5 signalée sur la zone du muscle pendant le plateau → cause POSSIBLE.
+    try {
+      var t0p = _lv3T(recentes[recentes.length - 1].date), mk = _musKey(muscle || '').slice(0, 4);
+      var gen = mk ? ((data && data.bien_etre) || []).filter(function (b) {
+        var t = _lv3T(b.date), z = _musKey(String(b.zone || b.zone_douloureuse || ''));
+        return t && t >= t0p - 864e5 && t <= nowT && _lv3Num(b.douleur) >= 3 && z && z.indexOf(mk) >= 0;
+      }) : [];
+      if (gen.length) {
+        var gMax = Math.max.apply(null, gen.map(function (b) { return _lv3Num(b.douleur); }));
+        var gDates = gen.map(function (b) { var d = new Date(_lv3T(b.date)); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); });
+        checks.push({ s: 'ko', t: '<b>Possible : gêne ' + _maE(String(gen[0].zone || gen[0].zone_douloureuse || nom).toLowerCase()) + ' ' + gMax + '/5</b> signalée le ' + gDates.join(', ') });
+        if (!cause) { cause = 'gene'; levier = 'surveille la zone : tant que la gêne revient, garde ta charge (avis kiné si ça persiste).'; }
+      }
+    } catch (_) {}
+    // 9) (validé 06/11) Série plus légère AVANT les séries de travail dont les reps montent (+3 ou plus) pendant que
+    // les séries de travail stagnent ou baissent → elle fatigue peut-être plus qu'avant. Cause POSSIBLE.
+    try {
+      var leg = function (p) { var c = _lv3Num(p.charge), ss = p.series || [], i1 = -1; for (var i = 0; i < ss.length; i++) { if (_lv3Num(ss[i].charge) === c) { i1 = i; break; } } return i1 > 0 ? ss.slice(0, i1).filter(function (x) { return _lv3Num(x.charge) < c; }) : []; };
+      var topR = function (p) { var c = _lv3Num(p.charge); return Math.max.apply(null, [0].concat((p.series || []).filter(function (x) { return _lv3Num(x.charge) === c; }).map(function (x) { return _lv3Num(x.reps); }))); };
+      var pRef = pts[Math.min(3, pts.length - 1)];
+      var l0 = leg(p0), lR = leg(pRef);
+      if (l0.length && lR.length && _lv3Num(l0[0].charge) === _lv3Num(lR[0].charge) && _lv3Num(pRef.charge) === c0) {
+        var a0 = _lv3Num(l0[0].reps), aR = _lv3Num(lR[0].reps), tNow = topR(p0), tBest = Math.max.apply(null, pts.slice(1, 4).map(topR));
+        if (a0 - aR >= 3 && tNow <= tBest) {
+          var cl = kg(_lv3Num(l0[0].charge));
+          checks.push({ s: 'ko', t: '<b>Possible : ta série à ' + cl + ' kg est passée de ' + aR + ' à ' + a0 + ' reps</b> pendant que tes séries à ' + kg(c0) + ' kg ' + (tNow < tBest ? 'sont redescendues de ' + tBest + ' à ' + tNow : 'stagnent à ' + tNow) });
+          if (!cause) { cause = 'avant'; levier = 'garde ta série à ' + cl + ' kg au niveau d\'avant (≈ ' + aR + ' reps, sans aller au bout) pour arriver plus frais sur ' + kg(c0) + ' kg.'; }
+          else levier += ' Et garde ta série à ' + cl + ' kg au niveau d\'avant (≈ ' + aR + ' reps, sans aller au bout).';
+        }
+      }
+    } catch (_) {}
     // La marche ne bloque que quand on arrive en HAUT de la fourchette (retour porteur 06/11 : à 10 reps sur 20,
     // ce n'est pas elle qui coince — et la série plus légère d'avant est une mise en route voulue, pas un problème).
     var marche = c0 > 0 ? pas / c0 : 0;
