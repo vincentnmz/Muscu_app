@@ -9801,10 +9801,64 @@ async function pbcDupliquer(ri) {
 var _pbcEnc = { ri: null, sid: null, onglet: 'seance', q: '' };
 function pbcEnchainer(ri, sid) { _pbcEnc = { ri: ri, sid: sid, onglet: 'seance', q: '' }; _pbcEncRender(); }
 // 05/11 — Muscles affichés (regroupe les fautes de saisie du catalogue : « Moletts », « fessier », « Triceps␣ »).
-var _PBC_MUS = [['pectora', 'Pectoraux'], ['dos', 'Dos'], ['epaul', 'Épaules'], ['biceps', 'Biceps'], ['triceps', 'Triceps'], ['quadri', 'Quadriceps'], ['ischio', 'Ischios'], ['fess', 'Fessiers'], ['adduct', 'Adducteurs'], ['mol', 'Mollets'], ['abdo', 'Abdos'], ['lomb', 'Lombaires'], ['trap', 'Trapèzes'], ['avant-bras', 'Avant-bras']];
+var _PBC_MUS = [['pectora', 'Pectoraux'], ['dos', 'Dos'], ['epaul', 'Épaules'], ['biceps', 'Biceps'], ['triceps', 'Triceps'], ['quadri', 'Quadriceps'], ['ischio', 'Ischios'], ['fess', 'Fessiers'], ['adduct', 'Adducteurs'], ['mol', 'Mollets'], ['abdo', 'Abdominaux'], ['lomb', 'Lombaires'], ['trap', 'Trapèzes'], ['avant-bras', 'Avant-bras'], ['avant bras', 'Avant-bras']];
+// ── Catalogue 06/11 (maquette validée) : filtre matériel commun aux 3 écrans de choix (ajout au programme,
+// séance libre, « Enchaîner avec… »), sous-titre « matériel · + secondaire ½ », création d'exercice par un coach.
+var _EXO_MAT = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Autre'];
+var _exoMat = { xp: '', libre: '', pbc: '' };
+var _EXO_MUS_CLES = [['Pectoraux', 'Pectoraux'], ['Dos', 'Dos'], ['Trapèzes', 'Trapèze'], ['Épaules', 'Epaule'], ['Biceps', 'Biceps'], ['Triceps', 'Triceps'], ['Avant-bras', 'Avant-bras'], ['Abdominaux', 'Abdominaux'], ['Lombaires', 'Lombaires'], ['Quadriceps', 'Quadriceps'], ['Ischios', 'Ischio'], ['Fessiers', 'Fessier'], ['Adducteurs', 'Adducteur'], ['Mollets', 'Mollets']];
+function _exoDeNom(n) { var k = String(n || '').trim(); return (exercicesData || []).filter(function (x) { return x && String(x.exercice).trim() === k; })[0] || null; }
+function _exoMatOk(e, ctx) { var m = _exoMat[ctx]; return !m || String((e && e.materiel) || '') === m; }
+function _exoMatDispo() { return (exercicesData || []).some(function (x) { return x && x.materiel; }); }
+function _exoMatChips(ctx, rerender) {
+  if (!_exoMatDispo()) return '';
+  var cur = _exoMat[ctx] || '';
+  return '<div class="exo-matchips" role="group" aria-label="Matériel">' + [''].concat(_EXO_MAT).map(function (m) {
+    return '<button type="button" class="exo-matc' + (cur === m ? ' on' : '') + '" onclick="_exoMat.' + ctx + '=' + (m ? '\'' + m + '\'' : '\'\'') + ';' + rerender + '">' + escapeHtml(m || 'Tout matériel') + '</button>';
+  }).join('') + '</div>';
+}
+function _exoSousTitre(e) {
+  if (!e) return '';
+  var b = []; if (e.materiel) b.push(e.materiel);
+  if (e.muscle_secondaire && _pbcMusAff(e.muscle_secondaire) !== _pbcMusAff(e.muscle)) b.push('+ ' + _pbcMusAff(e.muscle_secondaire) + ' ½');
+  return b.join(' · ');
+}
+function _estCoachConnecte() { try { return !!(typeof coach !== 'undefined' && coach && coach.coach_id); } catch (e) { return false; } }
+// Création d'un exercice (coach) : nom + muscle (liste des 14) + secondaire + matériel.
+function ouvrirCreerExercice(onCree) {
+  var old = document.getElementById('_cx-ov'); if (old) old.remove();
+  var ov = document.createElement('div'); ov.id = '_cx-ov';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9500;display:flex;align-items:flex-end;justify-content:center;';
+  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+  var opts = function (vide) { return (vide ? '<option value="">' + vide + '</option>' : '') + _EXO_MUS_CLES.map(function (m) { return '<option value="' + m[1] + '">' + m[0] + '</option>'; }).join(''); };
+  ov.innerHTML = '<div class="cx-sheet"><div class="cx-grab"></div><div class="cx-t">Nouvel exercice</div>'
+    + '<label class="cx-l" for="cx-nom">Nom</label><input id="cx-nom" class="cx-i" maxlength="60" placeholder="ex. Curl araignée">'
+    + '<label class="cx-l" for="cx-mus">Muscle</label><select id="cx-mus" class="cx-i">' + opts('Choisir…') + '</select>'
+    + '<label class="cx-l" for="cx-sec">Muscle secondaire (facultatif, compté ½ série)</label><select id="cx-sec" class="cx-i">' + opts('Aucun') + '</select>'
+    + '<label class="cx-l" for="cx-mat">Matériel</label><select id="cx-mat" class="cx-i">' + _EXO_MAT.map(function (m) { return '<option>' + m + '</option>'; }).join('') + '</select>'
+    + '<div id="cx-err" class="cx-err" hidden></div>'
+    + '<div class="cx-btns"><button type="button" class="cx-b" onclick="document.getElementById(\'_cx-ov\').remove()">Annuler</button><button type="button" class="cx-b p" id="cx-ok">Créer</button></div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('cx-ok').onclick = async function () {
+    var err = document.getElementById('cx-err'), nom = document.getElementById('cx-nom').value.trim(), mus = document.getElementById('cx-mus').value, sec = document.getElementById('cx-sec').value, mat = document.getElementById('cx-mat').value;
+    var fail = function (t) { err.textContent = t; err.hidden = false; };
+    if (!nom) return fail('Donne un nom à l\'exercice.');
+    if (!mus) return fail('Choisis le muscle travaillé.');
+    if (sec && sec === mus) return fail('Le muscle secondaire doit être différent du muscle principal.');
+    if (_exoDeNom(nom) || (exercicesData || []).some(function (x) { return _normTxt(x.exercice) === _normTxt(nom); })) return fail('Cet exercice existe déjà dans le catalogue.');
+    this.disabled = true;
+    var r = null; try { r = await _cdPost({ action: 'creerExercice', exercice: nom, muscle: mus, muscle_secondaire: sec || '', materiel: mat }); } catch (e) {}
+    this.disabled = false;
+    if (!r || !r.ok) return fail((r && r.erreur) || 'Création impossible pour le moment (réseau ?).');
+    try { exercicesData.push(r.exercice); } catch (e) {}
+    ov.remove(); showToast('✓ « ' + nom + ' » ajouté au catalogue');
+    if (typeof onCree === 'function') onCree(r.exercice);
+  };
+  setTimeout(function () { try { document.getElementById('cx-nom').focus(); } catch (e) {} }, 50);
+}
 function _pbcMusAff(m) { var k = _normTxt(m || ''); if (!k) return 'Autres'; for (var i = 0; i < _PBC_MUS.length; i++) if (k.indexOf(_PBC_MUS[i][0]) === 0) return _PBC_MUS[i][1]; return _musCap(String(m).trim()); }
 // Muscle « opposé » proposé en superset (agoniste / antagoniste).
-var _PBC_OPP = { 'Pectoraux': 'Dos', 'Dos': 'Pectoraux', 'Biceps': 'Triceps', 'Triceps': 'Biceps', 'Quadriceps': 'Ischios', 'Ischios': 'Quadriceps', 'Épaules': 'Dos', 'Fessiers': 'Quadriceps', 'Mollets': 'Abdos', 'Abdos': 'Lombaires' };
+var _PBC_OPP = { 'Pectoraux': 'Dos', 'Dos': 'Pectoraux', 'Biceps': 'Triceps', 'Triceps': 'Biceps', 'Quadriceps': 'Ischios', 'Ischios': 'Quadriceps', 'Épaules': 'Dos', 'Fessiers': 'Quadriceps', 'Mollets': 'Abdominaux', 'Abdominaux': 'Lombaires', 'Lombaires': 'Abdominaux', 'Trapèzes': 'Pectoraux', 'Avant-bras': 'Triceps', 'Adducteurs': 'Fessiers' };
 function _pbcEncCtx() {
   var E = _pbcEnc;
   var l = (cdProgrammeLignes || []).filter(function (x) { return x.row_index === E.ri; })[0]; if (!l) return null;
@@ -9826,7 +9880,7 @@ function _pbcEncRender() {
   }
   ov.innerHTML = '<div class="msgx-mod" onclick="event.stopPropagation()"><div class="msgx-mt">Enchaîner ' + esc(C.l.exercice) + ' avec<button onclick="msgPlusFermer()" aria-label="Fermer">✕</button></div>'
     + '<div class="msgx-chips"><button class="msgx-f' + (E.onglet === 'seance' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'seance\';_pbcEncRender()">Dans cette séance</button><button class="msgx-f' + (E.onglet === 'cat' ? ' on' : '') + '" onclick="_pbcEnc.onglet=\'cat\';_pbcEncRender()">Catalogue</button></div>'
-    + (E.onglet === 'cat' ? '<input class="msgx-s" style="margin-top:8px" placeholder="Rechercher un exercice…" value="' + esc(E.q || '') + '" oninput="_pbcEnc.q=this.value;_pbcEncListe()">' + chips : '')
+    + (E.onglet === 'cat' ? '<input class="msgx-s" style="margin-top:8px" placeholder="Rechercher un exercice…" value="' + esc(E.q || '') + '" oninput="_pbcEnc.q=this.value;_pbcEncListe()">' + chips + _exoMatChips('pbc', '_pbcEncRender()') : '')
     + '<div id="pbc-enc-l">' + _pbcEncListeHtml(C) + '</div>'
     + '<div class="msgx-vide" style="padding:8px 0 0">Biset = même muscle · Superset = muscles différents · Triset = 3 · Circuit = 4 et plus. En séance, les exercices s\'enchaînent sans repos ; le repos vient après le bloc.</div></div>';
   ov.style.display = 'flex'; ov.onclick = msgPlusFermer;
@@ -9844,7 +9898,7 @@ function _pbcEncListeHtml(C) {
   var q = _normTxt(E.q || ''), G = {};
   (exercicesData || []).forEach(function (x) {
     var n = String(x.exercice || '').trim(); if (!n || C.dans.indexOf(n) >= 0) return;
-    var m = _pbcMusAff(x.muscle); if (E.mu && m !== E.mu) return;
+    var m = _pbcMusAff(x.muscle); if (E.mu && m !== E.mu) return; if (!_exoMatOk(x, 'pbc')) return;
     if (q && _normTxt(n).indexOf(q) < 0 && _normTxt(m).indexOf(q) < 0) return;
     (G[m] = G[m] || []).push(n);
   });
@@ -10045,7 +10099,7 @@ function _xpCardioList() { return (_CARDIO_CATALOG || []).filter(function (a) { 
 async function ouvrirPickerExos(seanceId, onDone) {
   if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
   if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
-  _xp = { sid: String(seanceId), grp: 'pecs', q: '', sel: {}, cardio: {}, order: [], onDone: onDone || null };
+  _xp = { sid: String(seanceId), grp: 'pecs', q: '', sel: {}, cardio: {}, order: [], onDone: onDone || null }; _exoMat.xp = '';
   var ov = document.getElementById('xp-overlay');
   if (!ov) { ov = document.createElement('div'); ov.id = 'xp-overlay'; ov.className = 'xp-ov'; document.body.appendChild(ov); }
   var esc = escapeHtml;
@@ -10053,6 +10107,7 @@ async function ouvrirPickerExos(seanceId, onDone) {
     + '<div class="xp-hd"><button class="xp-back" onclick="fermerPickerExos()" aria-label="Retour">←</button>'
     +   '<div class="xp-ti"><div class="a">Ajouter à ' + esc(_xp.sid) + '</div><div class="b">Coche plusieurs exercices puis ajoute</div></div>'
     +   '<input id="xp-q" class="xp-q" type="text" placeholder="Rechercher un exercice ou une activité…" oninput="_xpFilter(this.value)" autocomplete="off"></div>'
+    + '<div id="xp-mat" class="xp-mat"></div>'
     + '<div class="xp-grid"><nav id="xp-nav" class="xp-nav"></nav><div id="xp-list" class="xp-list"></div>'
     +   '<aside class="xp-side"><div class="xp-lab">Ta sélection</div><div id="xp-selbox" class="xp-selbox"></div>'
     +   '<div class="xp-note">Ajoutés en 3 × 8–12, 90 s de repos — modifiables ensuite.</div>'
@@ -10101,22 +10156,24 @@ function _xpRender() {
       }).join('') + '</div>';
       return;
     }
-    var exos = (byGrp[k] || []).filter(function (e) { return !q || _normTxt(e.exercice).indexOf(q) >= 0 || _normTxt(e.muscle || '').indexOf(q) >= 0; });
+    var exos = (byGrp[k] || []).filter(function (e) { return _exoMatOk(e, 'xp') && (!q || _normTxt(e.exercice).indexOf(q) >= 0 || _normTxt(e.muscle || '').indexOf(q) >= 0); });
     if (!exos.length) return;
     // Sous-titres par muscle du catalogue (ex. Jambes → Quadriceps, Ischio, Fessier…).
     var sub = {};
-    exos.forEach(function (e) { var m = _musCap(String(e.muscle || '').trim()) || 'Autres'; (sub[m] = sub[m] || []).push(e.exercice); });
+    exos.forEach(function (e) { var m = _pbcMusAff(e.muscle) || 'Autres'; (sub[m] = sub[m] || []).push(e.exercice); });
     var muscles = Object.keys(sub).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
     if (q) html += '<div class="xp-grp xp-grp-top">' + esc(_xpGrpLabel(k)) + '</div>';
     muscles.forEach(function (m) {
       html += '<div class="xp-grp">' + esc(m) + '</div><div class="xp-items">' + sub[m].sort(function (a, b) { return a.localeCompare(b, 'fr'); }).map(function (nom) {
         var on = !!_xp.sel[nom];
-        return '<div class="xp-it' + (on ? ' on' : '') + '" data-nom="' + attr(nom) + '" onclick="_xpToggle(this.getAttribute(\'data-nom\'),' + (!on) + ')"><span class="xp-ck"></span><span class="xp-n">' + esc(String(nom).trim()) + '</span></div>';
+        return '<div class="xp-it' + (on ? ' on' : '') + '" data-nom="' + attr(nom) + '" onclick="_xpToggle(this.getAttribute(\'data-nom\'),' + (!on) + ')"><span class="xp-ck"></span><span class="xp-n">' + esc(String(nom).trim()) + (function () { var st = _exoSousTitre(_exoDeNom(nom)); return st ? '<small class="xp-st">' + esc(st) + '</small>' : ''; })() + '</span></div>';
       }).join('') + '</div>';
     });
   });
   var list = document.getElementById('xp-list');
-  if (list) list.innerHTML = html || '<div class="xp-empty">Aucun exercice trouvé.</div>';
+  var _mc = document.getElementById('xp-mat'); if (_mc) _mc.innerHTML = _exoMatChips('xp', '_xpRender()');
+  if (list) list.innerHTML = (html || '<div class="xp-empty">Aucun exercice trouvé.</div>')
+    + (_estCoachConnecte() ? '<button type="button" class="xp-creer" onclick="ouvrirCreerExercice(function (e) { _xp.sel[e.exercice] = true; _xpKeyOrder(\'m|\' + e.exercice, true); _xpRender(); })">+ Créer un exercice</button>' : '');
   // Sélection (bureau : colonne de droite ; mobile : résumé en pied).
   var items = _xp.order.map(function (k) {
     if (k.indexOf('c|') === 0) { var key = k.slice(2), a = _xpCardioList().find(function (x) { return x.key === key; }); return { k: k, t: (a ? a.label : key) + ' · ' + _xp.cardio[key] + ' min', cardio: 1 }; }
@@ -12655,6 +12712,8 @@ function remplirListeExosLibres(filtre) {
   var f = _norm(filtre);
   // --- Chips de groupes musculaires ---
   var chipsEl = document.getElementById('exo-chips');
+  // Catalogue 06/11 : filtre matériel sous les groupes.
+  if (chipsEl) { var _mcl = document.getElementById('exo-matchips-libre'); if (!_mcl) { _mcl = document.createElement('div'); _mcl.id = 'exo-matchips-libre'; chipsEl.parentNode.insertBefore(_mcl, chipsEl.nextSibling); } _mcl.innerHTML = _exoMatChips('libre', 'filtrerExosLibres()'); }
   if (chipsEl) {
     chipsEl.innerHTML = '<button type="button" class="exo-chip' + (!_exoFiltreGrp ? ' on' : '') + '"' + (!_exoFiltreGrp ? ' style="background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0a46d6))"' : '') + ' onclick="exoSetGrp(null)">Tous</button>'
       + _EXO_GROUPES.map(function (g) { var on = _exoFiltreGrp === g.k; return '<button type="button" class="exo-chip' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + g.col + '"' : '') + ' onclick="exoSetGrp(\'' + g.k + '\')">' + (on ? '' : '<span class="d" style="background:' + g.col + '"></span>') + g.label + '</button>'; }).join('');
@@ -12677,7 +12736,7 @@ function remplirListeExosLibres(filtre) {
   var el = document.getElementById('liste-exos-libres'); if (!el) return;
   var dejaNoms = seance.map(function (e) { return e.exerciceNom; });
   var items = (exercicesData || [])
-    .filter(function (e) { if (_exoFiltreGrp && _exoGrpOf(e.muscle) !== _exoFiltreGrp) return false; return !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f); })
+    .filter(function (e) { if (_exoFiltreGrp && _exoGrpOf(e.muscle) !== _exoFiltreGrp) return false; if (!_exoMatOk(e, 'libre')) return false; return !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f); })
     .sort(function (a, b) { return String(a.muscle).localeCompare(String(b.muscle)) || String(a.exercice).localeCompare(String(b.exercice)); });
   if (!items.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:14px;text-align:center">Aucun exercice trouvé</div>'; _exoRenderAddbar(); return; }
   el.innerHTML = items.slice(0, 80).map(function (e) {
@@ -12687,7 +12746,7 @@ function remplirListeExosLibres(filtre) {
     var grp = _exoGrpOf(e.muscle); var meta = grp ? _exoGrpMeta(grp) : null; var col = meta ? meta.col : 'var(--text-subtle)';
     return '<div class="exo-card' + (sel ? ' sel' : '') + '" data-v="' + _exoAttr(val) + '" onclick="exoToggleSel(this.dataset.v)">'
       + '<span class="ck"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>'
-      + '<div class="nm"><div class="a">' + esc(e.exercice) + '</div><div class="b">' + esc(e.muscle || '') + '</div></div>'
+      + '<div class="nm"><div class="a">' + esc(e.exercice) + '</div><div class="b">' + esc([_pbcMusAff(e.muscle)].concat(_exoSousTitre(e) ? [_exoSousTitre(e)] : []).join(' · ')) + '</div></div>'
       + (deja ? '<span class="already">déjà ✓</span>' : '<span class="mt" style="background:' + col + '">' + (meta ? meta.label : '—') + '</span>')
       + '</div>';
   }).join('');
@@ -20257,7 +20316,7 @@ function _genNorm(s) { return String(s || '').toLowerCase().normalize('NFD').rep
  * ═══════════════════════════════════════════════════════════════════════════ */
 var _G2_BLOCKS = {
   pecs:    { mus: 'Pectoraux', slots: [
-    { lab: 'Écarté', type: 'iso', rmin: 12, rmax: 15, exos: ['Ecarté poulie haute', 'Ecarté machine', 'Ecarté poulie basse', 'Ecarté haltéres incliné', 'Ecarté haltéres décliné'] },
+    { lab: 'Écarté', type: 'iso', rmin: 12, rmax: 15, exos: ['Écarté poulie haute', 'Écarté machine', 'Écarté poulie basse', 'Écarté haltères incliné', 'Écarté haltères décliné'] },
     { lab: 'Incliné', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé incliné Hammer', 'Développé incliné à la Smith', 'Développé couché incliné haltère'] },
     { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 10, exos: ['Développé couché haltère', 'Développé machine Hammer', 'Développé machine', 'Développé couché barre'] },
     { lab: 'Décliné', type: 'poly', rmin: 10, rmax: 12, exos: ['Développé décliné machine', 'Développé décliné à la Smith'] } ] },
@@ -20265,16 +20324,16 @@ var _G2_BLOCKS = {
     { lab: 'Vertical', type: 'poly', rmin: 8, rmax: 12, exos: ['Traction', 'Tirage vertical prise large', 'Tirage vertical prise serrée'] },
     { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 12, exos: ['T-bar row prise basse', 'Rowing machine', 'Rowing bucheron', 'Rowing barre'] },
     { lab: 'Vertical serré', type: 'poly', rmin: 8, rmax: 12, exos: ['Tirage vertical prise serrée', 'Tirage vertical uni à la poulie'] },
-    { lab: 'Épaisseur', type: 'poly', rmin: 10, rmax: 15, exos: ['Tirage trapèze machine', 'T-bar row prise haute', 'shrugs aux haltéres', 'shrugs barre'] } ] },
+    { lab: 'Épaisseur', type: 'poly', rmin: 10, rmax: 15, exos: ['Tirage trapèze machine', 'T-bar row prise haute', 'Shrugs haltères', 'Shrugs barre'] } ] },
   epaules: { mus: 'Épaules', slots: [
-    { lab: 'Latéral', type: 'iso', rmin: 12, rmax: 15, exos: ['Élévation latérale haltère', 'Elévation latérale uni à la poulie'] },
+    { lab: 'Latéral', type: 'iso', rmin: 12, rmax: 15, exos: ['Élévation latérale haltère', 'Élévation latérale uni à la poulie'] },
     { lab: 'Développé', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé militaire aux haltères', 'Développé militaire à la Smith'] },
-    { lab: 'Frontal', type: 'iso', rmin: 10, rmax: 15, exos: ['Élévation frontale haltères', 'Élévation frontale poulie', 'Elevation frontale barre'] },
+    { lab: 'Frontal', type: 'iso', rmin: 10, rmax: 15, exos: ['Élévation frontale haltères', 'Élévation frontale poulie', 'Élévation frontale barre'] },
     { lab: 'Arrière', type: 'iso', rmin: 12, rmax: 15, exos: ['Arrière épaule à la poulie', 'Arrière épaule haltère'] },
-    { lab: 'Trapèzes', type: 'iso', rmin: 10, rmax: 15, exos: ['shrugs aux haltéres', 'shrugs barre', 'Tirage trapèze machine'] } ] },
+    { lab: 'Trapèzes', type: 'iso', rmin: 10, rmax: 15, exos: ['Shrugs haltères', 'Shrugs barre', 'Tirage trapèze machine'] } ] },
   biceps:  { mus: 'Biceps', slots: [
     { lab: 'Incliné', type: 'iso', rmin: 8, rmax: 12, exos: ['Curl incliné au banc', 'Curl incliné uni poignée à la poulie'] },
-    { lab: 'Marteau', type: 'iso', rmin: 10, rmax: 15, exos: ['Curl marteau aux haltéres', 'Curl marteau à la poulie'] },
+    { lab: 'Marteau', type: 'iso', rmin: 10, rmax: 15, exos: ['Curl marteau aux haltères', 'Curl marteau à la poulie'] },
     { lab: 'Curl', type: 'iso', rmin: 8, rmax: 12, exos: ['Curl barre poulie', 'Curl barre'] } ] },
   triceps: { mus: 'Triceps', slots: [
     { lab: 'Extension', type: 'iso', rmin: 8, rmax: 12, exos: ['Extension poulie barre', 'Dips triceps', 'Extension poulie corde'] },
@@ -20289,7 +20348,7 @@ var _G2_BLOCKS = {
   fessiers: { mus: 'Fessiers', slots: [
     { lab: 'Poussée', type: 'poly', rmin: 8, rmax: 12, exos: ['Hip thrust', 'Hip thrust machine', 'Abduction machine', 'Fente bulgare', 'Fente longue'] } ] },
   mollets: { mus: 'Mollets', slots: [
-    { lab: 'Extensions', type: 'iso', rmin: 12, rmax: 20, exos: ['Les extensions mollets debout', 'Les extensions mollets assis', 'Les extensions mollets à la presse'] } ] },
+    { lab: 'Extensions', type: 'iso', rmin: 12, rmax: 20, exos: ['Mollets debout', 'Mollets assis', 'Mollets à la presse'] } ] },
   abdos:   { mus: 'Abdos', slots: [
     { lab: 'Gainage', type: 'iso', rmin: 10, rmax: 15, exos: ['Crunch à la poulie', 'Relevé de jambe', 'Roulette'] } ] }
 };
@@ -20843,8 +20902,8 @@ function _g2VariantsFor(exoNom) {
 // ── Force custom : squelette éditable à listes déroulantes (étape 3) ──
 var _G2_FPOOL = {
   lift: ['Squat', 'Hack squat', 'Belt squat', 'Squat gobelet', 'Développé couché barre', 'Développé couché haltère', 'Développé militaire à la Smith', 'Développé militaire aux haltères', 'Soulevé de terre', 'RDL barre', 'RDL haltère'],
-  comp: ['Presse inclinée', 'Presse horizontale', 'Belt squat', 'Fente bulgare', 'Fente longue', 'RDL barre', 'RDL haltère', 'Rowing barre', 'Rowing bucheron', 'Rowing banc', 'Rowing machine', 'Traction', 'shrugs barre', 'Développé couché incliné haltère', 'Développé militaire aux haltères'],
-  acc: ['Développé couché incliné haltère', 'Ecarté poulie haute', 'Extension poulie barre', 'Curl barre', 'Curl barre poulie', 'Élévation latérale haltère', 'Arrière épaule à la poulie', 'Leg curl assis', 'RDL haltère', 'Les extensions mollets à la presse', 'Fente bulgare']
+  comp: ['Presse inclinée', 'Presse horizontale', 'Belt squat', 'Fente bulgare', 'Fente longue', 'RDL barre', 'RDL haltère', 'Rowing barre', 'Rowing bucheron', 'Rowing banc', 'Rowing machine', 'Traction', 'Shrugs barre', 'Développé couché incliné haltère', 'Développé militaire aux haltères'],
+  acc: ['Développé couché incliné haltère', 'Écarté poulie haute', 'Extension poulie barre', 'Curl barre', 'Curl barre poulie', 'Élévation latérale haltère', 'Arrière épaule à la poulie', 'Leg curl assis', 'RDL haltère', 'Mollets à la presse', 'Fente bulgare']
 };
 function _g2ResolveName(name) {
   if (!exercicesData || !exercicesData.length) return name;

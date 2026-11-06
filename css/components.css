@@ -1376,3 +1376,21 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .ratt-n{font-size:11px;color:var(--text-muted);line-height:1.4}
 .ma-hchg{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--accent);font:inherit;font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;margin-right:6px;cursor:pointer}
 .ma-hra{font-size:11.5px;font-weight:800;color:var(--accent);margin-top:1px}
+
+/* 06/11 — Catalogue : filtre matériel, sous-titre d'exercice, création par le coach */
+.exo-matchips{display:flex;gap:6px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none}
+.exo-matchips::-webkit-scrollbar{display:none}
+.exo-matc{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font:inherit;font-size:12px;font-weight:700;border-radius:999px;padding:5px 11px;cursor:pointer;white-space:nowrap}
+.exo-matc.on{border-color:var(--accent);background:var(--accent-a08,rgba(26,95,255,.08));color:var(--accent)}
+.xp-mat{padding:0 16px}
+.xp-st{display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin-top:1px}
+.xp-creer{display:block;width:calc(100% - 8px);margin:14px 4px 8px;border:1.5px dashed var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:800;font-size:13px;border-radius:12px;padding:11px;cursor:pointer}
+.cx-sheet{width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;box-shadow:0 -8px 30px rgba(7,11,20,.18)}
+.cx-grab{width:40px;height:4px;border-radius:4px;background:var(--border);margin:0 auto 8px}
+.cx-t{font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text)}
+.cx-l{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin-top:6px}
+.cx-i{width:100%;font:inherit;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:11px;background:var(--surface2);color:var(--text)}
+.cx-err{color:var(--danger,#c43c3c);font-size:12.5px;font-weight:700;margin-top:4px}
+.cx-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.cx-b{padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-weight:800;cursor:pointer}
+.cx-b.p{background:var(--accent);border-color:var(--accent);color:#fff}

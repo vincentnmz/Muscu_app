@@ -642,6 +642,8 @@ const _MUSCLE_ALIAS: Record<string, string> = {
   ischio: 'Ischio', ischios: 'Ischio', epaule: 'Epaule', epaules: 'Epaule', abdominaux: 'Abdominaux', abdos: 'Abdominaux',
   triceps: 'Triceps', biceps: 'Biceps', dos: 'Dos', pectoraux: 'Pectoraux', quadriceps: 'Quadriceps',
   adducteur: 'Adducteur', adducteurs: 'Adducteur', trapeze: 'Trapèze', trapezes: 'Trapèze',
+  // Catalogue 06/11 : 2 nouveaux groupes (liste fermée de 14 muscles validée par le porteur).
+  'avant-bras': 'Avant-bras', 'avant bras': 'Avant-bras', avantbras: 'Avant-bras', lombaire: 'Lombaires', lombaires: 'Lombaires',
 }
 function normMuscle(m: unknown): string {
   const raw = String(m ?? '').trim()
@@ -3037,8 +3039,31 @@ async function handleGetExercices(): Promise<Response> {
     muscle: normMuscle(r.muscle),
     muscle_secondaire: normMuscle(r.muscle_secondaire),
     increment_kg: r.increment_kg || '2.5 / 5kg',
+    // Catalogue 06/11 : matériel, disciplines (liste « muscu,street… »), type de mesure, auteur (coach).
+    materiel: r.materiel || '', disciplines: r.disciplines || 'muscu', mesure: r.mesure || 'charge_reps', cree_par: r.cree_par || '',
   }))
   return jsonResp({ exercices })
+}
+
+// Catalogue 06/11 — un coach crée un exercice : muscle choisi dans la liste fermée (14), plus de saisie libre.
+const CAT_MUSCLES = ['Pectoraux', 'Dos', 'Trapèze', 'Epaule', 'Biceps', 'Triceps', 'Avant-bras', 'Abdominaux', 'Lombaires', 'Quadriceps', 'Ischio', 'Fessier', 'Adducteur', 'Mollets']
+const CAT_MATERIEL = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Autre']
+async function handleCreerExercice(body: any): Promise<Response> {
+  if (body._sessRole !== 'c') return jsonResp({ erreur: 'Réservé aux coachs' })
+  const nom = String(body.exercice || '').replace(/\s+/g, ' ').trim()
+  const muscle = normMuscle(body.muscle), sec = body.muscle_secondaire ? normMuscle(body.muscle_secondaire) : null
+  const materiel = CAT_MATERIEL.includes(String(body.materiel || '')) ? String(body.materiel) : 'Autre'
+  if (!nom || nom.length > 60) return jsonResp({ erreur: 'Nom manquant ou trop long (60 caractères max)' })
+  if (!CAT_MUSCLES.includes(muscle)) return jsonResp({ erreur: 'Muscle inconnu' })
+  if (sec && (!CAT_MUSCLES.includes(sec) || sec === muscle)) return jsonResp({ erreur: 'Muscle secondaire invalide' })
+  const { data: tous } = await sb().from('exercices').select('exercice_id,exercice')
+  const k = (t: any) => String(t || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if ((tous || []).some((e: any) => k(e.exercice) === k(nom))) return jsonResp({ erreur: 'Cet exercice existe déjà' })
+  const id = String(Math.max(0, ...(tous || []).map((e: any) => Number(e.exercice_id) || 0)) + 1)
+  const row = { exercice_id: id, exercice: nom, muscle, muscle_secondaire: sec, increment_kg: materiel === 'Haltères' ? '2' : '2.5', materiel, disciplines: 'muscu', mesure: 'charge_reps', cree_par: 'coach:' + String(body._sessId || '') }
+  const { error } = await sb().from('exercices').insert(row)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true, exercice: row })
 }
 
 async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
@@ -7623,6 +7648,7 @@ Deno.serve(async (req: Request) => {
         case 'getPlanning':              return handleGetPlanning(body)
         case 'planSeance':               return handlePlanSeance(body)
         case 'setRattachement':          return handleSetRattachement(body)
+        case 'creerExercice':            return handleCreerExercice(body)
         case 'movePlanning':             return handleMovePlanning(body)
         case 'unplanPlanning':           return handleUnplanPlanning(body)
         case 'genererProgramme':         return _progMajTrace(action, body, () => handleGenererProgramme(body))
