@@ -5041,14 +5041,14 @@ async function renderCoachSynthese(athletes, depuisCache) {
       : `<div class="cae-stats">
           <div class="cae-st">${rpeCell}<div class="l">RPE 7 j</div></div>
           <div class="cae-st">${tonCell}<div class="l">Tonnage</div></div>
-          <div class="cae-st">${regCell}<div class="l">Régul.</div></div>
+          <div class="cae-st">${regCell}<div class="l">Assiduité</div></div>
           <div class="cae-st">${planCell}<div class="l">Plan</div></div>
         </div>`;
     return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;padding:12px 13px 11px;cursor:pointer;box-shadow:var(--shadow-sm);">
       <span class="cae-stripe" style="background:${et.color};"></span>
       <div class="cae-top">
-        ${enPause ? '<div class="cae-av"></div>' : _coachAv(a, et.color + '22', tc, 40)}
-        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b>${chip}</div>
+        ${enPause ? '<div class="cae-av"></div>' : _coachAv(a, 'var(--surface2)', 'var(--text)', 36)}
+        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b><span class="cae-sub">${escapeHtml(_COACH_NIVLBL[getNiveauExperience(a.annees_pratique)] || '—')} · ${_coachDernAct(e, datas[i])}</span></div>${chip}
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="m9 6 6 6-6 6"/></svg>
       </div>
       ${body}
@@ -5065,7 +5065,8 @@ async function renderCoachSynthese(athletes, depuisCache) {
     <div class="coach-eq-chips">
       ${eqChip('all', 'Tous', athletes.length)}${eqChip('surveiller', 'À surveiller', nbSurvCat)}${eqChip('prets', 'Prêts', nbPrets)}${eqChip('inactifs', 'Inactifs', nbInactifsCat)}
     </div>`;
-  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}<button onclick="ouvrirModalLierAthlete()" style="margin-left:auto;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:7px 11px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;">+ Lier un athlète</button></div></div>`
+  // 06/11 : plus de titre « Mes athlètes + Lier » (doublon du + de l'en-tête et du titre de page « Équipe »).
+  const listeHtml = ``
     + equipeControls + rowsHtml
     + '<div id="coach-eq-empty" style="display:none;color:var(--text-muted);font-size:13px;text-align:center;padding:20px 10px;">Aucun athlète ne correspond.</div>';
 
@@ -5314,7 +5315,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
   // Ordre (audit coach A7, 03/11) : À traiter → Messages → Entraînement à regarder → Questionnaires → Analyse Novalyz.
   // (« Résumé équipe » retiré d'ici : l'info de répartition reste dans l'onglet Analyses.)
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${_coachBanEmail() + _coachGrpChips() + heroHtml + prioHtml + messagesHtml + entrHtml + questHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-aujourdhui">${_coachBanEmail() + _coachGrpChips() + _coachMobAujourdhui(heroHtml + prioHtml + messagesHtml + entrHtml + questHtml + briefingHtml)}</div>` +
     `<div id="coach-sec-equipe" style="display:none">${_coachGrpChips() + listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${_coachGrpChips() + analysesHtml}</div>`;
   coachBandeauApply();
@@ -5353,6 +5354,12 @@ function coachEquipeFilter() {
 var coachBandeauTab = 'aujourdhui';
 function coachBandeauApply() {
   const secs = { aujourdhui: 'coach-sec-aujourdhui', equipe: 'coach-sec-equipe', analyses: 'coach-sec-analyses' };
+  // 06/11 (socle) : l'en-tête mobile affiche le titre de la page, comme sur ordi.
+  try {
+    var _id = document.querySelector('#coach-topbar .ct-id'), _t = document.getElementById('ct-title');
+    if (_id && !_t) { _t = document.createElement('div'); _t.id = 'ct-title'; _t.className = 'ct-title'; _id.appendChild(_t); }
+    if (_t) _t.textContent = ({ aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' })[coachBandeauTab] || "Aujourd'hui";
+  } catch (e) {}
   Object.keys(secs).forEach(k => { const el = document.getElementById(secs[k]); if (el) el.style.display = (k === coachBandeauTab) ? '' : 'none'; });
   ['aujourdhui', 'equipe', 'analyses', 'messages', 'profil'].forEach(k => {
     const b = document.getElementById('coach-band-' + k); if (b) b.classList.toggle('on', k === coachBandeauTab);
@@ -8374,16 +8381,29 @@ function _coachDeskAujourdhui() {
   var questPanel = '<div class="cs-panel" data-tour="co-quest"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
   // A4 (audit coach 03/11) : « Entraînement à regarder » — mêmes lignes que le mobile.
   var entr = (d.enrich || []).filter(function (e) { return !e.enPause; }).map(function (e) { var L = null; try { L = _coachEntrLigne(d.datas[e.i]); } catch (_) {} return L ? { e: e, L: L } : null; }).filter(Boolean);
-  var entrHtml = !entr.length ? '' : '<div class="cs-sec" style="margin-top:18px">Entraînement à regarder</div><div class="cs-watch">' + entr.map(function (x) {
+  var entrHtml = !entr.length ? '' : '<div class="cs-panel"><div class="cs-pt">Entraînement à regarder<span class="cs-pt-ct">plan de la semaine</span></div><div class="cs-watch">' + entr.map(function (x) {
     var P = x.L.P, n = P ? P.actions.length : 0, ex = x.L.exo ? String(x.L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
     return '<div class="cs-wrow" onclick="coachOuvrirProgression(\'' + x.e.i + '\'' + (ex ? ',\'' + ex + '\'' : '') + ')"><span class="cs-av2">' + _coachDeskInit(x.e.a.nom) + '</span><div class="cs-wn"><b>' + escapeHtml(x.e.a.nom) + '</b><div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px">' + x.L.txt.replace(/<b>/g, '<strong style="font-weight:700;color:var(--text)">').replace(/<\/b>/g, '</strong>') + '</div>'
       + (P && n && P.faits >= n ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A)">✓ Plan de la semaine fait</span></div>' : '')
       + (P && !(n && P.faits >= n) ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">Plan ' + P.faits + '/' + n + ' fait' + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
-  }).join('') + '</div>';
-  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div>' + entrHtml + '</div>'
+  }).join('') + '</div></div>';
+  return kpis + '<div class="cs-grid2"><div><div class="cs-panel"><div class="cs-pt">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + (watch || '<div class="cs-empty" style="padding:4px 0;text-align:left">Tout le monde est à jour.</div>') + '</div></div>' + entrHtml + '</div>'
     + '<aside>' + questPanel
     + '<div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
     + '<div class="cs-panel"><div class="cs-pt">Lecture Novalyz · équipe</div>' + _coachDeskLecture() + '</div></aside></div>';
+}
+// 06/11 (lot 2, maquette coach-mobile-refonte) : Aujourd'hui mobile = MÊME rendu que l'ordi (mêmes blocs, même ordre),
+// en une colonne (.cs-mob). Repli sur l'ancien rendu si les données de l'ordi ne sont pas prêtes.
+function _coachMobAujourdhui(ancien) { try { if (_coachDesk) return '<div class="cs-mob">' + _coachDeskAujourdhui() + '</div>'; } catch (e) { console.warn('[coach mobile]', e); } return ancien; }
+// Dernière activité (muscu + cardio), même texte sur ordi (tableau Équipe) et mobile (cartes). E5.
+function _coachDernAct(e, dd) {
+  var ab = _coachAbsence(dd, e.m), dern = '—';
+  if (ab.connue) {
+    var j = function (x) { var n = Math.floor(x); return n <= 0 ? 'aujourd\'hui' : n === 1 ? 'hier' : 'il y a ' + n + ' j'; };
+    dern = (ab.autreRecente && ab.muscuConnue && Math.floor(ab.muscuAge) !== Math.floor(ab.actAge)) ? 'muscu ' + Math.floor(ab.muscuAge) + ' j · <b>cardio ' + Math.floor(ab.actAge) + ' j</b>'
+      : (!ab.muscuConnue ? 'cardio ' : '') + j(ab.actAge);
+  }
+  return dern;
 }
 var _coachDeskCat = 'all';   // filtre Équipe bureau (E5) : all / surveiller / prets / inactifs
 function _coachDeskEquipe() {
@@ -8396,19 +8416,16 @@ function _coachDeskEquipe() {
     var tc = et.color === '#00a854' ? '#00a854' : et.color === COACH_PRIO_BAD ? '#c0303a' : et.color === '#63b3ed' ? '#63b3ed' : '#b86e00';
     var etat = '<span class="cs-chip" style="background:' + et.color + '1a;color:' + tc + '">' + escapeHtml(et.court) + '</span>';
     var ass = (e.seancesSem != null && e.regPrevues) ? (e.seancesSem + '/' + e.regPrevues) : '—';
-    // E5 : dernière activité = muscu + cardio (comme l'accueil)
-    var ab = _coachAbsence(dd, e.m), dern = '—';
-    if (ab.connue) {
-      var j = function (x) { var n = Math.floor(x); return n <= 0 ? 'aujourd\'hui' : n === 1 ? 'hier' : 'il y a ' + n + ' j'; };
-      dern = (ab.autreRecente && ab.muscuConnue && Math.floor(ab.muscuAge) !== Math.floor(ab.actAge)) ? 'muscu ' + Math.floor(ab.muscuAge) + ' j · <b>cardio ' + Math.floor(ab.actAge) + ' j</b>'
-        : (!ab.muscuConnue ? 'cardio ' : '') + j(ab.actAge);
-    }
+    var dern = _coachDernAct(e, dd);   // E5 : dernière activité = muscu + cardio (même calcul ordi / mobile)
     var plan = _coachPlanXN(dd) || '—';
-    return '<tr class="cs-trow" data-cat="' + et.cat + '" data-nom="' + escapeHtml(String(e.a.nom || '').toLowerCase()) + '" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><td><div class="cs-tn">' + (e.enPause ? '<span class="cs-tav"></span>' : _coachAv(e.a, 'var(--surface2)', 'var(--text)', 30)) + '<b>' + escapeHtml(e.a.nom) + '</b></div></td><td>' + niv + '</td><td>' + etat + '</td><td>' + dern + '</td><td>' + ass + '</td><td>' + plan + '</td></tr>';
+    // 06/11 : mêmes infos que les cartes mobiles (RPE 7 j, tonnage + variation).
+    var rpe7 = e.rpe != null ? String(e.rpe).replace('.', ',') : '—';
+    var _tt7 = _coachTonTxt(e.tonnage), ton7 = _tt7 ? '<span style="color:' + _tt7.color + ';white-space:nowrap">' + _tt7.txt + '</span>' : '—';
+    return '<tr class="cs-trow" data-cat="' + et.cat + '" data-nom="' + escapeHtml(String(e.a.nom || '').toLowerCase()) + '" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><td><div class="cs-tn">' + (e.enPause ? '<span class="cs-tav"></span>' : _coachAv(e.a, 'var(--surface2)', 'var(--text)', 30)) + '<b>' + escapeHtml(e.a.nom) + '</b></div></td><td>' + niv + '</td><td>' + etat + '</td><td>' + dern + '</td><td>' + ass + '</td><td>' + plan + '</td><td>' + rpe7 + '</td><td>' + ton7 + '</td></tr>';
   }).join('');
   var chip = function (k, l) { return '<button class="coach-eq-chip' + (_coachDeskCat === k ? ' on' : '') + '" onclick="coachDeskSetCat(\'' + k + '\')">' + l + ' <b>' + nb[k] + '</b></button>'; };
   return '<div class="coach-eq-chips" style="margin:0 0 12px">' + chip('all', 'Tous') + chip('surveiller', 'À surveiller') + chip('prets', 'Prêts') + chip('inactifs', 'Inactifs') + '</div>'
-    + '<table class="cs-table" data-tour="co-equipe-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Dernière activité</th><th>Assiduité</th><th>Plan</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
+    + '<table class="cs-table" data-tour="co-equipe-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Dernière activité</th><th>Assiduité</th><th>Plan</th><th>RPE 7 j</th><th>Tonnage</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
 }
 function coachDeskSetCat(k) {
   _coachDeskCat = k;
@@ -8545,7 +8562,7 @@ function _aeHtml(M, desk) {
   var chip = function (t, c) { return '<span class="ae-chip ' + c + '">' + t + '</span>'; };
   var btn = function (t, js) { return '<button class="ae-btn" onclick="event.stopPropagation();' + js + '">' + t + '</button>'; };
   var av = function (r) { return _coachAv(r.e.a, 'var(--surface2)', 'var(--text)', 30); };
-  var row = function (r, mid, right, tab) { return '<div class="ae-row" onclick="aeOuvrir(\'' + r.i + '\'' + (tab ? ',\'' + tab + '\'' : '') + ')">' + av(r) + '<b class="ae-nm">' + esc(r.nom) + '</b><div class="ae-mid">' + mid + '</div>' + (right || '') + '</div>'; };
+  var row = function (r, mid, right, tab) { return '<div class="ae-row" onclick="aeOuvrir(\'' + r.i + '\'' + (tab ? ',\'' + tab + '\'' : '') + ')">' + av(r) + '<b class="ae-nm">' + esc(r.nom) + '</b><div class="ae-mid">' + mid + '</div>' + (right ? '<span class="ae-right">' + right + '</span>' : '') + '</div>'; };
   var card = function (titre, sous, body) { return '<div class="ae-card"><div class="ae-ct"><span>' + titre + '</span>' + (sous ? '<i>' + sous + '</i>' : '') + '</div>' + body + '</div>'; };
   var vide = function (t) { return '<div class="ae-vide">' + t + '</div>'; };
   var act = A.filter(function (r) { return !r.pause; });
