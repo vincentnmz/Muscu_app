@@ -111,3 +111,10 @@ Puis onboarding (où la morpho sera mise en avant).
 Essai à blanc d'abord (transaction annulée), puis exécution : 120 exercices (91 + 29), matériel rempli partout, 0 séance / 0 ligne de programme hors catalogue, « Leg curl » → 29 assis (Alizé 18 + Vincent août 11) / 16 allongé, 16 exercices avec Fessiers en secondaire, John rattaché au catalogue (« Gainage » supprimé). Script : `supabase/migration-catalogue-2026-11.sql` (+ `scripts/catalogue_migration.py`).
 Effets vérifiés sur copie (Vincent) : ischios 6 → 4 séries cette semaine, fessiers 0 → 2, dos 15,3 → 12,5/sem (tirage trapèze → Trapèzes), records 5 → 4 (leg curl allongé 37,5 kg n'est plus un record : 40 kg le 18/09), −40 points.
 Reste : libellés de muscles en minuscules dans certains textes d'analyse (« epaule ») ; disciplines = champs prêts, écrans à maquetter.
+
+## Point 4 — Montre codée (06/11, maquette validée : 2 jours, « ancien » gardé)
+- Parcours guidé « Connecter ma montre » : marque → aide (générique sauf Garmin, données citées d'après Garmin) → autorisations Health Connect → vérification réelle des 7 derniers jours (pas / sommeil / FC repos / séances trouvés ou « aucune donnée »).
+- Dernière synchro gardée sur le serveur (`indicateurs` cle `montre_sync`, heure + marque) à chaque `saveSante` ; renvoyée par `getAppData` (`montre_sync`).
+- « Ma montre » (Forme) : marque, « Synchronisée aujourd'hui à 14:32 », bouton Actualiser (synchro immédiate).
+- Plus de 2 jours sans nouvelle donnée : « Montre · ancien » + « Pas de nouvelle donnée depuis N jours (dernière le jj/mm) » (Aujourd'hui, coach « État & récup » « · ancien (N j) », carte montre coach). Les valeurs restent affichées.
+- Reste : chemins de menu exacts par marque à vérifier (aide générique en attendant). Pas de Strava. iPhone : message + import de fichiers.

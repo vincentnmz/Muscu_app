@@ -2710,6 +2710,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     else if (r.cle === 'pas') santeMap[d].pas = v
   }
   const sante_historique = Object.values(santeMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+  // Montre 06/11 : heure + marque de la dernière synchro réussie (saveSante) → « Synchronisée à 14:32 » athlète et coach.
+  let montre_sync: any = null
+  try {
+    const { data: ms } = await sb().from('indicateurs').select('valeur,unite').eq('athlete_id', athleteId).eq('cle', 'montre_sync').order('id', { ascending: false }).limit(1)
+    if (ms && ms[0]) montre_sync = { at: String(ms[0].valeur || ''), marque: String(ms[0].unite || '') }
+  } catch (_) {}
 
   // Historique nutrition (saisie manuelle / Health Connect) : 1 objet par jour
   // {date, kcal, prot} agrégé depuis les lignes indicateurs seance_id 'nutri_<date>'.
@@ -2966,6 +2972,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY'), ia_credits: await _iaCreditsRestants(athleteId) },
     pas_quotidiens,
     sante_historique,
+    montre_sync,
     nutri_historique,
     mensurations,
     suivi_photos,
@@ -6620,6 +6627,12 @@ async function handleSaveSante(body: any): Promise<Response> {
     const { error } = await sb().from('indicateurs').insert(rows)
     if (error) return jsonResp({ success: false, error: error.message })
   }
+  // Montre 06/11 : dernière synchro réussie (heure serveur) + marque choisie dans le parcours guidé.
+  try {
+    const marque = String(body.marque || '').replace(/[^\p{L}\p{N} /·.-]/gu, '').slice(0, 40)
+    await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('cle', 'montre_sync')
+    await sb().from('indicateurs').insert({ date: fmtYMD(new Date()), athlete_id, seance_id: 'montre_sync', cle: 'montre_sync', valeur: new Date().toISOString(), unite: marque, source: src })
+  } catch (_) {}
   return jsonResp({ success: true, saved: rows.length })
 }
 

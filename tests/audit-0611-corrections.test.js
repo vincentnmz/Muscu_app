@@ -71,4 +71,20 @@ eq(sb._cdFmtKg(1.25) === '1,25' && sb._cdFmtKg(7.5) === '7,5' && sb._cdFmtKg(80)
   const C = sb3._rattCandidats({ programme, seances_detail: base }, '2026-11-05', ['A', 'B', 'E', 'F', 'X', 'Y'], 'Libre');
   eq(C[0].sid === 'pec epaule 2' && C[0].memeJour && !C.some((c) => c.sid === 'pec epaule'), '7 : fin de séance jeudi → pec epaule 2 proposée (prévue ce jour), pec epaule (faite) absente', C);
 }
+
+// 8 — Montre : fraîcheur (> 2 jours sans donnée = « ancien ») et texte de dernière synchro.
+{
+  const sb4 = { Math, Number, String, Object, Array, JSON, Date, console };
+  vm.createContext(sb4); vm.runInContext(['_montreEtat', '_montreDdmm', '_montreSyncTxt'].map(pick).join('\n'), sb4);
+  const now = new Date(2026, 10, 6, 15, 0).getTime();
+  const d = (sh, ms) => ({ sante_historique: sh, montre_sync: ms });
+  let E = sb4._montreEtat(d([{ date: '2026-11-06', pas: 6840 }, { date: '2026-11-05', sommeil_min: 400 }], { at: new Date(2026, 10, 6, 14, 32).toISOString(), marque: 'Garmin' }), now);
+  eq(!E.ancien && E.jours === 0 && sb4._montreSyncTxt(E, now) === "Synchronisée aujourd'hui à 14:32 · Garmin", '8 : synchro du jour', [E, sb4._montreSyncTxt(E, now)]);
+  E = sb4._montreEtat(d([{ date: '2026-11-04', pas: 5000 }], null), now);
+  eq(!E.ancien && E.jours === 2, '8 : 2 jours = pas encore ancien', E);
+  E = sb4._montreEtat(d([{ date: '2026-11-03', fc_repos: 60 }, { date: '2026-11-05', pas: 0 }], { at: new Date(2026, 10, 6, 9, 0).toISOString() }), now);
+  eq(E.ancien && E.jours === 3 && /depuis 3 jours \(dernière le 03\/11\)/.test(sb4._montreSyncTxt(E, now)), '8 : 3 jours sans donnée (un jour à 0 pas ne compte pas) → ancien, même si la synchro est récente', [E, sb4._montreSyncTxt(E, now)]);
+  E = sb4._montreEtat(d([], null), now);
+  eq(!E.ancien && E.jours === null && sb4._montreSyncTxt(E, now) === '', '8 : pas de montre → rien', E);
+}
 console.log('-'.repeat(70)); console.log('audit 06/11 corrections : ' + ok + ' OK / ' + ko + ' KO'); if (ko) process.exitCode = 1;

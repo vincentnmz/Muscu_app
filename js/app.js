@@ -6479,9 +6479,10 @@ function renderCoachCoupDoeil(data) {
     }
     // Point 5 (31/10) : montre — sommeil réel 7 j et FC de repos vs sa normale (rien sans montre).
     try {
-      var _mo = _montreNormale(data);
-      if (_mo && _mo.sommeil) etat += _cdCoupRow('var(--good)', '●', '<b>Sommeil (montre)</b> ' + _fmtHmin(_mo.sommeil.moy) + ' / nuit <span class="cdcp-sub">(7 j, ' + _mo.sommeil.n + ' nuit' + (_mo.sommeil.n > 1 ? 's' : '') + ')</span>' + (_mo.sommeil.base != null ? ' · normale ' + _fmtHmin(_mo.sommeil.base) : ''));
-      if (_mo && _mo.fc) { var _f = _mo.fc; etat += _cdCoupRow(_f.degrade ? 'var(--warn)' : 'var(--good)', '●', '<b>FC repos (montre)</b> ' + _fmt1(_f.recente) + ' bpm <span class="cdcp-sub">(3 j)</span>' + (_f.evaluable ? ' · ' + (_f.degrade ? '<b>au-dessus de sa normale</b>' : 'normale') + ' ' + _fmt1(_f.normale) : ' <span class="cdcp-sub">(' + ((_f.mesuresBase || 0) < 14 ? 'normale après 14 mesures' : 'normale ' + _fmt1(_f.normale) + ' · comparaison dès 2 mesures sur 3 j') + ')</span>')); }
+      var _mo = _montreNormale(data), _moE = _montreEtat(data);
+      var _anc = _moE.ancien ? ' <span style="color:#B45F00;font-weight:800">· ancien (' + _moE.jours + ' j)</span>' : '';
+      if (_mo && _mo.sommeil) etat += _cdCoupRow('var(--good)', '●', '<b>Sommeil (montre)</b> ' + _fmtHmin(_mo.sommeil.moy) + ' / nuit <span class="cdcp-sub">(7 j, ' + _mo.sommeil.n + ' nuit' + (_mo.sommeil.n > 1 ? 's' : '') + ')</span>' + (_mo.sommeil.base != null ? ' · normale ' + _fmtHmin(_mo.sommeil.base) : '') + _anc);
+      if (_mo && _mo.fc) { var _f = _mo.fc; etat += _cdCoupRow(_f.degrade ? 'var(--warn)' : 'var(--good)', '●', '<b>FC repos (montre)</b> ' + _fmt1(_f.recente) + ' bpm <span class="cdcp-sub">(3 j)</span>' + _anc + (_f.evaluable ? ' · ' + (_f.degrade ? '<b>au-dessus de sa normale</b>' : 'normale') + ' ' + _fmt1(_f.normale) : ' <span class="cdcp-sub">(' + ((_f.mesuresBase || 0) < 14 ? 'normale après 14 mesures' : 'normale ' + _fmt1(_f.normale) + ' · comparaison dès 2 mesures sur 3 j') + ')</span>')); }
     } catch (e) {}
     if (pasAvg != null) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + ' / jour <span class="cdcp-sub">(montre, 7 j)</span>');   // F5 : fait seul
     // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
@@ -18455,6 +18456,112 @@ function _beNormaleTxt(r, poss) {
 }
 // Montre (point 5) : sommeil réel 7 j vs les 4 semaines d'avant ; FC de repos = objet du
 // backend (moyenne 3 j vs normale, seuil +5 bpm validé). Rien si aucune montre connectée.
+// ── Montre 06/11 (maquette validée) : fraîcheur des données + dernière synchro (athlète et coach) ──
+// Données « anciennes » = aucune nouvelle donnée montre depuis plus de 2 jours : on les garde, avec la mention
+// « ancien » (décision porteur). Dernière synchro = heure serveur de la dernière synchro réussie (saveSante).
+function _montreEtat(data, nowT) {
+  nowT = nowT || Date.now();
+  var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0);
+  var der = null; ((data && data.sante_historique) || []).forEach(function (x) { if (x && x.date && (x.pas > 0 || x.sommeil_min > 0 || x.fc_repos > 0) && (!der || x.date > der)) der = x.date; });
+  var ms = data && data.montre_sync, at = ms && ms.at ? new Date(ms.at) : null; if (at && isNaN(at.getTime())) at = null;
+  var jours = der ? Math.round((t0.getTime() - new Date(der + 'T00:00:00').getTime()) / 864e5) : null;
+  return { derniere: der, jours: jours, ancien: jours != null && jours > 2, at: at, marque: (ms && ms.marque) || '' };
+}
+function _montreDdmm(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : String(iso || ''); }
+function _montreSyncTxt(E, nowT) {
+  if (!E) return '';
+  var now = new Date(nowT || Date.now());
+  if (E.ancien) return 'Pas de nouvelle donnée depuis ' + E.jours + ' jours (dernière le ' + _montreDdmm(E.derniere) + ')';
+  if (!E.at) return E.derniere ? 'Dernière donnée le ' + _montreDdmm(E.derniere) : '';
+  var hm = String(E.at.getHours()).padStart(2, '0') + ':' + String(E.at.getMinutes()).padStart(2, '0');
+  var j = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(E.at.getFullYear(), E.at.getMonth(), E.at.getDate())) / 864e5);
+  return 'Synchronisée ' + (j === 0 ? 'aujourd\'hui' : j === 1 ? 'hier' : 'le ' + String(E.at.getDate()).padStart(2, '0') + '/' + String(E.at.getMonth() + 1).padStart(2, '0')) + ' à ' + hm + (E.marque ? ' · ' + E.marque : '');
+}
+function _montreSyncHtml(data, avecBouton) {
+  var E = _montreEtat(data), t = _montreSyncTxt(E); if (!t) return '';
+  return '<div class="montre-sync' + (E.ancien ? ' old' : '') + '"><span>' + (E.ancien ? '' : '✓ ') + escapeHtml(t) + '</span>'
+    + (avecBouton ? '<button type="button" class="montre-ref" onclick="actualiserMontre(this)">Actualiser</button>' : '') + '</div>'
+    + (E.ancien && avecBouton ? '<div class="montre-sync-aide">Ouvre l\'appli de ta montre pour la synchroniser, puis touche Actualiser.</div>' : '');
+}
+function _montreMarque() { try { return localStorage.getItem('nvz_montre_marque_' + (athlete && athlete.athlete_id)) || ''; } catch (e) { return ''; } }
+async function actualiserMontre(btn) {
+  var H = (typeof _hcPlugin === 'function') ? _hcPlugin() : null;
+  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) { showToast('Synchro montre : dans l\'appli Android seulement'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  await _syncSanteMontre(H, true);
+  try { if (typeof chargerAppData === 'function') await chargerAppData(); } catch (e) {}
+  if (btn) { btn.disabled = false; btn.textContent = 'Actualiser'; }
+  showToast('✓ Montre synchronisée');
+}
+// Parcours guidé « Connecter ma montre » : marque → aide → autorisations Health Connect → vérification réelle (7 j).
+var _MONTRE_MARQUES = [
+  { k: 'Samsung', t: 'Samsung Galaxy Watch', app: 'Samsung Health' },
+  { k: 'Garmin', t: 'Garmin', app: 'Garmin Connect', note: 'Android 14 ou plus. Garmin envoie notamment : pas, sommeil, fréquence cardiaque, calories, poids.' },
+  { k: 'Google / Fitbit', t: 'Google Pixel Watch / Fitbit', app: 'Fitbit' },
+  { k: 'Polar / Suunto / Coros', t: 'Polar · Suunto · Coros', app: 'l\'appli de ta montre (Polar Flow, Suunto, Coros)' },
+  { k: 'Amazfit / Huawei / Withings', t: 'Amazfit · Huawei · Withings', app: 'l\'appli de ta montre (Zepp, Huawei Santé, Withings)' },
+  { k: 'Téléphone', t: 'Autre / pas de montre', app: '' }
+];
+var _cm = { etape: 1, marque: null, res: null };
+function ouvrirConnexionMontre() {
+  if (!athlete) return;
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  _cm = { etape: native ? 1 : 0, marque: _montreMarque() || null, res: null };
+  var ov = document.getElementById('_cm-ov'); if (!ov) { ov = document.createElement('div'); ov.id = '_cm-ov'; document.body.appendChild(ov); }
+  ov.className = 'cm-ov'; ov.onclick = function (e) { if (e.target === ov) fermerConnexionMontre(); };
+  _cmRender();
+}
+function fermerConnexionMontre() { var ov = document.getElementById('_cm-ov'); if (ov) ov.remove(); }
+function _cmChoisir(i) { _cm.marque = _MONTRE_MARQUES[i].k; try { localStorage.setItem('nvz_montre_marque_' + athlete.athlete_id, _cm.marque); } catch (e) {} _cm.etape = 2; _cmRender(); }
+function _cmRender() {
+  var ov = document.getElementById('_cm-ov'); if (!ov) return;
+  var esc = escapeHtml, e = _cm.etape, M = _MONTRE_MARQUES.filter(function (m) { return m.k === _cm.marque; })[0];
+  var bar = e >= 1 ? '<div class="cm-steps">' + [1, 2, 3, 4].map(function (i) { return '<b' + (i <= e ? ' class="on"' : '') + '></b>'; }).join('') + '</div>' : '';
+  var body = '';
+  if (e === 0) body = '<div class="cm-t">Connecter ta montre</div><p class="cm-p">La connexion de la montre se fait dans <b>l\'appli Android</b> (via Health Connect). Sur iPhone, ce n\'est pas encore possible : tu peux importer tes séances en fichier .FIT / .GPX / .TCX.</p><button class="cm-b" onclick="fermerConnexionMontre()">Fermer</button>';
+  else if (e === 1) body = '<div class="cm-t">Quelle montre as-tu ?</div><div class="cm-grid">' + _MONTRE_MARQUES.map(function (m, i) { return '<button class="cm-br' + (_cm.marque === m.k ? ' on' : '') + '" onclick="_cmChoisir(' + i + ')">' + esc(m.t) + (m.app ? '<small>via ' + esc(m.app) + '</small>' : '<small>le téléphone compte tes pas</small>') + '</button>'; }).join('') + '</div><p class="cm-p">Novalyz lit Health Connect : chaque marque y envoie ses données par sa propre appli.</p>';
+  else if (e === 2) body = '<div class="cm-t">' + esc(M ? M.t : 'Ta montre') + ' → Health Connect</div>'
+    + (M && M.app ? '<ol class="cm-ol"><li>Ouvre <b>' + esc(M.app) + '</b> sur ce téléphone.</li><li>Dans ses réglages, cherche <b>Health Connect</b> (ou « Connexions », « Partage de données ») et active le partage : pas, sommeil, fréquence cardiaque, séances.</li><li>Synchronise ta montre une fois dans cette appli.</li></ol>'
+      : '<p class="cm-p">Sans montre, ton téléphone peut compter tes pas s\'il les envoie à Health Connect (souvent via Google Fit ou l\'appli Santé du téléphone).</p>')
+    + (M && M.note ? '<p class="cm-note">' + esc(M.note) + '</p>' : '')
+    + '<div class="cm-btns"><button class="cm-b" onclick="_cm.etape=1;_cmRender()">Retour</button><button class="cm-b p" onclick="_cm.etape=3;_cmRender()">C\'est fait</button></div>';
+  else if (e === 3) body = '<div class="cm-t">Autorise Novalyz à lire</div><p class="cm-p">Health Connect va s\'ouvrir : coche tout ce que Novalyz demande.</p>'
+    + '<div class="cm-chk"><div>Pas<span>ton activité</span></div><div>Sommeil<span>ta récupération</span></div><div>FC au repos<span>ta fatigue</span></div><div>Séances<span>ton cardio</span></div></div>'
+    + '<div class="cm-btns"><button class="cm-b" onclick="_cm.etape=2;_cmRender()">Retour</button><button class="cm-b p" id="cm-go" onclick="_cmAutoriser()">Ouvrir Health Connect</button></div>';
+  else if (e === 4) {
+    var R = _cm.res || {}, l = function (lab, n, unit) { return '<div>' + lab + '<span class="' + (n > 0 ? 'ok' : 'ko') + '">' + (n > 0 ? '✓ ' + n + ' ' + unit : 'aucune donnée') + '</span></div>'; };
+    var vide = !(R.pas > 0 || R.sommeil > 0 || R.fc > 0);
+    body = '<div class="cm-t">' + (vide ? 'Rien n\'est encore arrivé' : 'Ta montre est connectée') + '</div>'
+      + (R.err ? '<p class="cm-note">' + esc(R.err) + '</p>' : '<div class="cm-chk">' + l('Pas', R.pas, 'jours') + l('Sommeil', R.sommeil, 'nuits') + l('FC au repos', R.fc, 'jours') + l('Séances cardio', R.seances, 'séances') + '</div>')
+      + '<p class="cm-note">' + (vide ? 'Vérifie le partage avec Health Connect dans l\'appli de ta montre (étape 2), synchronise-la, puis réessaie.' : 'Ce qui affiche « aucune donnée » n\'est pas envoyé à Health Connect par ton appli (ou tu n\'en as pas eu ces 7 jours). Les séances peuvent aussi être importées en fichier .FIT / .GPX / .TCX.') + '</p>'
+      + '<div class="cm-btns">' + (vide ? '<button class="cm-b" onclick="_cm.etape=2;_cmRender()">Revoir l\'étape 2</button>' : '<button class="cm-b" onclick="fermerConnexionMontre();ouvrirImportMontre()">Importer des séances</button>') + '<button class="cm-b p" onclick="_cmTerminer()">Terminer</button></div>';
+  }
+  ov.innerHTML = '<div class="cm-sheet" onclick="event.stopPropagation()"><div class="cm-hd">' + bar + '<button class="cm-x" onclick="fermerConnexionMontre()" aria-label="Fermer">✕</button></div>' + body + '</div>';
+}
+async function _cmAutoriser() {
+  var b = document.getElementById('cm-go'); if (b) { b.disabled = true; b.textContent = '…'; }
+  var H = _hcPlugin(), R = { pas: 0, sommeil: 0, fc: 0, seances: 0 };
+  try {
+    var av = await H.isHealthAvailable();
+    if (!av || !av.available) { R.err = 'Health Connect n\'est pas disponible sur ce téléphone (installe-le depuis le Play Store, puis réessaie).'; }
+    else {
+      try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+      _hcMarkConnected();
+      var now = new Date(), s7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), e1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); R.pas = ((a && a.aggregatedData) || []).filter(function (x) { return (x.value || 0) > 0; }).length; } catch (e) {}
+      try { var sl = await H.querySleep({ startDate: s7.toISOString(), endDate: e1.toISOString() }); R.sommeil = ((sl && sl.sessions) || []).length; } catch (e) {}
+      try { var r = await H.queryRestingHeartRate({ startDate: s7.toISOString(), endDate: e1.toISOString() }); var dj = {}; ((r && r.records) || []).forEach(function (x) { dj[_ymdLocal(new Date(x.timestamp))] = 1; }); R.fc = Object.keys(dj).length; } catch (e) {}
+      try { var w = await H.queryWorkouts({ startDate: s7.toISOString(), endDate: e1.toISOString(), includeHeartRate: false, includeRoute: false, includeSteps: false }); R.seances = ((w && w.workouts) || []).length; } catch (e) {}
+    }
+  } catch (e) { R.err = 'Connexion à Health Connect impossible pour le moment.'; }
+  _cm.res = R; _cm.etape = 4; _cmRender();
+}
+async function _cmTerminer() {
+  fermerConnexionMontre();
+  try { await _syncSanteMontre(_hcPlugin(), true); } catch (e) {}
+  try { if (typeof chargerAppData === 'function') await chargerAppData(); } catch (e) {}
+  try { renderEtatMontre(); } catch (e) {}
+}
 function _montreNormale(data, nowT) {
   nowT = nowT || Date.now();
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
@@ -18503,7 +18610,9 @@ function _normaleBloc(data, poss) {
           : 'normale ' + _fmt1(f.normale) + ' bpm · comparaison dès 2 mesures sur 3 jours (' + (f.mesures || 0) + ' pour l\'instant)') + '</span>';
       mh += line(fcol, '<b>FC au repos</b> ' + _fmt1(f.recente) + ' bpm' + (f.mesures > 1 ? ' <span style="color:var(--tj-subtle,var(--text-subtle))">(moy. ' + f.mesures + ' j)</span>' : ''), fsub);
     }
-    h += '<div style="margin-top:6px;padding:7px 9px;background:var(--tj-surface2,var(--surface2));border-radius:10px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle,var(--text-subtle));font-weight:800;margin-bottom:2px">Montre</div>' + mh + '</div>';
+    var _ME = _montreEtat(data), _mt = _montreSyncTxt(_ME);
+    h += '<div style="margin-top:6px;padding:7px 9px;background:var(--tj-surface2,var(--surface2));border-radius:10px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle,var(--text-subtle));font-weight:800;margin-bottom:2px">Montre' + (_ME.ancien ? ' · <span style="color:#B45F00">ancien</span>' : '') + '</div>' + mh
+      + (_mt ? '<div style="font-size:10.5px;margin-top:3px;color:' + (_ME.ancien ? '#B45F00' : 'var(--tj-subtle,var(--text-subtle))') + '">' + escapeHtml(_mt) + '</div>' : '') + '</div>';
   }
   return '<div style="margin:0 0 12px">' + h + '<div style="font-size:10.5px;color:var(--tj-subtle,var(--text-subtle));margin-top:4px;line-height:1.4">« ' + (poss === 'ta' ? 'Ta' : 'Sa') + ' normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).</div></div>';
 }
@@ -24155,7 +24264,7 @@ function renderCoachMontre(data) {
   var fcTxt = fcV != null ? (fcV + ' <small>bpm</small>') : '—';
   el.innerHTML = '<div class="cd-montre-top"><span class="ic">⌚</span><b>Ma montre</b><span class="per">moy. 7 j</span></div>'
     + '<div class="cd-montre-grid">' + cell('Pas', pasTxt) + cell('Sommeil', slpTxt) + cell('FC repos', fcTxt) + '</div>'
-    + '<div class="cd-montre-note">Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.</div>';
+    + '<div class="cd-montre-note">' + (function () { var t = _montreSyncTxt(_montreEtat(data)); return t ? escapeHtml(t) : 'Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.'; })() + '</div>';
   el.style.display = '';
 }
 
@@ -26765,7 +26874,7 @@ async function renderEtatMontre(attempt) {
     el.style.display = ''; el.style.padding = '14px 15px';
     el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Connecte ta montre</div>'
       + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Lie ta montre à Health Connect pour voir tes pas, ton sommeil et ta FC au repos sur ton compte.</div>'
-      + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>';
+      + '<button onclick="ouvrirConnexionMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>';
     if (sec) sec.style.display = 'none';
     return;
   }
@@ -26811,7 +26920,7 @@ async function renderEtatMontre(attempt) {
       el.style.display = ''; el.style.padding = '14px 15px';
       el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
         + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
-        + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
+        + '<button onclick="ouvrirConnexionMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
         + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
       return;
     }
@@ -26831,14 +26940,14 @@ async function renderEtatMontre(attempt) {
     };
     mini.style.display = '';
     mini.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 15px 6px;">'
-      + '<b style="font-size:13.5px;color:var(--text);">Ma montre</b>'
+      + '<b style="font-size:13.5px;color:var(--text);">Ma montre' + (_montreMarque() ? ' · ' + escapeHtml(_montreMarque()) : '') + '</b>'
       + '<button type="button" onclick="_etMontreToggle()" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;color:var(--text-muted);cursor:pointer;">Détails <svg id="etm-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg></button>'
       + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);">'
       + cell('Pas', pasTxt, '')
       + cell('Sommeil', '<span id="etm-mini-sleep">…</span>', 'border-left:1px solid var(--border);')
       + cell('FC repos', '<span id="etm-mini-hr">…</span>', 'border-left:1px solid var(--border);')
-      + '</div>';
+      + '</div>' + '<div style="padding:8px 15px 12px;border-top:1px solid var(--border)">' + _montreSyncHtml(dernierAppData, true) + '</div>';
   }
   el.style.display = 'none'; el.style.padding = '2px 15px 14px';   // détails repliés par défaut
 
@@ -27029,14 +27138,14 @@ async function _etFillRestingHr(H, now) {
 // (localStorage). Permet les tendances + la vue coach (données non stockées avant).
 var _santeReloaded = false;
 var _santeSyncing = false;
-async function _syncSanteMontre(H) {
+async function _syncSanteMontre(H, force) {
   if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
   if (!_hcConnected(athlete)) return;   // seul un compte ayant lié la montre pousse ses pas au serveur (isolation entre comptes)
   var k = 'nvz_sante_sync3_' + athlete.athlete_id;   // v3 = throttle court (≈ à chaque ouverture)
   // Avant : 1×/6 h → les pas du jour n'arrivaient sur le serveur (donc sur le web)
   // qu'avec un gros décalage. Maintenant 15 min : à chaque ouverture/retour au
   // premier plan de l'app native, les pas récents sont poussés quasi aussitôt.
-  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 15 * 60 * 1000) return; } catch (e) {}
+  try { if (!force && Date.now() - (+(localStorage.getItem(k) || 0)) < 15 * 60 * 1000) return; } catch (e) {}
   _santeSyncing = true;
   try {
     var now = new Date();
@@ -27062,7 +27171,7 @@ async function _syncSanteMontre(H) {
     try { var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() }); ((r && r.records) || []).forEach(function (x) { ensure(_ymdLocal(new Date(x.timestamp))).fc_repos = Math.round(x.bpm || 0); }); } catch (e) {}
     var entries = Object.keys(byDate).map(function (d) { return byDate[d]; }).filter(function (e) { return e.sommeil_min != null || e.fc_repos != null || e.pas != null; });
     if (entries.length) {
-      await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSante', athlete_id: athlete.athlete_id, entries: entries }) });
+      await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSante', athlete_id: athlete.athlete_id, entries: entries, marque: _montreMarque() }) });
       try { localStorage.setItem(k, String(Date.now())); } catch (e) {}
       // Sommeil / FC repos de la montre → état du jour et lecture à jour tout de suite
       // (avant : visibles seulement au prochain chargement). Une fois par session (anti-boucle).
