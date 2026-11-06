@@ -52,15 +52,22 @@ function _lv3MuscleExo(data, exo) {
 }
 function _lv3Volume(data, muscle, nowT) {
   var dm = (data && data.historique && data.historique.daily_muscu) || {}, k = _musKey(muscle), fin = _lv3Ymd(new Date(nowT)), deb = _lv3Ymd(new Date(nowT - 28 * 864e5));
-  var s = 0, j = 0;
+  var s = 0, j = 0, prem = null;
   Object.keys(dm).forEach(function (d) {
-    if (d < deb || d >= fin) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d >= fin) return;
+    if (prem == null || d < prem) prem = d;
+    if (d < deb) return;
     var spm = (dm[d] && dm[d].spm) || {}, v = 0;
     Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) v += _lv3Num(spm[mm]); });
     if (v > 0) { s += v; j++; }
   });
+  // Audit 06/11 : on divise par les semaines RÉELLEMENT couvertes (1re séance → fin, max 4) ; avant, un compte de
+  // 5 jours (18 séries d'épaule) affichait « 4,5 séries/sem, 0,5×/sem ». recul < 2 sem → pas de conclusion (appelants).
+  var debEff = (prem && prem > deb) ? prem : deb;
+  var sem = prem ? Math.min(4, Math.max(0, (_lv3T(fin) - _lv3T(debEff)) / 864e5 / 7)) : 0;   // aucune séance avant → aucun recul
+  var div = Math.max(1, sem);
   var cible = ((data && data.volume_obti) || []).filter(function (o) { return o && _musKey(o.muscle) === k; })[0] || null;
-  return { parSem: Math.round(s / 4 * 10) / 10, freq: Math.round(j / 4 * 10) / 10, min: cible ? _lv3Num(cible.series_min) : null, opt: cible ? _lv3Num(cible.series_opt) : null, prio: !!(cible && cible.prio) };
+  return { parSem: Math.round(s / div * 10) / 10, freq: Math.round(j / div * 10) / 10, recul: Math.round(sem * 10) / 10, min: cible ? _lv3Num(cible.series_min) : null, opt: cible ? _lv3Num(cible.series_opt) : null, prio: !!(cible && cible.prio) };
 }
 
 // ── B. Diagnostic ─────────────────────────────────────────────────────────────
@@ -78,9 +85,13 @@ function _lv3Diag(data, exo, kind, nowT) {
   var rpeMax = function (p) { var v = (p.series || []).map(function (s) { return _lv3Num(s.rpe); }).filter(function (x) { return x > 0; }); return v.length ? Math.max.apply(null, v) : null; };
   var rpeMoy = function (p) { var v = (p.series || []).filter(function (s) { return _lv3Num(s.charge) === _lv3Num(p.charge); }).map(function (s) { return _lv3Num(s.rpe); }).filter(function (x) { return x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
   var p0 = pts[0], p1 = pts[1], c0 = _lv3Num(p0.charge), r0 = _lv3Num(p0.reps);
-  var muscle = _lv3MuscleExo(data, exo), V = muscle ? _lv3Volume(data, muscle, nowT + 864e5) : null;
+  // Audit 06/11 : même fenêtre que le Résumé (plan, « Rien à changer ») et Tendances = 4 semaines TERMINÉES (avant le
+  // lundi de la semaine en cours) ; avant : 28 derniers jours → 13,8 au Résumé, 15,8 dans « Pourquoi ça bloque ».
+  // Moins de 2 semaines de recul → volume et fréquence non jugés.
+  var muscle = _lv3MuscleExo(data, exo), V = muscle ? _lv3Volume(data, muscle, _lv3Lundi(nowT + 1).getTime()) : null;
+  if (V && V.recul < 2) V = null;
   var pas = (typeof _petitPas === 'function' && _petitPas(exo)) || 2.5;
-  var checks = [], cause = null, levier = '', action = null;
+  var checks = [], cause = null, levier = '', action = null, avant = null;
   var kg = function (x) { return _cdFmtKg(x); };
   var nom = (muscle || '').toLowerCase();
 
@@ -113,7 +124,7 @@ function _lv3Diag(data, exo, kind, nowT) {
       if (!cause) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
         cause = 'volume'; levier = '+' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo + ' (' + _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem).';
-        action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, parSem: V.parSem, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
+        action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, parSem: V.parSem, recul: V.recul, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
       }
     } else checks.push({ s: 'ok', t: 'Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem — pas en cause' });
   }
@@ -185,6 +196,7 @@ function _lv3Diag(data, exo, kind, nowT) {
         if (a0 - aR >= 3 && tNow <= tBest) {
           var cl = kg(_lv3Num(l0[0].charge));
           checks.push({ s: 'ko', t: '<b>Possible : ta série à ' + cl + ' kg est passée de ' + aR + ' à ' + a0 + ' reps</b> pendant que tes séries à ' + kg(c0) + ' kg ' + (tNow < tBest ? 'sont redescendues de ' + tBest + ' à ' + tNow : 'stagnent à ' + tNow) });
+          avant = { charge: _lv3Num(l0[0].charge), reps: aR };
           if (!cause) { cause = 'avant'; levier = 'garde ta série à ' + cl + ' kg au niveau d\'avant (≈ ' + aR + ' reps, sans aller au bout) pour arriver plus frais sur ' + kg(c0) + ' kg.'; }
           else levier += ' Et garde ta série à ' + cl + ' kg au niveau d\'avant (≈ ' + aR + ' reps, sans aller au bout).';
         }
@@ -212,7 +224,7 @@ function _lv3Diag(data, exo, kind, nowT) {
       : 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.';
   var n = pts.filter(function (p) { return (nowT - _lv3T(p.date)) / 864e5 <= 42; }).length;
   var sem = Math.max(1, Math.round((_lv3T(pts[0].date) - _lv3T(pts[Math.min(pts.length, n) - 1].date)) / 864e5 / 7));
-  return { exo: exo, kind: kind, checks: checks, cause: cause, pourquoi: pourquoi, levier: levier, action: action, n: n, sem: sem, rmin: rmin, rmax: rmax };
+  return { exo: exo, kind: kind, checks: checks, cause: cause, pourquoi: pourquoi, levier: levier, action: action, n: n, sem: sem, rmin: rmin, rmax: rmax, avant: avant };
 }
 // Exercices à diagnostiquer (même classement que l'app + effort à charge égale du moteur).
 function _lv3Diags(data, nowT) {
@@ -269,9 +281,9 @@ function _lv3Plan(data, nowT) {
     Object.keys(musProg).forEach(function (k) {
       if (acts.length >= 3 || vuMus[k]) return;
       var V = _lv3Volume(D, musProg[k].m, lundi.getTime());
-      if (V.min && V.parSem > 0 && V.parSem < V.min) {
+      if (V.recul >= 2 && V.min && V.parSem > 0 && V.parSem < V.min) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
-        push({ exo: musProg[k].exo, type: 'series', muscle: musProg[k].m, min: V.min, add: add, parSem: V.parSem, titre: (V.prio ? '★ ' : '') + musProg[k].m + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + musProg[k].exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') });
+        push({ exo: musProg[k].exo, type: 'series', muscle: musProg[k].m, min: V.min, add: add, parSem: V.parSem, recul: V.recul, titre: (V.prio ? '★ ' : '') + musProg[k].m + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + musProg[k].exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') });
       }
     });
   } catch (_) {}
@@ -295,7 +307,7 @@ function _lv3Plan(data, nowT) {
     var seen = {};
     ((data.programme) || []).forEach(function (l) {
       if (!l || l.type === 'cardio') return; var m = _lv3MuscleExo(data, l.exercice), k = _musKey(m); if (!m || seen[k] || vuMus[k]) return; seen[k] = 1;
-      var V = _lv3Volume(D, m, lundi.getTime()); if (V.min && V.parSem >= V.min && (!V.opt || V.parSem <= V.opt * 1.5)) ok.push(m.toLowerCase() + ' ' + _lv3Fmt(V.parSem));
+      var V = _lv3Volume(D, m, lundi.getTime()); if (V.recul >= 2 && V.min && V.parSem >= V.min && (!V.opt || V.parSem <= V.opt * 1.5)) ok.push(m.toLowerCase() + ' ' + _lv3Fmt(V.parSem));
     });
   } catch (_) {}
   // Fait cette semaine ? (séances depuis lundi, données réelles)
@@ -312,7 +324,7 @@ function _lv3Plan(data, nowT) {
       var _mu = String(a.muscle || '');
       a.titre = (String(a.titre || '').indexOf('★') === 0 ? '★ ' : '') + _mu + ' : ' + a.min + ' séries cette semaine';
       a.progres = _lv3Fmt(tot) + ' / ' + a.min;
-      a.raison = (a.parSem != null ? 'Moyenne ' + _lv3Fmt(a.parSem) + ' séries/sem sur 4 semaines, ton minimum ' + a.min + '. ' : '')
+      a.raison = (a.parSem != null ? 'Moyenne ' + _lv3Fmt(a.parSem) + ' séries/sem sur ' + (a.recul && a.recul < 4 ? _lv3Fmt(Math.round(a.recul)) : '4') + ' semaines, ton minimum ' + a.min + '. ' : '')
         + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _mu.toLowerCase() + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + a.exo + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';
     }
   });

@@ -85,3 +85,12 @@ Deux variantes, rejouées sans rien écrire en base :
 6. À discuter (pas faux) : « +7 » dans la liste des progrès, « −62 % de fraîcheur », ancienneté de la pesée, libellé « RPE » de la note du bilan dans l'Historique, verdict « Sur la bonne voie » à 3 séances, séances Libre dans « Ma semaine ».
 
 Non couvert à ce stade : écran de saisie rendu, fiche coach (textes), clic de tous les écrans ordi et mobile.
+
+## 4. Corrections faites (06/11, validées par le porteur)
+1. **Exercice bloqué** : nouveau mode `bloque` dans `_progDecision`. Plus de « +1 rep » : charges et reps gardées, et la série d'avant est ramenée au niveau du diagnostic. Élévation latérale → cibles 5 × 16 · 7,5 × 10 · 7,5 × 10, texte « pas de +1 rep forcé… ta série à 5 kg revient à ≈ 16 reps ». Même calcul pour la saisie, Aujourd'hui et Évolution. Les exercices non bloqués ne changent pas (vérifié : Arrière épaule 7,5 × 11 → 12).
+2. **Volume / fréquence** (`_lv3Volume`) : on divise par les semaines réellement couvertes (max 4). Moins de 2 semaines de recul → pas de conclusion. Le diagnostic prend la même période que le Résumé et Tendances (4 semaines terminées) : épaule 13,8 et 1,5× partout. Nouveau compte : la ligne « volume 4,5/sem, 0,5×/sem » a disparu.
+3. **« Mets de l'intensité »** (`index.ts`) : seulement si le RPE moyen des séries sur 28 jours est < 8, chiffre cité. Vérifié : absent pour Vincent (8,4), présent à RPE 7.
+4. « 3 bloqués » → 2 nommés + « +1 ». « +1,3 kg » → « +1,25 kg » (`_cdFmtKg` garde les quarts de kilo).
+5. **Tendances ▸ Exercices en progrès** (question du porteur) : en vue Mois, un point = une semaine ; début novembre = 1 seule semaine → courbe vide avec le message faux « dès 2 séances ». Maintenant : « Sur cette semaine : 5 exercices en progrès sur 17 exercices réalisés… La courbe apparaît à partir de 2 semaines ».
+
+Tests : `tests/audit-0611-corrections.test.js` (9 cas), suite complète 82/82. Captures ordi et mobile contrôlées. `index.ts` à redéployer pour le point 3.

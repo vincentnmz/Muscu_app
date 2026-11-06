@@ -2174,7 +2174,10 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     // 3) Leviers d'AIDE transverses (toujours utiles, non chiffrés → priorité info).
     //    Philosophie : on ne change PAS d'exercice — on progresse par l'intensité, la
     //    surcharge progressive, la récupération et la nutrition (demande porteur).
-    pushReco(`Mets de l'intensité : tes dernières séries doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
+    // Audit 06/11 : seulement si les séries sont loin de l'échec (RPE moyen 28 j < 8) — sinon la reco contredit
+    // l'écran (« chaque série va près de l'échec ») pour quelqu'un qui pousse déjà à RPE 8,6.
+    const rpeMoy28 = cmp.rpe && cmp.rpe.j28 != null ? Number(cmp.rpe.j28) : null
+    if (rpeMoy28 != null && rpeMoy28 > 0 && rpeMoy28 < 8) pushReco(`Mets de l'intensité : tes séries finissent en moyenne à RPE ${String(Math.round(rpeMoy28 * 10) / 10).replace('.', ',')}. Les dernières doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
     pushReco(`Progresse une variable à la fois et garde les mêmes exercices : d'abord les reps jusqu'au haut de ta fourchette, puis la charge — c'est comme ça qu'on mesure vraiment les progrès.`, 'info')
     pushReco(`Soigne ta récupération : vise 7-9 h de sommeil et un repos suffisant entre séries (2-3 min sur les gros exercices) pour pousser fort la séance d'après.`, 'info')
     pushReco(`Assure l'apport : assez de protéines (~1,6 à 2 g/kg/jour) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.`, 'info')
