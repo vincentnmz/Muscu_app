@@ -113,7 +113,7 @@ function _lv3Diag(data, exo, kind, nowT) {
       if (!cause) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
         cause = 'volume'; levier = '+' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo + ' (' + _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem).';
-        action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
+        action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, parSem: V.parSem, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
       }
     } else checks.push({ s: 'ok', t: 'Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem — pas en cause' });
   }
@@ -135,14 +135,50 @@ function _lv3Diag(data, exo, kind, nowT) {
   }
   // 6) Bas de fourchette (bloqué sur le minimum de reps) : levier reps avant la charge.
   if (!cause && kind === 'bloque' && r0 <= rmin) { cause = 'bas'; levier = 'garde ' + kg(c0) + ' kg et vise +1 rep par séance (jusqu\'à ' + rmax + ') avant d\'ajouter du poids.'; }
+  // 7-9) (06/11, retour porteur) Exercice BLOQUÉ : « +1 rep » ne sert à rien s'il bloque déjà — on cherche POURQUOI
+  // dans les séries de travail (charge du jour) des dernières séances : repos raccourci, effort laissé en réserve,
+  // marche de charge trop grosse. Chaque cause trouvée est affichée ; le levier vient de la première.
+  var rpeT = null;
+  if (kind === 'bloque') {
+    var trav = function (p) { var c = _lv3Num(p.charge); return (p.series || []).filter(function (x) { return _lv3Num(x.charge) === c; }); };
+    var moyK = function (arr, k) { var v = arr.map(function (x) { return _lv3Num(x[k]); }).filter(function (x) { return x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
+    var recentes = pts.slice(0, 3);
+    var _rt = (typeof _reposTxt === 'function') ? _reposTxt : function (x) { return Math.round(x) + ' s'; };
+    // 7) Repos raccourci à la dernière séance (≥ 30 s de moins que les précédentes).
+    var rep0 = moyK(trav(p0), 'repos'), repAv = moyK([].concat.apply([], pts.slice(1, 4).map(trav)), 'repos');
+    if (rep0 != null && repAv != null && repAv - rep0 >= 30) {
+      checks.push({ s: 'ko', t: '<b>Repos raccourci</b> : ' + _rt(Math.round(repAv)) + ' → ' + _rt(Math.round(rep0)) + ' à la dernière séance' });
+      if (!cause) { cause = 'repos'; levier = 'reviens à ' + _rt(Math.round(repAv)) + ' de repos entre tes séries (' + _rt(Math.round(rep0)) + ' la dernière fois).'; }
+    } else if (rep0 != null) checks.push({ s: 'ok', t: 'Repos : ' + _rt(Math.round(rep0)) + ', stable — pas en cause' });
+    // 8) Effort laissé en réserve : séries de travail arrêtées à RPE ≤ 8 (≈ 2 reps ou plus en réserve).
+    rpeT = moyK([].concat.apply([], recentes.map(trav)), 'rpe');
+    if (rpeT != null && rpeT < 8.5) {
+      var res = Math.round(10 - rpeT);
+      checks.push({ s: 'ko', t: '<b>Séries arrêtées à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '</b> (≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve) sur les ' + recentes.length + ' dernières séances' });
+      if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Sur ta dernière série, va jusqu\'à RPE 9-10 (0 à 1 rep en réserve) à ' + kg(c0) + ' kg.'; }
+      else levier += ' Et sur ta dernière série, va jusqu\'à RPE 9-10 : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve.';
+    } else if (rpeT != null) checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
+    // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
+    // La marche ne bloque que quand on arrive en HAUT de la fourchette (retour porteur 06/11 : à 10 reps sur 20,
+    // ce n'est pas elle qui coince — et la série plus légère d'avant est une mise en route voulue, pas un problème).
+    var marche = c0 > 0 ? pas / c0 : 0;
+    if (marche >= 0.15 && r0 >= rmax - 2) {
+      var mPct = Math.round(marche * 100);
+      checks.push({ s: 'ko', t: '<b>Marche suivante : +' + kg(pas) + ' kg = +' + mPct + ' %</b> de ta charge' });
+      if (!cause) { cause = 'marche'; levier = 'la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : trop gros pour cet exercice. Passe-la au plus petit cran possible (micro-disque, cran intermédiaire de poulie) ou ajoute 1 série à ' + kg(c0) + ' kg en attendant de faire ' + rmax + ' reps.'; }
+      else levier += ' Et la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : monte seulement quand tu fais ' + rmax + ' reps sur toutes tes séries.';
+    }
+  }
   var pourquoi = '';
   var ko = checks.filter(function (c) { return c.s === 'ko'; });
-  if (ko.length) pourquoi = ko.slice(0, 2).map(function (c) { return c.t; }).join(' · ');
+  if (ko.length) pourquoi = ko.slice(0, kind === 'bloque' ? 3 : 2).map(function (c) { return c.t; }).join(' · ');
   // Levier sans cause trouvée : selon le niveau (03/11).
   var niv = _lv3Niveau(data);
   if (!cause) levier = niv === 'debutant' ? 'aucune cause visible dans tes données — à ton niveau, garde cet exercice et ta régularité avant de changer quoi que ce soit, en visant RPE 8-9.'
     : (niv === 'avance' || niv === 'expert') ? 'aucune cause visible dans tes données — à ton niveau, un plateau est fréquent : change de fourchette (ex. 6-8 ↔ 10-12) ou de variante pendant 3-4 semaines.'
-    : 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure 2 séances de plus, change de fourchette ou de variante.';
+    : (kind === 'bloque' && typeof rpeT !== 'undefined' && rpeT != null && rpeT >= 8.5)
+      ? 'aucune cause visible dans tes données : repos stable, tu pousses déjà tes séries (RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '). Garde ta charge ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.'
+      : 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.';
   var n = pts.filter(function (p) { return (nowT - _lv3T(p.date)) / 864e5 <= 42; }).length;
   var sem = Math.max(1, Math.round((_lv3T(pts[0].date) - _lv3T(pts[Math.min(pts.length, n) - 1].date)) / 864e5 / 7));
   return { exo: exo, kind: kind, checks: checks, cause: cause, pourquoi: pourquoi, levier: levier, action: action, n: n, sem: sem, rmin: rmin, rmax: rmax };
@@ -204,7 +240,7 @@ function _lv3Plan(data, nowT) {
       var V = _lv3Volume(D, musProg[k].m, lundi.getTime());
       if (V.min && V.parSem > 0 && V.parSem < V.min) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
-        push({ exo: musProg[k].exo, type: 'series', muscle: musProg[k].m, min: V.min, add: add, titre: (V.prio ? '★ ' : '') + musProg[k].m + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + musProg[k].exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') });
+        push({ exo: musProg[k].exo, type: 'series', muscle: musProg[k].m, min: V.min, add: add, parSem: V.parSem, titre: (V.prio ? '★ ' : '') + musProg[k].m + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + musProg[k].exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') });
       }
     });
   } catch (_) {}
@@ -239,7 +275,15 @@ function _lv3Plan(data, nowT) {
     if (a.type === 'charge') a.fait = sets.some(function (s) { var c = _lv3Num(s.charge); return c <= a.charge + 0.01 && c >= (a.alt != null ? a.alt : a.charge) - 2.5 && _lv3Num(s.reps) >= a.reps; });
     else if (a.type === 'cible') a.fait = sets.some(function (s) { return _lv3Num(s.charge) >= a.charge && _lv3Num(s.reps) >= a.reps; });
     else if (a.type === 'rpe') a.fait = sets.some(function (s) { return _lv3Num(s.charge) >= a.charge && _lv3Num(s.rpe) > 0 && _lv3Num(s.rpe) <= 8; });
-    else if (a.type === 'series') { var k = _musKey(a.muscle), tot = 0; Object.keys(dm).forEach(function (d) { if (d >= isoL) { var spm = (dm[d] && dm[d].spm) || {}; Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) tot += _lv3Num(spm[mm]); }); } }); a.fait = tot >= a.min; a.cetteSem = tot; }
+    else if (a.type === 'series') { var k = _musKey(a.muscle), tot = 0; Object.keys(dm).forEach(function (d) { if (d >= isoL) { var spm = (dm[d] && dm[d].spm) || {}; Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) tot += _lv3Num(spm[mm]); }); } }); a.fait = tot >= a.min; a.cetteSem = tot;
+      // 06/11 : l'action dit ce qui est réellement compté — le TOTAL du muscle sur la semaine (tous ses exercices),
+      // pas « +N séries de tel exercice » (retour porteur : 4 séries de Belt squat ne semblaient pas comptées).
+      var _mu = String(a.muscle || '');
+      a.titre = (String(a.titre || '').indexOf('★') === 0 ? '★ ' : '') + _mu + ' : ' + a.min + ' séries cette semaine';
+      a.progres = _lv3Fmt(tot) + ' / ' + a.min;
+      a.raison = (a.parSem != null ? 'Moyenne ' + _lv3Fmt(a.parSem) + ' séries/sem sur 4 semaines, ton minimum ' + a.min + '. ' : '')
+        + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _mu.toLowerCase() + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + a.exo + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';
+    }
   });
   if (!acts.length) return null;
   return { actions: acts, ok: ok, lundi: isoL, faits: acts.filter(function (a) { return a.fait; }).length };
@@ -267,12 +311,15 @@ function _lv3ForcesHtml(data) {
   // Toujours visibles : les exercices en baisse (les plus utiles à voir) ; le reste par progrès décroissant.
   var bas = F.filter(function (x) { return x.pct < 0; }), haut = F.filter(function (x) { return x.pct >= 0; });
   var liste = haut.slice(0, Math.max(3, 8 - bas.length)).concat(bas);
+  // 06/11 : un exercice peut avoir progressé sur 6 semaines ET être bloqué depuis quelques séances → on le dit sur la ligne.
+  var _bq = {}; try { (_lectureExos(data).bloque || []).forEach(function (b) { _bq[String(b.exo).trim()] = b.n || 0; }); } catch (_) {}
   var pctTxt = function (p) { var a = Math.abs(p); return (p > 0 ? '+' : p < 0 ? '−' : '') + (a >= 10 ? String(Math.round(a)) : _lv3Fmt(a)) + ' %'; };
   var rows = liste.map(function (x) {
     var col = x.pct >= 3 ? '#00A854' : x.pct <= -1 ? '#DC3545' : (x.pct < 1 && x.pct > -1) ? '#E07800' : 'var(--text-muted)';
     var diff = Math.abs(x.pctSansRpe - x.pct) >= 2 ? ' <span style="font-size:10px;color:var(--text-subtle)">(' + (x.pctSansRpe >= 0 ? '+' : '−') + _lv3Fmt(Math.abs(x.pctSansRpe)) + ' % sans le RPE)</span>' : '';
     return '<div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 54px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px">'
-      + '<span style="min-width:0">' + _maE(x.exo) + diff + '<br><span style="font-size:10px;color:var(--text-subtle)">sur ' + x.n + ' séances</span></span>'
+      + '<span style="min-width:0">' + _maE(x.exo) + diff + '<br><span style="font-size:10px;color:var(--text-subtle)">sur ' + x.n + ' séances</span>'
+      + (_bq[String(x.exo).trim()] != null ? ' <span style="font-size:10px;font-weight:800;color:#B45F00">· bloqué depuis ' + _bq[String(x.exo).trim()] + ' séance' + (_bq[String(x.exo).trim()] > 1 ? 's' : '') + '</span>' : '') + '</span>'
       + _lv3Spark(x.vals, col) + '<span style="text-align:right;font-weight:800;color:' + col + '">' + pctTxt(x.pct) + '</span></div>';
   }).join('');
   return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
@@ -290,14 +337,14 @@ function _lv3PlanHtml(data, compact) {
       + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:800">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.actions.length + '</span></div>'
       + P.actions.map(function (a) {
         return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:12px;color:#fff;' + (a.fait ? 'background:#00A854;border:2px solid #00A854' : 'border:2px solid var(--border)') + '">' + (a.fait ? '✓' : '') + '</span>'
-          + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.seance && !a.fait ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '') + '</span></div>';
+          + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <b style="color:var(--accent)">· ' + _maE(a.progres) + '</b>' : '') + (a.seance && !a.fait && !a.progres ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '') + '</span></div>';
       }).join('') + '</div>';
   }
   return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:11px 13px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.actions.length + ' fait' + (P.faits > 1 ? 's' : '') + '</span></div>'
     + P.actions.map(function (a, i) {
       return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:' + (a.fait ? '#00A854' : 'var(--accent)') + ';color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none">' + (a.fait ? '✓' : (i + 1)) + '</span>'
-        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
+        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <span style="color:var(--accent);font-weight:800">· ' + _maE(a.progres) + '</span>' : '') + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
     }).join('')
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div></div>';
 }

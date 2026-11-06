@@ -1221,7 +1221,8 @@ const SENS_TESTS: Record<string, number> = { vma: 1, sprint_10m: -1, sprint_30m:
 function beScoreJoueur(sig: any): number | null {
   const beComp: number[] = []
   if (sig.sommeil != null) beComp.push(sig.sommeil)
-  if (sig.fatigue != null) beComp.push(6 - sig.fatigue)
+  const _fm = sig.fatigueMoy != null ? sig.fatigueMoy : sig.fatigue   // 06/11 : moyenne (score), pas le pire jour
+  if (_fm != null) beComp.push(6 - _fm)
   if (sig.douleur != null) beComp.push(6 - sig.douleur)
   return beComp.length ? beComp.reduce((x, y) => x + y, 0) / beComp.length : null
 }
@@ -2828,7 +2829,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       ffTsbPct: ffA.tsbPct, ffRatio: ffA.ratio, ffFiable,
       seances7: seances7M,
       // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
-      douleur: sigM.douleur, douleurZone: sigM.douleurZone, douleurDate: sigM.douleurDate, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, stress: sigM.stress, courbatures: sigM.courbatures,
+      douleur: sigM.douleur, douleurZone: sigM.douleurZone, douleurDate: sigM.douleurDate, fatigue: sigM.fatigueVerdict, sommeil: sigM.sommeilVerdict, stress: sigM.stress, courbatures: sigM.courbatures,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
       enPause: enPause || (!!_pauseFin && _pauseFin <= fmtYMD(now) && _pauseFin >= fmtYMD(minus(now, 6))),   // + 7 j de reprise après la pause
@@ -3299,12 +3300,13 @@ async function handleDetacherCoach(body: any): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
+function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number; fatigueVerdict: number|null; sommeilVerdict: number|null } {
   // Zone lisible : anciennes saisies perdues stockées « NaN » → aucune zone (sinon l'alerte
   // affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
   const _zoneOk = (z: any): string | null => { const t = String(z == null ? '' : z).trim(); return (!t || /^(nan|null|undefined)$/i.test(t)) ? null : t }
   const cut = fmtYMD(minus(now, days - 1))
   const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
+  const fatD: { d: string; v: number }[] = [], somD: { d: string; v: number }[] = []
   // DOULEUR = DERNIÈRE saisie (jour le plus récent ; pire valeur de ce jour-là), plus
   // le MAX des 7 jours : une douleur passée (« Aucune » le lendemain) ne maintient
   // plus l'athlète en Vigilance / rouge pendant une semaine (validé porteur oct. 2026).
@@ -3317,8 +3319,8 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
       if (!isNaN(v) && (dLastDate == null || dIso > dLastDate)) { dLastDate = dIso; dLast = v; dZone = _zoneOk(r.zone_douloureuse) }
       else if (!isNaN(v) && dIso === dLastDate && v > (dLast as number)) { dLast = v; dZone = _zoneOk(r.zone_douloureuse) || dZone }
     }
-    if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') fat.push(Number(r.fatigue_musculaire))
-    if (r.sommeil != null && r.sommeil !== '') som.push(Number(r.sommeil))
+    if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') { fat.push(Number(r.fatigue_musculaire)); fatD.push({ d: dIso, v: Number(r.fatigue_musculaire) }) }
+    if (r.sommeil != null && r.sommeil !== '') { som.push(Number(r.sommeil)); somD.push({ d: dIso, v: Number(r.sommeil) }) }
     if (r.stress != null && r.stress !== '') str.push(Number(r.stress))
     if (r.courbatures != null && r.courbatures !== '') {
       const cv = Number(r.courbatures); courb.push(cv)
@@ -3333,7 +3335,26 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
   // fatigué ne plombe pas la semaine. Ajout non cassant.
   // Hooper : on ajoute stress (moyenne récente) et courbatures/DOMS (MAX, prévention).
-  return { douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: cLast, wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
+  // 06/11 (retour porteur) : « le jour compte pour le jour ». Une mauvaise nuit / une journée fatiguée ne doit
+  // pas tout remettre en cause les jours suivants. VERDICT (athlète ET coach, même règle) :
+  //   · réponse d'aujourd'hui ou d'hier → c'est elle qui compte (dernière réponse) ;
+  //   · sinon (pas de réponse récente) → seulement une TENDANCE : ≥ 2 réponses défavorables sur 7 j,
+  //     ou moyenne 7 j défavorable ; sinon rien (pas de Vigilance sur une vieille réponse isolée).
+  // Avant : athlète = moyenne 7 j (une seule mauvaise réponse comptait 7 j s'il ne répondait plus) ;
+  //         coach = MAXIMUM 7 j (une journée à 4/5 = « Fatigue élevée » pendant une semaine).
+  const recent = fmtYMD(minus(now, 1))
+  const derniere = (a: { d: string; v: number }[]) => { let b: { d: string; v: number } | null = null; for (const x of a) if (!isNaN(x.v) && (!b || x.d >= b.d)) b = x; return b }
+  const verdict = (a: { d: string; v: number }[], mauvais: (v: number) => boolean): number | null => {
+    const last = derniere(a); if (!last) return null
+    if (last.d >= recent) return last.v
+    const vals = a.map(x => x.v).filter(v => !isNaN(v)), moy = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
+    if (vals.filter(mauvais).length >= 2) return moy
+    if (moy != null && mauvais(moy)) return moy
+    return null
+  }
+  const fatigueVerdict = verdict(fatD, v => v >= 4)
+  const sommeilVerdict = verdict(somD, v => v <= 2)
+  return { fatigueVerdict, sommeilVerdict, douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: cLast, wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
 }
 
 interface EtatInput {
@@ -3669,7 +3690,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       // >>> MOTEUR CENTRAL — statut, alertes, dispo, risque, récup, reco, confiance <<<
       const etat = evaluerEtatAthlete({
         acwr, acwrFiable, seances7,
-        douleur: sig.douleur, douleurZone: sig.douleurZone, douleurDate: sig.douleurDate, fatigue: sig.fatigue, sommeil: sig.sommeil, stress: null, courbatures: null,
+        douleur: sig.douleur, douleurZone: sig.douleurZone, douleurDate: sig.douleurDate, fatigue: sig.fatigueVerdict, sommeil: sig.sommeilVerdict, stress: null, courbatures: null,
         injStatut: inj ? inj.statut : null,
         ctxEtat: ctxEtatOf(j.athlete_id),
         q: { jours: histoDays != null ? histoDays : (a.charge7 > 0 || sig.wellnessN > 0 ? 7 : 0), wellnessN: sig.wellnessN, hasCharge: a.charge7 > 0 || a.charge28 > 0 },
@@ -3690,7 +3711,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       nb[statut]++
       const prog = progressionAth(j.athlete_id)
       const beScore = beScoreJoueur(sig)
-      equipeItems.push({ charge7: a.charge7, fatigue: sig.fatigue, beScore, progression: prog })
+      equipeItems.push({ charge7: a.charge7, fatigue: (sig.fatigueMoy != null ? sig.fatigueMoy : sig.fatigue), beScore, progression: prog })
       if (inj) { blesses.push({ athlete_id: j.athlete_id, nom: j.nom, poste: j.poste, type: inj.type, localisation: inj.localisation, statut: inj.statut, retour_terrain: inj.retour_terrain, retour_competition: inj.retour_competition }); if (inj.statut === 'indispo') nbIndispo++ }
 
       resultats.push({
@@ -3699,7 +3720,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
         seances_7j: seances7,
         charge_7j: Math.round(a.charge7),
         acwr,
-        fatigue_moy: sig.fatigue != null ? Math.round(sig.fatigue * 10) / 10 : null,
+        fatigue_moy: sig.fatigueMoy != null ? Math.round(sig.fatigueMoy * 10) / 10 : null,   // 06/11 : c'était le MAX sous le nom « moy »
         douleur_max: sig.douleur,
         sommeil_moy: sig.sommeil != null ? Math.round(sig.sommeil * 10) / 10 : null,
         statut, progression: prog, blesse: inj ? inj.statut : null, alertes,
@@ -3899,7 +3920,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28, acwrCalcF.joursActifsChronique)
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
-      douleur: sig7.douleur, douleurZone: sig7.douleurZone, douleurDate: sig7.douleurDate, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
+      douleur: sig7.douleur, douleurZone: sig7.douleurZone, douleurDate: sig7.douleurDate, fatigue: sig7.fatigueVerdict, sommeil: sig7.sommeilVerdict,
       stress: _n(bienetre.stress), courbatures: _n(bienetre.courbatures),
       injStatut: injActive ? (injActive.statut as any) : null,
       ctxEtat,

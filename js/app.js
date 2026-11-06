@@ -15050,7 +15050,7 @@ var _MA_TON_COACH = [
   [/\bta fourchette\b/g, 'sa fourchette'], [/\bta meilleure série\b/g, 'sa meilleure série'], [/\bTa meilleure série\b/g, 'Sa meilleure série'],
   [/\bqu'il te restait\b/g, 'qu\'il lui restait'], [/\btes séries\b/g, 'ses séries'], [/\btes séances\b/g, 'ses séances'], [/\btu vois\b/g, 'on voit'],
   [/\bsi tu montes\b/g, 's\'il monte'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\bta progression\b/g, 'sa progression'],
-  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire']
+  [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire'], [/\bTous tes exercices\b/g, 'Tous ses exercices']
 ];
 function _maCoachTon(root) {
   if (!root || typeof _maCoach === 'undefined' || !_maCoach) return;
@@ -15333,13 +15333,22 @@ function _maFreqMuscleBloc(data) {
   var w = _maWin(), daily = (data.historique && data.historique.daily_muscu) || {};
   // G3 (03/11) : période en cours → on divise par les jours ÉCOULÉS (avant : le mois entier → « 0,3×/sem » en rouge le 3 du mois).
   var _ecoul = w.isCurrent ? Math.max(1, Math.round((Math.min(Date.now(), w.end.getTime()) - w.start.getTime()) / 86400000)) : w.days;
-  if (_ecoul < 7) return _maSec('Fréquence par muscle', w.plabel, 'frequence') + _maEmpty('Pas encore assez de recul sur la période (' + _ecoul + ' jour' + (_ecoul > 1 ? 's' : '') + ') : la fréquence s\'affiche à partir de 7 jours.');
-  var weeks = Math.max(1, Math.round(_ecoul / 7)), dayc = {};
+  // 06/11 : période trop courte (début de semaine) → on montre les 4 DERNIÈRES SEMAINES TERMINÉES
+  // (même fenêtre que le volume des alertes) au lieu d'un bloc vide.
+  var _sISO = w.startISO, _eISO = w.endISO, _lab = w.plabel, weeks = Math.max(1, Math.round(_ecoul / 7));
+  if (_ecoul < 7) {
+    var _l = new Date(); _l.setHours(0, 0, 0, 0); _l.setDate(_l.getDate() - ((_l.getDay() + 6) % 7));
+    var _d0 = new Date(_l.getTime()); _d0.setDate(_d0.getDate() - 28);
+    var _iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    _sISO = _iso(_d0); _eISO = _iso(_l); _lab = '4 dernières semaines terminées'; weeks = 4;
+  }
+  var dayc = {};
   Object.keys(daily).forEach(function (d) {
-    if (d >= w.startISO && d < w.endISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
+    if (d >= _sISO && d < _eISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
   });
   var rows = Object.keys(dayc).map(function (m) { return { m: m, f: dayc[m] / weeks }; }).sort(function (a, b) { return b.f - a.f; });
   if (!rows.length) return _maSec('Fréquence par muscle', null, 'frequence') + _maEmpty('Pas encore de séances sur la période.');
+  w = Object.assign({}, w, { plabel: _lab });
   var html = rows.map(function (r) {
     var C = r.f >= 2 ? '#00A854' : r.f >= 1 ? '#E07800' : '#DC3545';
     var ft = (Math.round(r.f * 10) / 10).toString().replace('.', ',');
@@ -20319,7 +20328,7 @@ function _cdNvSeanceHtml(seanceId) {
     if (!A.length) return '';
     return '<div style="margin:-6px 0 12px;background:var(--accent-a08,#EEF4FF);border:1px dashed var(--accent-dim,#9DB8FF);border-radius:10px;padding:8px 10px;font-size:11.5px;line-height:1.45">➜ <b>Novalyz propose cette semaine</b> : '
       + A.map(function (a) {
-        var tc = function (x) { return String(x || '').replace(/ : proposé /, ' : ').replace(/\bton minimum\b/g, 'son minimum').replace(/\bta fourchette\b/g, 'sa fourchette').replace(/si tu veux être sûr de faire/g, 'pour assurer').replace(/\.\s*$/, ''); };
+        var tc = function (x) { return String(x || '').replace(/ : proposé /, ' : ').replace(/\bton minimum\b/g, 'son minimum').replace(/\bTous tes exercices\b/g, 'Tous ses exercices').replace(/\bta fourchette\b/g, 'sa fourchette').replace(/si tu veux être sûr de faire/g, 'pour assurer').replace(/\.\s*$/, ''); };
         return escapeHtml(tc(a.titre)) + (a.raison ? ' <span style="color:var(--text-subtle)">(' + escapeHtml(tc(a.raison)) + ')</span>' : ''); }).join(' · ') + '</div>';
   } catch (e) { return ''; }
 }
