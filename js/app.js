@@ -26947,7 +26947,8 @@ async function renderEtatMontre(attempt) {
       + cell('Pas', pasTxt, '')
       + cell('Sommeil', '<span id="etm-mini-sleep">…</span>', 'border-left:1px solid var(--border);')
       + cell('FC repos', '<span id="etm-mini-hr">…</span>', 'border-left:1px solid var(--border);')
-      + '</div>' + '<div style="padding:8px 15px 12px;border-top:1px solid var(--border)">' + _montreSyncHtml(dernierAppData, true) + '</div>';
+      + '</div>' + '<div style="padding:8px 15px 12px;border-top:1px solid var(--border)">' + _montreSyncHtml(dernierAppData, true)
+      + '<button type="button" class="montre-chg" onclick="ouvrirConnexionMontre()">Changer de montre / revoir la connexion</button></div>';
   }
   el.style.display = 'none'; el.style.padding = '2px 15px 14px';   // détails repliés par défaut
 
