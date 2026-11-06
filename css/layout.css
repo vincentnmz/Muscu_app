@@ -1124,3 +1124,119 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 #nv-loadpage .nv-lp-in .nvl-ic { width:96px; height:105px; margin:0 auto 14px; }
 #nv-loadpage .nv-lp-in .nv-brand-logo { width:220px; color:#070B14; display:block; margin:0 auto; }
 #nv-loadpage .nv-lp-t { margin-top:12px; }
+
+/* ===== 06/11 — Coach mobile = même rendu que l'ordi (lot 1-2, maquette coach-mobile-refonte) =====
+   Les blocs de l'accueil mobile utilisent les mêmes fonctions que l'ordi (_coachDeskAujourdhui…) ;
+   ces styles sont ceux de l'ordi (#coach-shell) recopiés pour .cs-mob, en une colonne. */
+@media (max-width:991.98px){
+  /* KPIs */
+  .cs-mob .cs-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  .cs-mob .cs-kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px 16px; position:relative; overflow:hidden; }
+  .cs-mob .cs-kstrip{ position:absolute; left:0; top:0; bottom:0; width:4px; }
+  .cs-mob .cs-kv{ font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1; }
+  .cs-mob .cs-kl{ font-size:11.5px; color:var(--text-muted); font-weight:700; margin-top:5px; }
+
+  /* Briefing unifié (remplace les 4 KPI) — même composant visuel que le hero mobile */
+  .cs-mob .cs-brief{ position:relative; border-radius:18px; padding:20px 22px; margin-bottom:20px; overflow:hidden; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0E42C8)); box-shadow:var(--shadow-sm,0 1px 3px rgba(13,23,38,.08)); }
+  .cs-mob .cs-brief::after{ content:""; position:absolute; right:-46px; top:-46px; width:170px; height:170px; border-radius:50%; background:rgba(255,255,255,.12); }
+  .cs-mob .cs-brief-hello{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; opacity:.92; position:relative; }
+  .cs-mob .cs-brief-date{ font-size:12.5px; opacity:.9; margin-top:2px; position:relative; }
+  .cs-mob .cs-brief-row{ display:flex; align-items:center; gap:20px; margin-top:16px; position:relative; }
+  .cs-mob .cs-ring{ position:relative; width:64px; height:64px; flex:none; }
+  .cs-mob .cs-ring-v{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .cs-mob .cs-ring-v b{ font-size:15px; font-weight:800; }
+  .cs-mob .cs-ring-v s{ font-size:7.5px; text-decoration:none; opacity:.9; text-transform:uppercase; letter-spacing:.05em; }
+  .cs-mob .cs-brief-big{ flex:1; min-width:0; }
+  .cs-mob .cs-brief-big .n{ font-size:36px; font-weight:800; line-height:1; }
+  .cs-mob .cs-brief-big .l{ font-size:13px; opacity:.92; margin-top:4px; font-weight:600; }
+  .cs-mob .cs-brief-pills{ display:flex; gap:10px; flex:none; }
+  .cs-mob .cs-bpill{ min-width:118px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); border-radius:13px; padding:11px 14px; }
+  .cs-mob .cs-bpill .n{ font-size:24px; font-weight:800; line-height:1; }
+  .cs-mob .cs-bpill .l{ font-size:10.5px; opacity:.92; margin-top:4px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+
+  .cs-mob .cs-grid2{ display:grid; grid-template-columns:1.5fr 1fr; gap:18px; align-items:start; }
+  .cs-mob .cs-sec{ font-size:14px; font-weight:800; margin:4px 0 12px; }
+  .cs-mob .cs-watch{ display:flex; flex-direction:column; gap:9px; }
+  .cs-mob .cs-wrow{ display:flex; align-items:center; gap:13px; background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:12px 14px; cursor:pointer; }
+  .cs-mob .cs-wrow:hover{ border-color:var(--accent); }
+  .cs-mob .cs-av2{ width:40px; height:40px; border-radius:50%; background:var(--surface2); display:grid; place-items:center; font-weight:800; color:var(--text-muted); flex:none; font-size:13px; }
+  .cs-mob .cs-wn{ flex:1; min-width:0; }
+  .cs-mob .cs-wn b{ font-size:14px; font-weight:800; display:block; }
+  .cs-mob .cs-wal{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .cs-mob .cs-chip{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:20px; }
+  .cs-mob .cs-chev{ color:var(--text-subtle); }
+  .cs-mob .cs-empty{ color:var(--text-muted); font-size:13px; padding:14px; text-align:center; }
+  .cs-mob .cs-panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .cs-mob .cs-pt{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin-bottom:11px; display:flex; align-items:center; }
+  .cs-mob .cs-pt-ct{ margin-left:auto; font-weight:800; color:var(--accent); letter-spacing:0; }
+  .cs-mob .cs-subh{ font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--text-subtle); margin:12px 0 2px; padding-top:10px; border-top:1px solid var(--surface2); }
+  .cs-mob .cs-act{ display:flex; gap:11px; padding:9px 0; border-bottom:1px solid var(--surface2); font-size:12.5px; }
+  .cs-mob .cs-act:last-child{ border-bottom:none; }
+  .cs-mob .cs-ad{ width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none; }
+  .cs-mob .cs-act b{ font-weight:800; }
+  .cs-mob .cs-lec{ font-size:13px; color:var(--text); line-height:1.5; }
+
+  /* Table Équipe */
+  .cs-mob .cs-table{ width:100%; border-collapse:collapse; font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .cs-mob .cs-table thead th{ font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-subtle); font-weight:800; text-align:left; padding:11px 14px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  .cs-mob .cs-table tbody td{ padding:12px 14px; border-bottom:1px solid var(--surface2); font-weight:600; }
+  .cs-mob .cs-table tbody tr:last-child td{ border-bottom:none; }
+  .cs-mob .cs-trow{ cursor:pointer; }
+  .cs-mob .cs-trow:hover{ background:var(--surface2); }
+  .cs-mob .cs-tn{ display:flex; align-items:center; gap:10px; }
+  .cs-mob .cs-tav{ width:32px; height:32px; border-radius:50%; background:var(--surface2); display:grid; place-items:center; font-weight:800; color:var(--text-muted); font-size:12px; }
+  .cs-mob .cs-tn b{ font-weight:800; }
+
+  /* Analyses */
+  .cs-mob .cs-g3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .cs-mob .cs-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px; }
+  .cs-mob .cs-ct{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin-bottom:10px; }
+  .cs-mob .cs-big{ font-size:30px; font-weight:800; }
+  .cs-mob .cs-mrow{ display:flex; align-items:center; justify-content:space-between; padding:6px 0; font-size:13px; }
+  .cs-mob .cs-mrow b{ font-weight:800; font-variant-numeric:tabular-nums; }
+  .cs-mob .cs-note{ font-size:12px; color:var(--text-muted); background:var(--surface); border:1px dashed var(--border); border-radius:12px; padding:12px 14px; margin-top:16px; }
+
+  /* Analyses v2 — KPIs enrichis, donut, listes d'action */
+  .cs-mob .cs-kv small{ font-size:13px; color:var(--text-subtle); font-weight:700; }
+  .cs-mob .cs-ksub{ font-size:11px; color:var(--text-subtle); margin-top:3px; }
+  .cs-mob .cs-an-g2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; align-items:start; }
+  .cs-mob .cs-donut{ display:flex; align-items:center; gap:18px; }
+  .cs-mob .cs-dleg{ flex:1; min-width:0; }
+  .cs-mob .cs-dl{ display:flex; align-items:center; justify-content:space-between; padding:5px 0; font-size:13px; }
+  .cs-mob .cs-dl span{ display:flex; align-items:center; gap:8px; color:var(--text); }
+  .cs-mob .cs-dl i{ width:11px; height:11px; border-radius:50%; flex:none; }
+  .cs-mob .cs-dl b{ font-weight:800; font-variant-numeric:tabular-nums; }
+  .cs-mob .cs-arow{ display:flex; align-items:center; gap:11px; padding:7px 0; }
+  .cs-mob .cs-abn{ width:120px; flex:none; font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cs-mob .cs-abar{ flex:1; height:8px; border-radius:999px; background:var(--surface2); overflow:hidden; }
+  .cs-mob .cs-abar i{ display:block; height:100%; border-radius:999px; }
+  .cs-mob .cs-abv{ width:46px; flex:none; text-align:right; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .cs-mob .cs-lrow{ display:flex; align-items:center; gap:12px; padding:9px 0; border-top:1px solid var(--surface2); }
+  .cs-mob .cs-lrow:first-of-type{ border-top:none; }
+  .cs-mob .cs-lav{ width:34px; height:34px; border-radius:50%; background:var(--surface2); display:grid; place-items:center; font-weight:800; color:var(--text-muted); font-size:12px; flex:none; }
+  .cs-mob .cs-ln{ flex:1; min-width:0; }
+  .cs-mob .cs-ln b{ font-size:13.5px; font-weight:800; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cs-mob .cs-ln span{ font-size:11.5px; color:var(--text-muted); }
+  .cs-mob .cs-lchip{ font-size:10.5px; font-weight:800; padding:2px 9px; border-radius:20px; flex:none; white-space:nowrap; }
+  .cs-mob .cs-lchip.good{ background:rgba(0,168,84,.12); color:var(--good); }
+  .cs-mob .cs-lchip.warn{ background:rgba(232,147,12,.14); color:var(--warn); }
+  .cs-mob .cs-lchip.bad{ background:rgba(229,72,77,.12); color:var(--danger); }
+  .cs-mob .cs-grid2{ grid-template-columns:1fr; gap:0; }
+  .cs-mob .cs-brief{ padding:14px 14px 13px; margin-bottom:10px; border-radius:16px; }
+  .cs-mob .cs-brief-row{ flex-wrap:wrap; gap:12px; margin-top:10px; }
+  .cs-mob .cs-ring{ width:56px; height:56px; } .cs-mob .cs-ring svg{ width:56px; height:56px; }
+  .cs-mob .cs-brief-big .n{ font-size:30px; }
+  .cs-mob .cs-brief-pills{ flex:1 1 100%; }
+  .cs-mob .cs-bpill{ flex:1; min-width:0; padding:8px 10px; text-align:center; }
+  .cs-mob .cs-bpill .n{ font-size:20px; }
+  .cs-mob .cs-panel{ padding:12px 13px; margin-bottom:10px; border-radius:14px; }
+  .cs-mob .cs-wrow{ padding:10px 11px; gap:10px; }
+  .cs-mob .cs-av2{ width:34px; height:34px; border-radius:10px; font-size:12px; }
+  .cs-mob .cs-wn b{ font-size:13.5px; }
+}
+/* Titres DANS leur carte (ordi et mobile) : lignes de la carte sans cadre propre. */
+.cs-panel .cs-watch{ gap:0; }
+.cs-panel .cs-wrow{ border:0 !important; border-top:1px solid var(--surface2) !important; border-radius:0 !important; padding-left:0 !important; padding-right:0 !important; background:none !important; }
+.cs-panel .cs-wrow:first-child{ border-top:0 !important; padding-top:2px !important; }
+/* Un seul style d'avatar (carré arrondi) sur ordi comme sur mobile */
+#coach-shell .cs-av2, #coach-shell .cs-tav, #coach-shell .cs-lav { border-radius:10px !important; }

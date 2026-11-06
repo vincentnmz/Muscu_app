@@ -1249,3 +1249,41 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
   body.coach-active.cb-panel #coach-messagerie-drawer,
   body.coach-active.cb-panel #coach-reglages-drawer { bottom:var(--cb-h, 62px) !important; }
 }
+/* 06/11 — Équipe mobile = mêmes infos que le tableau ordi (niveau · dernière activité), sans liseré */
+.cae-stripe { display:none !important; }
+.cae-top { padding-left:0; }
+.cae-nm { flex-direction:column; align-items:flex-start; gap:1px; }
+.cae-sub { font-size:11px; color:var(--text-muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.cae-sub b { font-weight:800; }
+.cae-chip { border-radius:999px !important; }
+/* 06/11 — Analyses équipe : ligne rangée (avatar | nom … pastille/barre/bouton à droite ; détail dessous) */
+.ae-right { display:flex; align-items:center; gap:8px; flex:none; }
+@media (max-width:991.98px) {
+  .ae-row { display:grid; grid-template-columns:30px minmax(0,1fr) auto; column-gap:10px; row-gap:3px; align-items:center; }
+  .ae-row > :first-child { grid-row:1 / span 2; align-self:start; margin-top:1px; }
+  .ae-row .ae-nm { width:auto; grid-column:2; grid-row:1; }
+  .ae-row .ae-right { grid-column:3; grid-row:1; justify-self:end; }
+  .ae-row .ae-mid { grid-column:2 / 4; grid-row:2; min-width:0; font-size:12px; color:var(--text-muted); }
+  .ae-row .ae-mid b { color:var(--text); }
+  .ae-ct { font-size:10px; }
+  .ae-k b { font-size:20px; }
+  .ae-card { padding:11px 12px; }
+}
+/* 06/11 — Socle coach mobile : un seul en-tête blanc (logo + titre de la page + actions) */
+#coach-topbar .ct-title { display:none; font-family:'Michroma',sans-serif; font-size:17px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (max-width:991.98px) {
+  #coach-topbar { border-top:0; background:var(--surface); border-bottom:1px solid var(--border); }
+  #coach-topbar .ct-eyebrow, #coach-topbar .ct-name-row { display:none !important; }
+  #coach-topbar .ct-title { display:block; }
+  #coach-topbar .ct-id { display:flex; align-items:center; }
+  /* Messages et Profil : même en-tête blanc (plus de bandeau bleu) */
+  #coach-messagerie-drawer > div:first-child, #coach-reglages-drawer > header {
+    background:var(--surface) !important; color:var(--text) !important; border-bottom:1px solid var(--border); justify-content:flex-start !important; }
+  #coach-messagerie-drawer > div:first-child > button, #coach-reglages-drawer > header > button {
+    background:var(--surface2) !important; border:1px solid var(--border) !important; color:var(--text) !important; }
+  #coach-messagerie-drawer > div:first-child > svg, #coach-reglages-drawer > header > svg { display:none; }
+  #coach-messagerie-drawer > div:first-child > div, #coach-reglages-drawer > header > div { font-family:'Michroma',sans-serif !important; font-size:17px !important; font-weight:400 !important; }
+}
+/* Police Quicksand partout (boutons et champs en police système auparavant) */
+#coach-reglages-drawer button, #coach-reglages-drawer input, #coach-reglages-drawer select, #coach-reglages-drawer textarea,
+#coach-messagerie-drawer button, #coach-messagerie-drawer input, #coach-messagerie-drawer textarea { font-family:inherit; }
