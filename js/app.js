@@ -22049,6 +22049,8 @@ function nvGuideEnd() {
   document.body.classList.remove('nvg-open');
   _nvgClearNav(); _nvgClearSpot();
   if (_nvg.key) _tourMark(_nvg.key);
+  // 07/11 : parcours d'arrivée = onboarding → programme → visite → questionnaire du jour (1×/jour, pas pour le coach).
+  if (_nvg.role === 'ath') setTimeout(function () { try { _maybeQuotidienEtat(); } catch (e) {} }, 600);
 }
 // Nettoie les emphases de nav (remise à zéro z-index / opacité).
 function _nvgClearNav() {
@@ -22710,7 +22712,13 @@ function _maybeQuotidienEtat() {
     // même temps). Tant que l'intro n'est pas vue, on s'efface (on réessaiera plus tard).
     if (!dernierAppData.onboarding_vu) return;
     var _tourOv = document.getElementById('nvt-ov');
-    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active
+    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active (ancienne)
+    // 07/11 : la visite est maintenant le deck de cartes (#nvg-ov, body.nvg-open) — avant, non détectée →
+    // le questionnaire s'ouvrait par-dessus. Idem pendant l'éditeur de programme et tant que la visite
+    // doit encore démarrer (choix « Novalyz » / « Je gère » de l'onboarding). Relancé à la fin de la visite.
+    if (document.body.classList.contains('nvg-open') || document.getElementById('nvg-ov')) return;
+    if (typeof _onbPendingTour !== 'undefined' && _onbPendingTour) return;
+    var _pe = document.getElementById('prog-editor-overlay'); if (_pe && getComputedStyle(_pe).display !== 'none') return;
     // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, génération de
     // programme, modales…).
     var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
