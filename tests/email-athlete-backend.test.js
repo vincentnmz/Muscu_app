@@ -112,7 +112,7 @@ const P = (o) => new URLSearchParams(o);
   {
     const store = { athletes: [] };
     const api = loadBackend(store);
-    const r = await J(await api.handleRegister(P({ login: '9001', password: 'secret1', prenom: 'Bob', email: 'bob@mail.com' })));
+    const r = await J(await api.handleRegister(P({ login: '9001', password: 'secret1', prenom: 'Bob', email: 'bob@mail.com', sexe: 'H', ddn: '2000-01-01', taille: '170', poids: '70', annees: '2' })));
     eq(r.success === true, 'register email: success');
     eq(r.athlete.email === 'bob@mail.com', 'register email: renvoyé dans athlete');
     eq(store.athletes[0].email === 'bob@mail.com', 'register email: stocké en base');
@@ -122,19 +122,18 @@ const P = (o) => new URLSearchParams(o);
   {
     const store = { athletes: [] };
     const api = loadBackend(store);
-    const r = await J(await api.handleRegister(P({ login: '9002', password: 'secret1', prenom: 'Bob', email: 'nope' })));
+    const r = await J(await api.handleRegister(P({ login: '9002', password: 'secret1', prenom: 'Bob', email: 'nope', sexe: 'H', ddn: '2000-01-01', taille: '170', poids: '70', annees: '2' })));
     eq(!r.success && /invalide/i.test(r.erreur || r.message || ''), 'register email invalide: erreur');
     eq(store.athletes.length === 0, 'register email invalide: aucune insertion');
   }
 
-  /* --- 8. register SANS email (optionnel) → OK --------------------------- */
+  /* --- 8. register SANS email → refusé (inscription complète obligatoire, 07/11) --- */
   {
     const store = { athletes: [] };
     const api = loadBackend(store);
-    const r = await J(await api.handleRegister(P({ login: '9003', password: 'secret1', prenom: 'Bob' })));
-    eq(r.success === true, 'register sans email: success (optionnel)');
-    eq(r.athlete.email === '', 'register sans email: email vide');
-    eq(store.athletes[0].email == null, 'register sans email: null en base');
+    const r = await J(await api.handleRegister(P({ login: '9003', password: 'secret1', prenom: 'Bob', sexe: 'H', ddn: '2000-01-01', taille: '170', poids: '70', annees: '2' })));
+    eq(!r.success && /e-mail/i.test(r.erreur || r.message || ''), 'register sans email: refusé');
+    eq(store.athletes.length === 0, 'register sans email: aucune insertion');
   }
 
   /* --- 9. login renvoie l'email ------------------------------------------ */

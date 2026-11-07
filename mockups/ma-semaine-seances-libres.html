@@ -1,0 +1,240 @@
+<title>Novalyz · Ma semaine et séances libres</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : planche de maquettes — en-tête, puis écrans téléphone côte à côte (wrap), chaque écran légendé ; règles et questions en bas */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec; --warn:#c77700; --warn-soft:#fff3e0;
+  --s1:#1a5fff; --s2:#0aa58c; --s3:#8a5cf6; --s4:#e07800;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --warn-soft:#3a2a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --warn-soft:#3a2a12; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+.lead{color:var(--muted);max-width:70ch;margin:0}
+.ctx{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ctx span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;color:var(--muted)}
+.ctx b{color:var(--fg)}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:9px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.tag.avant i{background:var(--subtle)}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface2);border:1px solid var(--line);border-radius:26px;padding:14px 12px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 30px rgba(20,33,61,.08);position:relative;overflow:hidden;min-height:200px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:13px 13px}
+.lbl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--accent);margin-bottom:9px}
+.row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.it{flex:none;width:132px;border:1px solid var(--line);border-left:4px solid var(--s1);border-radius:12px;padding:8px 10px;background:var(--surface)}
+.it .d{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.it .n{font-weight:700;font-size:13.5px;margin-top:2px}
+.it .x{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.3}
+.it.done{border-left-color:var(--good);background:var(--good-soft)} .it.done .d{color:var(--good)}
+.it.missed .d{color:var(--warn)}
+.it.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.it.extra{border-left-color:var(--s3);border-style:dashed;border-left-style:solid}
+.c2{border-left-color:var(--s2)} .c3{border-left-color:var(--s3)} .c4{border-left-color:var(--s4)}
+.new{background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:0 5px;font-weight:700}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;margin:30px -12px -16px;padding:16px 16px 18px;box-shadow:0 -8px 24px rgba(20,33,61,.14);display:flex;flex-direction:column;gap:12px}
+.grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto}
+.sheet h3{margin:0;font-size:15px;font-weight:700}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.kp div{background:var(--surface2);border-radius:10px;padding:8px 4px;text-align:center}
+.kp b{display:block;color:var(--accent);font-size:16px;font-variant-numeric:tabular-nums}
+.kp span{font-size:10px;color:var(--muted)}
+.q{border:1.5px solid var(--accent);border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
+.q .qt{font-weight:700;font-size:13.5px}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:11px;padding:8px 10px;background:var(--surface)}
+.opt.on{border-color:var(--accent);background:var(--accent-soft)}
+.rd{flex:none;width:17px;height:17px;border-radius:50%;border:2px solid var(--subtle);margin-top:1px}
+.opt.on .rd{border-color:var(--accent);box-shadow:inset 0 0 0 3.5px var(--surface);background:var(--accent)}
+.opt .t{font-weight:700;font-size:13px}
+.opt .s{font-size:11px;color:var(--muted);line-height:1.35}
+.reco{font-size:9.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:1px}
+.note{font-size:11px;color:var(--muted);margin:0}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.hist{display:flex;flex-direction:column;gap:7px}
+.hrow{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 11px;background:var(--surface)}
+.dd{font-family:var(--f-display);font-size:15px;width:30px;text-align:center;line-height:1}
+.dd small{display:block;font-family:var(--f-body);font-size:9px;color:var(--muted);letter-spacing:.06em}
+.hrow .m{flex:1;min-width:0}
+.hrow .t{font-weight:700;font-size:13px}
+.hrow .s{font-size:11px;color:var(--muted)}
+.lnk{color:var(--accent);font-weight:700;font-size:11.5px;white-space:nowrap}
+.agenda{display:flex;flex-direction:column;gap:6px}
+.ag{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12.5px}
+.ag .j{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--muted)}
+.chip{border-radius:7px;padding:3px 8px;font-weight:700;font-size:12px;color:var(--surface);background:var(--s1);justify-self:start}
+.chip.c2{background:var(--s2)} .chip.c3{background:var(--s3)} .chip.c4{background:var(--s4)}
+.chip.lib{background:var(--surface);color:var(--fg);border:1.5px dashed var(--subtle)}
+.st{font-size:11px;font-weight:700}
+.st.ok{color:var(--good)} .st.ko{color:var(--warn)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.panel h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+.panel ol,.panel ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tw{overflow-x:auto}
+.ok-t{color:var(--good);font-weight:700} .ko-t{color:var(--warn);font-weight:700}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE</div>
+    <h1>Ma semaine : les séances libres comptent</h1>
+    <p class="lead">Une séance « Libre » ne cochait aucune séance prévue. Ta semaine affichait « non faite » le jeudi et le vendredi alors que tu t'es entraîné. Proposition A, validée à l'audit : tu choisis en fin de séance ce que la séance libre remplace, Novalyz propose déjà la bonne réponse.</p>
+    <div class="ctx"><span>Données : <b>ta vraie semaine du 2 au 8 nov.</b></span><span>Lun <b>pec épaule ✓</b></span><span>Mar <b>dos jambes</b> prévue</span><span>Jeu <b>pec épaule 2</b> prévue · libre faite</span><span>Ven <b>dos jambe 2</b> prévue · libre faite</span></div>
+  </header>
+
+  <div class="board">
+    <!-- AVANT -->
+    <div class="shot">
+      <div class="tag avant"><i>Avant</i>Aujourd'hui ▸ Ma semaine</div>
+      <div class="phone">
+        <div class="card"><div class="lbl">Ma semaine</div>
+          <div class="row">
+            <div class="it done"><div class="d">Lundi · ✓ faite</div><div class="n">pec épaule</div></div>
+            <div class="it c2 missed"><div class="d">Mardi · non faite</div><div class="n">dos jambes</div></div>
+            <div class="it c3 missed"><div class="d">Jeudi · non faite</div><div class="n">pec épaule 2</div></div>
+            <div class="it c4 today"><div class="d">Aujourd'hui</div><div class="n">dos jambe 2</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Faux : jeudi et vendredi tu as fait une séance libre (6 et 5 exercices). Régularité 3/4 juste, mais la semaine ne le montre pas.</p>
+    </div>
+
+    <!-- FIN DE SÉANCE -->
+    <div class="shot">
+      <div class="tag"><i>1</i>Fin d'une séance libre</div>
+      <div class="phone">
+        <div class="card" style="opacity:.45"><div class="lbl">Séance libre</div><div class="note">Belt squat · Leg curl allongé · Leg extension · Élévation latérale · Arrière épaule · Élévation frontale</div></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3>Terminer la séance ?</h3>
+          <div class="kp"><div><b>6</b><span>exercices</span></div><div><b>19</b><span>séries</span></div><div><b>8,8 t</b><span>volume</span></div></div>
+          <div class="q">
+            <div class="qt">Cette séance remplace laquelle ? <span class="new">nouveau</span></div>
+            <div class="opt on"><span class="rd"></span><div><div class="t">pec épaule 2 <span class="reco">proposé</span></div><div class="s">prévue jeudi (aujourd'hui) · 3 exercices en commun sur 6</div></div></div>
+            <div class="opt"><span class="rd"></span><div><div class="t">dos jambes</div><div class="s">prévue mardi, pas faite · 2 en commun</div></div></div>
+            <div class="opt"><span class="rd"></span><div><div class="t">dos jambe 2</div><div class="s">prévue vendredi · 1 en commun</div></div></div>
+            <div class="opt"><span class="rd"></span><div><div class="t">Aucune, séance en plus</div><div class="s">compte dans ta régularité, ne coche rien</div></div></div>
+            <p class="note">Seules les séances prévues cette semaine et pas encore faites sont listées. Tu peux changer plus tard.</p>
+          </div>
+          <div class="btns"><div class="btn">Continuer</div><div class="btn p">Terminer</div></div>
+        </div>
+      </div>
+      <p class="cap">Une seule question en plus, déjà répondue par Novalyz. Proposé = séance prévue du jour si elle partage des exercices, sinon la plus proche en exercices communs. « pec épaule » (lundi) n'apparaît pas : déjà faite.</p>
+    </div>
+
+    <!-- APRÈS -->
+    <div class="shot">
+      <div class="tag"><i>2</i>Aujourd'hui ▸ Ma semaine (après)</div>
+      <div class="phone">
+        <div class="card"><div class="lbl">Ma semaine</div>
+          <div class="row">
+            <div class="it done"><div class="d">Lundi · ✓ faite</div><div class="n">pec épaule</div></div>
+            <div class="it c2 missed"><div class="d">Mardi · non faite</div><div class="n">dos jambes</div></div>
+            <div class="it done"><div class="d">Jeudi · ✓ faite</div><div class="n">pec épaule 2</div><div class="x">en séance libre</div></div>
+            <div class="it done today"><div class="d">Aujourd'hui · ✓ faite</div><div class="n">dos jambe 2</div><div class="x">en séance libre</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Mardi reste « non faite » : c'est vrai. Jeudi et vendredi sont cochés avec « en séance libre » pour que tu saches d'où ça vient.</p>
+    </div>
+
+    <!-- SÉANCE EN PLUS -->
+    <div class="shot">
+      <div class="tag"><i>3</i>Cas « séance en plus »</div>
+      <div class="phone">
+        <div class="card"><div class="lbl">Ma semaine</div>
+          <div class="row">
+            <div class="it done"><div class="d">Lundi · ✓ faite</div><div class="n">pec épaule</div></div>
+            <div class="it c2 missed"><div class="d">Mardi · non faite</div><div class="n">dos jambes</div></div>
+            <div class="it extra done"><div class="d">Mercredi · ✓ en plus</div><div class="n">Séance libre</div><div class="x">5 exercices</div></div>
+            <div class="it c3"><div class="d">Jeudi</div><div class="n">pec épaule 2</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Si tu choisis « Aucune », la séance s'ajoute à son jour avec un bord en pointillé. Elle compte dans la régularité (4/4 possible), elle ne coche aucune séance prévue.</p>
+    </div>
+
+    <!-- CHANGER PLUS TARD -->
+    <div class="shot">
+      <div class="tag"><i>4</i>Analyses ▸ Historique · changer plus tard</div>
+      <div class="phone">
+        <div class="hist">
+          <div class="hrow"><div class="dd">06<small>NOV</small></div><div class="m"><div class="t">Libre → dos jambe 2</div><div class="s">5 exos · 16 séries · 5,1 t</div></div><span class="lnk">Changer</span></div>
+          <div class="hrow"><div class="dd">05<small>NOV</small></div><div class="m"><div class="t">Libre → pec épaule 2</div><div class="s">6 exos · 19 séries · 8,8 t</div></div><span class="lnk">Changer</span></div>
+          <div class="hrow"><div class="dd">02<small>NOV</small></div><div class="m"><div class="t">pec épaule</div><div class="s">6 exos · 18 séries · 4,6 t</div></div></div>
+        </div>
+      </div>
+      <p class="cap">Sur une séance libre, « Changer » rouvre la même question. Les séances du programme ne bougent pas.</p>
+    </div>
+
+    <!-- COACH -->
+    <div class="shot">
+      <div class="tag"><i>5</i>Coach ▸ fiche ▸ Programme (semaine)</div>
+      <div class="phone">
+        <div class="card"><div class="lbl">Cette semaine · 2 – 8 nov.</div>
+          <div class="agenda">
+            <div class="ag"><span class="j">L</span><span class="chip">pec épaule</span><span class="st ok">✓ faite</span></div>
+            <div class="ag"><span class="j">M</span><span class="chip c2">dos jambes</span><span class="st ko">non faite</span></div>
+            <div class="ag"><span class="j">J</span><span class="chip c3">pec épaule 2</span><span class="st ok">✓ libre</span></div>
+            <div class="ag"><span class="j">V</span><span class="chip c4">dos jambe 2</span><span class="st ok">✓ libre</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Le coach voit la même semaine que l'athlète, avec « ✓ libre » quand c'est une séance libre qui a coché la séance prévue.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <h2>Règles</h2>
+      <ol>
+        <li>Fin de séance libre : question « remplace laquelle ? », Novalyz présélectionne la séance prévue du jour si elle a au moins 1 exercice en commun, sinon celle qui en a le plus.</li>
+        <li>Listées : séances prévues de la semaine pas encore faites, plus « Aucune, séance en plus ».</li>
+        <li>Pas de réponse (anciennes séances, ou saisie par le coach sans choix) : rattachement automatique seulement si au moins <b>50 %</b> des exercices sont en commun avec une séance prévue non faite de la semaine ; sinon « séance en plus ».</li>
+        <li>Une séance prévue ne peut être cochée qu'une fois par semaine.</li>
+        <li>Régularité, plan de la semaine et séance du jour lisent le même rattachement.</li>
+      </ol>
+    </div>
+    <div>
+      <h2>Tes séances libres avec la règle automatique (3)</h2>
+      <div class="tw"><table>
+        <thead><tr><th>Libre</th><th>Meilleure séance</th><th>En commun</th><th>Résultat auto</th></tr></thead>
+        <tbody>
+          <tr><td class="n">05/10</td><td>pec épaule 2</td><td class="n">6 / 6</td><td class="ok-t">rattachée</td></tr>
+          <tr><td class="n">12/10</td><td>pec épaule</td><td class="n">6 / 7</td><td class="ok-t">rattachée</td></tr>
+          <tr><td class="n">23/10</td><td>dos jambe 2</td><td class="n">2 / 8</td><td class="ko-t">en plus</td></tr>
+          <tr><td class="n">05/11</td><td>pec épaule 2</td><td class="n">3 / 6</td><td class="ok-t">rattachée (50 %)</td></tr>
+          <tr><td class="n">06/11</td><td>dos jambe 2</td><td class="n">2 / 5</td><td class="ko-t">en plus (40 %)</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note" style="margin-top:8px">C'est pour ça que la question en fin de séance est la règle principale : sans elle, ta séance du 06/11 ne cocherait pas « dos jambe 2 ».</p>
+    </div>
+    <div>
+      <h2>À valider</h2>
+      <ul>
+        <li>La question en fin de séance libre (écran 1) : ok ?</li>
+        <li>Seuil automatique 50 % : ok, ou plus strict ?</li>
+        <li>Ta semaine actuelle : je rattache 05/11 → pec épaule 2 et 06/11 → dos jambe 2 tout de suite, ou tu le fais toi-même avec « Changer » ?</li>
+        <li>Côté coach : il peut aussi « Changer » le rattachement, ou seulement le voir ?</li>
+      </ul>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,197 @@
+<title>Exercices fonctionnels</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : A ce qui rentre tout de suite / plus tard · B écrans (catalogue, saisie sac, burpees, circuit fin de séance, analyse) · questions */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec; --warn:#c77700; --bad:#c43c3c; --bad-soft:#fdeaea; --violet:#7c5cff;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --bad:#ff7b7b; --bad-soft:#3a1a1f; --violet:#a78bff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --bad:#ff7b7b; --bad-soft:#3a1a1f; --violet:#a78bff; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0 0 4px}
+.lead{color:var(--muted);max-width:76ch;margin:0}
+.sec{display:flex;flex-direction:column;gap:12px}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;gap:9px;box-shadow:0 10px 30px rgba(20,33,61,.08);min-width:0}
+.steps{display:flex;gap:4px}.steps b{flex:1;height:4px;border-radius:4px;background:var(--line)}.steps b.on{background:var(--accent)}
+.ttl{font-weight:700;font-size:16px}
+.sm{font-size:12.5px;color:var(--muted);margin:0}
+.f{display:flex;flex-direction:column;gap:3px}
+.f label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);font-weight:700}
+.in{border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.in.err{border-color:var(--bad);background:var(--bad-soft)}
+.in .ok{color:var(--good);font-weight:700;font-size:11.5px}
+.in .ko{color:var(--bad);font-weight:700;font-size:11.5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg{display:flex;gap:6px}.seg span{flex:1;text-align:center;border:1.5px solid var(--line);border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:700}
+.seg span.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.off{background:var(--line);border-color:var(--line);color:var(--subtle)}
+.hint{font-size:11.5px;color:var(--bad);font-weight:700}
+.big{text-align:center;display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.big .t{font-family:var(--f-display);font-size:17px}
+.li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:4px 10px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.li .ic{grid-row:1 / span 2;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+.li b{font-size:13px}.li span{font-size:11.5px;color:var(--muted)}
+.ch{border:1.5px solid var(--line);border-radius:13px;padding:10px 11px;display:flex;flex-direction:column;gap:3px}
+.ch.on{border-color:var(--accent);background:var(--accent-soft)}
+.ch b{font-size:13.5px}.ch span{font-size:11.5px;color:var(--muted)}
+.ch .then{font-size:11px;color:var(--accent);font-weight:700}
+.av{width:84px;height:84px;border-radius:24px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-size:26px;margin:4px auto;border:2px dashed var(--accent)}
+.promo{border-radius:14px;padding:12px;background:linear-gradient(135deg,var(--violet),var(--accent));color:#fff;display:flex;flex-direction:column;gap:4px}
+.promo b{font-size:14px}.promo span{font-size:12px;opacity:.92}
+.soon{display:inline-block;font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 6px;background:rgba(255,255,255,.25)}
+.deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.dc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:6px}
+.dc .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.dc .h b{font-size:14px}.dc .h span{font-size:10.5px;color:var(--subtle);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.dc ul{margin:0;padding-left:17px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.dc ul b{color:var(--fg)}
+.new{font-size:9.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:5px;padding:0 5px;margin-left:3px}
+.exs{display:flex;flex-direction:column;gap:6px}
+.ex{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px}
+.ex .u{color:var(--accent);font-weight:700;font-size:11.5px;white-space:nowrap}
+.warnbox{border:1.5px solid var(--warn);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:6px}
+.warnbox b{font-size:12.5px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.panel ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chips span{border:1.5px solid var(--line);border-radius:999px;padding:4px 9px;font-size:11.5px;font-weight:700}
+.chips span.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th,.tbl td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle)}
+.ok2{color:var(--good);font-weight:700}.later{color:var(--warn);font-weight:700}
+.tw{overflow-x:auto}
+.sr{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px}
+.sr small{color:var(--muted)}
+.cible{background:var(--good-soft);color:var(--good);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:700}
+.circ{border:1.5px solid var(--violet);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.circ .h{font-size:11px;font-weight:700;color:var(--violet);letter-spacing:.06em;text-transform:uppercase}
+</style>
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE · À VALIDER</div>
+    <h1>Exercices fonctionnels dans la séance muscu</h1>
+    <p class="lead">Fentes marchées avec sac, burpees, pneu, kettlebell… dans une séance muscu ou à la fin. Vérifié dans le code : la saisie note une série en charge × reps (charge 0 possible, comme les pompes), et la cible de la série suivante monte du « pas » propre à l'exercice (ex. +5 kg pour un sac). Tout ce qui se note ainsi rentre <b>sans toucher au moteur</b>. Ce qui se note en temps ou en distance (corde, traîneau) demande un vrai chantier : proposé en 2ᵉ temps.</p>
+  </header>
+
+  <section class="sec">
+    <h2>A · Ce qui rentre tout de suite, ce qui attend</h2>
+    <div class="panel tw">
+      <table class="tbl">
+        <tr><th>Exercice</th><th>Se note en</th><th>Muscle (volume)</th><th>Matériel</th><th>Quand</th></tr>
+        <tr><td><b>Fentes marchées sac lesté</b></td><td>charge × reps · sac 5 à 30 kg, +5 kg</td><td>Quadriceps (+ Fessier ½)</td><td>Sac lesté</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Squat sac lesté (front / épaule)</td><td>charge × reps · +5 kg</td><td>Quadriceps (+ Fessier ½)</td><td>Sac lesté</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Kettlebell swing</td><td>charge × reps · +4 kg</td><td>Fessier (+ Ischio ½)</td><td>Kettlebell</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Goblet squat kettlebell</td><td>charge × reps · +4 kg</td><td>Quadriceps (+ Fessier ½)</td><td>Kettlebell</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Wall ball</td><td>charge × reps · +2 kg</td><td>Quadriceps (+ Epaule ½)</td><td>Médecine-ball</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Slam ball</td><td>charge × reps · +2 kg</td><td>Corps entier</td><td>Médecine-ball</td><td class="ok2">tout de suite</td></tr>
+        <tr><td><b>Burpees</b></td><td>reps (poids du corps)</td><td>Corps entier</td><td>Poids du corps</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Box jump</td><td>reps (poids du corps)</td><td>Quadriceps</td><td>Poids du corps</td><td class="ok2">tout de suite</td></tr>
+        <tr><td><b>Retournement de pneu</b></td><td>reps (pneu fixe)</td><td>Corps entier</td><td>Pneu / masse</td><td class="ok2">tout de suite</td></tr>
+        <tr><td>Coups de masse sur pneu</td><td>reps (masse fixe)</td><td>Corps entier</td><td>Pneu / masse</td><td class="ok2">tout de suite</td></tr>
+        <tr><td><b>Battle rope (corde)</b></td><td>temps (30 s…)</td><td>Corps entier</td><td>Corde</td><td class="later">2ᵉ temps</td></tr>
+        <tr><td>Corde à sauter · gainage</td><td>temps</td><td>Corps entier / Abdominaux</td><td>—</td><td class="later">2ᵉ temps</td></tr>
+        <tr><td>Traîneau poussé / tiré · farmer's walk</td><td>distance + charge</td><td>Quadriceps / Corps entier</td><td>Traîneau</td><td class="later">2ᵉ temps</td></tr>
+      </table>
+    </div>
+    <div class="warnbox"><b>« Corps entier » : un choix à valider</b><span class="sm">Burpees, pneu, masse, slam ball travaillent tout le corps. Les ranger dans « Quadriceps » fausserait ton volume par muscle. Je propose un muscle « Corps entier » : l'exercice compte dans la séance (séries, records, régularité) mais <b>pas</b> dans le volume par muscle.</span></div>
+    <p class="cap">Les « pas » de charge (+5 kg sac, +4 kg kettlebell, +2 kg médecine-ball) sont des valeurs courantes en salle : à corriger selon ton matériel. Le 2ᵉ temps (temps / distance) aura sa propre maquette : saisie avec les bonnes cases, et une analyse qui suit le meilleur temps ou la plus longue distance, jamais une « force estimée ».</p>
+  </section>
+
+  <section class="sec">
+    <h2>B · Les écrans</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>1</i>Catalogue</div>
+        <div class="phone">
+          <div class="ttl">Ajouter un exercice</div>
+          <div class="chips"><span>Tous</span><span>Barre</span><span>Haltères</span><span class="on">Fonctionnel</span><span>Machine</span></div>
+          <div class="sm">Fonctionnel = sac lesté, kettlebell, médecine-ball, pneu / masse</div>
+          <div class="exs">
+            <div class="ex"><span><b>Fentes marchées sac lesté</b><br><small style="color:var(--muted)">Quadriceps · Sac lesté · + Fessiers ½</small></span></div>
+            <div class="ex"><span><b>Kettlebell swing</b><br><small style="color:var(--muted)">Fessiers · Kettlebell · + Ischios ½</small></span></div>
+            <div class="ex"><span><b>Burpees</b><br><small style="color:var(--muted)">Corps entier · Poids du corps</small></span></div>
+            <div class="ex"><span><b>Retournement de pneu</b><br><small style="color:var(--muted)">Corps entier · Pneu / masse</small></span></div>
+          </div>
+        </div>
+        <p class="cap">Même catalogue qu'aujourd'hui (muscle + matériel). Une puce « Fonctionnel » regroupe le nouveau matériel.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>2</i>Saisie · fentes avec sac</div>
+        <div class="phone">
+          <div class="ttl">Fentes marchées sac lesté</div>
+          <div class="cible">Cible S2 : 20 kg × 10 reps par jambe · +5 kg, tu as fait 12 à 15 kg</div>
+          <div class="f"><label>Sac</label><div class="chips"><span>5</span><span>10</span><span>15</span><span class="on">20 kg</span><span>25</span><span>30</span></div></div>
+          <div class="row2"><div class="f"><label>Reps (par jambe)</label><div class="in">10</div></div><div class="f"><label>Effort (RPE)</label><div class="in">8</div></div></div>
+          <div class="sr"><span>S1 · 15 kg × 12</span><small>RPE 7</small></div>
+          <div class="btn p">Valider la série</div>
+        </div>
+        <p class="cap">Les sacs existent en poids fixes : on tape sur 20 kg au lieu de saisir un nombre. Records, progrès et « bloqué » marchent comme pour un développé couché.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>3</i>Saisie · burpees</div>
+        <div class="phone">
+          <div class="ttl">Burpees</div>
+          <div class="cible">Cible S2 : 13 reps · +1, comme tes pompes</div>
+          <div class="f"><label>Charge</label><div class="in">Poids du corps</div></div>
+          <div class="row2"><div class="f"><label>Reps</label><div class="in">13</div></div><div class="f"><label>Effort (RPE)</label><div class="in">9</div></div></div>
+          <div class="sr"><span>S1 · 12 reps</span><small>RPE 8</small></div>
+          <div class="btn p">Valider la série</div>
+        </div>
+        <p class="cap">Pas de case charge à remplir : la série se note en reps, comme tes pompes et tractions aujourd'hui.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>4</i>Fin de séance en circuit</div>
+        <div class="phone">
+          <div class="ttl">Programme · dos jambes</div>
+          <div class="sr"><span>Tirage vertical prise large</span><small>4 × 8-10</small></div>
+          <div class="sr"><span>Squat</span><small>4 × 6-8</small></div>
+          <div class="circ"><div class="h">Circuit · fin de séance · 3 tours</div>
+            <div class="sr"><span>Fentes marchées sac lesté</span><small>20 kg × 10</small></div>
+            <div class="sr"><span>Burpees</span><small>× 10</small></div>
+            <div class="sr"><span>Kettlebell swing</span><small>16 kg × 15</small></div>
+            <div class="sr"><span>Retournement de pneu</span><small>× 6</small></div>
+          </div>
+          <div class="sm">Repos seulement après le tour.</div>
+        </div>
+        <p class="cap">Rien de nouveau : c'est le bouton « Enchaîner » qui existe déjà (biset, superset, triset, circuit dès 4). Le coach peut le construire pour son athlète.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>5</i>Ce que l'analyse en dit</div>
+        <div class="phone">
+          <div class="ttl">Analyses · Résumé</div>
+          <div class="sr"><span>★ Record · Fentes marchées sac</span><small>25 kg × 10</small></div>
+          <div class="sr"><span>▲ Progresse · Burpees</span><small>15 reps au lieu de 12</small></div>
+          <div class="sr"><span>Volume Quadriceps</span><small>fentes comptées</small></div>
+          <div class="sr"><span>Burpees · pneu</span><small>hors volume par muscle</small></div>
+          <div class="sm">Pas de « force estimée » sur les exercices au poids du corps ou « corps entier ».</div>
+        </div>
+        <p class="cap">Les fentes avec sac comptent dans le volume des quadriceps, comme des fentes haltères. Les exercices « corps entier » comptent dans la séance, pas dans un muscle.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Questions pour toi</h2>
+    <div class="panel">
+      <ol>
+        <li><b>La liste « tout de suite »</b> (tableau A) te va ? Ajoute ou retire ce que tu as à ta salle.</li>
+        <li><b>Fentes marchées</b> : tu comptes les reps <b>par jambe</b> ou au <b>total</b> ? Et les sacs vont bien de 5 à 30 kg par pas de 5 ?</li>
+        <li><b>« Corps entier »</b> hors volume par muscle pour burpees, pneu, masse, slam ball : d'accord ?</li>
+        <li><b>Corde, traîneau, gainage</b> (temps / distance) en 2ᵉ temps, avec leur propre maquette : d'accord ?</li>
+      </ol>
+    </div>
+  </section>
+</div>

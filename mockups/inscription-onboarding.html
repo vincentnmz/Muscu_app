@@ -1,0 +1,280 @@
+<title>Novalyz · inscription et onboarding</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : planche par étapes — A inscription athlète, B inscription coach, C partie 1 athlète, D partie 1 coach, E partie 2 (visite complète), F doublons d'exercices ; questions en bas */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec; --warn:#c77700; --bad:#c43c3c; --bad-soft:#fdeaea; --violet:#7c5cff;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --bad:#ff7b7b; --bad-soft:#3a1a1f; --violet:#a78bff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --bad:#ff7b7b; --bad-soft:#3a1a1f; --violet:#a78bff; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0 0 4px}
+.lead{color:var(--muted);max-width:76ch;margin:0}
+.sec{display:flex;flex-direction:column;gap:12px}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;gap:9px;box-shadow:0 10px 30px rgba(20,33,61,.08);min-width:0}
+.steps{display:flex;gap:4px}.steps b{flex:1;height:4px;border-radius:4px;background:var(--line)}.steps b.on{background:var(--accent)}
+.ttl{font-weight:700;font-size:16px}
+.sm{font-size:12.5px;color:var(--muted);margin:0}
+.f{display:flex;flex-direction:column;gap:3px}
+.f label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);font-weight:700}
+.in{border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.in.err{border-color:var(--bad);background:var(--bad-soft)}
+.in .ok{color:var(--good);font-weight:700;font-size:11.5px}
+.in .ko{color:var(--bad);font-weight:700;font-size:11.5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg{display:flex;gap:6px}.seg span{flex:1;text-align:center;border:1.5px solid var(--line);border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:700}
+.seg span.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.off{background:var(--line);border-color:var(--line);color:var(--subtle)}
+.hint{font-size:11.5px;color:var(--bad);font-weight:700}
+.big{text-align:center;display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.big .t{font-family:var(--f-display);font-size:17px}
+.li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:4px 10px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.li .ic{grid-row:1 / span 2;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+.li b{font-size:13px}.li span{font-size:11.5px;color:var(--muted)}
+.ch{border:1.5px solid var(--line);border-radius:13px;padding:10px 11px;display:flex;flex-direction:column;gap:3px}
+.ch.on{border-color:var(--accent);background:var(--accent-soft)}
+.ch b{font-size:13.5px}.ch span{font-size:11.5px;color:var(--muted)}
+.ch .then{font-size:11px;color:var(--accent);font-weight:700}
+.av{width:84px;height:84px;border-radius:24px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-size:26px;margin:4px auto;border:2px dashed var(--accent)}
+.promo{border-radius:14px;padding:12px;background:linear-gradient(135deg,var(--violet),var(--accent));color:#fff;display:flex;flex-direction:column;gap:4px}
+.promo b{font-size:14px}.promo span{font-size:12px;opacity:.92}
+.soon{display:inline-block;font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 6px;background:rgba(255,255,255,.25)}
+.deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.dc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:6px}
+.dc .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.dc .h b{font-size:14px}.dc .h span{font-size:10.5px;color:var(--subtle);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.dc ul{margin:0;padding-left:17px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.dc ul b{color:var(--fg)}
+.new{font-size:9.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:5px;padding:0 5px;margin-left:3px}
+.exs{display:flex;flex-direction:column;gap:6px}
+.ex{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px}
+.ex .u{color:var(--accent);font-weight:700;font-size:11.5px;white-space:nowrap}
+.warnbox{border:1.5px solid var(--warn);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:6px}
+.warnbox b{font-size:12.5px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.panel ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE · À VALIDER</div>
+    <h1>Inscription et onboarding</h1>
+    <p class="lead">Décisions prises : inscription ouverte (pas de code bêta), login à 4 chiffres gardé, tout obligatoire (app + serveur), partie 1 aussi pour le coach, photo de profil facultative, exercices créés par un coach privés + validation par toi. Les textes sont des propositions : corrige ce qui ne te va pas.</p>
+  </header>
+
+  <section class="sec">
+    <h2>A · Inscription athlète (2 écrans)</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>A1</i>Ton compte</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b></b></div>
+          <div class="ttl">Crée ton compte</div>
+          <div class="f"><label>Prénom</label><div class="in">Vincent</div></div>
+          <div class="f"><label>E-mail</label><div class="in">vincent@…</div></div>
+          <div class="f"><label>Mot de passe (6 caractères min.)</label><div class="in">••••••••</div></div>
+          <div class="f"><label>Login (4 chiffres)</label><div class="in">1234 <span class="ko">déjà pris · essaie 4821</span></div></div>
+          <div class="f"><label>Sport</label><div class="in">Musculation ▾</div></div>
+          <div class="f"><label>As-tu un coach dans Novalyz ?</label><div class="seg"><span>Oui</span><span class="on">Non</span></div></div>
+          <div class="btn off">Continuer</div>
+          <div class="hint">Login déjà pris : choisis-en un autre.</div>
+        </div>
+        <p class="cap">Le login est vérifié pendant la saisie (« disponible ✓ » ou « déjà pris · essaie 4821 », un login libre proposé). « Continuer » reste grisé tant qu'un champ manque ou est faux.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>A2</i>Ton profil</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b></div>
+          <div class="ttl">Ton profil</div>
+          <p class="sm">Novalyz s'en sert pour régler tes cibles (volume, calories, analyse morpho).</p>
+          <div class="f"><label>Sexe</label><div class="seg"><span class="on">Homme</span><span>Femme</span></div></div>
+          <div class="f"><label>Date de naissance</label><div class="in">09/05/1985</div></div>
+          <div class="row2"><div class="f"><label>Taille (cm)</label><div class="in">170</div></div><div class="f"><label>Poids (kg)</label><div class="in err">—</div></div></div>
+          <div class="f"><label>Années de pratique (muscu)</label><div class="in">4</div></div>
+          <div class="in" style="background:none;border:0;padding:0;font-size:12px">☑ J'accepte le traitement de mes données (dont santé) pour le suivi sportif · <span style="color:var(--accent)">politique de confidentialité</span></div>
+          <div class="btn off">Créer mon compte</div>
+          <div class="hint">Il manque : poids.</div>
+        </div>
+        <p class="cap">Le serveur refuse aussi un compte incomplet, avec le même message. Plus de « Ce login est déjà utilisé » pour toutes les erreurs : chaque erreur a son message.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>B</i>Inscription coach (1 écran)</div>
+        <div class="phone">
+          <div class="ttl">Crée ton espace coach</div>
+          <div class="f"><label>Je suis</label><div class="seg"><span class="on">Coach</span><span>Préparateur physique</span></div></div>
+          <div class="f"><label>Nom</label><div class="in">Vincent Portefaix</div></div>
+          <div class="f"><label>E-mail</label><div class="in">…</div></div>
+          <div class="row2"><div class="f"><label>Login</label><div class="in">vincentcoach <span class="ok">✓</span></div></div><div class="f"><label>Mot de passe</label><div class="in">••••••</div></div></div>
+          <div class="f"><label>Sport</label><div class="in">Musculation ▾</div></div>
+          <div class="in" style="background:none;border:0;padding:0;font-size:12px">☑ J'accepte de traiter les données de mes athlètes…</div>
+          <div class="btn p">Créer mon espace</div>
+        </div>
+        <p class="cap">Tous les champs obligatoires, vérifiés aussi par le serveur. Login coach libre (inchangé).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>C · Onboarding partie 1 — athlète</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>C1</i>Ce que fait Novalyz</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b></b><b></b><b></b><b></b></div>
+          <div class="big"><div class="t">Bienvenue, Vincent</div><p class="sm">Novalyz transforme tes séances et ton ressenti en décisions.</p></div>
+          <div class="li"><span class="ic">1</span><b>Comment t'entraîner</b><span>un programme, une cible par série, la séance du jour</span></div>
+          <div class="li"><span class="ic">2</span><b>Si c'est bien fait</b><span>records, progrès, ce qui bloque et pourquoi</span></div>
+          <div class="li"><span class="ic">3</span><b>Comment progresser</b><span>3 actions par semaine, adaptées à ta forme</span></div>
+          <div class="btn p">Suivant</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>C2</i>Ce que tu fais dans l'app</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b></b><b></b><b></b></div>
+          <div class="ttl">Ta routine, en 4 gestes</div>
+          <div class="li"><span class="ic">☀</span><b>Chaque jour : 1 min de questionnaire</b><span>sommeil, fatigue, douleur → ton état du jour</span></div>
+          <div class="li"><span class="ic">⏱</span><b>À chaque séance : tes séries</b><span>charge, reps, effort ; Novalyz te donne la cible</span></div>
+          <div class="li"><span class="ic">📈</span><b>Quand tu veux : tes analyses</b><span>le verdict en clair, puis les chiffres</span></div>
+          <div class="li"><span class="ic">⌚</span><b>Ta montre (facultatif)</b><span>pas, sommeil, FC au repos, sans rien saisir</span></div>
+          <div class="btn p">Suivant</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>C3</i>Comment veux-tu l'utiliser ?</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b></div>
+          <div class="ttl">Qui fait ton programme ?</div>
+          <div class="ch on"><b>Novalyz me le construit</b><span>3 questions (objectif, jours, matériel)</span><span class="then">→ ensuite : ton programme est prêt, tu peux le modifier</span></div>
+          <div class="ch"><b>Je le fais moi-même</b><span>tu crées tes séances, ou tu fais des séances libres</span><span class="then">→ ensuite : l'éditeur de programme</span></div>
+          <div class="ch"><b>J'ai un coach</b><span>il construit ton programme et suit tes analyses</span><span class="then">→ ensuite : ton login à lui donner</span></div>
+          <p class="sm">Tu pourras changer plus tard (Réglages).</p>
+        </div>
+        <p class="cap">Chaque choix dit ce qui se passe juste après. Si « As-tu un coach ? » = Oui à l'inscription, « J'ai un coach » est déjà sélectionné.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>C4</i>Ta photo (facultatif)</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div>
+          <div class="ttl">Ajoute ta photo</div>
+          <div class="av">V</div>
+          <p class="sm" style="text-align:center">Ton coach te reconnaît d'un coup d'œil. Recadrée en carré, visible seulement par toi et ton coach.</p>
+          <div class="row2"><div class="btn">Galerie</div><div class="btn">Appareil photo</div></div>
+          <div class="btn" style="background:none;border:0;color:var(--accent)">Plus tard</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>C5</i>Pour aller plus loin</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
+          <div class="ttl">2 choses à essayer</div>
+          <div class="promo"><b>Découvre ta morpho en 3 photos</b><span>Novalyz analyse ta silhouette et te dit quels muscles sont en avance ou en retard. <span class="soon">bientôt</span></span></div>
+          <div class="li"><span class="ic">⌚</span><b>Connecte ta montre</b><span>2 minutes, guidé selon ta marque</span></div>
+          <div class="btn p">C'est parti → visite de l'app</div>
+        </div>
+        <p class="cap">La morpho est mise en avant ici (demande du porteur). Tant que la clé IA n'est pas posée sur le serveur : badge « bientôt » ; dès qu'elle l'est : bouton « Faire mon analyse ».</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>D · Onboarding partie 1 — coach (nouveau)</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>D1</i>Ce que Novalyz fait pour toi</div>
+        <div class="phone">
+          <div class="big"><div class="t">Bienvenue, coach</div><p class="sm">Novalyz lit les données de tes athlètes et te dit qui a besoin de toi.</p></div>
+          <div class="li"><span class="ic">!</span><b>Qui voir aujourd'hui</b><span>fatigue, douleur, séances manquées, exercices bloqués</span></div>
+          <div class="li"><span class="ic">?</span><b>Pourquoi ça bloque</b><span>une piste tirée de ses données, à lui proposer</span></div>
+          <div class="li"><span class="ic">✎</span><b>Son programme</b><span>tu construis, Novalyz propose, tu décides</span></div>
+          <div class="btn p">Suivant</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>D2</i>Ton premier athlète</div>
+        <div class="phone">
+          <div class="ttl">Ajoute ton premier athlète</div>
+          <div class="ch on"><b>Il a déjà un compte</b><span>demande-lui son login à 4 chiffres → tu lui envoies une demande, il l'accepte</span></div>
+          <div class="ch"><b>Je crée son compte</b><span>tu remplis son profil, il reçoit ses accès</span></div>
+          <div class="btn">Plus tard</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>D3</i>Ta photo (facultatif)</div>
+        <div class="phone">
+          <div class="ttl">Ajoute ta photo</div>
+          <div class="av">VP</div>
+          <p class="sm" style="text-align:center">Tes athlètes la voient dans leurs messages.</p>
+          <div class="btn p">C'est parti → visite de l'espace coach</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>E · Partie 2 — visite (une carte par écran, rien d'oublié)</h2>
+    <p class="cap">Même format qu'aujourd'hui (cartes + surbrillance de la barre du bas). Contenu mis à jour : « nouveau » = absent de la visite actuelle. Revoir la visite : Réglages / Profil.</p>
+    <b>Athlète</b>
+    <div class="deck">
+      <div class="dc"><div class="h"><b>Aujourd'hui</b><span>tous les jours</span></div><ul><li><b>État du jour</b> (prêt / vigilance) et pourquoi</li><li><b>Questionnaire</b> 1 min et « ta normale »</li><li><b>Séance du jour</b> à lancer</li><li>Depuis ta dernière séance : records, progrès, <b>bloqué</b></li><li><b>Plan de la semaine</b> : 3 actions qui se cochent seules <span class="new">nouveau</span></li><li><b>Ma semaine</b> : prévues, faites, en séance libre, en plus <span class="new">nouveau</span></li><li>Régularité · montre · récompenses</li></ul></div>
+      <div class="dc"><div class="h"><b>Entraînement</b><span>tes séances</span></div><ul><li>Ton programme (Novalyz / toi / ton coach)</li><li><b>Cible par série</b> + effort + chrono de repos <span class="new">nouveau</span></li><li>Bloqué : pas de +1 rep forcé, le levier à la place <span class="new">nouveau</span></li><li><b>Séance libre</b> : « remplace laquelle ? » <span class="new">nouveau</span></li><li>Catalogue par <b>muscle et matériel</b>, enchaîner (biset, superset) <span class="new">nouveau</span></li><li>Agenda · cardio · Hyrox</li></ul></div>
+      <div class="dc"><div class="h"><b>Analyses</b><span>comprendre</span></div><ul><li><b>Résumé</b> : verdict, records, progrès, bloqué + <b>pourquoi + levier</b> <span class="new">nouveau</span></li><li><b>Force estimée</b> 6 semaines, fiabilité, volume par muscle, balance</li><li><b>Évolution</b> : ce que Novalyz vise la prochaine fois</li><li><b>Tendances</b> : régularité, tonnage, exercices en progrès, fréquence</li><li><b>Historique</b> (« Changer » sur une séance libre) · Cardio · Croisé</li></ul></div>
+      <div class="dc"><div class="h"><b>Forme</b><span>ton corps</span></div><ul><li><b>Contexte</b> : déload, reprise, vacances → l'analyse s'adapte</li><li>Ressenti 7 j · charge &amp; fraîcheur · poids</li><li><b>Montre</b> : « synchronisée à… », Actualiser, « ancien » <span class="new">nouveau</span></li><li>Nutrition · photos &amp; mensurations · objectifs · douleurs &amp; blessures</li></ul></div>
+      <div class="dc"><div class="h"><b>Coach / Assistant</b><span>échanger</span></div><ul><li>Messagerie avec ton coach (photos, vidéos)</li><li><b>Novalyz IA</b>, branché sur tes données</li><li><b>Analyse morpho</b> en 3 photos <span class="new">mise en avant</span></li></ul></div>
+      <div class="dc"><div class="h"><b>Réglages</b><span>ton compte</span></div><ul><li>Profil (sexe, années, zones prioritaires), <b>photo</b> <span class="new">nouveau</span></li><li>Coach lié · e-mail · <b>rapport par e-mail</b></li><li><b>Connecter / changer ma montre</b>, import de fichiers <span class="new">nouveau</span></li><li>Export / suppression des données · revoir la visite</li></ul></div>
+      <div class="dc"><div class="h"><b>Gratuit / Premium</b><span>fin</span></div><ul><li>Ce qui est gratuit, ce qui sera Premium (IA, morpho, rapports)</li></ul></div>
+    </div>
+    <b>Coach</b>
+    <div class="deck">
+      <div class="dc"><div class="h"><b>Aujourd'hui</b><span>ton cockpit</span></div><ul><li>Briefing équipe · <b>qui a répondu</b> au questionnaire</li><li><b>À surveiller</b> par priorité · entraînement à regarder · messages non lus</li></ul></div>
+      <div class="dc"><div class="h"><b>Équipe</b><span>ton effectif</span></div><ul><li>État, niveau, assiduité, plan de la semaine</li><li><b>Lier</b> (login 4 chiffres) ou <b>créer</b> un athlète</li></ul></div>
+      <div class="dc"><div class="h"><b>Fiche ▸ Aperçu</b><span>décider</span></div><ul><li>État du jour · <b>À décider</b> : piste trouvée dans ses données + actions <span class="new">nouveau</span></li><li>Alertes · entraînement · séries 7 j · prochaine séance · charge &amp; assiduité</li><li><b>Saisir sa séance en présentiel</b> <span class="new">nouveau</span> · contexte</li></ul></div>
+      <div class="dc"><div class="h"><b>Fiche ▸ Analyses</b><span>comprendre</span></div><ul><li>Ses analyses, au ton coach</li><li>Sur ordi : <b>pourquoi ça bloque</b> reste visible à droite <span class="new">nouveau</span></li></ul></div>
+      <div class="dc"><div class="h"><b>Fiche ▸ Séances</b><span>ce qu'il a fait</span></div><ul><li>Détail série par série, bilan, douleur</li><li>Séance libre : <b>« remplace quelle séance ? »</b> <span class="new">nouveau</span></li></ul></div>
+      <div class="dc"><div class="h"><b>Fiche ▸ Programme</b><span>construire</span></div><ul><li>Builder, agenda, <b>Planifier la semaine</b> <span class="new">nouveau</span></li><li><b>Novalyz propose</b> / qui a la main</li><li><b>Créer un exercice</b> (privé, validé ensuite) <span class="new">nouveau</span></li></ul></div>
+      <div class="dc"><div class="h"><b>Fiche ▸ Forme</b><span>mobile</span></div><ul><li>Récupération, sommeil, FC, pas, nutrition</li><li>Montre : fraîcheur des données (« ancien ») <span class="new">nouveau</span></li></ul></div>
+      <div class="dc"><div class="h"><b>Analyses équipe · Messages</b><span>l'équipe</span></div><ul><li>Assiduité, douleurs, progression, volume par muscle, charge</li><li>Messages : filtres, message à plusieurs</li></ul></div>
+      <div class="dc"><div class="h"><b>Profil · Gratuit / Premium</b><span>fin</span></div><ul><li>Notifications, groupes, export, photo <span class="new">nouveau</span></li><li>Ce qui est gratuit, ce qui sera Premium</li></ul></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>F · Coach : créer un exercice sans doublon</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>F1</i>Pendant la saisie</div>
+        <div class="phone">
+          <div class="ttl">Nouvel exercice</div>
+          <div class="f"><label>Nom</label><div class="in">curl incliné</div></div>
+          <div class="warnbox"><b>Il existe peut-être déjà :</b>
+            <div class="exs"><div class="ex">Curl incliné au banc<span class="u">Utiliser</span></div><div class="ex">Curl incliné uni poignée à la poulie<span class="u">Utiliser</span></div></div></div>
+          <div class="btn">Non, créer « curl incliné »</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>F2</i>Après création</div>
+        <div class="phone">
+          <div class="ex">Curl araignée<span class="u" style="color:var(--warn)">privé · en attente</span></div>
+          <p class="sm">Visible par toi et tes athlètes. Novalyz le vérifie avant de l'ajouter au catalogue commun.</p>
+        </div>
+        <p class="cap">Toi (porteur) : liste des exercices « en attente » → valider / fusionner avec un existant / refuser. Au début, avec moi ; un écran admin plus tard.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="panel">
+    <h2>À valider</h2>
+    <ol class="cap">
+      <li>Les textes des écrans C et D te vont ? (à corriger librement)</li>
+      <li>C5 : on met la morpho et la montre à la fin de la partie 1, ou seulement la morpho ?</li>
+      <li>D2 : « Je crée son compte » existe déjà côté coach — on le garde dans la partie 1 ?</li>
+      <li>E : une carte que je n'aurais pas listée ?</li>
+    </ol>
+  </div>
+</div>

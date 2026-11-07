@@ -42,10 +42,39 @@ data.historique.progression_par_exo['Smith incliné'].unshift(pt('2026-11-02', 7
 const P2 = sb._lv3Plan(data, now);
 eq(P2 && P2.actions[0].fait === true && P2.actions[0].charge === 75, 'C : 72,5 kg × 6 fait lundi (entre 70 et 75) → cochée, plan inchangé', P2 && P2.actions[0]);
 // B (niveau, 03/11) — aucune cause visible : levier différent pour un débutant et un avancé.
-const plat = (d) => pt(d, 50, 10, 8, 'pec');
+// 06/11 : à RPE 8 le plateau a désormais une cause (effort en réserve) → scénario « sans cause » poussé à RPE 9.
+const plat = (d) => pt(d, 50, 10, 9, 'pec');
 const dNiv = (niv) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = niv; ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; }); dd.historique.progression_par_exo['Rowing'] = [plat('2026-10-29'), plat('2026-10-22'), plat('2026-10-15'), plat('2026-10-08')]; dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
 eq(/garde cet exercice et ta régularité/.test(dNiv('debutant').levier), 'B niveau : débutant → garder l\'exercice et la régularité', dNiv('debutant').levier);
 eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau : avancé → changer de fourchette ou de variante 3-4 semaines', dNiv('avance').levier);
+// 06/11 (retour porteur) : un exercice BLOQUÉ cherche la cause dans ses séries de travail.
+{ const mk = (rpe, reposDer, c) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
+    ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; });
+    const P = (d, rep) => ({ date: fr(d), seance: 'pec', charge: c, reps: 10, series: [{ charge: c, reps: 10, rpe, repos: rep }, { charge: c, reps: 10, rpe, repos: rep }] });
+    dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29', reposDer), P('2026-10-22', 120), P('2026-10-15', 120), P('2026-10-08', 120)];
+    dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
+  const dRes = mk(8, 120, 50); eq(dRes.cause === 'reserve' && /RPE 9-10/.test(dRes.levier) && /RPE 8/.test(dRes.pourquoi), 'Bloqué : séries à RPE 8 → cause « effort en réserve »', dRes);
+  const dRep = mk(9, 90, 50); eq(dRep.cause === 'repos' && /(2 min|120 s)/.test(dRep.levier) && /(1 min 30|90 s)/.test(dRep.levier), 'Bloqué : repos 2 min → 1 min 30 → cause « repos raccourci »', dRep);
+  const dMar = mk(9, 120, 7.5); eq(dMar.cause === 'marche' && /\+33 %/.test(dMar.levier), 'Bloqué : 7,5 kg, marche +2,5 kg = +33 % → cause « marche trop grosse »', dMar);
+  eq(!/variante/.test(mk(9, 120, 50).levier), 'Bloqué sans cause (intermédiaire) : plus de « change de variante »', mk(9, 120, 50).levier);
+  // Gêne sur la zone (seuil 3/5 validé 06/11) : 3/5 « pectoraux » pendant le plateau → cause possible ; 2/5 ignorée.
+  const gene = (niv) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
+    ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; });
+    const P = (d) => ({ date: fr(d), seance: 'pec', charge: 50, reps: 10, series: [{ charge: 50, reps: 10, rpe: 9, repos: 120 }, { charge: 50, reps: 10, rpe: 9, repos: 120 }] });
+    dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29'), P('2026-10-22'), P('2026-10-15'), P('2026-10-08')];
+    dd.bien_etre = [{ date: fr('2026-10-22'), douleur: niv, zone: 'Pectoraux droit' }];
+    dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
+  const g3 = gene(3); eq(g3.cause === 'gene' && /Possible : gêne/.test(g3.pourquoi), 'Bloqué : gêne 3/5 sur la zone → cause possible « gêne »', g3);
+  eq(gene(2).cause !== 'gene', 'Bloqué : gêne 2/5 → ne compte pas (seuil 3/5)', gene(2).cause);
+  // Série plus légère avant les séries de travail : 16 → 19 reps pendant que 7,5 kg passe de 11 à 10.
+  { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
+    ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; });
+    const P = (d, l, t) => ({ date: fr(d), seance: 'pec', charge: 7.5, reps: t, series: [{ charge: 5, reps: l, rpe: 8, repos: 120 }, { charge: 7.5, reps: t, rpe: 9, repos: 120 }, { charge: 7.5, reps: t, rpe: 9, repos: 120 }] });
+    dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29', 19, 10), P('2026-10-22', 17, 10), P('2026-10-15', 16, 11), P('2026-10-08', 16, 10)];
+    dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' });
+    const dv = sb._lv3Diag(dd, 'Rowing', 'bloque', now);
+    eq(dv.cause === 'avant' && /16 à 19 reps/.test(dv.pourquoi) && /≈ 16 reps/.test(dv.levier) && !/\+1 rep/.test(dv.levier), 'Bloqué : série à 5 kg 16 → 19 reps, 7,5 kg 11 → 10 → cause possible « série d\'avant »', dv); }
+}
 eq(sb.LV3_BLOQUE_N.debutant === 2 && sb.LV3_BLOQUE_N.intermediaire === 3 && sb.LV3_BLOQUE_N.avance === 4, 'B niveau : « bloqué » après 2 / 3 / 4 séances');
 // A5 (audit coach 03/11) — après un arrêt (aucune muscu dans les 14 j avant lundi) : une seule action « Reprendre ».
 { const dr = JSON.parse(JSON.stringify(data)); dr.historique.daily_muscu = { '2026-09-20': { series: 10, spm: {} }, '2026-10-07': { series: 10, spm: { Ischio: 1 } } };

@@ -1,0 +1,222 @@
+<title>Novalyz · catalogue d'exercices</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : planche — en-tête, écrans téléphone (choisir un exercice, fiche exercice), puis 3 tableaux de décision (nettoyage, secondaires, ajouts à cocher) et envoi des choix */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec; --warn:#c77700; --warn-soft:#fff3e0; --bad:#c43c3c;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --warn-soft:#3a2a12; --bad:#ff7b7b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --warn-soft:#3a2a12; --bad:#ff7b7b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.lead{color:var(--muted);max-width:72ch;margin:0}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:22px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:9px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;gap:11px;box-shadow:0 10px 30px rgba(20,33,61,.08);min-width:0}
+.ttl{font-weight:700;font-size:16px}
+.search{border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:var(--subtle);background:var(--surface2)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{flex:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;background:var(--surface);white-space:nowrap}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.chip.m{font-weight:600;color:var(--muted)}
+.chip.m.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.sub{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700}
+.ex{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 11px}
+.ex .n{font-weight:700;font-size:13.5px}
+.ex .s{font-size:11px;color:var(--muted);grid-column:1}
+.ex .add{grid-row:1 / span 2;grid-column:2;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:18px}
+.mt{display:inline-block;font-size:10px;font-weight:700;border-radius:5px;padding:0 6px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);margin-right:4px}
+.new{display:inline-block;font-size:9.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:5px;padding:0 5px;margin-left:4px;vertical-align:1px}
+.cons{background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:13px}
+.cons b{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.cons ul{margin:0;padding-left:18px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:12.5px}
+.kv span:nth-child(odd){color:var(--muted)}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 18px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td.arrow{color:var(--accent);font-weight:700;white-space:nowrap}
+.q{color:var(--warn);font-weight:700}
+.grp{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.gcard{border:1px solid var(--line);border-radius:14px;padding:12px 12px;display:flex;flex-direction:column;gap:6px}
+.gcard h3{margin:0 0 2px;font-size:13.5px;display:flex;justify-content:space-between;gap:8px}
+.gcard h3 small{font-weight:600;color:var(--muted);font-size:11.5px}
+label.add{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;align-items:start;font-size:13px;cursor:pointer;padding:5px 4px;border-radius:9px}
+label.add:hover{background:var(--surface2)}
+label.add input{width:17px;height:17px;margin:1px 0 0;accent-color:var(--accent)}
+label.add small{display:block;font-size:11px;color:var(--muted)}
+.send{display:flex;flex-direction:column;gap:10px;background:var(--accent-soft);border-radius:16px;padding:16px}
+.send button{font:inherit;font-weight:700;font-size:14px;border:0;border-radius:12px;padding:12px 16px;background:var(--accent);color:var(--surface);cursor:pointer;align-self:flex-start}
+.send button:focus-visible,label.add input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.send textarea{width:100%;min-height:160px;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface);color:var(--fg)}
+.qs{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.ok{color:var(--good);font-weight:700}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE</div>
+    <h1>Catalogue d'exercices</h1>
+    <p class="lead">Ce que tu as validé : liste fermée de 14 muscles, squats / presses → secondaire Fessiers. Ici : comment on choisit un exercice partout dans l'app, la fiche d'un exercice (matériel + consignes), le nettoyage du catalogue, et les exercices à ajouter — <b>coche ceux que tu veux</b>, puis envoie-moi tes choix en bas.</p>
+  </header>
+
+  <div class="board">
+    <div class="shot">
+      <div class="tag"><i>1</i>Choisir un exercice (partout)</div>
+      <div class="phone">
+        <div class="ttl">Ajouter un exercice</div>
+        <div class="search">Rechercher…</div>
+        <div class="sub">Muscle</div>
+        <div class="chips"><span class="chip">Tous</span><span class="chip">Pectoraux</span><span class="chip">Dos</span><span class="chip on">Trapèzes</span><span class="chip">Épaules</span><span class="chip">Biceps</span><span class="chip">Triceps</span><span class="chip">Avant-bras</span><span class="chip">Abdominaux</span><span class="chip">Lombaires</span><span class="chip">Quadriceps</span><span class="chip">Ischios</span><span class="chip">Fessiers</span><span class="chip">Adducteurs</span><span class="chip">Mollets</span></div>
+        <div class="sub">Matériel</div>
+        <div class="chips"><span class="chip m on">Tout</span><span class="chip m">Barre</span><span class="chip m">Haltères</span><span class="chip m">Machine</span><span class="chip m">Poulie</span><span class="chip m">Smith</span><span class="chip m">Poids du corps</span><span class="chip m">Autre</span></div>
+        <div class="ex"><span class="n">Shrugs barre</span><span class="s"><span class="mt">Barre</span>déplacé depuis Dos</span><span class="add">+</span></div>
+        <div class="ex"><span class="n">Shrugs haltères</span><span class="s"><span class="mt">Haltères</span>déplacé depuis Dos</span><span class="add">+</span></div>
+        <div class="ex"><span class="n">Tirage trapèze machine</span><span class="s"><span class="mt">Machine</span>déplacé depuis Dos</span><span class="add">+</span></div>
+        <div class="ex"><span class="n">Marche du fermier <span class="new">nouveau</span></span><span class="s"><span class="mt">Haltères</span>+ Avant-bras ½</span><span class="add">+</span></div>
+      </div>
+      <p class="cap">Même écran pour : ajouter au programme (athlète et coach), remplacer un exercice, « Enchaîner avec… », séance libre. Deux filtres combinables : muscle + matériel. « + Avant-bras ½ » = muscle secondaire, compté ½ série.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>2</i>Fiche d'un exercice</div>
+      <div class="phone">
+        <div class="ttl">Développé incliné à la Smith</div>
+        <div class="kv"><span>Muscle</span><span>Pectoraux</span><span>Secondaire</span><span>Triceps (½ série)</span><span>Matériel</span><span>Smith</span><span>Petit pas</span><span>2,5 kg</span></div>
+        <div class="cons"><b>Consignes</b><ul><li>Sors la cage, resserre les omoplates.</li><li>Descends la barre sur le haut des pectoraux.</li></ul></div>
+        <p class="cap" style="margin:0">Consignes : vides au départ, remplies exercice par exercice (tes textes, ou les miens que tu valides). Elles serviront aux conseils débutant (point 1) quand on le fera.</p>
+        <div class="btn p">Ajouter à la séance</div>
+      </div>
+      <p class="cap">Ouverte en touchant le nom d'un exercice (programme, séance, Analyses). Le 1ᵉʳ conseil vient de ta liste du 06/11 ; le 2ᵉ est un <b>exemple à valider</b>, rien ne sera affiché sans ton accord.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>3</i>Coach : créer un exercice</div>
+      <div class="phone">
+        <div class="ttl">Nouvel exercice</div>
+        <div class="kv"><span>Nom</span><span><b>Curl araignée</b></span></div>
+        <div class="sub">Muscle (obligatoire)</div>
+        <div class="chips"><span class="chip">Biceps</span><span class="chip m">…liste des 14</span></div>
+        <div class="sub">Secondaire (facultatif)</div>
+        <div class="chips"><span class="chip m on">Aucun</span><span class="chip m">Avant-bras</span><span class="chip m">…</span></div>
+        <div class="sub">Matériel</div>
+        <div class="chips"><span class="chip m on">Haltères</span><span class="chip m">…</span></div>
+        <div class="btn p">Créer</div>
+      </div>
+      <p class="cap">Plus de muscle tapé à la main : on choisit dans la liste, donc plus de « Moletts » ni de « fessier » / « Fessier ». À trancher : un coach peut-il créer un exercice, ou seulement toi ?</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>A · Nettoyage (automatique, tes séances sont conservées)</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Aujourd'hui</th><th></th><th>Après</th><th>Pourquoi</th></tr></thead>
+      <tbody>
+        <tr><td>Epaule · Ischio · Fessier · Adducteur</td><td class="arrow">→</td><td>Épaules · Ischios · Fessiers · Adducteurs</td><td>noms des 14 muscles</td></tr>
+        <tr><td>shrugs barre · shrugs aux haltéres · Tirage trapèze machine (Dos)</td><td class="arrow">→</td><td>Shrugs barre · Shrugs haltères · Tirage trapèze machine (<b>Trapèzes</b>)</td><td>nouveau groupe</td></tr>
+        <tr><td>Rowing menton (Dos)</td><td class="arrow">→</td><td>Rowing menton (Épaules, secondaire Trapèzes)</td><td>épaules surtout</td></tr>
+        <tr><td>Curl haltére · Curl marteau aux haltéres · Ecarté haltéres (×3) · Elevation frontale haltéres</td><td class="arrow">→</td><td>haltère / haltères</td><td>orthographe</td></tr>
+        <tr><td>Elevation / Elévation · Ecarté</td><td class="arrow">→</td><td>Élévation · Écarté</td><td>accents</td></tr>
+        <tr><td>« Dips pectoraux␣ » · « Élévation frontale à la poulie␣ » · « Hack squat␣ »</td><td class="arrow">→</td><td>sans espace final</td><td>sinon pas reconnu</td></tr>
+        <tr><td>Les extensions mollets debout / assis / à la presse</td><td class="arrow">→</td><td>Mollets debout · Mollets assis · Mollets à la presse</td><td>plus court</td></tr>
+        <tr><td>hip thrust machine (4 séries, 15/08)</td><td class="arrow">→</td><td>Hip thrust machine</td><td>même exercice</td></tr>
+        <tr><td><b>Leg curl</b> (45 séries, 2 athlètes, juin → sept.)</td><td class="arrow">→</td><td class="q">Leg curl allongé ? assis ? debout ?</td><td>absent du catalogue — <b>à toi de dire</b></td></tr>
+        <tr><td>Petit pas « 2 kg » / « 2kg » / « 2.5 / 5 kg » / « 1.25 / 2.5 kg » / vide (5)</td><td class="arrow">→</td><td>un nombre (le plus petit pas : 2 · 2,5 · 1,25…) ; vide → 2,5</td><td>sert au calcul des charges</td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap" style="margin-top:8px">Les renommages s'appliquent aussi à tes séances passées et à ton programme (même exercice, nouveau nom) : historique, records et courbes restent continus.</p>
+  </div>
+
+  <div class="panel">
+    <h2>B · Muscles secondaires</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Exercices</th><th>Aujourd'hui</th><th></th><th>Après</th></tr></thead>
+      <tbody>
+        <tr><td>Squat · Squat gobelet · Hack squat · Belt squat · Presse horizontale / inclinée / circulaire / unilatérale · Fente courte</td><td>Ischio</td><td class="arrow">→</td><td class="ok">Fessiers</td></tr>
+        <tr><td>Relevé de jambe</td><td>Ischio</td><td class="arrow">→</td><td>aucun</td></tr>
+        <tr><td>Hip thrust · Hip thrust machine · Presse sumo</td><td>Ischio</td><td class="arrow">→</td><td>inchangé</td></tr>
+        <tr><td>Rowing menton</td><td>Épaule (principal Dos)</td><td class="arrow">→</td><td>Trapèzes (principal Épaules)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap" style="margin-top:8px">Effet attendu chez toi : volume Fessiers ↑, Ischios ↓ (seul le leg curl compte vraiment pour tes ischios).</p>
+  </div>
+
+  <div class="panel">
+    <h2>C · Exercices à ajouter — coche ceux que tu veux</h2>
+    <div class="grp" id="grp"></div>
+  </div>
+
+  <div class="send">
+    <b>Envoyer mes choix à Claude</b>
+    <span class="cap">Coche ci-dessus, réponds aux questions ci-dessous dans ta tête ou dans le message, puis copie et colle dans la conversation.</span>
+    <button type="button" id="copier">Copier mes choix</button>
+    <span id="okc" class="ok" hidden>Copié. Colle-le dans la conversation.</span>
+    <textarea id="txt" readonly hidden></textarea>
+  </div>
+
+  <div class="panel">
+    <h2>Questions</h2>
+    <ol class="qs">
+      <li>« Leg curl » (45 séries, juin → sept.) : c'était allongé, assis ou debout ?</li>
+      <li>Un coach peut-il créer un exercice (écran 3), ou seulement toi (admin) ?</li>
+      <li>Consignes : je prépare un premier jet pour les exercices de ton programme, tu corriges ? Ou tu les écris toi-même ?</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+var G = [
+  ['Trapèzes', 'nouveau groupe (3 déplacés)', [['Marche du fermier', 'Haltères · + Avant-bras ½']]],
+  ['Avant-bras', 'aucun aujourd\'hui', [['Curl poignet barre', 'Barre'], ['Curl poignet inversé', 'Barre'], ['Curl inversé barre', 'Barre · + Biceps ½']]],
+  ['Lombaires', 'aucun aujourd\'hui', [['Extension lombaire au banc 45°', 'Poids du corps / machine'], ['Good morning', 'Barre · + Ischios ½']]],
+  ['Abdominaux', '3 aujourd\'hui', [['Crunch machine', 'Machine'], ['Relevé de genoux suspendu', 'Poids du corps'], ['Crunch au sol', 'Poids du corps'], ['Pallof press', 'Poulie (anti-rotation)']]],
+  ['Adducteurs', '1 aujourd\'hui', [['Adducteur à la poulie', 'Poulie'], ['Squat sumo haltère', 'Haltères · + Fessiers ½']]],
+  ['Mollets', '3 aujourd\'hui', [['Mollets à la Smith', 'Smith'], ['Mollets unilatéral haltère', 'Haltères']]],
+  ['Épaules', '9 aujourd\'hui', [['Développé épaules machine', 'Machine · + Triceps ½'], ['Oiseau machine (reverse fly)', 'Machine'], ['Face pull', 'Poulie · + Trapèzes ½'], ['Développé Arnold', 'Haltères · + Triceps ½']]],
+  ['Triceps', '5 aujourd\'hui', [['Barre au front', 'Barre'], ['Kickback haltère', 'Haltères'], ['Extension nuque haltère', 'Haltères'], ['Dips machine', 'Machine']]],
+  ['Biceps', '7 aujourd\'hui', [['Curl pupitre', 'Barre / machine'], ['Curl machine', 'Machine']]],
+  ['Ischios', '6 aujourd\'hui', [['Nordic curl', 'Poids du corps'], ['Leg curl unilatéral', 'Machine']]],
+  ['Fessiers', '7 aujourd\'hui', [['Pull-through à la poulie', 'Poulie · + Ischios ½'], ['Abduction à la poulie', 'Poulie']]],
+  ['Quadriceps', '11 aujourd\'hui', [['Front squat', 'Barre · + Fessiers ½'], ['Sissy squat', 'Poids du corps']]]
+];
+var KEY = 'nv-cat-choix-0611', st = {};
+try { st = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { st = {}; }
+var host = document.getElementById('grp'), n = 0;
+G.forEach(function (g) {
+  var c = document.createElement('div'); c.className = 'gcard';
+  c.innerHTML = '<h3>' + g[0] + ' <small>' + g[1] + '</small></h3>';
+  g[2].forEach(function (x) { n++; var id = 'c' + n;
+    var l = document.createElement('label'); l.className = 'add';
+    l.innerHTML = '<input type="checkbox" id="' + id + '"><span>' + x[0] + '<small>' + x[1] + '</small></span>';
+    var cb = l.querySelector('input'); cb.checked = !!st[id]; cb.dataset.m = g[0]; cb.dataset.n = x[0];
+    cb.addEventListener('change', function () { st[id] = cb.checked; try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} });
+    c.appendChild(l); });
+  host.appendChild(c);
+});
+document.getElementById('copier').addEventListener('click', function () {
+  var oui = [].slice.call(document.querySelectorAll('#grp input:checked')).map(function (c) { return '- ' + c.dataset.m + ' : ' + c.dataset.n; });
+  var t = 'Catalogue — mes choix\nExercices à ajouter (' + oui.length + ') :\n' + (oui.length ? oui.join('\n') : '- aucun') + '\n\nLeg curl = \nCoach peut créer un exercice : \nConsignes : ';
+  var ta = document.getElementById('txt'); ta.value = t;
+  function repli() { ta.hidden = false; document.getElementById('okc').hidden = true; try { ta.focus(); ta.select(); } catch (e) {} }
+  try { navigator.clipboard.writeText(t).then(function () { document.getElementById('okc').hidden = false; ta.hidden = false; }, repli); } catch (e) { repli(); }
+});
+</script>

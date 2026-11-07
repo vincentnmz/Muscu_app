@@ -638,10 +638,13 @@ function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date
 // « Triceps␣ ») qui ne correspondaient jamais aux objectifs de volume (« Mollets »…) →
 // séries jamais comptées. Clé canonique : sans espaces parasites, casse/alias unifiés.
 const _MUSCLE_ALIAS: Record<string, string> = {
+  'corps entier': 'Corps entier',   // 07/11 : exercices fonctionnels (burpees, pneu…) — hors volume par muscle
   moletts: 'Mollets', mollet: 'Mollets', mollets: 'Mollets', fessier: 'Fessier', fessiers: 'Fessier',
   ischio: 'Ischio', ischios: 'Ischio', epaule: 'Epaule', epaules: 'Epaule', abdominaux: 'Abdominaux', abdos: 'Abdominaux',
   triceps: 'Triceps', biceps: 'Biceps', dos: 'Dos', pectoraux: 'Pectoraux', quadriceps: 'Quadriceps',
   adducteur: 'Adducteur', adducteurs: 'Adducteur', trapeze: 'Trapèze', trapezes: 'Trapèze',
+  // Catalogue 06/11 : 2 nouveaux groupes (liste fermée de 14 muscles validée par le porteur).
+  'avant-bras': 'Avant-bras', 'avant bras': 'Avant-bras', avantbras: 'Avant-bras', lombaire: 'Lombaires', lombaires: 'Lombaires',
 }
 function normMuscle(m: unknown): string {
   const raw = String(m ?? '').trim()
@@ -1029,7 +1032,7 @@ function _secMap(exoRows: any[]): Record<string, string> {
   return m
 }
 function _addSeriesMuscle(acc: Record<string, number>, r: any, secByExo?: Record<string, string>) {
-  if (r.muscle) acc[r.muscle] = (acc[r.muscle] || 0) + 1
+  if (r.muscle && normMuscle(r.muscle) !== 'Corps entier') acc[r.muscle] = (acc[r.muscle] || 0) + 1   // 07/11 : corps entier hors volume par muscle
   const sec = secByExo && secByExo[String(r.exercice || '').trim().toLowerCase()]
   if (sec && sec !== normMuscle(r.muscle)) acc[sec] = (acc[sec] || 0) + 0.5
 }
@@ -1221,7 +1224,8 @@ const SENS_TESTS: Record<string, number> = { vma: 1, sprint_10m: -1, sprint_30m:
 function beScoreJoueur(sig: any): number | null {
   const beComp: number[] = []
   if (sig.sommeil != null) beComp.push(sig.sommeil)
-  if (sig.fatigue != null) beComp.push(6 - sig.fatigue)
+  const _fm = sig.fatigueMoy != null ? sig.fatigueMoy : sig.fatigue   // 06/11 : moyenne (score), pas le pire jour
+  if (_fm != null) beComp.push(6 - _fm)
   if (sig.douleur != null) beComp.push(6 - sig.douleur)
   return beComp.length ? beComp.reduce((x, y) => x + y, 0) / beComp.length : null
 }
@@ -1466,23 +1470,36 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const annees = params.get('annees') || '0'
   const sport = params.get('sport') || 'muscu'
   const email = (params.get('email') || '').trim()
-  if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
-  if (pwd.length < MDP_MIN) return jsonResp({ erreur: 'Mot de passe : 6 caractères minimum.', message: 'Mot de passe : 6 caractères minimum.' })   // C6
-  if (email && !_emailValide(email)) return jsonResp({ erreur: 'Email invalide', message: 'Email invalide' })
+  const sexe = String(params.get('sexe') || '').trim().toUpperCase()
+  // 07/11 (maquette validée) : tout est obligatoire, vérifié ICI aussi (avant : seulement dans l'app → comptes à moitié remplis).
+  const refus = (m: string) => jsonResp({ erreur: m, message: m })
+  if (!login || !pwd) return refus('Login et mot de passe obligatoires.')
+  if (!/^\d{4}$/.test(login)) return refus('Le login doit faire 4 chiffres.')
+  if (pwd.length < MDP_MIN) return refus('Mot de passe : 6 caractères minimum.')   // C6
+  if (!nom || nom === login) return refus('Indique ton prénom.')
+  if (!email || !_emailValide(email)) return refus('E-mail invalide.')
+  if (sexe !== 'H' && sexe !== 'F') return refus('Indique ton sexe.')
+  const ddnD = ddn ? new Date(String(ddn).slice(0, 10) + 'T00:00:00') : null
+  const age = ddnD && !isNaN(ddnD.getTime()) ? (Date.now() - ddnD.getTime()) / (365.25 * 864e5) : NaN
+  if (!(age >= 10 && age <= 100)) return refus('Date de naissance invalide.')
+  const tN = Number(taille), pN = Number(String(poids || '').replace(',', '.'))
+  if (!(tN >= 100 && tN <= 250)) return refus('Taille invalide (en cm).')
+  if (!(pN >= 25 && pN <= 300)) return refus('Poids invalide (en kg).')
+  if (sport === 'muscu' && !(params.get('annees') != null && params.get('annees') !== '' && Number(annees) >= 0 && Number(annees) <= 80)) return refus('Indique tes années de pratique.')
 
   // Accès bêta par code d'invitation : si le secret BETA_INVITE_CODE est défini,
   // l'inscription exige ce code. S'il est vide/absent → inscription OUVERTE
   // (rétro-compatible : la garde ne s'active que quand tu poses le secret).
   const code = (params.get('code') || '').trim()
   const required = (Deno.env.get('BETA_INVITE_CODE') || '').trim()
-  if (required && code !== required) return jsonResp({ erreur: 'Code invalide', message: 'Code d\'invitation invalide ou manquant.' })
+  if (required && code !== required) return jsonResp({ erreur: 'Code invalide', message: 'Code d\'invitation invalide ou manquant.', code_requis: true })
 
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
-  if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Login déjà utilisé' })
+  if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Ce login est déjà pris : choisis-en un autre.', login_pris: true })
 
   const hash = await hashSalted(pwd, login)
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null }).select().single()
+  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null, sexe }).select().single()
   if (error) return jsonResp({ erreur: error.message, message: error.message })
   // C9 : mail de bienvenue (login + confirmer l'adresse). Un échec d'envoi ne bloque pas l'inscription.
   if (email) { try { await _envoyerMailCompte('a', String(data.id), email, String(data.login), String(data.nom || ''), true) } catch (_) {} }
@@ -2173,7 +2190,10 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     // 3) Leviers d'AIDE transverses (toujours utiles, non chiffrés → priorité info).
     //    Philosophie : on ne change PAS d'exercice — on progresse par l'intensité, la
     //    surcharge progressive, la récupération et la nutrition (demande porteur).
-    pushReco(`Mets de l'intensité : tes dernières séries doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
+    // Audit 06/11 : seulement si les séries sont loin de l'échec (RPE moyen 28 j < 8) — sinon la reco contredit
+    // l'écran (« chaque série va près de l'échec ») pour quelqu'un qui pousse déjà à RPE 8,6.
+    const rpeMoy28 = cmp.rpe && cmp.rpe.j28 != null ? Number(cmp.rpe.j28) : null
+    if (rpeMoy28 != null && rpeMoy28 > 0 && rpeMoy28 < 8) pushReco(`Mets de l'intensité : tes séries finissent en moyenne à RPE ${String(Math.round(rpeMoy28 * 10) / 10).replace('.', ',')}. Les dernières doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
     pushReco(`Progresse une variable à la fois et garde les mêmes exercices : d'abord les reps jusqu'au haut de ta fourchette, puis la charge — c'est comme ça qu'on mesure vraiment les progrès.`, 'info')
     pushReco(`Soigne ta récupération : vise 7-9 h de sommeil et un repos suffisant entre séries (2-3 min sur les gros exercices) pour pousser fort la séance d'après.`, 'info')
     pushReco(`Assure l'apport : assez de protéines (~1,6 à 2 g/kg/jour) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.`, 'info')
@@ -2443,17 +2463,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
   const pauseRow = pauseRows?.[0]
-  let enPause = false
-  let pauseObj: any = null
-  if (pauseRow && pauseRow.valeur && pauseRow.valeur !== 'fin') {
-    const debut = normDate(pauseRow.valeur) || null
-    const fin = pauseRow.unite ? normDate(pauseRow.unite) : null
-    const today0 = fmtYMD(now)
-    if ((!debut || today0 >= debut) && (!fin || today0 <= fin)) {
-      enPause = true
-      pauseObj = { debut, fin }
-    }
-  }
+  const pauseObj: any = pauseActive(pauseRow, now)
+  const enPause = !!pauseObj
 
   const globalData = computeGlobal(perfs)
   const recentData = computeRecent(perfs, now)
@@ -2713,6 +2724,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     else if (r.cle === 'pas') santeMap[d].pas = v
   }
   const sante_historique = Object.values(santeMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+  // Montre 06/11 : heure + marque de la dernière synchro réussie (saveSante) → « Synchronisée à 14:32 » athlète et coach.
+  let montre_sync: any = null
+  try {
+    const { data: ms } = await sb().from('indicateurs').select('valeur,unite').eq('athlete_id', athleteId).eq('cle', 'montre_sync').order('id', { ascending: false }).limit(1)
+    if (ms && ms[0]) montre_sync = { at: String(ms[0].valeur || ''), marque: String(ms[0].unite || '') }
+  } catch (_) {}
 
   // Historique nutrition (saisie manuelle / Health Connect) : 1 objet par jour
   // {date, kcal, prot} agrégé depuis les lignes indicateurs seance_id 'nutri_<date>'.
@@ -2828,7 +2845,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       ffTsbPct: ffA.tsbPct, ffRatio: ffA.ratio, ffFiable,
       seances7: seances7M,
       // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
-      douleur: sigM.douleur, douleurZone: sigM.douleurZone, douleurDate: sigM.douleurDate, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, stress: sigM.stress, courbatures: sigM.courbatures,
+      douleur: sigM.douleur, douleurZone: sigM.douleurZone, douleurDate: sigM.douleurDate, fatigue: sigM.fatigueVerdict, sommeil: sigM.sommeilVerdict, stress: sigM.stress, courbatures: sigM.courbatures,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
       enPause: enPause || (!!_pauseFin && _pauseFin <= fmtYMD(now) && _pauseFin >= fmtYMD(minus(now, 6))),   // + 7 j de reprise après la pause
@@ -2856,6 +2873,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const { data: spRows } = await sb().from('indicateurs').select('date,seance_id').eq('athlete_id', athleteId).eq('cle', 'saisi_par')
     const sp = new Set((spRows || []).map((r: any) => normDate(r.date) + '|' + String(r.seance_id ?? '')))
     for (const sd of seancesDetailArr as any[]) if (sp.has(sd.date + '|' + sd.seance_id)) sd.saisi_par_coach = true
+  } catch (_) {}
+  // 06/11 — séance libre rattachée à la séance prévue qu'elle remplace (« Ma semaine ») : indicateurs cle 'rattache',
+  // seance_id = séance réelle (ex. « Libre »), date = date de la séance, valeur = séance prévue ou '__plus__'.
+  try {
+    const { data: raRows } = await sb().from('indicateurs').select('date,seance_id,valeur,unite').eq('athlete_id', athleteId).eq('cle', 'rattache')
+    const ra: Record<string, any> = {}
+    for (const r of (raRows || []) as any[]) ra[normDate(r.date) + '|' + String(r.seance_id ?? '')] = r
+    for (const sd of seancesDetailArr as any[]) { const r = ra[sd.date + '|' + sd.seance_id]; if (r) { sd.rattache = String(r.valeur || ''); sd.rattache_par = String(r.unite || '') } }
   } catch (_) {}
   const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
   // Temps de repos entre séries (levier B) : moyenne des repos RÉELLEMENT loggés (>0)
@@ -2961,6 +2986,13 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY'), ia_credits: await _iaCreditsRestants(athleteId) },
     pas_quotidiens,
     sante_historique,
+    montre_sync,
+    ...(await (async () => {   // 07/11 : photo de profil (la sienne + celle de son coach)
+      const pa = _avatarPath('a', String(athleteId)), cId = String((athData as any)?.coach_id || '')
+      const pc = cId ? _avatarPath('c', cId) : ''
+      const u = await _avatarUrls([pa, pc])
+      return { photo_url: u[pa] || null, coach_photo_url: pc ? (u[pc] || null) : null }
+    })()),
     nutri_historique,
     mensurations,
     suivi_photos,
@@ -3028,14 +3060,70 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
 async function handleGetExercices(): Promise<Response> {
   // catalogue complet depuis la table exercices ; le front lit data.exercices
   const { data } = await sb().from('exercices').select('*').order('exercice')
-  const exercices = (data || []).filter(r => r.exercice_id).map(r => ({
+  // 07/11 : catalogue COMMUN = exercices validés. Ceux créés par un coach et pas encore
+  // validés (statut 'en_attente') ne sont visibles que de ce coach et de ses athlètes (exercicesPrives).
+  return jsonResp({ exercices: _exoLignes((data || []).filter((r: any) => (r.statut || 'valide') === 'valide')) })
+}
+function _exoLignes(rows: any[]): any[] {
+  return (rows || []).filter(r => r.exercice_id).map(r => ({
     exercice_id: r.exercice_id,
     exercice: r.exercice,
     muscle: normMuscle(r.muscle),
     muscle_secondaire: normMuscle(r.muscle_secondaire),
     increment_kg: r.increment_kg || '2.5 / 5kg',
+    // Catalogue 06/11 : matériel, disciplines (liste « muscu,street… »), type de mesure, auteur (coach).
+    materiel: r.materiel || '', disciplines: r.disciplines || 'muscu', mesure: r.mesure || 'charge_reps', cree_par: r.cree_par || '',
+    statut: r.statut || 'valide',
   }))
-  return jsonResp({ exercices })
+}
+// Exercices en attente de validation du coach de la session (coach : les siens ; athlète : ceux de SON coach).
+async function handleExercicesPrives(body: any): Promise<Response> {
+  let cid = ''
+  if (body._sessRole === 'c') cid = String(body._sessId || '')
+  else if (body.athlete_id) {
+    const { data: a } = await sb().from('athletes').select('coach_id').eq('id', String(body.athlete_id)).single()
+    cid = String((a as any)?.coach_id || '')
+  }
+  if (!cid) return jsonResp({ exercices: [] })
+  const { data } = await sb().from('exercices').select('*').eq('cree_par', 'coach:' + cid).eq('statut', 'en_attente').order('exercice')
+  return jsonResp({ exercices: _exoLignes(data || []) })
+}
+// Clé de nom normalisée (même règle que la colonne nom_cle + index unique en base, 07/11).
+const _nomCle = (t: any) => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+// Catalogue 06/11 — un coach crée un exercice : muscle choisi dans la liste fermée (14), plus de saisie libre.
+// 07/11 : « Corps entier » (burpees, pneu, slam ball…) : compte dans la séance, PAS dans le volume par muscle
+// (absent de VOLUME_CIBLES_NIVEAU → jamais dans volume_obti). Matériel fonctionnel ajouté.
+const CAT_MUSCLES = ['Pectoraux', 'Dos', 'Trapèze', 'Epaule', 'Biceps', 'Triceps', 'Avant-bras', 'Abdominaux', 'Lombaires', 'Quadriceps', 'Ischio', 'Fessier', 'Adducteur', 'Mollets', 'Corps entier']
+const CAT_MATERIEL = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Sac lesté', 'Kettlebell', 'Médecine-ball', 'Pneu / masse', 'Autre']
+async function handleCreerExercice(body: any): Promise<Response> {
+  if (body._sessRole !== 'c') return jsonResp({ erreur: 'Réservé aux coachs' })
+  const nom = String(body.exercice || '').replace(/\s+/g, ' ').trim()
+  const muscle = normMuscle(body.muscle), sec = body.muscle_secondaire ? normMuscle(body.muscle_secondaire) : null
+  const materiel = CAT_MATERIEL.includes(String(body.materiel || '')) ? String(body.materiel) : 'Autre'
+  if (!nom || nom.length > 60) return jsonResp({ erreur: 'Nom manquant ou trop long (60 caractères max)' })
+  if (!CAT_MUSCLES.includes(muscle)) return jsonResp({ erreur: 'Muscle inconnu' })
+  if (sec && (!CAT_MUSCLES.includes(sec) || sec === muscle)) return jsonResp({ erreur: 'Muscle secondaire invalide' })
+  const { data: tous } = await sb().from('exercices').select('exercice_id,exercice,statut,cree_par')
+  const cle = _nomCle(nom), moi = 'coach:' + String(body._sessId || '')
+  const meme = (tous || []).find((e: any) => _nomCle(e.exercice) === cle)
+  if (meme) {
+    const enAttente = (meme.statut || 'valide') === 'en_attente'
+    return jsonResp({ erreur: enAttente && meme.cree_par !== moi ? 'Un autre coach a déjà proposé cet exercice : il sera dans le catalogue dès qu\'il est validé.' : 'Cet exercice existe déjà : utilise « ' + meme.exercice + ' ».', existant: { exercice_id: meme.exercice_id, exercice: meme.exercice } })
+  }
+  // 07/11 : privé au coach (et à ses athlètes) + « en attente » jusqu'à validation par le porteur.
+  // Unicité garantie en base (exercice_id = clé primaire, nom_cle = index unique) : si deux coachs
+  // créent en même temps, l'un des deux échoue proprement → on retente avec le numéro suivant.
+  let id = Math.max(0, ...(tous || []).map((e: any) => Number(e.exercice_id) || 0)) + 1
+  for (let essai = 0; essai < 3; essai++, id++) {
+    const row = { exercice_id: String(id), exercice: nom, nom_cle: cle, statut: 'en_attente', muscle, muscle_secondaire: sec, increment_kg: materiel === 'Haltères' ? '2' : '2.5', materiel, disciplines: 'muscu', mesure: 'charge_reps', cree_par: moi }
+    const { error } = await sb().from('exercices').insert(row)
+    if (!error) return jsonResp({ ok: true, exercice: row })
+    const msg = String(error.message || '')
+    if (/nom_cle/.test(msg)) return jsonResp({ erreur: 'Cet exercice existe déjà.' })
+    if (!/duplicate|unique|pkey/i.test(msg)) return jsonResp({ erreur: msg })
+  }
+  return jsonResp({ erreur: 'Création impossible, réessaie.' })
 }
 
 async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
@@ -3058,6 +3146,16 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
   return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', email_verifie: !!coach.email_verifie, club: coach.club || '', categorie_defaut: coach.categorie_defaut || '', recap_freq: coach.recap_freq || 'off' } })
 }
 
+// Pause active = aujourd'hui dans [debut, fin] (valeur = début, unite = fin, 'fin' = pause levée). Une source pour
+// getAppData et getCoachAthletes (audit 06/11 : getCoachAthletes disait « en pause » pour toute pause jamais levée,
+// ex. Vincent, pause du 19/08 au 02/09 encore lue comme en cours le 06/11).
+function pauseActive(row: any, now: Date): { debut: string | null, fin: string | null } | null {
+  if (!row || !row.valeur || row.valeur === 'fin') return null
+  const debut = normDate(row.valeur) || null
+  const fin = row.unite ? normDate(row.unite) : null
+  const today0 = fmtYMD(now)
+  return ((!debut || today0 >= debut) && (!fin || today0 <= fin)) ? { debut, fin } : null
+}
 async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response> {
   const coachId = params.get('coach_id')
   if (!coachId) return jsonResp({ erreur: 'coach_id manquant' })
@@ -3089,10 +3187,11 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     } catch (_) { /* repli ancien calcul */ }
   }))
 
+  const avatars = await _avatarUrls(athletes.map(a => _avatarPath('a', String(a.id))))   // 07/11 photo de profil
   const result = athletes.map(ath => {
     const perfs = (perfsAll || []).filter(r => r.athlete_id === ath.id)
     const pauses = (pauseAll || []).filter(r => r.athlete_id === ath.id)
-    const enPause = pauses.length > 0 && pauses[0].valeur !== 'fin'
+    const enPause = !!pauseActive(pauses[0], now)
     const dates = [...new Set(perfs.map(r => normDate(r.date)))].sort()
     const anneesA = anneesEffectives(ath.annees, ath.created_at, now)   // N2 : ancienneté effective (évolue dans le temps)
     const alertes = centreByAth[String(ath.id)] || calculerAlertes(perfs, ath.id, anneesA, enPause)
@@ -3101,6 +3200,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     const strategieA = ath.strategie || (sportA === 'muscu' ? getStrategieFromAnnees(anneesA) : '')
     return {
       athlete_id: String(ath.id), id: ath.id, nom: ath.nom, sport: sportA, en_pause: enPause,
+      photo_url: avatars[_avatarPath('a', String(ath.id))] || null,
       derniere_seance: dates.length ? fmtFR(dates[dates.length - 1]) : null,
       annees_pratique: anneesA,                         // ← rétabli (perdu à la migration) : pilote le niveau côté coach
       niveau: getNiveauExperience(anneesA),
@@ -3110,7 +3210,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     }
   })
 
-  return jsonResp({ ok: true, athletes: result })
+  return jsonResp({ ok: true, athletes: result, ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') })
 }
 
 async function handleGetCommentaires(params: URLSearchParams): Promise<Response> {
@@ -3299,12 +3399,13 @@ async function handleDetacherCoach(body: any): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
+function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number; fatigueVerdict: number|null; sommeilVerdict: number|null } {
   // Zone lisible : anciennes saisies perdues stockées « NaN » → aucune zone (sinon l'alerte
   // affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
   const _zoneOk = (z: any): string | null => { const t = String(z == null ? '' : z).trim(); return (!t || /^(nan|null|undefined)$/i.test(t)) ? null : t }
   const cut = fmtYMD(minus(now, days - 1))
   const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
+  const fatD: { d: string; v: number }[] = [], somD: { d: string; v: number }[] = []
   // DOULEUR = DERNIÈRE saisie (jour le plus récent ; pire valeur de ce jour-là), plus
   // le MAX des 7 jours : une douleur passée (« Aucune » le lendemain) ne maintient
   // plus l'athlète en Vigilance / rouge pendant une semaine (validé porteur oct. 2026).
@@ -3317,8 +3418,8 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
       if (!isNaN(v) && (dLastDate == null || dIso > dLastDate)) { dLastDate = dIso; dLast = v; dZone = _zoneOk(r.zone_douloureuse) }
       else if (!isNaN(v) && dIso === dLastDate && v > (dLast as number)) { dLast = v; dZone = _zoneOk(r.zone_douloureuse) || dZone }
     }
-    if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') fat.push(Number(r.fatigue_musculaire))
-    if (r.sommeil != null && r.sommeil !== '') som.push(Number(r.sommeil))
+    if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') { fat.push(Number(r.fatigue_musculaire)); fatD.push({ d: dIso, v: Number(r.fatigue_musculaire) }) }
+    if (r.sommeil != null && r.sommeil !== '') { som.push(Number(r.sommeil)); somD.push({ d: dIso, v: Number(r.sommeil) }) }
     if (r.stress != null && r.stress !== '') str.push(Number(r.stress))
     if (r.courbatures != null && r.courbatures !== '') {
       const cv = Number(r.courbatures); courb.push(cv)
@@ -3333,7 +3434,26 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
   // fatigué ne plombe pas la semaine. Ajout non cassant.
   // Hooper : on ajoute stress (moyenne récente) et courbatures/DOMS (MAX, prévention).
-  return { douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: cLast, wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
+  // 06/11 (retour porteur) : « le jour compte pour le jour ». Une mauvaise nuit / une journée fatiguée ne doit
+  // pas tout remettre en cause les jours suivants. VERDICT (athlète ET coach, même règle) :
+  //   · réponse d'aujourd'hui ou d'hier → c'est elle qui compte (dernière réponse) ;
+  //   · sinon (pas de réponse récente) → seulement une TENDANCE : ≥ 2 réponses défavorables sur 7 j,
+  //     ou moyenne 7 j défavorable ; sinon rien (pas de Vigilance sur une vieille réponse isolée).
+  // Avant : athlète = moyenne 7 j (une seule mauvaise réponse comptait 7 j s'il ne répondait plus) ;
+  //         coach = MAXIMUM 7 j (une journée à 4/5 = « Fatigue élevée » pendant une semaine).
+  const recent = fmtYMD(minus(now, 1))
+  const derniere = (a: { d: string; v: number }[]) => { let b: { d: string; v: number } | null = null; for (const x of a) if (!isNaN(x.v) && (!b || x.d >= b.d)) b = x; return b }
+  const verdict = (a: { d: string; v: number }[], mauvais: (v: number) => boolean): number | null => {
+    const last = derniere(a); if (!last) return null
+    if (last.d >= recent) return last.v
+    const vals = a.map(x => x.v).filter(v => !isNaN(v)), moy = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
+    if (vals.filter(mauvais).length >= 2) return moy
+    if (vals.length >= 2 && moy != null && mauvais(moy)) return moy   // une moyenne = au moins 2 réponses (1 vieille réponse seule ne compte pas)
+    return null
+  }
+  const fatigueVerdict = verdict(fatD, v => v >= 4)
+  const sommeilVerdict = verdict(somD, v => v <= 2)
+  return { fatigueVerdict, sommeilVerdict, douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: cLast, wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
 }
 
 interface EtatInput {
@@ -3669,7 +3789,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       // >>> MOTEUR CENTRAL — statut, alertes, dispo, risque, récup, reco, confiance <<<
       const etat = evaluerEtatAthlete({
         acwr, acwrFiable, seances7,
-        douleur: sig.douleur, douleurZone: sig.douleurZone, douleurDate: sig.douleurDate, fatigue: sig.fatigue, sommeil: sig.sommeil, stress: null, courbatures: null,
+        douleur: sig.douleur, douleurZone: sig.douleurZone, douleurDate: sig.douleurDate, fatigue: sig.fatigueVerdict, sommeil: sig.sommeilVerdict, stress: null, courbatures: null,
         injStatut: inj ? inj.statut : null,
         ctxEtat: ctxEtatOf(j.athlete_id),
         q: { jours: histoDays != null ? histoDays : (a.charge7 > 0 || sig.wellnessN > 0 ? 7 : 0), wellnessN: sig.wellnessN, hasCharge: a.charge7 > 0 || a.charge28 > 0 },
@@ -3690,7 +3810,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       nb[statut]++
       const prog = progressionAth(j.athlete_id)
       const beScore = beScoreJoueur(sig)
-      equipeItems.push({ charge7: a.charge7, fatigue: sig.fatigue, beScore, progression: prog })
+      equipeItems.push({ charge7: a.charge7, fatigue: (sig.fatigueMoy != null ? sig.fatigueMoy : sig.fatigue), beScore, progression: prog })
       if (inj) { blesses.push({ athlete_id: j.athlete_id, nom: j.nom, poste: j.poste, type: inj.type, localisation: inj.localisation, statut: inj.statut, retour_terrain: inj.retour_terrain, retour_competition: inj.retour_competition }); if (inj.statut === 'indispo') nbIndispo++ }
 
       resultats.push({
@@ -3699,7 +3819,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
         seances_7j: seances7,
         charge_7j: Math.round(a.charge7),
         acwr,
-        fatigue_moy: sig.fatigue != null ? Math.round(sig.fatigue * 10) / 10 : null,
+        fatigue_moy: sig.fatigueMoy != null ? Math.round(sig.fatigueMoy * 10) / 10 : null,   // 06/11 : c'était le MAX sous le nom « moy »
         douleur_max: sig.douleur,
         sommeil_moy: sig.sommeil != null ? Math.round(sig.sommeil * 10) / 10 : null,
         statut, progression: prog, blesse: inj ? inj.statut : null, alertes,
@@ -3899,7 +4019,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28, acwrCalcF.joursActifsChronique)
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
-      douleur: sig7.douleur, douleurZone: sig7.douleurZone, douleurDate: sig7.douleurDate, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
+      douleur: sig7.douleur, douleurZone: sig7.douleurZone, douleurDate: sig7.douleurDate, fatigue: sig7.fatigueVerdict, sommeil: sig7.sommeilVerdict,
       stress: _n(bienetre.stress), courbatures: _n(bienetre.courbatures),
       injStatut: injActive ? (injActive.statut as any) : null,
       ctxEtat,
@@ -4226,13 +4346,33 @@ async function handleClearDemoFoot(body: any): Promise<Response> {
 }
 
 const STAFF_ROLES = ['coach', 'prepa']   // (kine plus tard) ; l'ancien "coach_solo" = "coach"
+// 07/11 — Inscription : login disponible ? (athlète : 4 chiffres + proposition d'un login libre ;
+// coach : identifiant libre). code_requis = booléen seul (jamais la valeur du secret BETA_INVITE_CODE).
+async function handleLoginDispo(body: any): Promise<Response> {
+  const login = String(body.login || '').trim()
+  const code_requis = !!(Deno.env.get('BETA_INVITE_CODE') || '').trim()
+  if (body.type === 'c') {
+    if (!login) return jsonResp({ ok: true, valide: false, dispo: false, code_requis })
+    const { data: ex } = await sb().from('coachs').select('coach_id').eq('login', login).maybeSingle()
+    return jsonResp({ ok: true, valide: true, dispo: !ex, code_requis })
+  }
+  const { data: tous } = await sb().from('athletes').select('login')
+  const pris = new Set((tous || []).map((r: any) => String(r.login || '')))
+  let propose = ''
+  for (let i = 0; i < 40 && !propose; i++) { const c = String(1000 + Math.floor(Math.random() * 9000)); if (!pris.has(c)) propose = c }
+  if (!/^\d{4}$/.test(login)) return jsonResp({ ok: true, valide: false, dispo: false, propose, code_requis })
+  return jsonResp({ ok: true, valide: true, dispo: !pris.has(login), propose: pris.has(login) ? propose : '', code_requis })
+}
 async function handleRegisterCoach(body: any): Promise<Response> {
   const login = body.login?.trim(), pwd = body.password?.trim(), nom = body.nom?.trim() || body.login, sport = body.sport || 'muscu'
   const role = STAFF_ROLES.includes(String(body.role || '')) ? String(body.role) : 'coach'
   const email = String(body.email || '').trim() || null
-  if (!login || !pwd) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!login || !pwd) return jsonResp({ success: false, error: 'Identifiant et mot de passe obligatoires.' })
   if (pwd.length < MDP_MIN) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })   // C6
-  if (email && !_emailValide(email)) return jsonResp({ success: false, error: 'Email invalide' })
+  // 07/11 : tout obligatoire côté serveur aussi.
+  if (!body.nom || !String(body.nom).trim()) return jsonResp({ success: false, error: 'Indique ton nom.' })
+  if (!email || !_emailValide(email)) return jsonResp({ success: false, error: 'E-mail invalide.' })
+  if (!body.sport) return jsonResp({ success: false, error: 'Choisis ton sport.' })
   const { data: existing } = await sb().from('coachs').select('coach_id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Cet identifiant coach est déjà utilisé.' })
   const hash = await hashSalted(pwd, login)
@@ -4700,6 +4840,48 @@ async function _notifCoachDouleur(aid: string, niv: number, zone: string): Promi
     if (n > 0) await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'app' })
   } catch (_) {}
 }
+// Séances PRÉVUES faites depuis lunIso, séances libres rattachées comprises — MÊME règle que l'app
+// (_rattachements / _faitesPeriode, js/app.js) : 1) séance du programme faite ; 2) séance libre rattachée
+// explicitement (indicateur « rattache », sauf « __plus__ ») ; 3) sinon rattachement automatique à la séance
+// prévue non encore faite qui partage ≥ 50 % de ses exercices (la plus proche), dans l'ordre des dates.
+// 07/11 : avant, le résumé coach ignorait les rattachements → « 3 séances en retard » alors que 2 avaient
+// été faites en séance libre.
+function _faitesSemaineRatt(data: any, lunIso: string): Set<string> {
+  const key = (x: any) => String(x || '').trim().toLowerCase()
+  const ordre: string[] = [], exos: Record<string, string[]> = {}
+  for (const p of ((data && data.programme) || [])) {
+    if (!p || !p.seance_id || p.type === 'cardio') continue
+    const sid = String(p.seance_id)
+    if (!exos[sid]) { ordre.push(sid); exos[sid] = [] }
+    if (p.exercice) exos[sid].push(key(p.exercice))
+  }
+  const estProg: Record<string, boolean> = {}; ordre.forEach((o) => { estProg[key(o)] = true })
+  const sds = ((data && data.seances_detail) || []).filter((x: any) => x && x.date && x.date >= lunIso && x.seance_id != null)
+    .slice().sort((a: any, b: any) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+  const faites = new Set<string>()
+  for (const x of sds) if (estProg[key(x.seance_id)] || !ordre.length) faites.add(key(x.seance_id))
+  const traite = new Set<string>()
+  for (const x of sds) {
+    if (estProg[key(x.seance_id)] || !x.rattache) continue
+    traite.add(x.date + '|' + x.seance_id)
+    if (String(x.rattache) !== '__plus__') faites.add(key(x.rattache))
+  }
+  for (const x of sds) {
+    if (estProg[key(x.seance_id)] || traite.has(x.date + '|' + x.seance_id)) continue
+    const ex = ((x.exercices || x.exos) || []).map((e: any) => key(e && (e.nom || e.exo || e.exercice))).filter(Boolean)
+    if (!ex.length) continue
+    const set = new Set(ex)
+    let best: { sid: string; n: number } | null = null
+    for (const sid of ordre) {
+      if (faites.has(key(sid))) continue
+      const vu = new Set<string>(); let n = 0
+      for (const e of exos[sid]) if (set.has(e) && !vu.has(e)) { vu.add(e); n++ }
+      if (n / ex.length >= 0.5 && (!best || n > best.n)) best = { sid, n }
+    }
+    if (best) faites.add(key(best.sid))
+  }
+  return faites
+}
 // Séances en retard cette semaine (agenda, sinon jour conseillé ; « annule » = pas cette semaine) — même règle que l'app.
 function _seancesEnRetard(data: any, now: Date): number {
   try {
@@ -4707,7 +4889,7 @@ function _seancesEnRetard(data: any, now: Date): number {
     const lun = new Date(now); lun.setUTCHours(0, 0, 0, 0); lun.setUTCDate(lun.getUTCDate() - (j - 1))
     const lunIso = fmtYMD(lun), todayIso = fmtYMD(now)
     const key = (x: any) => String(x || '').trim().toLowerCase()
-    const faites = new Set(((data && data.seances_detail) || []).filter((x: any) => x && x.date >= lunIso).map((x: any) => key(x.seance_id)))
+    const faites = _faitesSemaineRatt(data, lunIso)
     const plan: Record<string, string[]> = {}, annul: Record<string, boolean> = {}
     for (const r of ((data && data.planning) || [])) { const iso = String(r.date_iso || '').slice(0, 10); if (iso < lunIso) continue; if (r.statut === 'annule') annul[key(r.seance_id)] = true; else (plan[key(r.seance_id)] = plan[key(r.seance_id)] || []).push(iso) }
     const jours: Record<string, number> = {}
@@ -5839,6 +6021,49 @@ async function handleEnvoyerMediaCoach(body: any): Promise<Response> {
   return jsonResp({ success: true, id: comment_id, media_type, media_url })
 }
 
+// ── Photo de profil (07/11) — athlète ET coach, bucket PRIVÉ 'suivi-photos' ─────
+// Chemin FIXE par personne (pas de colonne en base) : athlète « <id>/avatar.jpg » (supprimée
+// avec son dossier à la suppression du compte), coach « coachs/<id>/avatar.jpg ».
+// Lecture : URL signée (2 h). Écriture : URL d'upload signée en upsert (remplace l'ancienne).
+// Droits : authCheck (athlète = la sienne ; coach = la sienne ou celle d'un athlète LIÉ).
+const _avatarPath = (role: 'a' | 'c', id: string) => role === 'a' ? `${id}/avatar.jpg` : `coachs/${id}/avatar.jpg`
+async function _avatarUrls(paths: string[]): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  const ps = paths.filter(Boolean)
+  if (!ps.length) return out
+  try {
+    const { data } = await sb().storage.from('suivi-photos').createSignedUrls(ps, 7200)
+    ;(data || []).forEach((s: any, i: number) => { if (s && s.signedUrl && !s.error) out[ps[i]] = s.signedUrl })
+  } catch (_) { /* pas de photo / bucket absent : best-effort */ }
+  return out
+}
+function _avatarCible(body: any): { role: 'a' | 'c'; id: string } | null {
+  if (body.athlete_id) return { role: 'a', id: String(body.athlete_id) }
+  if (body.coach_id) return { role: 'c', id: String(body.coach_id) }
+  return null
+}
+async function handlePhotoProfilUploadUrl(body: any): Promise<Response> {
+  const c = _avatarCible(body)
+  if (!c) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const path = _avatarPath(c.role, c.id)
+  const { data, error } = await sb().storage.from('suivi-photos').createSignedUploadUrl(path, { upsert: true })
+  if (error || !data) return jsonResp({ success: false, error: (error && error.message) || 'upload-url' })
+  return jsonResp({ success: true, path: data.path, signedUrl: data.signedUrl })
+}
+async function handlePhotoProfil(body: any): Promise<Response> {
+  const c = _avatarCible(body)
+  if (!c) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const p = _avatarPath(c.role, c.id)
+  const u = await _avatarUrls([p])
+  return jsonResp({ success: true, url: u[p] || null })
+}
+async function handleSupprimerPhotoProfil(body: any): Promise<Response> {
+  const c = _avatarCible(body)
+  if (!c) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  try { await sb().storage.from('suivi-photos').remove([_avatarPath(c.role, c.id)]) } catch (_) {}
+  return jsonResp({ success: true })
+}
+
 // ── Suivi corps (N3) : mensurations (indicateurs) + photos (bucket 'suivi-photos') ─
 // Saisie PAR L'ATHLÈTE ; le coach consulte via getAppData. Mensurations en cm
 // (masse_grasse en %), 1 ligne/mesure/date. Photos : upload signé direct → Storage.
@@ -6045,6 +6270,23 @@ async function handleGetPlanning(body: any): Promise<Response> {
 }
 
 // Poser une séance un jour donné (upsert sur l'index unique → idempotent).
+// 06/11 — « Cette séance remplace laquelle ? » : rattache une séance réelle (souvent « Libre ») à une séance prévue
+// du programme, ou '__plus__' (séance en plus), ou '' pour revenir au calcul automatique. Athlète ou son coach.
+async function handleSetRattachement(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const date = normDate(String(body.date || ''))
+  const seance_id = String(body.seance_id ?? '')
+  const cible = String(body.cible ?? '').trim()
+  if (!athlete_id || !date || !seance_id) return jsonResp({ erreur: 'Paramètres manquants' })
+  const par = body._sessRole === 'c' ? 'coach' : 'athlete'
+  const { error: e1 } = await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('cle', 'rattache').eq('date', date).eq('seance_id', seance_id)
+  if (e1) return jsonResp({ erreur: e1.message })
+  if (cible) {
+    const { error } = await sb().from('indicateurs').insert({ date, athlete_id, seance_id, cle: 'rattache', valeur: cible, unite: par, source: 'app' })
+    if (error) return jsonResp({ erreur: error.message })
+  }
+  return jsonResp({ ok: true, par })
+}
 async function handlePlanSeance(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const date = String(body.date || '')
@@ -6545,6 +6787,12 @@ async function handleSaveSante(body: any): Promise<Response> {
     const { error } = await sb().from('indicateurs').insert(rows)
     if (error) return jsonResp({ success: false, error: error.message })
   }
+  // Montre 06/11 : dernière synchro réussie (heure serveur) + marque choisie dans le parcours guidé.
+  try {
+    const marque = String(body.marque || '').replace(/[^\p{L}\p{N} /·.-]/gu, '').slice(0, 40)
+    await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('cle', 'montre_sync')
+    await sb().from('indicateurs').insert({ date: fmtYMD(new Date()), athlete_id, seance_id: 'montre_sync', cle: 'montre_sync', valeur: new Date().toISOString(), unite: marque, source: src })
+  } catch (_) {}
   return jsonResp({ success: true, saved: rows.length })
 }
 
@@ -7328,7 +7576,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -7439,6 +7687,11 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
     return lr ? { ok: false, reason: 'athlète ' + sess.id + ' → ' + lr } : { ok: true }
   }
   if (cid && cid !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → coach ' + cid }
+  // Jeton push du coach : rangé sous « coach:<id> » (COACH_PUSH_PREFIX), pas un athlète.
+  // Seul le coach de la session peut l'écrire / le retirer (05/11 : avant, refus → déconnexion sur mobile).
+  if (aid && aid.startsWith(COACH_PUSH_PREFIX)) {
+    return aid === COACH_PUSH_PREFIX + sess.id ? { ok: true } : { ok: false, reason: 'coach ' + sess.id + ' → ' + aid }
+  }
   if (aid) {
     const { data } = await sb().from('athletes').select('coach_id').eq('id', aid).single()
     if (!data || String(data.coach_id || '') !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → athlète ' + aid + ' (non lié)' }
@@ -7509,7 +7762,11 @@ Deno.serve(async (req: Request) => {
       const _deny = await _authGate(String(action || ''), params, body); if (_deny) return _deny
       switch (action) {
         case 'login':                    return withSession(await handleLogin(new URLSearchParams({ login: body.login, password: body.password })), 'a')
-        case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' })), 'a')
+        case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: body.annees == null ? '' : String(body.annees), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '', sexe: body.sexe || '' })), 'a')
+        case 'loginDispo':               return handleLoginDispo(body)
+        case 'photoProfilUploadUrl':     return handlePhotoProfilUploadUrl(body)
+        case 'photoProfil':              return handlePhotoProfil(body)
+        case 'supprimerPhotoProfil':     return handleSupprimerPhotoProfil(body)
         case 'registerCoach':            return withSession(await handleRegisterCoach(body), 'c')
         case 'seedDemoFoot':             return handleSeedDemoFoot(body)
         case 'clearDemoFoot':            return handleClearDemoFoot(body)
@@ -7567,6 +7824,9 @@ Deno.serve(async (req: Request) => {
         case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
         case 'getPlanning':              return handleGetPlanning(body)
         case 'planSeance':               return handlePlanSeance(body)
+        case 'setRattachement':          return handleSetRattachement(body)
+        case 'creerExercice':            return handleCreerExercice(body)
+        case 'exercicesPrives':          return handleExercicesPrives(body)
         case 'movePlanning':             return handleMovePlanning(body)
         case 'unplanPlanning':           return handleUnplanPlanning(body)
         case 'genererProgramme':         return _progMajTrace(action, body, () => handleGenererProgramme(body))

@@ -84,6 +84,11 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
     eq(await chk('getAppData', { athlete_id: 'A1', _t: tC1 }), 'coach C1 → son athlète A1');
     eq(!(await chk('getAppData', { athlete_id: 'A2', _t: tC1 })), 'coach C1 → athlète A2 (non lié) refusé');
     eq(await chk('getCoachAthletes', { coach_id: 'C1', _t: tC1 }), 'coach C1 → sa liste');
+    // 05/11 : jeton push du coach rangé sous « coach:<id> » (refus = déconnexion sur mobile).
+    eq(await chk('saveNativePushToken', { _t: tC1 }, { athlete_id: 'coach:C1', token: 'x' }), 'coach C1 → son jeton push (coach:C1)');
+    eq(!(await chk('saveNativePushToken', { _t: tC1 }, { athlete_id: 'coach:C2', token: 'x' })), 'coach C1 → jeton push de coach:C2 refusé');
+    eq(!(await chk('saveNativePushToken', { _t: tA1 }, { athlete_id: 'coach:C1', token: 'x' })), 'athlète A1 → jeton push coach:C1 refusé');
+    eq(await chk('deleteNativePushToken', { _t: tC1 }, { athlete_id: 'coach:C1', token: 'x' }), 'coach C1 → retirer son jeton push');
     eq(!(await chk('getCoachAthletes', { coach_id: 'C2', _t: tC1 })), 'coach C1 → liste de C2 refusée');
     eq(!(await chk('getCoachAthletes', { coach_id: 'C1', _t: tA1 })), 'athlète A1 → liste des athlètes de SON coach refusée');
     eq(await chk('envoyerMediaCoach', { _t: tA1 }, { athlete_id: 'A1', coach_id: 'C1' }), 'athlète A1 → média à son coach C1');
@@ -105,7 +110,7 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
 
   // ── 3. Parcours réel par l'aiguillage ──
   { const { handler, warns } = load({ PEPPER: 'pep' });   // mode observation
-    const reg = await (await post(handler, { action: 'register', login: '4321', password: 'secret1', prenom: 'Zoé', ddn: '2000-01-01', taille: '170', poids: '60', annees: '2', sport: 'muscu', email: 'z@x.fr' })).json();
+    const reg = await (await post(handler, { action: 'register', login: '4321', password: 'secret1', prenom: 'Zoé', ddn: '2000-01-01', taille: '170', poids: '60', annees: '2', sport: 'muscu', email: 'z@x.fr', sexe: 'F' })).json();
     eq(reg.success, 'inscription OK', reg);
     // (la base EN MÉMOIRE renvoie un tableau sur insert().select().single() → pas d'id ;
     //  en prod Supabase renvoie la ligne : le jeton d'inscription est testé via withSession
@@ -116,7 +121,7 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
     eq(r1.status === 200, 'observation : appel sans jeton NON refusé', r1.status);
     eq(warns.some(w => /observation/.test(w) && /getAppData/.test(w)), 'observation : appel journalisé', warns); }
   { const { handler } = load({ PEPPER: 'pep', AUTH_ENFORCE: '1' });   // mode strict
-    const reg = await (await post(handler, { action: 'register', login: '5678', password: 'secret1', prenom: 'Léo', ddn: '2000-01-01', taille: '180', poids: '75', annees: '2', sport: 'muscu', email: 'l@x.fr' })).json();
+    const reg = await (await post(handler, { action: 'register', login: '5678', password: 'secret1', prenom: 'Léo', ddn: '2000-01-01', taille: '180', poids: '75', annees: '2', sport: 'muscu', email: 'l@x.fr', sexe: 'H' })).json();
     const lg0 = await (await post(handler, { action: 'login', login: '5678', password: 'secret1' })).json();
     const id = lg0.athlete.athlete_id, tok = lg0.token;
     const sans = await get(handler, 'action=getAppData&athlete_id=' + id);

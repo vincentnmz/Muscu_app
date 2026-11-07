@@ -22,7 +22,9 @@ const inJs = (n, s) => check(n, JS.includes(s));
 
 // --- ATHLÈTE : onglet « Progression » (= conteneur tab-historique) -----------
 inHtml('ATH · bouton onglet Progression (switchTab historique)', "switchTab('historique')");
-inHtml('ATH · libellé « Progression » présent dans la nav', '<span>Progression</span>');
+// 06/11 : l'onglet coach « Progression » s'appelle « Analyses » (maquette coach-fiche-courte validée) ;
+// le bouton et son contenu (cdtab-prog) restent — c'est ce qu'on verrouille.
+inHtml('Onglet Progression/Analyses présent dans la nav (cdtab-btn-prog)', 'id="cdtab-btn-prog"');
 inHtml('ATH · conteneur onglet existe (tab-historique)', 'id="tab-historique"');
 inHtml('ATH · section « Progression par exercice »', 'Progression par exercice');
 inHtml('ATH · filtre exercice (sel-hist-exercice)', 'id="sel-hist-exercice"');

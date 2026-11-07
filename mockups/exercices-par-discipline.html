@@ -1,0 +1,152 @@
+<title>Novalyz · exercices par discipline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : planche — en-tête, 4 écrans téléphone (choix par discipline, fiche, saisie selon la mesure, création coach), tableau des disciplines, questions */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec;
+  --d-muscu:#1a5fff; --d-hyrox:#e07800; --d-cf:#c43c3c; --d-street:#0a9a52; --d-hyb:#7c5cff;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326;
+  --d-muscu:#6f9bff; --d-hyrox:#ffb14a; --d-cf:#ff7b7b; --d-street:#3ccf86; --d-hyb:#a78bff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326;
+  --d-muscu:#6f9bff; --d-hyrox:#ffb14a; --d-cf:#ff7b7b; --d-street:#3ccf86; --d-hyb:#a78bff; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.lead{color:var(--muted);max-width:72ch;margin:0}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:9px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 30px rgba(20,33,61,.08);min-width:0}
+.ttl{font-weight:700;font-size:16px}
+.sub{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{flex:none;border:1.5px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;background:var(--surface);white-space:nowrap}
+.chip.on{color:var(--surface)}
+.d-muscu.on{background:var(--d-muscu);border-color:var(--d-muscu)} .d-hyrox.on{background:var(--d-hyrox);border-color:var(--d-hyrox)}
+.ex{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 11px}
+.ex .n{font-weight:700;font-size:13.5px}
+.ex .s{font-size:11px;color:var(--muted)}
+.mes{grid-row:1 / span 2;grid-column:2;font-size:10.5px;font-weight:700;border-radius:7px;padding:3px 7px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.dots{display:inline-flex;gap:3px;margin-left:5px;vertical-align:1px}
+.dots b{width:8px;height:8px;border-radius:50%;display:inline-block}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:12.5px}
+.kv span:nth-child(odd){color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;color:var(--surface);margin:0 4px 4px 0}
+.row{display:grid;grid-template-columns:34px repeat(2,minmax(0,1fr));gap:6px;align-items:center;font-size:12.5px}
+.row .k{font-weight:700;color:var(--muted)}
+.cell{border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:var(--surface2);font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.cell small{display:block;font-size:9.5px;font-weight:600;color:var(--muted)}
+.blk{border:1px solid var(--line);border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;gap:7px}
+.blk .t{font-weight:700;font-size:13px}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.qs{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE · À VALIDER</div>
+    <h1>Exercices par discipline</h1>
+    <p class="lead">Les champs « disciplines » et « type de mesure » existent maintenant en base (tout le catalogue est en Muscu). Voici comment on les utiliserait. Rien n'est codé : c'est la base pour décider, avant d'ouvrir le chantier Hyrox / CrossFit / street workout / hybride.</p>
+  </header>
+
+  <div class="board">
+    <div class="shot">
+      <div class="tag"><i>1</i>Choisir un exercice · filtre discipline</div>
+      <div class="phone">
+        <div class="ttl">Ajouter un exercice</div>
+        <div class="sub">Discipline</div>
+        <div class="chips"><span class="chip d-muscu">Muscu</span><span class="chip d-hyrox on">Hyrox</span><span class="chip">CrossFit</span><span class="chip">Street workout</span><span class="chip">Hybride</span></div>
+        <div class="ex"><span class="n">SkiErg</span><span class="s">Machine</span><span class="mes">distance + temps</span></div>
+        <div class="ex"><span class="n">Sled push</span><span class="s">Traîneau</span><span class="mes">distance + charge</span></div>
+        <div class="ex"><span class="n">Burpee broad jump</span><span class="s">Poids du corps</span><span class="mes">distance + temps</span></div>
+        <div class="ex"><span class="n">Wall balls</span><span class="s">Médecine-ball</span><span class="mes">reps + charge</span></div>
+        <div class="ex"><span class="n">Rameur</span><span class="s">Machine · aussi en Hybride<span class="dots"><b style="background:var(--d-hyrox)"></b><b style="background:var(--d-hyb)"></b></span></span><span class="mes">distance + temps</span></div>
+      </div>
+      <p class="cap">Même écran que celui livré aujourd'hui, avec une rangée « Discipline » en plus (affichée seulement quand le catalogue contient plus d'une discipline). Le badge à droite dit comment l'exercice se mesure.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>2</i>Fiche · un exercice, plusieurs disciplines</div>
+      <div class="phone">
+        <div class="ttl">Traction</div>
+        <div><span class="pill" style="background:var(--d-muscu)">Muscu</span><span class="pill" style="background:var(--d-street)">Street workout</span><span class="pill" style="background:var(--d-cf)">CrossFit</span></div>
+        <div class="kv"><span>Muscle</span><span>Dos (+ Biceps ½)</span><span>Matériel</span><span>Poids du corps</span><span>Mesure</span><span>reps (+ lest en kg si tu en mets)</span></div>
+        <p class="cap" style="margin:0">Un seul exercice dans le catalogue : tes tractions en muscu et en street workout alimentent la même courbe de progression.</p>
+      </div>
+      <p class="cap">Pas de doublon « Traction muscu » / « Traction street » : un exercice porte plusieurs disciplines.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>3</i>Saisie · les cases suivent la mesure</div>
+      <div class="phone">
+        <div class="blk"><div class="t">Développé incliné à la Smith · charge × reps</div>
+          <div class="row"><span class="k">S1</span><span class="cell">75 kg<small>charge</small></span><span class="cell">5<small>reps</small></span></div></div>
+        <div class="blk"><div class="t">Front lever · temps</div>
+          <div class="row"><span class="k">S1</span><span class="cell">12 s<small>tenue</small></span><span class="cell">RPE 9<small>effort</small></span></div></div>
+        <div class="blk"><div class="t">SkiErg · distance + temps</div>
+          <div class="row"><span class="k">1</span><span class="cell">1000 m<small>distance</small></span><span class="cell">3:58<small>temps</small></span></div></div>
+        <div class="blk"><div class="t">Assault bike · calories</div>
+          <div class="row"><span class="k">1</span><span class="cell">20 cal<small>calories</small></span><span class="cell">1:12<small>temps</small></span></div></div>
+      </div>
+      <p class="cap">C'est le vrai chantier : aujourd'hui toute la saisie et tout le moteur (force estimée, double progression, bloqué) supposent kg × reps. Chaque autre mesure demande ses propres règles de progression.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>4</i>Coach · créer un exercice d'une autre discipline</div>
+      <div class="phone">
+        <div class="ttl">Nouvel exercice</div>
+        <div class="kv"><span>Nom</span><span><b>Muscle-up</b></span></div>
+        <div class="sub">Disciplines (plusieurs possibles)</div>
+        <div class="chips"><span class="chip">Muscu</span><span class="chip on" style="background:var(--d-street);border-color:var(--d-street)">Street workout</span><span class="chip on" style="background:var(--d-cf);border-color:var(--d-cf)">CrossFit</span></div>
+        <div class="sub">Mesure</div>
+        <div class="chips"><span class="chip">kg × reps</span><span class="chip on" style="background:var(--accent);border-color:var(--accent)">reps</span><span class="chip">temps</span><span class="chip">distance</span><span class="chip">calories</span></div>
+        <div class="btn p">Créer</div>
+      </div>
+      <p class="cap">Le formulaire livré aujourd'hui (nom, muscle, secondaire, matériel) gagnerait ces 2 rangées.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Exemples par discipline (à compléter / valider par toi)</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Discipline</th><th>Exemples</th><th>Mesures</th><th>Ce que l'analyse devrait suivre</th></tr></thead>
+      <tbody>
+        <tr><td><b>Muscu</b> (aujourd'hui)</td><td>tout le catalogue actuel (120)</td><td>kg × reps</td><td>déjà fait : force estimée, volume, bloqué, plan</td></tr>
+        <tr><td><b>Hyrox</b></td><td>les 8 ateliers officiels : SkiErg, sled push, sled pull, burpee broad jump, rameur, farmers carry, sandbag lunges, wall balls ; + course</td><td>distance, temps, charge</td><td>temps par atelier, temps de course entre ateliers, comparaison d'une simulation à l'autre</td></tr>
+        <tr><td><b>CrossFit</b></td><td>thruster, clean, snatch, kettlebell swing, box jump, double unders, toes to bar, assault bike</td><td>kg × reps, reps, calories, temps (WOD)</td><td>score de WOD (temps ou tours), records sur les mouvements haltéro</td></tr>
+        <tr><td><b>Street workout</b></td><td>traction, dips, pompe, muscle-up, front lever, planche, L-sit, handstand</td><td>reps, temps de tenue, niveau de progression</td><td>progression par étape (ex. front lever groupé → jambe tendue), reps max</td></tr>
+        <tr><td><b>Hybride</b></td><td>muscu + course / rameur / vélo dans le même plan</td><td>les deux</td><td>équilibre charge muscu / endurance (déjà amorcé dans « Croisé »)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap" style="margin-top:8px">Les noms des 8 ateliers Hyrox sont ceux du format de compétition ; les autres listes sont des exemples courants, à valider.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Questions pour décider</h2>
+    <ol class="qs">
+      <li>Par quelle discipline commencer après la muscu ? (Hyrox a déjà un écran dans l'app.)</li>
+      <li>Le filtre « Discipline » doit-il apparaître tout de suite (avec seulement « Muscu ») ou seulement quand une 2ᵉ discipline existe ? Je propose : seulement à partir de 2.</li>
+      <li>Pour chaque discipline, on fera son audit + sa maquette (saisie, analyses) avant de coder — d'accord pour garder ce rythme ?</li>
+    </ol>
+  </div>
+</div>

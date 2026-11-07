@@ -1,0 +1,206 @@
+<title>Novalyz · connexion montre</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : planche — en-tête + état actuel, 5 écrans téléphone (parcours guidé 1→4 + carte Ma montre), vue coach, règles et questions */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec; --warn:#c77700; --warn-soft:#fff3e0; --bad:#c43c3c;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --warn-soft:#3a2a12; --bad:#ff7b7b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --warn-soft:#3a2a12; --bad:#ff7b7b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.lead{color:var(--muted);max-width:74ch;margin:0}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:22px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:9px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 30px rgba(20,33,61,.08);min-width:0}
+.steps{display:flex;gap:4px}
+.steps b{flex:1;height:4px;border-radius:4px;background:var(--line)}
+.steps b.on{background:var(--accent)}
+.ttl{font-weight:700;font-size:16px}
+.muted{color:var(--muted);font-size:12.5px;margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.br{border:1px solid var(--line);border-radius:12px;padding:10px;font-weight:700;font-size:13px;display:flex;flex-direction:column;gap:2px}
+.br small{font-weight:600;font-size:10.5px;color:var(--muted)}
+.br.on{border-color:var(--accent);background:var(--accent-soft)}
+ol.st{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.note{background:var(--surface2);border-radius:10px;padding:9px 11px;font-size:12px;color:var(--muted)}
+.chk{display:flex;flex-direction:column;gap:7px}
+.chk div{display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px}
+.ok{color:var(--good);font-weight:700}
+.ko{color:var(--warn);font-weight:700}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.card{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chd b{font-size:13px}
+.sync{font-size:11.5px;color:var(--good);font-weight:700}
+.sync.old{color:var(--warn)}
+.ref{font-size:11.5px;font-weight:700;color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.kpis div{background:var(--surface2);border-radius:10px;padding:8px 4px}
+.kpis b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.kpis span{font-size:10.5px;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+.panel ul,.panel ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.now{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.now ul{margin:6px 0 0;padding-left:18px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE · À VALIDER</div>
+    <h1>Connecter sa montre</h1>
+    <p class="lead">Objectif : que n'importe quel athlète Android connecte sa montre sans aide, sache ce qui remonte vraiment, et que le coach sache si les données sont à jour. Strava écarté (accord API : pas d'affichage au coach, pas d'IA).</p>
+  </header>
+
+  <div class="now">
+    <b>Aujourd'hui (vérifié dans le code)</b>
+    <ul class="cap">
+      <li>Un bouton « Connecter ma montre » → autorisations Health Connect → import. Pas d'aide selon la marque.</li>
+      <li>La synchro se fait déjà <b>toute seule à chaque ouverture de l'app</b> (au plus 1 fois / 15 min) : pas, sommeil, FC au repos, séances.</li>
+      <li>L'heure de la dernière synchro n'est gardée que sur le téléphone : ni l'athlète ni le coach ne la voient.</li>
+      <li>iPhone : rien (pas d'app iOS).</li>
+    </ul>
+  </div>
+
+  <div class="board">
+    <div class="shot">
+      <div class="tag"><i>1</i>Choisir sa montre</div>
+      <div class="phone">
+        <div class="steps"><b class="on"></b><b></b><b></b><b></b></div>
+        <div class="ttl">Quelle montre as-tu ?</div>
+        <div class="grid">
+          <div class="br">Samsung Galaxy Watch<small>via Samsung Health</small></div>
+          <div class="br on">Garmin<small>via Garmin Connect</small></div>
+          <div class="br">Google Pixel Watch / Fitbit<small>via Fitbit</small></div>
+          <div class="br">Polar · Suunto · Coros<small>via leur appli</small></div>
+          <div class="br">Amazfit · Huawei · Withings<small>via leur appli</small></div>
+          <div class="br">Autre / pas de montre<small>téléphone seul</small></div>
+        </div>
+        <p class="note">iPhone : pas encore possible (il faut une app iPhone). Tu peux importer tes séances en fichier .FIT / .GPX / .TCX.</p>
+      </div>
+      <p class="cap">Novalyz ne parle qu'à Health Connect (Android) : chaque marque y envoie ses données par sa propre appli. Le choix de la marque sert seulement à afficher la bonne aide.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>2</i>Activer le partage dans l'appli de la marque</div>
+      <div class="phone">
+        <div class="steps"><b class="on"></b><b class="on"></b><b></b><b></b></div>
+        <div class="ttl">Garmin → Health Connect</div>
+        <ol class="st">
+          <li>Ouvre <b>Garmin Connect</b> sur ce téléphone.</li>
+          <li>Dans ses réglages, active le partage avec <b>Health Connect</b> et coche pas, sommeil, fréquence cardiaque.</li>
+          <li>Synchronise ta montre une fois dans Garmin Connect.</li>
+        </ol>
+        <p class="note">Android 14 ou plus. Garmin envoie notamment : pas, sommeil, fréquence cardiaque, calories, poids.</p>
+        <div class="btn p">C'est fait</div>
+      </div>
+      <p class="cap">Une fiche par marque. Les chemins de menu exacts seront vérifiés appli par appli avant la mise en ligne (je ne les invente pas) ; pour Garmin, la liste des données vient de l'annonce de Garmin.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>3</i>Autoriser Novalyz</div>
+      <div class="phone">
+        <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div>
+        <div class="ttl">Autorise Novalyz à lire</div>
+        <p class="muted">Health Connect va s'ouvrir : coche tout ce que Novalyz demande.</p>
+        <div class="chk">
+          <div>Pas<span class="muted">pour ton activité</span></div>
+          <div>Sommeil<span class="muted">pour ta récupération</span></div>
+          <div>FC au repos<span class="muted">pour ta fatigue</span></div>
+          <div>Séances (exercice, distance, FC)<span class="muted">cardio</span></div>
+        </div>
+        <div class="btn p">Ouvrir Health Connect</div>
+      </div>
+      <p class="cap">C'est l'écran système actuel, précédé d'une explication de chaque donnée (pourquoi Novalyz la lit).</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>4</i>Vérification : ce qui remonte vraiment</div>
+      <div class="phone">
+        <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
+        <div class="ttl">Ta montre est connectée</div>
+        <div class="chk">
+          <div>Pas<span class="ok">✓ 7 jours</span></div>
+          <div>Sommeil<span class="ok">✓ 7 nuits</span></div>
+          <div>FC au repos<span class="ok">✓ 7 jours</span></div>
+          <div>Séances cardio<span class="ko">aucune trouvée</span></div>
+        </div>
+        <p class="note">« Aucune trouvée » : ton appli n'envoie peut-être pas les séances à Health Connect, ou tu n'en as pas fait. Tu peux aussi importer un fichier .FIT / .GPX / .TCX.</p>
+        <div class="btn p">Terminer</div>
+      </div>
+      <p class="cap">Novalyz lit réellement les 7 derniers jours et affiche ce qu'il a trouvé : on ne promet rien qui ne remonte pas.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>5</i>Forme ▸ Ma montre (ensuite)</div>
+      <div class="phone">
+        <div class="card">
+          <div class="chd"><b>⌚ Ma montre · Garmin</b><span class="ref">Actualiser</span></div>
+          <div class="sync">✓ Synchronisée aujourd'hui à 14:32</div>
+          <div class="kpis"><div><b>6 114</b><span>pas / j</span></div><div><b>7 h 25</b><span>sommeil</span></div><div><b>61</b><span>FC repos</span></div></div>
+        </div>
+        <div class="card">
+          <div class="chd"><b>⌚ Ma montre · Garmin</b><span class="ref">Actualiser</span></div>
+          <div class="sync old">Dernière synchro il y a 3 jours</div>
+          <p class="muted">Ouvre Garmin Connect pour synchroniser ta montre, puis touche Actualiser.</p>
+        </div>
+      </div>
+      <p class="cap">Heure de la dernière synchro + bouton « Actualiser » (lance la synchro tout de suite, sans attendre 15 min). Au-delà de 2 jours sans nouvelle donnée : message orange avec quoi faire.</p>
+    </div>
+
+    <div class="shot">
+      <div class="tag"><i>6</i>Coach ▸ fiche ▸ Forme</div>
+      <div class="phone">
+        <div class="card">
+          <div class="chd"><b>⌚ Montre de Vincent</b></div>
+          <div class="sync">✓ Synchronisée aujourd'hui à 14:32 · Garmin</div>
+          <div class="kpis"><div><b>6 114</b><span>pas / j</span></div><div><b>7 h 25</b><span>sommeil</span></div><div><b>61</b><span>FC repos</span></div></div>
+        </div>
+        <div class="card">
+          <div class="chd"><b>⌚ Montre d'Alizé</b></div>
+          <div class="sync old">Pas de synchro depuis 5 jours</div>
+          <p class="muted">Sommeil et FC au repos ne sont pas comptés dans son état tant que la montre n'est pas resynchronisée.</p>
+        </div>
+      </div>
+      <p class="cap">Le coach sait si les chiffres de la montre sont frais avant de s'en servir. La dernière synchro est gardée sur le serveur (aujourd'hui elle n'existe que sur le téléphone).</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <h2>Règles</h2>
+      <ul class="cap">
+        <li>Parcours guidé 1 → 4 à la 1ʳᵉ connexion ; ensuite seulement la carte « Ma montre ».</li>
+        <li>Synchro auto à chaque ouverture (inchangé) + « Actualiser » à la demande.</li>
+        <li>Heure de dernière synchro et marque enregistrées sur le serveur à chaque synchro réussie.</li>
+        <li>Plus de 2 jours sans donnée : message orange (athlète) et mention chez le coach.</li>
+        <li>Pas de Strava. iPhone : message clair + import de fichiers.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>À valider</h2>
+      <ol class="cap">
+        <li>La liste des marques (écran 1) te va ? Il en manque ?</li>
+        <li>Seuil « données pas fraîches » : 2 jours ?</li>
+        <li>Écran 6 : quand la montre n'est plus synchronisée, on retire sommeil / FC repos de l'état du jour de l'athlète (comme écrit), ou on les garde avec la mention « ancien » ?</li>
+        <li>Je vérifie les chemins de menu de chaque appli (Samsung Health, Fitbit, Polar…) avant de les écrire : d'accord pour qu'au début certaines marques n'aient qu'une aide générique ?</li>
+      </ol>
+    </div>
+  </div>
+</div>

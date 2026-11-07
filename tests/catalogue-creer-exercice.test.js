@@ -1,0 +1,45 @@
+/* Catalogue 06/11 : un coach crée un exercice (liste fermée de muscles, doublon refusé, athlète refusé). */
+const fs = require('fs'), path = require('path'), vm = require('vm'); const { stripTypeScriptTypes } = require('node:module');
+let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n + (g !== undefined ? ' (got ' + JSON.stringify(g).slice(0, 300) + ')' : '')); } };
+const T = fs.readFileSync(path.join(__dirname, 'e2e-parcours.test.js'), 'utf8');
+eval(T.slice(T.indexOf('function makeEngine'), T.indexOf('// ── Chargement du VRAI backend')));
+const store = { athletes: [{ id: 'A1', coach_id: '7' }, { id: 'A2', coach_id: '8' }], exercices: [{ exercice_id: '91', exercice: 'Curl barre', muscle: 'Biceps' }, { exercice_id: '92', exercice: 'Élévation latérale haltère', muscle: 'Epaule' }] };
+let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8')).split('\n').filter((l) => !/^import\s/.test(l)).join('\n');
+js += '\n;this.__api={handleCreerExercice,handleGetExercices,handleExercicesPrives,normMuscle,_addSeriesMuscle};';
+const client = makeEngine(store);
+const sb = { createClient: () => client, webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => 'x' }, serve: () => {} }, Response, Request, URLSearchParams, TextEncoder, TextDecoder, crypto, console, setTimeout, clearTimeout, fetch: async () => ({ ok: false }) };
+vm.createContext(sb); vm.runInContext(js, sb);
+(async () => {
+  const A = sb.__api, j = async (r) => (await r).json();
+  let r = await j(A.handleCreerExercice({ _sessRole: 'a', exercice: 'X', muscle: 'Biceps' }));
+  eq(r.erreur && !r.ok, 'athlète refusé', r);
+  r = await j(A.handleCreerExercice({ _sessRole: 'c', _sessId: '7', exercice: '  Curl   araignée ', muscle: 'Biceps', muscle_secondaire: 'Avant-bras', materiel: 'Haltères' }));
+  eq(r.ok && r.exercice.exercice === 'Curl araignée' && r.exercice.exercice_id === '93' && r.exercice.muscle_secondaire === 'Avant-bras' && r.exercice.cree_par === 'coach:7' && r.exercice.increment_kg === '2' && r.exercice.statut === 'en_attente' && r.exercice.nom_cle === 'curl araignee', 'coach : créé en attente (nom nettoyé, id suivant, secondaire, auteur, clé)', r);
+  r = await j(A.handleCreerExercice({ _sessRole: 'c', exercice: 'elevation laterale haltere', muscle: 'Epaule' }));
+  eq(/^Cet exercice existe déjà/.test(r.erreur || '') && r.existant && r.existant.exercice_id === '92', 'doublon (accents / casse) refusé + exercice existant proposé', r);
+  r = await j(A.handleCreerExercice({ _sessRole: 'c', exercice: 'Truc', muscle: 'Cou' }));
+  eq(r.erreur === 'Muscle inconnu', 'muscle hors liste refusé', r);
+  r = await j(A.handleCreerExercice({ _sessRole: 'c', exercice: 'Truc', muscle: 'Biceps', muscle_secondaire: 'Biceps' }));
+  eq(!!r.erreur, 'secondaire = principal refusé', r);
+  r = await j(A.handleCreerExercice({ _sessRole: 'c', _sessId: '99', exercice: 'Sledgehammer', muscle: 'Corps entier', materiel: 'Pneu / masse' }));
+  eq(r.ok && r.exercice.muscle === 'Corps entier' && r.exercice.materiel === 'Pneu / masse', '07/11 : muscle « Corps entier » + matériel fonctionnel acceptés', r);
+  { const acc = {}; A._addSeriesMuscle(acc, { muscle: 'Corps entier', exercice: 'Burpees' }); A._addSeriesMuscle(acc, { muscle: 'Quadriceps', exercice: 'Fentes marchées sac lesté' }, { 'fentes marchées sac lesté': 'Fessier' });
+    eq(!('Corps entier' in acc) && acc.Quadriceps === 1 && acc.Fessier === 0.5, '07/11 : « Corps entier » hors volume par muscle, fentes sac → quadriceps + fessiers ½', acc); }
+  eq(A.normMuscle('avant bras') === 'Avant-bras' && A.normMuscle('Lombaires') === 'Lombaires' && A.normMuscle('Épaules') === 'Epaule' && A.normMuscle('Trapèzes') === 'Trapèze', 'alias des nouveaux muscles');
+  const g = await j(A.handleGetExercices());
+  eq(!g.exercices.some((e) => e.exercice === 'Curl araignée') && g.exercices.length === 2, 'en attente : absent du catalogue commun', g.exercices);
+  let p = await j(A.handleExercicesPrives({ _sessRole: 'c', _sessId: '7' }));
+  eq(p.exercices.length === 1 && p.exercices[0].exercice === 'Curl araignée' && p.exercices[0].materiel === 'Haltères' && p.exercices[0].statut === 'en_attente', 'coach auteur : le voit (matériel, statut)', p);
+  p = await j(A.handleExercicesPrives({ _sessRole: 'a', _sessId: 'A1', athlete_id: 'A1' }));
+  eq(p.exercices.length === 1, 'athlète de ce coach : le voit', p);
+  p = await j(A.handleExercicesPrives({ _sessRole: 'a', _sessId: 'A2', athlete_id: 'A2' }));
+  eq(p.exercices.length === 0, 'athlète d’un autre coach : ne le voit pas', p);
+  p = await j(A.handleExercicesPrives({ _sessRole: 'c', _sessId: '8' }));
+  eq(p.exercices.length === 0, 'autre coach : ne le voit pas', p);
+  r = await j(A.handleCreerExercice({ _sessRole: 'c', _sessId: '8', exercice: 'curl araignee', muscle: 'Biceps' }));
+  eq(/autre coach/.test(r.erreur || ''), 'autre coach, même nom : refus expliqué (pas de doublon)', r);
+  store.exercices.find((e) => e.exercice === 'Curl araignée').statut = 'valide';   // validation par le porteur (SQL)
+  const g2 = await j(A.handleGetExercices());
+  eq(g2.exercices.some((e) => e.exercice === 'Curl araignée' && e.disciplines === 'muscu' && e.mesure === 'charge_reps'), 'validé : dans le catalogue commun', g2.exercices.slice(-1));
+  console.log('-'.repeat(70)); console.log('catalogue créer exercice : ' + ok + ' OK / ' + ko + ' KO'); if (ko) process.exitCode = 1;
+})();
