@@ -1477,3 +1477,13 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .onb-promo span { display:block; font-size:12.5px; color:var(--text-muted); line-height:1.45; }
 .onb-promo .onb-soon { position:absolute; top:13px; right:12px; display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); background:var(--accent-a12, rgba(26,95,255,.12)); border-radius:999px; padding:4px 9px; }
 .onb-promo .onb-sec { width:100%; }
+
+/* Créer un exercice : « Il existe peut-être déjà » (07/11) */
+.cx-sug { margin:8px 0 4px; padding:10px; border-radius:12px; background:var(--accent-a12, rgba(26,95,255,.08)); border:1px solid var(--border); }
+.cx-sug-t { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); margin-bottom:6px; }
+.cx-sug-it { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); }
+.cx-sug-it:first-of-type { border-top:0; }
+.cx-sug-it span { min-width:0; font-size:13px; }
+.cx-sug-it small { display:block; font-size:11px; color:var(--text-muted); }
+.cx-sug-it button { flex:none; border:1px solid var(--accent); background:var(--surface); color:var(--accent); border-radius:9px; padding:6px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.cx-info { font-size:11.5px; color:var(--text-muted); line-height:1.4; margin-top:10px; }
