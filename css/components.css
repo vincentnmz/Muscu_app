@@ -1425,3 +1425,6 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .montre-ref{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--accent);font:inherit;font-size:11.5px;font-weight:800;border-radius:999px;padding:4px 11px;cursor:pointer}
 .montre-sync-aide{font-size:11.5px;color:var(--text-muted);margin-top:4px}
 .montre-chg{display:block;margin-top:8px;border:0;background:none;padding:0;color:var(--accent);font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* 07/11 — fiche coach ▸ Analyses (ordi) : diagnostic dans la colonne de droite, collant */
+@media (min-width:992px){ #tab-historique .ma-colrail.ma-rail-colle{position:sticky;top:112px;align-self:start} #tab-historique .ma-diag-rail > div{margin-top:0!important} }
