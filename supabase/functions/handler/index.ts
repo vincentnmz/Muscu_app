@@ -6377,6 +6377,7 @@ async function handleDeleteCoach(body: any): Promise<Response> {
     sb().from('alertes_traitees').delete().eq('coach_id', coach_id),
     sb().from('native_push_tokens').delete().eq('athlete_id', COACH_PUSH_PREFIX + String(coach_id)),
     sb().from('push_subscriptions').delete().eq('athlete_id', COACH_PUSH_PREFIX + String(coach_id)),
+    sb().storage.from('suivi-photos').remove([_avatarPath('c', String(coach_id))]),   // 07/11 : photo de profil du coach
     sb().from('commentaires').update({ coach_nom: 'Coach (compte supprimé)', auteur_nom: 'Coach (compte supprimé)' }).eq('coach_id', coach_id).eq('auteur', 'coach'),
   ].map((q: any) => Promise.resolve(q).catch(() => null)))
   const { error } = await sb().from('coachs').delete().eq('coach_id', coach_id)

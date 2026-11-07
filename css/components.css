@@ -1498,3 +1498,15 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .fx-sac-row { display:flex; flex-wrap:wrap; gap:6px; }
 .fx-sac-row button { flex:1 0 calc(33% - 6px); min-width:64px; padding:9px 4px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); border-radius:10px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
 .fx-sac-row button.on { border-color:var(--accent); background:var(--accent); color:var(--on-accent, #fff); }
+
+/* Aujourd'hui : « Connecte ta montre » (07/11) */
+.tj-montre-cta { padding:13px 15px; display:flex; flex-direction:column; gap:10px; }
+.tj-montre-cta .tjm-row { display:flex; gap:11px; align-items:center; }
+.tj-montre-cta .tjm-ic { flex:none; width:36px; height:36px; border-radius:11px; background:var(--accent-a12, rgba(26,95,255,.12)); display:grid; place-items:center; font-size:18px; }
+.tj-montre-cta .tjm-tx b { display:block; font-size:14px; }
+.tj-montre-cta .tjm-tx span { display:block; font-size:12px; color:var(--text-muted); line-height:1.4; }
+.tj-montre-cta .tjm-btns { display:flex; gap:8px; }
+.tj-montre-cta .tjm-btns button { flex:1; padding:10px; border-radius:11px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+.tj-montre-cta .tjm-later { background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); }
+.tj-montre-cta .tjm-go { background:var(--accent); border:none; color:var(--on-accent, #fff); }
+.onb-sec.on { background:var(--accent); color:var(--on-accent, #fff); border-color:var(--accent); }
