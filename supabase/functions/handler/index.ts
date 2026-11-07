@@ -4837,6 +4837,48 @@ async function _notifCoachDouleur(aid: string, niv: number, zone: string): Promi
     if (n > 0) await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'app' })
   } catch (_) {}
 }
+// Séances PRÉVUES faites depuis lunIso, séances libres rattachées comprises — MÊME règle que l'app
+// (_rattachements / _faitesPeriode, js/app.js) : 1) séance du programme faite ; 2) séance libre rattachée
+// explicitement (indicateur « rattache », sauf « __plus__ ») ; 3) sinon rattachement automatique à la séance
+// prévue non encore faite qui partage ≥ 50 % de ses exercices (la plus proche), dans l'ordre des dates.
+// 07/11 : avant, le résumé coach ignorait les rattachements → « 3 séances en retard » alors que 2 avaient
+// été faites en séance libre.
+function _faitesSemaineRatt(data: any, lunIso: string): Set<string> {
+  const key = (x: any) => String(x || '').trim().toLowerCase()
+  const ordre: string[] = [], exos: Record<string, string[]> = {}
+  for (const p of ((data && data.programme) || [])) {
+    if (!p || !p.seance_id || p.type === 'cardio') continue
+    const sid = String(p.seance_id)
+    if (!exos[sid]) { ordre.push(sid); exos[sid] = [] }
+    if (p.exercice) exos[sid].push(key(p.exercice))
+  }
+  const estProg: Record<string, boolean> = {}; ordre.forEach((o) => { estProg[key(o)] = true })
+  const sds = ((data && data.seances_detail) || []).filter((x: any) => x && x.date && x.date >= lunIso && x.seance_id != null)
+    .slice().sort((a: any, b: any) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+  const faites = new Set<string>()
+  for (const x of sds) if (estProg[key(x.seance_id)] || !ordre.length) faites.add(key(x.seance_id))
+  const traite = new Set<string>()
+  for (const x of sds) {
+    if (estProg[key(x.seance_id)] || !x.rattache) continue
+    traite.add(x.date + '|' + x.seance_id)
+    if (String(x.rattache) !== '__plus__') faites.add(key(x.rattache))
+  }
+  for (const x of sds) {
+    if (estProg[key(x.seance_id)] || traite.has(x.date + '|' + x.seance_id)) continue
+    const ex = ((x.exercices || x.exos) || []).map((e: any) => key(e && (e.nom || e.exo || e.exercice))).filter(Boolean)
+    if (!ex.length) continue
+    const set = new Set(ex)
+    let best: { sid: string; n: number } | null = null
+    for (const sid of ordre) {
+      if (faites.has(key(sid))) continue
+      const vu = new Set<string>(); let n = 0
+      for (const e of exos[sid]) if (set.has(e) && !vu.has(e)) { vu.add(e); n++ }
+      if (n / ex.length >= 0.5 && (!best || n > best.n)) best = { sid, n }
+    }
+    if (best) faites.add(key(best.sid))
+  }
+  return faites
+}
 // Séances en retard cette semaine (agenda, sinon jour conseillé ; « annule » = pas cette semaine) — même règle que l'app.
 function _seancesEnRetard(data: any, now: Date): number {
   try {
@@ -4844,7 +4886,7 @@ function _seancesEnRetard(data: any, now: Date): number {
     const lun = new Date(now); lun.setUTCHours(0, 0, 0, 0); lun.setUTCDate(lun.getUTCDate() - (j - 1))
     const lunIso = fmtYMD(lun), todayIso = fmtYMD(now)
     const key = (x: any) => String(x || '').trim().toLowerCase()
-    const faites = new Set(((data && data.seances_detail) || []).filter((x: any) => x && x.date >= lunIso).map((x: any) => key(x.seance_id)))
+    const faites = _faitesSemaineRatt(data, lunIso)
     const plan: Record<string, string[]> = {}, annul: Record<string, boolean> = {}
     for (const r of ((data && data.planning) || [])) { const iso = String(r.date_iso || '').slice(0, 10); if (iso < lunIso) continue; if (r.statut === 'annule') annul[key(r.seance_id)] = true; else (plan[key(r.seance_id)] = plan[key(r.seance_id)] || []).push(iso) }
     const jours: Record<string, number> = {}
