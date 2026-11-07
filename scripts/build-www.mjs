@@ -24,6 +24,9 @@ const ASSETS = [
   'logo novalyz.png',
   'js',
   'css',
+  // 07/11 : données fictives de la fiche « Exemple » (visite coach sans athlète). Sans elles, l'APK/AAB
+  // n'avait pas le fichier → fiche et analyses d'équipe exemple vides sur le téléphone.
+  'assets/demo',
 ];
 
 async function main() {
