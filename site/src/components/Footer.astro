@@ -1,0 +1,41 @@
+---
+import logo from './logo-full.svg?raw';
+import { site } from '../config/site';
+const logoBlanc = logo.replace(/#070B14/g, 'currentColor').replace('<svg', '<svg role="img" aria-label="Novalyz"');
+const annee = new Date().getFullYear();
+---
+<footer class="ft">
+  <div class="wrap grid">
+    <div class="brand">
+      <span class="logo" set:html={logoBlanc} />
+      <p class="sig">{site.signature.join(' ')}</p>
+    </div>
+    <nav aria-label="Pied de page">
+      <a href="#comment">Comment ça marche</a>
+      <a href="#coach">Pour les coachs</a>
+      <a href="#vision">Vision</a>
+    </nav>
+    <div class="contact">
+      <a href={`mailto:${site.email}`}>{site.email}</a>
+      <a href={site.instagram.url} rel="noopener">Instagram · @{site.instagram.handle}</a>
+      {site.linkedin && <a href={site.linkedin} rel="noopener">LinkedIn</a>}
+    </div>
+  </div>
+  <div class="wrap legal">
+    <span>© {annee} Novalyz</span>
+    {/* Mentions légales : lot 3 (pas de lien tant que la page n'existe pas) */}
+    <a href={`${site.appUrl}/privacy.html`}>Confidentialité</a>
+  </div>
+</footer>
+<style>
+  .ft { background: var(--ink); color: #C9D4EE; padding: var(--s8) 0 calc(var(--s6) + env(safe-area-inset-bottom, 0px)); }
+  .grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--s6); }
+  .logo { display: block; width: 160px; color: #fff; }
+  .logo :global(svg) { width: 100%; height: auto; }
+  .sig { margin-top: 14px; font-family: var(--f-mark); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--blue-2); }
+  nav, .contact { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
+  a { text-decoration: none; color: #C9D4EE; }
+  a:hover { color: #fff; }
+  .legal { display: flex; flex-wrap: wrap; gap: 20px; margin-top: var(--s7); padding-top: var(--s5); border-top: 1px solid rgba(255,255,255,.1); font-size: 13.5px; color: #8E9BBB; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+</style>

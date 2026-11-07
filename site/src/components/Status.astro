@@ -1,0 +1,13 @@
+---
+// Étiquette d'état honnête : ce qui existe, ce qui arrive, ce qui est prévu.
+interface Props { etat: 'dispo' | 'bientot' | 'prevu' }
+const { etat } = Astro.props;
+const txt = { dispo: 'Disponible', bientot: 'Bientôt', prevu: 'Prévu' }[etat];
+---
+<span class:list={['st', etat]}>{txt}</span>
+<style>
+  .st { display: inline-block; font-family: var(--f-mark); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; padding: 5px 9px; border-radius: var(--r-pill); white-space: nowrap; }
+  .dispo { background: rgba(10,154,85,.14); color: #0A8A4C; }
+  .bientot { background: rgba(26,95,255,.14); color: var(--blue); }
+  .prevu { background: rgba(85,97,128,.14); color: var(--muted); }
+</style>

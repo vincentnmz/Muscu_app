@@ -1,0 +1,47 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../config/site';
+interface Props { title: string; description: string; path?: string; lang?: 'fr' | 'en' }
+const { title, description, path = '/', lang = 'fr' } = Astro.props;
+const canonical = new URL(path, site.url).toString();
+const ld = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'Organization', name: 'Novalyz', url: site.url, email: site.email, logo: site.url + '/favicon.svg', sameAs: [site.instagram.url] },
+    { '@type': 'SoftwareApplication', name: 'Novalyz', applicationCategory: 'HealthApplication', operatingSystem: 'Android, Web', url: site.appUrl, description },
+  ],
+};
+---
+<!doctype html>
+<html lang={lang}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <link rel="alternate" hreflang="fr" href={canonical} />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#070B14" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Novalyz" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={site.url + '/og-novalyz.jpg'} />
+  <meta property="og:locale" content="fr_FR" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Michroma&display=swap" />
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+  <Header />
+  <main id="contenu"><slot /></main>
+  <Footer />
+</body>
+</html>

@@ -1,0 +1,27 @@
+---
+import logo from './logo-full.svg?raw';
+import { ctaPrincipal } from '../config/site';
+const logoBlanc = logo.replace(/#070B14/g, 'currentColor').replace('<svg', '<svg role="img" aria-label="Novalyz"');
+---
+<header class="hd">
+  <div class="wrap row">
+    <a href="/" class="logo" aria-label="Novalyz, accueil" set:html={logoBlanc} />
+    <nav aria-label="Navigation principale">
+      <a href="#comment">Comment ça marche</a>
+      <a href="#coach">Coachs</a>
+      <a href="#vision">Vision</a>
+      {ctaPrincipal.visible && <a class="cta" href={ctaPrincipal.lien}>{ctaPrincipal.texte}</a>}
+    </nav>
+  </div>
+</header>
+<style>
+  .hd { position: absolute; top: 0; left: 0; right: 0; z-index: 10; color: #fff; padding-top: env(safe-area-inset-top, 0px); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 72px; }
+  .logo { display: block; width: 150px; color: #fff; }
+  .logo :global(svg) { width: 100%; height: auto; display: block; }
+  nav { display: flex; align-items: center; gap: 26px; font-size: 15px; font-weight: 600; }
+  nav a { text-decoration: none; color: #C9D4EE; }
+  nav a:hover { color: #fff; }
+  nav .cta { color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: var(--r-pill); padding: 9px 16px; }
+  @media (max-width: 760px) { nav a:not(.cta) { display: none; } .logo { width: 124px; } nav .cta { padding: 8px 13px; font-size: 14px; } }
+</style>

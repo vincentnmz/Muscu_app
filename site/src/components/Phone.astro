@@ -1,0 +1,12 @@
+---
+// Cadre de téléphone autour d'une VRAIE capture de l'app (compte fictif « Léo », aucune donnée réelle).
+interface Props { src: string; alt: string; eager?: boolean; tilt?: number }
+const { src, alt, eager = false, tilt = 0 } = Astro.props;
+---
+<figure class="phone" style={`--tilt:${tilt}deg`}>
+  <img src={src} alt={alt} width="390" height="844" loading={eager ? 'eager' : 'lazy'} decoding="async" {...(eager ? { fetchpriority: 'high' } : {})} />
+</figure>
+<style>
+  .phone { margin: 0; width: min(300px, 74vw); aspect-ratio: 390 / 844; border-radius: var(--r-phone); padding: 9px; background: #0B0F18; box-shadow: var(--sh-phone); transform: rotate(var(--tilt)); }
+  .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: calc(var(--r-phone) - 9px); background: #fff; }
+</style>

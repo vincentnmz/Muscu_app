@@ -1,0 +1,214 @@
+---
+import Base from '../layouts/Base.astro';
+import Button from '../components/Button.astro';
+import Phone from '../components/Phone.astro';
+import Status from '../components/Status.astro';
+import ForceChart from '../components/ForceChart.astro';
+import { site, cta, ctaPrincipal } from '../config/site';
+
+// Chaque affirmation ci-dessous est vérifiée dans le code de l'app (voir mockups/site-vitrine-conception.html).
+const title = 'Novalyz · Tes données d’entraînement, transformées en décisions';
+const description = 'Novalyz lit tes séances et ton ressenti pour te dire comment t’entraîner, si c’est bien fait et comment progresser. Pour les sportifs et les coachs. Bêta ouverte.';
+---
+<Base title={title} description={description}>
+
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="h-hero">
+    <div class="wrap hero-grid">
+      <div class="hero-txt">
+        <p class="eyebrow">Plateforme de performance sportive · bêta</p>
+        <h1 id="h-hero" class="display">Tes données d’entraînement, transformées en décisions.</h1>
+        <p class="lead">Novalyz lit tes séances et ton ressenti pour te dire comment t’entraîner, si c’est bien fait et comment progresser. Aujourd’hui pour la musculation et le coaching, demain pour tous les sports.</p>
+        <div class="btns">
+          {ctaPrincipal.visible && <Button href={ctaPrincipal.lien}>{ctaPrincipal.texte}</Button>}
+          {cta.secondaire.visible && <Button href={cta.secondaire.lien} variant="ghost">{cta.secondaire.texte}</Button>}
+        </div>
+        <p class="sig" aria-label="Mesurer. Comprendre. Progresser.">
+          {site.signature.map((m, i) => <span class={`s${i}`}>{m}</span>)}
+        </p>
+      </div>
+      <div class="hero-vis">
+        <Phone src="/captures/aujourdhui.webp" alt="Écran Aujourd’hui de Novalyz : état du jour « Reste vigilant » à cause d’un sommeil dégradé, comparé à la normale du sportif." eager tilt={-3} />
+        <p class="cap">Écran réel de l’app · données fictives</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONSTAT -->
+  <section class="constat" aria-labelledby="h-constat">
+    <div class="wrap constat-grid">
+      <div>
+        <p class="eyebrow">Le constat</p>
+        <h2 id="h-constat" class="display">Le sport produit des données. Rarement des décisions.</h2>
+      </div>
+      <div class="constat-txt">
+        <p class="lead">Les charges dans un carnet, le ressenti dans la tête, le sommeil dans la montre, les échanges avec le coach dans une autre appli. Les informations existent, mais elles sont dispersées, et personne n’a le temps de les croiser.</p>
+        <p class="lead">Collecter davantage ne suffit pas. Ce qui manque, c’est de comprendre ce qu’elles disent, et quoi en faire à la prochaine séance.</p>
+      </div>
+      <svg class="points" viewBox="0 0 600 120" aria-hidden="true">
+        {[[30,80],[80,30],[130,95],[170,50],[230,88],[270,22],[320,70],[360,40],[410,96],[450,60],[500,28],[560,74]].map(([px,py]) => <circle cx={px} cy={py} r="4" />)}
+      </svg>
+    </div>
+  </section>
+
+  <!-- COMMENT ÇA MARCHE -->
+  <section id="comment" class="chapitres" aria-labelledby="h-comment">
+    <div class="wrap">
+      <p class="eyebrow">Comment ça marche</p>
+      <h2 id="h-comment" class="display">Trois gestes. Une seule logique.</h2>
+    </div>
+
+    <article class="chap wrap" aria-labelledby="h-mesurer">
+      <div class="chap-txt">
+        <p class="chap-n"><span>01</span> Mesurer</p>
+        <h3 id="h-mesurer" class="display">Tout ce qui compte, en quelques secondes.</h3>
+        <ul>
+          <li><b>Le matin</b>, un questionnaire de 15 secondes : sommeil, fatigue, stress, douleur.</li>
+          <li><b>Pendant la séance</b>, chaque série : charge, répétitions, effort ressenti, repos.</li>
+          <li><b>Avec ta montre</b> (Android, via Health Connect) : pas, sommeil, fréquence cardiaque au repos.</li>
+        </ul>
+      </div>
+      <div class="chap-vis"><Phone src="/captures/questionnaire.webp" alt="Questionnaire du matin de Novalyz : qualité du sommeil, fatigue générale, stress, courbatures." tilt={2} /></div>
+    </article>
+
+    <article class="chap chap-dark" aria-labelledby="h-comprendre">
+      <div class="wrap chap-in">
+        <div class="chap-txt">
+          <p class="chap-n"><span>02</span> Comprendre</p>
+          <h3 id="h-comprendre" class="display">Ce qui va, ce qui coince, et pourquoi.</h3>
+          <ul>
+            <li><b>Ton état du jour</b>, comparé à ta propre normale, pas à une moyenne générale.</li>
+            <li><b>Tes records et tes progrès</b>, et l’exercice qui bloque, avec la raison la plus probable.</li>
+            <li><b>La Lecture Novalyz</b> : ce qu’il faut retenir, en phrases claires, avant les chiffres.</li>
+          </ul>
+        </div>
+        <div class="chap-vis"><Phone src="/captures/analyses.webp" alt="Analyses Novalyz : verdict, records, et le squat bloqué depuis 3 séances avec la raison : effort en hausse à charge égale." tilt={-2} /></div>
+      </div>
+    </article>
+
+    <article class="chap chap-dark chap-prog" aria-labelledby="h-progresser">
+      <div class="wrap chap-in">
+        <div class="chap-txt">
+          <p class="chap-n"><span>03</span> Progresser</p>
+          <h3 id="h-progresser" class="display">La prochaine séance, déjà réfléchie.</h3>
+          <ul>
+            <li><b>Une cible pour chaque série</b>, adaptée à ton niveau et à ta dernière séance.</li>
+            <li><b>Quand monter la charge, quand consolider</b>, selon tes répétitions et ton effort ressenti.</li>
+            <li><b>Un plan pour la semaine</b>, qui se coche tout seul quand tu t’entraînes.</li>
+          </ul>
+        </div>
+        <div class="chap-vis chart-vis"><ForceChart /></div>
+      </div>
+    </article>
+  </section>
+
+  <!-- COACH -->
+  <section id="coach" class="coach" aria-labelledby="h-coach">
+    <div class="wrap chap">
+      <div class="chap-txt">
+        <p class="eyebrow">Pour les coachs <Status etat="dispo" /></p>
+        <h2 id="h-coach" class="display">Qui a besoin de toi aujourd’hui, pourquoi, et quoi faire.</h2>
+        <p class="lead">Tes athlètes notent leurs séances et leur ressenti dans leur app. Toi, tu vois l’essentiel, et tu gardes la main : Novalyz propose, tu décides.</p>
+        <ul>
+          <li><b>Le matin</b>, qui a répondu au questionnaire et qui surveiller.</li>
+          <li><b>Sur chaque fiche</b>, « À décider » : la piste trouvée dans ses données, et les actions possibles.</li>
+          <li><b>Programmes, messages, séance en présentiel</b>, analyses de toute l’équipe.</li>
+        </ul>
+      </div>
+      <div class="chap-vis"><Phone src="/captures/coach.webp" alt="Fiche athlète côté coach : état du jour « Vigilance », et le bloc « À décider » sur le squat bloqué avec une proposition." tilt={2} /></div>
+    </div>
+  </section>
+
+  <!-- VISION -->
+  <section id="vision" class="vision" aria-labelledby="h-vision">
+    <div class="wrap">
+      <p class="eyebrow">Notre vision</p>
+      <h2 id="h-vision" class="display">Une plateforme conçue pour évoluer avec les sports.</h2>
+      <ol class="etapes">
+        <li><p class="et-h">Aujourd’hui <Status etat="dispo" /></p><p>Musculation, entraînement individuel et coaching.</p></li>
+        <li><p class="et-h">Demain <Status etat="bientot" /></p><p>Analyse avancée, assistant Novalyz IA branché sur tes données, analyse morphologique.</p></li>
+        <li><p class="et-h">À terme <Status etat="prevu" /></p><p>Novalyz Pro : clubs, centres de formation, académies.</p></li>
+        <li><p class="et-h">Notre vision <Status etat="prevu" /></p><p>La même logique, mesurer, comprendre, progresser, appliquée à tous les sports.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- BÊTA -->
+  <section class="beta" aria-labelledby="h-beta">
+    <div class="wrap beta-in">
+      <div>
+        <p class="eyebrow">Bêta</p>
+        <h2 id="h-beta" class="display">Teste Novalyz avant tout le monde.</h2>
+        <p class="lead">L’app Android est en test fermé sur Google Play, et fonctionne aussi dans le navigateur (iPhone, ordinateur). Écris-nous, on t’ajoute.</p>
+      </div>
+      {ctaPrincipal.visible && <Button href={ctaPrincipal.lien}>{ctaPrincipal.texte}</Button>}
+    </div>
+  </section>
+
+</Base>
+
+<style>
+  .hero { background: var(--ink); color: #fff; position: relative; overflow: hidden; padding: calc(120px + env(safe-area-inset-top, 0px)) 0 var(--s8); }
+  .hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 70% at 85% 25%, rgba(26,95,255,.45), transparent 65%); pointer-events: none; }
+  .hero-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--s7); align-items: center; }
+  .hero h1 { font-size: clamp(38px, 6.2vw, 74px); margin: 18px 0 22px; }
+  .hero .lead { color: #C3CFEA; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .sig { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 34px; font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+  .sig .s0 { color: #fff; } .sig .s1 { color: #9DB8FF; } .sig .s2 { color: var(--blue-2); }
+  .hero-vis { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .cap { font-size: 12.5px; color: #8E9BBB; }
+
+  .constat { padding: var(--s9) 0 var(--s8); }
+  .constat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s6) var(--s7); align-items: start; }
+  .constat h2 { font-size: clamp(30px, 4.2vw, 50px); margin-top: 14px; }
+  .constat-txt { display: flex; flex-direction: column; gap: 18px; }
+  .points { grid-column: 1 / -1; width: 100%; height: auto; margin-top: var(--s5); }
+  .points circle { fill: var(--blue); opacity: .55; }
+
+  .chapitres { padding: var(--s8) 0 0; }
+  .chapitres > .wrap h2 { font-size: clamp(30px, 4.2vw, 50px); margin-top: 14px; }
+  .chap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s7); align-items: center; padding-top: var(--s8); padding-bottom: var(--s8); }
+  .chap-dark { background: var(--night); color: #fff; padding: 0; display: block; }
+  .chap-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s7); align-items: center; padding-top: var(--s8); padding-bottom: var(--s8); }
+  .chap-prog { background: var(--ink); }
+  .chap-n { font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--blue); display: flex; gap: 12px; align-items: center; }
+  .chap-n span { color: var(--muted); }
+  .chap-dark .chap-n span { color: #7E8DB2; }
+  .chap h3 { font-size: clamp(26px, 3.4vw, 40px); margin: 14px 0 20px; }
+  .chap ul, .coach ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; max-width: 54ch; }
+  .chap li, .coach li { padding-left: 22px; position: relative; color: var(--muted); }
+  .chap li::before, .coach li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 2px; background: var(--blue); }
+  .chap li b, .coach li b { color: var(--fg); }
+  .chap-dark li { color: #B9C5E3; } .chap-dark li b { color: #fff; }
+  .chap-vis { display: flex; justify-content: center; }
+
+  .coach { background: var(--ice); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .coach { background: #0E1528; } }
+  .coach h2 { font-size: clamp(28px, 3.8vw, 46px); margin: 14px 0 18px; }
+  .coach .lead { margin-bottom: 22px; }
+  .coach .eyebrow { display: flex; align-items: center; gap: 12px; }
+
+  .vision { padding: var(--s9) 0; }
+  .vision h2 { font-size: clamp(28px, 4vw, 48px); margin-top: 14px; max-width: 18ch; }
+  .etapes { list-style: none; margin: var(--s7) 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--line); }
+  .etapes li { padding: 22px 22px 0 0; position: relative; color: var(--muted); }
+  .etapes li::before { content: ""; position: absolute; top: -7px; left: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--blue); }
+  .etapes li:first-child::before { background: var(--blue); }
+  .et-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 800; font-size: 19px; color: var(--fg); margin-bottom: 8px; font-variation-settings: 'wdth' 110; }
+
+  .beta { background: var(--blue); color: #fff; padding: var(--s8) 0; }
+  .beta-in { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); flex-wrap: wrap; }
+  .beta h2 { font-size: clamp(28px, 3.8vw, 44px); margin: 12px 0 14px; }
+  .beta .eyebrow { color: #CFDCFF; }
+  .beta .lead { color: #E3EAFF; }
+  .beta :global(.btn.primary) { background: #fff; color: var(--blue); }
+
+  @media (max-width: 900px) {
+    .hero-grid, .constat-grid, .chap, .chap-in { grid-template-columns: 1fr; }
+    .hero { padding-top: calc(104px + env(safe-area-inset-top, 0px)); }
+    .chap-vis { order: 2; }
+    .etapes { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+  }
+  @media (max-width: 520px) { .etapes { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--line); } .etapes li { padding: 0 0 0 22px; } .etapes li::before { top: 6px; left: -7px; } }
+</style>
