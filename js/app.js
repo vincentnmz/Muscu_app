@@ -890,6 +890,9 @@ function _nvzSessionExpiree() {
   window.fetch = function (input, init) {
     var url = (typeof input === 'string') ? input : '';
     if (!url || url.indexOf(SCRIPT_URL) !== 0) return _f(input, init);
+    // 07/11 — Fiche « Exemple » de la visite coach : tout appel qui concerne l'athlète fictif __demo__
+    // est servi en local (données fictives), rien ne part au serveur, rien n'est enregistré.
+    try { if (url.indexOf('__demo__') >= 0 || (init && typeof init.body === 'string' && init.body.indexOf('__demo__') >= 0)) return _demoReponse(url, init); } catch (e) {}
     var action = null;
     try { var m = url.match(/[?&]action=([^&]+)/); if (m) action = decodeURIComponent(m[1]); } catch (e) {}
     try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
@@ -2487,12 +2490,14 @@ async function supprimerCompteCoach() {
     const data = await res.json();
     if (data.success) {
       showToast('Compte supprimé.');
+      // 07/11 : avant, showView('view-landing') (vue inexistante) → page presque blanche, panneau Réglages
+      // resté ouvert, coach « toujours connecté ». Désormais : même déconnexion complète que le bouton Déco.
       setTimeout(() => {
-        coach = null;
-        localStorage.removeItem('muscu_coach'); _nvzTokClear();
-        localStorage.removeItem('muscu_coach_vue');
-        document.body.classList.remove('coach-active');
-        showView('view-landing');
+        try { fermerReglagesCoach(); } catch (e) {}
+        try { seDeconnecterCoach(); } catch (e) {
+          coach = null; localStorage.removeItem('muscu_coach'); localStorage.removeItem('muscu_coach_vue'); _nvzTokClear();
+          document.body.classList.remove('coach-active'); location.reload();
+        }
       }, 1200);
     } else {
       showToast('Erreur : ' + (data.error || 'suppression échouée'), '#e5484d');
@@ -6793,7 +6798,9 @@ function renderCoachHeroEtat(data) {
   const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
   const dernier = be[0] || null;
   const chipDims = [
-    { key: 'sommeil', emoji: '' }, { key: 'energie', emoji: '🔋' },
+    // 07/11 : « énergie » n'est plus dans le questionnaire (WQ_DIMS) → la chip faisait planter le hero
+    // (dim introuvable) quand un ancien relevé avait encore une énergie. Remplacée par le stress.
+    { key: 'sommeil', emoji: '' }, { key: 'stress', emoji: '' },
     { key: 'fatigue', emoji: '' }, { key: 'douleur', emoji: '' }
   ];
   // Le ressenti n'est affiché que s'il est RÉCENT (≤ 7 j) : au-delà, il ne
@@ -6810,6 +6817,7 @@ function renderCoachHeroEtat(data) {
       let txt = (WQ_ANSWERS[cd.key] ? WQ_ANSWERS[cd.key][raw] : raw);
       if (cd.key === 'douleur' && raw >= 2 && _zoneDouleur(dernier.zone)) txt += ' (' + _zoneDouleur(dernier.zone) + ')';
       const dim = WQ_DIMS.find(d => d.key === cd.key);
+      if (!dim) return '';
       const pos = wqPositif(dim, raw);
       const alerte = pos != null && pos < 3;  // point faible → petit point d'alerte
       return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
@@ -21569,7 +21577,7 @@ function _maybeOnboarding() {
 // Athlète (5 écrans) : ce que fait Novalyz · ta routine · qui fait ton programme ·
 // ta photo (facultatif) · pour aller plus loin (morpho, montre) → puis la visite (partie 2).
 // Coach (3 écrans, nouveau) : ce que Novalyz fait pour toi · ton premier athlète · ta photo.
-var _onbRole = 'a', _onbProg = null, _onbPremier = null, _onbCoachPendingTour = false;
+var _onbRole = 'a', _onbProg = null, _onbPremier = null, _onbCoachPendingTour = false, _onbMontre = false;
 function _onbOverlay() {
   var ov = document.getElementById('onb-overlay');
   if (!ov) {
@@ -21595,7 +21603,7 @@ function ouvrirOnboarding() {
 function ouvrirOnboardingCoach() {
   if (typeof coach === 'undefined' || !coach) return;
   _onbRole = 'c'; _onbPremier = null;
-  _onbSteps = ['c_ce', 'c_premier', 'c_photo'];
+  _onbSteps = ['c_ce', 'c_lui', 'c_journee', 'c_premier', 'c_photo'];   // 07/11 : 5 écrans (maquette v2)
   _onbI = 0;
   _onbOverlay();
   _onbRender();
@@ -21682,7 +21690,10 @@ function _onbContent(step) {
       + '<span class="onb-promo-r">→ Tu sais quoi prioriser et quels exercices choisir pour construire ton programme. Photos non conservées.</span>'
       + (ia ? '<button type="button" class="onb-sec" style="margin-top:10px" onclick="_onbMorpho()">Faire mon analyse</button>' : '<span class="onb-soon">bientôt</span>') + '</div>';
     return { primary: 'C\'est parti → visite de l\'app', onPrimary: '_onbTerminer()', html: '<div style="margin:auto 0;width:100%">' + h1('2 choses à essayer')
-      + promo + pt('⌚', 'Connecte ta montre', '2 minutes, guidé selon ta marque : Réglages ▸ Appareils ▸ Connecter ma montre') + '</div>' };
+      + promo + pt('⌚', 'Connecte ta montre', '2 minutes, guidé selon ta marque : pas, sommeil et FC au repos sans rien saisir.')
+      + (_estAppNative() ? '<button type="button" class="onb-sec' + (_onbMontre ? ' on' : '') + '" style="width:100%;margin-top:2px" onclick="_onbMontre=!_onbMontre;_onbRender()">' + (_onbMontre ? '✓ Je la connecte juste après la visite' : 'Connecter ma montre après la visite') + '</button>'
+        : '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Dans l\'app Android : Réglages ▸ Appareils ▸ Connecter ma montre.</div>')
+      + '</div>' };
   }
   if (step === 'coachinfo') {
     var loginBox = login
@@ -21699,18 +21710,29 @@ function _onbContent(step) {
   }
   // ── Coach ──
   if (step === 'c_ce') return { primary: 'Suivant', html: '<div style="margin:auto 0">'
-    + big('', 'Bienvenue, ' + esc(prenom), 'Novalyz lit les données de tes athlètes et te dit qui a besoin de toi.')
+    + big('', 'Bienvenue, ' + esc(prenom), 'Tes athlètes notent leurs séances et leur ressenti. Novalyz analyse tout, chaque jour, et te dit qui a besoin de toi, pourquoi et quoi faire.')
     + '<div style="margin-top:22px">'
-    + pt('!', 'Qui voir aujourd\'hui', 'fatigue, douleur, séances manquées, exercices bloqués')
-    + pt('?', 'Pourquoi ça bloque', 'une piste tirée de ses données, à lui proposer')
-    + pt('✎', 'Son programme', 'tu construis, Novalyz propose, tu décides')
+    + pt('!', 'Qui voir aujourd\'hui', 'fatigue, douleur, séances manquées, exercice bloqué')
+    + pt('?', 'Pourquoi ça bloque', 'une piste tirée de ses séances et de son ressenti')
+    + pt('✎', 'Quoi faire', 'Novalyz propose, tu décides : tu gardes la main')
     + '</div></div>' };
-  if (step === 'c_premier') return { primary: _onbPremier ? 'Suivant' : 'Plus tard', html: '<div style="margin:auto 0;width:100%">' + h1('Ajoute ton premier athlète', 'Tu le feras à la fin de la visite.')
+  if (step === 'c_lui') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%">' + h1('Ce que fait ton athlète, ce que tu reçois')
+    + '<div class="onb-2col"><div class="onb-col"><b>Lui, dans son app</b><span>questionnaire 1 min (sommeil, fatigue, douleur)</span><span>ses séries : charge, reps, effort</span><span>messages, photos, vidéos</span><span>sa montre (pas, sommeil, FC)</span></div>'
+    + '<div class="onb-col on"><b>Toi, ici</b><span>son état du jour</span><span>ses séries des 7 derniers jours</span><span>les alertes, par priorité</span><span>ses analyses, écrites pour un coach</span></div></div>'
+    + '<div style="font-size:12.5px;color:var(--text-muted);text-align:center;margin-top:12px">Il ne saisit rien de plus pour toi : tout vient de ce qu\'il fait déjà.</div></div>' };
+  if (step === 'c_journee') return { primary: 'Suivant', html: '<div style="margin:auto 0">' + h1('Ta journée de coach, en 4 gestes')
+    + pt('☀', 'Le matin : Aujourd\'hui', 'qui a répondu au questionnaire, qui surveiller')
+    + pt('◎', 'Une fiche : « À décider »', 'la piste trouvée et les actions possibles')
+    + pt('✎', 'Son programme', 'builder, Planifier la semaine, ou Novalyz propose')
+    + pt('✉', 'Échanger', 'messages, ou saisir sa séance en présentiel')
+    + '</div>' };
+  if (step === 'c_premier') return { primary: _onbPremier ? 'Suivant' : 'Plus tard', html: '<div style="margin:auto 0;width:100%">' + h1('Ajoute ton premier athlète', 'Tu le feras à la fin de la visite. « Plus tard » : bouton + en haut de l\'écran.')
     + choix('lier', _onbPremier, 'Il a déjà un compte', 'demande-lui son login à 4 chiffres → tu lui envoies une demande, il l\'accepte')
-    + choix('creer', _onbPremier, 'Je crée son compte', 'tu remplis son profil, il reçoit ses accès')
+    // 07/11 : « il reçoit ses accès » était faux (aucun e-mail envoyé à la création, vérifié handleCoachCreerAthlete).
+    + choix('creer', _onbPremier, 'Je crée son compte', 'tu remplis son profil, puis tu lui donnes son login et son mot de passe pour qu\'il se connecte')
     + '</div>' };
   if (step === 'c_photo') return { primary: 'C\'est parti → visite de l\'espace coach', onPrimary: '_onbFiniCoach()', html: photoStep('{coach_id:\'' + String(coach.coach_id).replace(/[^0-9A-Za-z_-]/g, '') + '\'}', coach.photo_url || null, coach.nom,
-    'Tes athlètes la voient dans leurs messages.') };
+    'Tes athlètes la voient dans leurs messages et sur « Mon coach ».') };
   return { primary: 'Suivant', html: '' };
 }
 function _onbRender() {
@@ -22049,6 +22071,12 @@ function nvGuideEnd() {
   document.body.classList.remove('nvg-open');
   _nvgClearNav(); _nvgClearSpot();
   if (_nvg.key) _tourMark(_nvg.key);
+  try { _demoFermer(); } catch (e) {}
+  try { _demoEquipe(false); } catch (e) {}
+  // 07/11 : parcours d'arrivée = onboarding → programme → visite → questionnaire du jour (1×/jour, pas pour le coach).
+  // Montre choisie à l'onboarding (écran 5) → parcours montre d'abord, le questionnaire viendra au prochain chargement.
+  if (_nvg.role === 'ath' && _onbMontre) { _onbMontre = false; setTimeout(function () { try { ouvrirConnexionMontre(); } catch (e) {} }, 500); return; }
+  if (_nvg.role === 'ath') setTimeout(function () { try { _maybeQuotidienEtat(); } catch (e) {} }, 600);
 }
 // Nettoie les emphases de nav (remise à zéro z-index / opacité).
 function _nvgClearNav() {
@@ -22194,6 +22222,11 @@ var _nvgLiftT = null;
 // nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
 // de piège pendant la visite).
 function _guideCoachGo(sec) {
+  try { _demoFermer(); } catch (e) {}   // carte hors fiche : on quitte la fiche « Exemple »
+  if (sec !== 'analyses') { try { _demoEquipe(false); } catch (e) {} }
+  // 07/11 : après la fermeture d'une fiche (barre du bas masquée pendant la fiche), la surbrillance
+  // de l'onglet était calculée trop tôt → on la recalcule une fois la vraie nav posée.
+  [350, 900].forEach(function (t) { setTimeout(function () { try { if (document.getElementById('nvg-ov')) _nvgLiftNav(); } catch (e) {} }, t); });
   var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
   // On délègue à la VRAIE nav : elle ouvre réellement l'écran (y compris Messages /
   // Profil) ET allume le bon item du rail / bandeau → l'écran derrière correspond à
@@ -22202,6 +22235,94 @@ function _guideCoachGo(sec) {
   try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
   if (sec === 'messages' || sec === 'profil') { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
   else { try { coachBandeauGo(sec); } catch (e) {} }
+}
+// ═══════════ FICHE « EXEMPLE » (visite coach sans athlète, 07/11, maquette validée) ═══════════
+// Données 100 % fictives (scripts/demo_fiche.py → vrai moteur → assets/demo/fiche-exemple.json),
+// décalées à la semaine en cours (multiple de 7 jours : les jours de la semaine restent justes).
+var _DEMO_ID = '__demo__', _DEMO_FIN = '2026-11-07', _demoData = null;
+var _DEMO_ATH = { athlete_id: '__demo__', id: '__demo__', nom: 'Léo Exemple', sport: 'muscu', annees_pratique: 3, niveau: 'intermediaire', alertes: [], en_pause: false, photo_url: null };
+function _demoDecale(v, jours) {
+  if (!jours) return v;
+  var sh = function (y, m, d) { var t = new Date(Date.UTC(+y, +m - 1, +d) + jours * 864e5); return t; };
+  var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  var txt = function (x) {
+    return x.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function (a, y, m, d) { var t = sh(y, m, d); return t.getUTCFullYear() + '-' + p2(t.getUTCMonth() + 1) + '-' + p2(t.getUTCDate()); })
+            .replace(/\b(\d{2})\/(\d{2})\/(\d{4})\b/g, function (a, d, m, y) { var t = sh(y, m, d); return p2(t.getUTCDate()) + '/' + p2(t.getUTCMonth() + 1) + '/' + t.getUTCFullYear(); });
+  };
+  var walk = function (o) {
+    if (typeof o === 'string') return txt(o);
+    if (Array.isArray(o)) return o.map(walk);
+    if (o && typeof o === 'object') { var r = {}; Object.keys(o).forEach(function (k) { r[txt(k)] = walk(o[k]); }); return r; }
+    return o;
+  };
+  return walk(v);
+}
+async function _demoCharger() {
+  if (_demoData) return _demoData;
+  var r = await fetch('assets/demo/fiche-exemple.json'); var d = await r.json();
+  var ecart = Math.floor((Date.now() - Date.parse(_DEMO_FIN + 'T12:00:00')) / 864e5);
+  _demoData = _demoDecale(d, ecart > 0 ? Math.floor(ecart / 7) * 7 : 0);
+  return _demoData;
+}
+function _demoReponse(url, init) {
+  var action = null;
+  try { var m = url.match(/[?&]action=([^&]+)/); if (m) action = decodeURIComponent(m[1]); } catch (e) {}
+  try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
+  var rep = function (o) { return new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } }); };
+  if (action === 'getAppData') return _demoCharger().then(function (d) { return rep(d); });
+  if (action === 'getCoachProgramme') return _demoCharger().then(function (d) { return rep({ ok: true, lignes: (d.programme || []).map(function (l, i) { return Object.assign({ row_index: i + 1 }, l); }) }); });
+  if (action === 'getSeancesDetail') return _demoCharger().then(function (d) { return rep({ ok: true, seances: d.seances_detail || [], seances_detail: d.seances_detail || [] }); });
+  if (action === 'getPlanning') return _demoCharger().then(function (d) { return rep({ ok: true, rows: d.planning || [] }); });
+  // Tout le reste (messages, écritures…) : réponse vide, rien d'envoyé ni d'enregistré.
+  return Promise.resolve(rep({ success: true, ok: true, commentaires: [], lignes: [], rows: [], items: [], data: [] }));
+}
+function _demoActif() { try { return typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id === _DEMO_ID; } catch (e) { return false; } }
+function _demoBandeau() {
+  var ex = document.getElementById('demo-bandeau');
+  if (!_demoActif()) { if (ex) ex.remove(); return; }
+  if (ex) return;
+  var b = document.createElement('div'); b.id = 'demo-bandeau'; b.className = 'demo-bandeau';
+  b.innerHTML = '<b>Exemple · données fictives</b><span>Ta 1<sup>re</sup> vraie fiche apparaîtra quand tu auras lié un athlète.</span>';
+  document.body.appendChild(b);
+}
+function _demoFermer() {
+  if (!_demoActif()) return;
+  try { retourListeAthletesCoach(); } catch (e) {}
+  try { var b = document.getElementById('demo-bandeau'); if (b) b.remove(); } catch (e) {}
+}
+// Analyses équipe dans la visite d'un coach SANS athlète (07/11) : l'équipe est remplie avec « Léo Exemple »
+// le temps de la carte (mêmes calculs que la vraie équipe, données fictives servies en local), puis vidée.
+var _demoEquipeOn = false;
+function _demoEquipe(on) {
+  try {
+    if (on) {
+      if (_demoEquipeOn || (athletesCoach && athletesCoach.length)) return;
+      _demoEquipeOn = true; athletesCoach = [_DEMO_ATH];
+      var hb = document.getElementById('coach-home-body'); if (hb) hb.style.display = '';
+      var le = document.getElementById('liste-athletes-coach'); if (le) le.style.display = 'none';
+      _demoBandeauEquipe(true);
+      renderCoachSynthese([_DEMO_ATH]).then(function () {
+        try { coachBandeauApply(); } catch (e) {} try { if (_coachDeskAny()) renderCoachDesktop(); } catch (e) {}
+        try { if (document.getElementById('nvg-ov')) _nvgLiftNav(); } catch (e) {}
+      }, function () {});
+    } else if (_demoEquipeOn) {
+      _demoEquipeOn = false; athletesCoach = [];
+      try { delete _coachSynthCache[_DEMO_ID]; } catch (e) {}
+      _demoBandeauEquipe(false);
+      var hb2 = document.getElementById('coach-home-body'); if (hb2) hb2.style.display = 'none';
+      var le2 = document.getElementById('liste-athletes-coach'); if (le2) le2.style.display = '';
+      try { renderCoachSynthese([]); } catch (e) {}
+      try { _coachDeskStore([], [], [], { total: 0, surveiller: 0, intervention: 0, absents: 0, aVoir: 0, pctAJour: 0 }); } catch (e) {}
+    }
+  } catch (e) {}
+}
+function _demoBandeauEquipe(on) {
+  var ex = document.getElementById('demo-bandeau');
+  if (!on) { if (ex && !_demoActif()) ex.remove(); return; }
+  if (ex) return;
+  var b = document.createElement('div'); b.id = 'demo-bandeau'; b.className = 'demo-bandeau';
+  b.innerHTML = '<b>Exemple · données fictives</b><span>Ton équipe apparaîtra quand tu auras lié un athlète.</span>';
+  document.body.appendChild(b);
 }
 function _guideCoachFiche(subtab) {
   try {
@@ -22212,7 +22333,9 @@ function _guideCoachFiche(subtab) {
       return;
     }
     var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
-    if (a) ouvrirDetailAthleteCoach(a, subtab);
+    // 07/11 : coach sans athlète → fiche « Exemple » (données fictives) au lieu de rester sur Équipe.
+    if (!a || a === _DEMO_ATH) { try { _demoEquipe(false); } catch (e) {} a = _DEMO_ATH; }
+    if (a) { Promise.resolve(ouvrirDetailAthleteCoach(a, subtab)).then(function () { _demoBandeau(); }, function () {}); _demoBandeau(); }
   } catch (e) {}
 }
 // Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
@@ -22267,7 +22390,7 @@ function _guideCoachCards() {
       feats: ['Builder, agenda, <b>Planifier la semaine</b>', '<b>Novalyz propose</b>, tu décides (qui a la main)', '<b>Créer un exercice</b> s’il manque au catalogue'] },
     { ic: 'heart', scr: 'Fiche ▸ Forme', t: 'Fiche ▸ Forme', lead: 'Son corps (onglet sur mobile).', go: F('forme'),
       feats: ['Récupération, sommeil, FC, pas, nutrition', 'Montre : fraîcheur des données (« ancien » si plus de 2 jours)', _iaBadge(ia) + '<b>Novalyz IA</b> et <b>analyse morpho</b> sur la fiche'] },
-    { ic: 'chat', scr: 'Analyses · Messages', t: 'Analyses équipe · Messages', lead: 'Toute l’équipe.', go: G('analyses'),
+    { ic: 'chat', scr: 'Analyses · Messages', t: 'Analyses équipe · Messages', lead: 'Toute l’équipe.', go: function () { _guideCoachGo('analyses'); _demoEquipe(true); },
       feats: ['Assiduité, douleurs, progression, volume par muscle, charge', 'Messages : filtres, <b>message à plusieurs</b>, photos et vidéos'] },
     { ic: 'gift', scr: 'Profil', t: 'Profil · Gratuit / Premium', lead: 'Ton espace coach.', go: G('profil'),
       feats: ['Notifications, groupes, export, <b>photo</b> · revoir la visite', 'Cockpit · suivi d’équipe · fiches : gratuit', 'Novalyz IA : <b>3 questions / jour</b>, illimité en Premium · plus d’athlètes, rapports : <b>Premium</b>'] }
@@ -22710,7 +22833,13 @@ function _maybeQuotidienEtat() {
     // même temps). Tant que l'intro n'est pas vue, on s'efface (on réessaiera plus tard).
     if (!dernierAppData.onboarding_vu) return;
     var _tourOv = document.getElementById('nvt-ov');
-    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active
+    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active (ancienne)
+    // 07/11 : la visite est maintenant le deck de cartes (#nvg-ov, body.nvg-open) — avant, non détectée →
+    // le questionnaire s'ouvrait par-dessus. Idem pendant l'éditeur de programme et tant que la visite
+    // doit encore démarrer (choix « Novalyz » / « Je gère » de l'onboarding). Relancé à la fin de la visite.
+    if (document.body.classList.contains('nvg-open') || document.getElementById('nvg-ov')) return;
+    if (typeof _onbPendingTour !== 'undefined' && _onbPendingTour) return;
+    var _pe = document.getElementById('prog-editor-overlay'); if (_pe && getComputedStyle(_pe).display !== 'none') return;
     // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, génération de
     // programme, modales…).
     var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
@@ -27157,6 +27286,7 @@ function _hcConnected(a) {
 }
 function _hcMarkConnected() {
   try { if (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) localStorage.setItem('nvz_hc_connected_' + athlete.athlete_id, '1'); } catch (e) {}
+  try { _tjMontreCta(); } catch (e) {}   // la carte « Connecte ta montre » d'Aujourd'hui disparaît
 }
 var _DS_THEME = {
   ds:   { acc: 'var(--tj-accent)', accS: 'var(--tj-accent-strong)', s2: 'var(--tj-surface2)', bd: 'var(--tj-border)', sf: 'var(--tj-surface)', tx: 'var(--tj-text)', mu: 'var(--tj-muted)', su: 'var(--tj-subtle)', gd: 'var(--tj-good)' },
@@ -27280,11 +27410,31 @@ async function renderDashSteps(attempt) {
   renderStepsChart('ds');
 }
 
+// ── « Connecte ta montre » sur Aujourd'hui (07/11, validé) ──
+// Visible seulement dans l'app Android (Health Connect), montre pas connectée à CE compte, hors « Plus tard » (7 j).
+function _tjMontreCleSnooze() { return 'nv_montre_plus_tard_' + (athlete && athlete.athlete_id); }
+function _tjMontreCta() {
+  var el = document.getElementById('tj-montre-cta'); if (!el) return;
+  var ok = false;
+  try {
+    var snooze = 0; try { snooze = Number(localStorage.getItem(_tjMontreCleSnooze())) || 0; } catch (e) {}
+    ok = !!athlete && _estAppNative() && !_hcConnected(athlete) && Date.now() > snooze;
+  } catch (e) { ok = false; }
+  if (!ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = '<div class="tjm-row"><span class="tjm-ic" aria-hidden="true">⌚</span><div class="tjm-tx"><b>Connecte ta montre</b><span>Pas, sommeil, FC au repos sans rien saisir · 2 min, guidé selon ta marque</span></div></div>'
+    + '<div class="tjm-btns"><button type="button" class="tjm-later" onclick="_tjMontrePlusTard()">Plus tard</button><button type="button" class="tjm-go" onclick="ouvrirConnexionMontre()">Connecter</button></div>';
+}
+function _tjMontrePlusTard() {
+  try { localStorage.setItem(_tjMontreCleSnooze(), String(Date.now() + 7 * 864e5)); } catch (e) {}
+  _tjMontreCta();
+}
 // Écran État — section « Ma montre » : pas (live Health Connect) + sommeil / FC
 // repos en « bientôt » (nécessitent le fork du plugin natif + un stockage serveur).
 // Thème global (pas .tj). Masquée hors app native.
 async function renderEtatMontre(attempt) {
   attempt = attempt || 0;
+  try { _tjMontreCta(); } catch (e) {}
   var el = document.getElementById('et-montre'), sec = document.getElementById('et-montre-sec');
   var mini = document.getElementById('et-montre-mini');
   if (!el) return;
