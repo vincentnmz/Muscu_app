@@ -681,6 +681,21 @@ body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
 .nv-auth-seg { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:4px; margin-bottom:16px; }
 .nv-auth-seg button { flex:1; padding:11px; border:none; background:none; color:var(--text-muted); font-size:13px; font-weight:700; border-radius:9px; cursor:pointer; transition:all 0.2s; }
 .nv-auth-seg button.auth-seg-active { background:var(--accent); color:var(--on-accent); }
+.reg-steps { display:flex; gap:6px; margin-bottom:12px; }
+.reg-steps b { flex:1; height:4px; border-radius:2px; background:var(--border); }
+.reg-steps b.on { background:var(--accent); }
+.reg-aide { color:var(--text-muted); font-weight:600; text-transform:none; letter-spacing:0; }
+.reg-intro { font-size:12.5px; color:var(--text-muted); margin:-4px 0 6px; line-height:1.4; }
+.reg-seg { display:flex; gap:6px; }
+.reg-seg button { flex:1; padding:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:13px; font-weight:700; border-radius:10px; cursor:pointer; }
+.reg-seg button.on { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.reg-login-etat { font-size:12px; font-weight:600; min-height:16px; margin:4px 0 6px; }
+.reg-login-etat .ok { color:var(--good); } .reg-login-etat .ko { color:var(--bad, #e5484d); } .reg-login-etat .mut { color:var(--text-muted); font-weight:500; }
+.reg-prop { border:0; background:none; padding:0; color:var(--accent); font-weight:700; font-size:12px; text-decoration:underline; cursor:pointer; }
+.btn.reg-off { opacity:.45; }
+.reg-manque { font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px; min-height:15px; }
+.reg-manque.reg-flash { color:var(--bad, #e5484d); }
+.reg-retour { display:block; margin:10px auto 0; border:0; background:none; color:var(--text-muted); font-size:13px; font-weight:600; cursor:pointer; }
 
 /* Bascule de rôle à la connexion (piste A) : athlète / coach·prépa au même niveau. */
 .nv-role-switch { display:flex; gap:9px; margin:0 0 16px; }

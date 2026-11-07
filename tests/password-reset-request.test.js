@@ -169,7 +169,7 @@ const prt = (store) => (store.password_reset_tokens || []);
   {
     const store = { athletes: [], coachs: [] };
     const api = loadBackend(store, mockFetch([]));
-    const reg = await J(await api.handleRegister(P({ login: '7777', password: 'secret1', prenom: 'Z', email: 'z@x.com' })));
+    const reg = await J(await api.handleRegister(P({ login: '7777', password: 'secret1', prenom: 'Z', email: 'z@x.com', sexe: 'H', ddn: '2000-01-01', taille: '170', poids: '70', annees: '2' })));
     eq(reg.success === true, 'non-régression: register OK');
     const log = await J(await api.handleLogin(P({ login: '7777', password: 'secret1' })));
     eq(log.success === true, 'non-régression: login OK');

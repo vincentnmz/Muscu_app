@@ -1469,23 +1469,36 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const annees = params.get('annees') || '0'
   const sport = params.get('sport') || 'muscu'
   const email = (params.get('email') || '').trim()
-  if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
-  if (pwd.length < MDP_MIN) return jsonResp({ erreur: 'Mot de passe : 6 caractères minimum.', message: 'Mot de passe : 6 caractères minimum.' })   // C6
-  if (email && !_emailValide(email)) return jsonResp({ erreur: 'Email invalide', message: 'Email invalide' })
+  const sexe = String(params.get('sexe') || '').trim().toUpperCase()
+  // 07/11 (maquette validée) : tout est obligatoire, vérifié ICI aussi (avant : seulement dans l'app → comptes à moitié remplis).
+  const refus = (m: string) => jsonResp({ erreur: m, message: m })
+  if (!login || !pwd) return refus('Login et mot de passe obligatoires.')
+  if (!/^\d{4}$/.test(login)) return refus('Le login doit faire 4 chiffres.')
+  if (pwd.length < MDP_MIN) return refus('Mot de passe : 6 caractères minimum.')   // C6
+  if (!nom || nom === login) return refus('Indique ton prénom.')
+  if (!email || !_emailValide(email)) return refus('E-mail invalide.')
+  if (sexe !== 'H' && sexe !== 'F') return refus('Indique ton sexe.')
+  const ddnD = ddn ? new Date(String(ddn).slice(0, 10) + 'T00:00:00') : null
+  const age = ddnD && !isNaN(ddnD.getTime()) ? (Date.now() - ddnD.getTime()) / (365.25 * 864e5) : NaN
+  if (!(age >= 10 && age <= 100)) return refus('Date de naissance invalide.')
+  const tN = Number(taille), pN = Number(String(poids || '').replace(',', '.'))
+  if (!(tN >= 100 && tN <= 250)) return refus('Taille invalide (en cm).')
+  if (!(pN >= 25 && pN <= 300)) return refus('Poids invalide (en kg).')
+  if (sport === 'muscu' && !(params.get('annees') != null && params.get('annees') !== '' && Number(annees) >= 0 && Number(annees) <= 80)) return refus('Indique tes années de pratique.')
 
   // Accès bêta par code d'invitation : si le secret BETA_INVITE_CODE est défini,
   // l'inscription exige ce code. S'il est vide/absent → inscription OUVERTE
   // (rétro-compatible : la garde ne s'active que quand tu poses le secret).
   const code = (params.get('code') || '').trim()
   const required = (Deno.env.get('BETA_INVITE_CODE') || '').trim()
-  if (required && code !== required) return jsonResp({ erreur: 'Code invalide', message: 'Code d\'invitation invalide ou manquant.' })
+  if (required && code !== required) return jsonResp({ erreur: 'Code invalide', message: 'Code d\'invitation invalide ou manquant.', code_requis: true })
 
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
-  if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Login déjà utilisé' })
+  if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Ce login est déjà pris : choisis-en un autre.', login_pris: true })
 
   const hash = await hashSalted(pwd, login)
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null }).select().single()
+  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null, sexe }).select().single()
   if (error) return jsonResp({ erreur: error.message, message: error.message })
   // C9 : mail de bienvenue (login + confirmer l'adresse). Un échec d'envoi ne bloque pas l'inscription.
   if (email) { try { await _envoyerMailCompte('a', String(data.id), email, String(data.login), String(data.nom || ''), true) } catch (_) {} }
@@ -4291,13 +4304,33 @@ async function handleClearDemoFoot(body: any): Promise<Response> {
 }
 
 const STAFF_ROLES = ['coach', 'prepa']   // (kine plus tard) ; l'ancien "coach_solo" = "coach"
+// 07/11 — Inscription : login disponible ? (athlète : 4 chiffres + proposition d'un login libre ;
+// coach : identifiant libre). code_requis = booléen seul (jamais la valeur du secret BETA_INVITE_CODE).
+async function handleLoginDispo(body: any): Promise<Response> {
+  const login = String(body.login || '').trim()
+  const code_requis = !!(Deno.env.get('BETA_INVITE_CODE') || '').trim()
+  if (body.type === 'c') {
+    if (!login) return jsonResp({ ok: true, valide: false, dispo: false, code_requis })
+    const { data: ex } = await sb().from('coachs').select('coach_id').eq('login', login).maybeSingle()
+    return jsonResp({ ok: true, valide: true, dispo: !ex, code_requis })
+  }
+  const { data: tous } = await sb().from('athletes').select('login')
+  const pris = new Set((tous || []).map((r: any) => String(r.login || '')))
+  let propose = ''
+  for (let i = 0; i < 40 && !propose; i++) { const c = String(1000 + Math.floor(Math.random() * 9000)); if (!pris.has(c)) propose = c }
+  if (!/^\d{4}$/.test(login)) return jsonResp({ ok: true, valide: false, dispo: false, propose, code_requis })
+  return jsonResp({ ok: true, valide: true, dispo: !pris.has(login), propose: pris.has(login) ? propose : '', code_requis })
+}
 async function handleRegisterCoach(body: any): Promise<Response> {
   const login = body.login?.trim(), pwd = body.password?.trim(), nom = body.nom?.trim() || body.login, sport = body.sport || 'muscu'
   const role = STAFF_ROLES.includes(String(body.role || '')) ? String(body.role) : 'coach'
   const email = String(body.email || '').trim() || null
-  if (!login || !pwd) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!login || !pwd) return jsonResp({ success: false, error: 'Identifiant et mot de passe obligatoires.' })
   if (pwd.length < MDP_MIN) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })   // C6
-  if (email && !_emailValide(email)) return jsonResp({ success: false, error: 'Email invalide' })
+  // 07/11 : tout obligatoire côté serveur aussi.
+  if (!body.nom || !String(body.nom).trim()) return jsonResp({ success: false, error: 'Indique ton nom.' })
+  if (!email || !_emailValide(email)) return jsonResp({ success: false, error: 'E-mail invalide.' })
+  if (!body.sport) return jsonResp({ success: false, error: 'Choisis ton sport.' })
   const { data: existing } = await sb().from('coachs').select('coach_id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Cet identifiant coach est déjà utilisé.' })
   const hash = await hashSalted(pwd, login)
@@ -7416,7 +7449,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -7602,7 +7635,8 @@ Deno.serve(async (req: Request) => {
       const _deny = await _authGate(String(action || ''), params, body); if (_deny) return _deny
       switch (action) {
         case 'login':                    return withSession(await handleLogin(new URLSearchParams({ login: body.login, password: body.password })), 'a')
-        case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' })), 'a')
+        case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: body.annees == null ? '' : String(body.annees), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '', sexe: body.sexe || '' })), 'a')
+        case 'loginDispo':               return handleLoginDispo(body)
         case 'registerCoach':            return withSession(await handleRegisterCoach(body), 'c')
         case 'seedDemoFoot':             return handleSeedDemoFoot(body)
         case 'clearDemoFoot':            return handleClearDemoFoot(body)

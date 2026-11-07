@@ -45,7 +45,7 @@ const lien = (html, p) => { const m = html.match(new RegExp('[?&]' + p + '=([^"&
 
   // C9 — bienvenue : login, jamais le mot de passe, lien de confirmation, nouvel en-tête.
   mails.length = 0;
-  const reg = await J(A.handleRegister(P({ login: '4821', password: 'MonMotDePasse9', prenom: 'Zoé', email: 'zoe@x.fr' })));
+  const reg = await J(A.handleRegister(P({ login: '4821', password: 'MonMotDePasse9', prenom: 'Zoé', email: 'zoe@x.fr', sexe: 'H', ddn: '2000-01-01', taille: '170', poids: '70', annees: '2' })));
   const m = mails[0] || {};
   eq(reg.success && m.to && m.to[0] === 'zoe@x.fr' && /4821/.test(m.html), 'C9 : mail de bienvenue avec le login', m.subject);
   eq(!/MonMotDePasse9/.test(m.html || ''), 'C9 : le mot de passe n\'est JAMAIS dans le mail');

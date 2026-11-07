@@ -1915,47 +1915,128 @@ async function seConnecter() {
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
 }
 
+// ── Inscription athlète en 2 écrans (07/11, maquette validée) ──
+// Tout est obligatoire ; le serveur refuse aussi un compte incomplet (même règle).
+var _regLogin = { v: '', dispo: null, propose: '' }, _regLoginTimer = null, _regCodeRequis = false;
+function _regVal(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+function _regSegVal(id) { var b = document.querySelector('#' + id + ' button.on'); return b ? b.getAttribute('data-v') : ''; }
+function regSeg(id, v) {
+  document.querySelectorAll('#' + id + ' button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
+  majInscription();
+}
+function _regAge(ddn) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ddn)) return NaN;
+  var d = new Date(ddn + 'T12:00:00'), n = new Date();
+  var a = n.getFullYear() - d.getFullYear();
+  if (n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) a--;
+  return a;
+}
+// Liste des manques par écran (mêmes bornes que le serveur : handleRegister).
+function _regManques(etape) {
+  var m = [];
+  if (etape === 1) {
+    if (!_regVal('reg-prenom')) m.push('prénom');
+    var em = _regVal('reg-email'); if (!em) m.push('e-mail'); else if (!emailValideFront(em)) m.push('e-mail valide');
+    var pw = (document.getElementById('reg-password') || {}).value || ''; if (pw.length < 6) m.push(pw ? 'mot de passe (6 caractères min.)' : 'mot de passe');
+    var lg = _regVal('reg-login');
+    if (!/^\d{4}$/.test(lg)) m.push('login (4 chiffres)');
+    else if (_regLogin.v === lg && _regLogin.dispo === false) m.push('un autre login (celui-ci est pris)');
+    if (!_regSegVal('reg-coach-seg')) m.push('coach oui / non');
+    if (_regCodeRequis && !_regVal('reg-code')) m.push("code d'invitation");
+  } else {
+    if (!_regSegVal('reg-sexe-seg')) m.push('sexe');
+    var age = _regAge(_regVal('reg-ddn')); if (!(age >= 10 && age <= 100)) m.push('date de naissance');
+    var t = Number(_regVal('reg-taille')); if (!_regVal('reg-taille')) m.push('taille'); else if (!(t >= 100 && t <= 250)) m.push('taille en cm (100-250)');
+    var p = Number(String(_regVal('reg-poids')).replace(',', '.')); if (!_regVal('reg-poids')) m.push('poids'); else if (!(p >= 25 && p <= 300)) m.push('poids en kg (25-300)');
+    var sp = _regVal('reg-sport') || 'muscu';
+    if (sp === 'muscu') { var y = _regVal('reg-annees'); if (y === '' || !(Number(y) >= 0 && Number(y) <= 80)) m.push('années de pratique'); }
+    if (!(document.getElementById('reg-consent') || {}).checked) m.push('accord sur tes données');
+  }
+  return m;
+}
+function majInscription() {
+  [1, 2].forEach(function (e) {
+    var m = _regManques(e), btn = document.getElementById('reg-btn-' + e), h = document.getElementById('reg-manque-' + e);
+    if (btn) btn.classList.toggle('reg-off', m.length > 0);
+    if (h) h.textContent = m.length ? 'Il manque : ' + m.join(', ') + '.' : '';
+  });
+}
+function inscriptionEtape(n) {
+  var e1 = document.getElementById('reg-etape-1'), e2 = document.getElementById('reg-etape-2');
+  if (e1) e1.style.display = n === 1 ? '' : 'none';
+  if (e2) e2.style.display = n === 2 ? '' : 'none';
+  var s2 = document.getElementById('reg-st2'); if (s2) s2.classList.toggle('on', n === 2);
+  majInscription();
+  try { document.getElementById('auth-signup').scrollIntoView({ block: 'start' }); } catch (e) {}
+}
+function inscriptionSuivant() {
+  var m = _regManques(1);
+  if (m.length) { var h = document.getElementById('reg-manque-1'); if (h) { h.textContent = 'Il manque : ' + m.join(', ') + '.'; h.classList.add('reg-flash'); setTimeout(function () { h.classList.remove('reg-flash'); }, 600); } return; }
+  inscriptionEtape(2);
+}
+// Login : vérification en direct (« disponible ✓ » / « déjà pris · essaie 4821 »).
+function verifierLoginDispo() {
+  var el = document.getElementById('reg-login'), etat = document.getElementById('reg-login-etat');
+  if (!el || !etat) return;
+  el.value = el.value.replace(/\D/g, '').slice(0, 4);
+  var lg = el.value;
+  clearTimeout(_regLoginTimer);
+  if (lg.length < 4) { etat.innerHTML = ''; _regLogin = { v: lg, dispo: null, propose: '' }; majInscription(); return; }
+  etat.innerHTML = '<span class="mut">vérification…</span>';
+  _regLoginTimer = setTimeout(async function () {
+    try {
+      var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'loginDispo', login: lg }) });
+      var j = await r.json();
+      if (el.value !== lg) return;
+      _regLogin = { v: lg, dispo: !!j.dispo, propose: j.propose || '' };
+      if (j.code_requis) { _regCodeRequis = true; var w = document.getElementById('reg-code-wrap'); if (w) w.style.display = ''; }
+      etat.innerHTML = j.dispo ? '<span class="ok">disponible ✓</span>'
+        : '<span class="ko">déjà pris</span>' + (j.propose ? ' · <button type="button" class="reg-prop" onclick="regPrendreLogin(\'' + j.propose + '\')">essaie ' + j.propose + '</button>' : '');
+    } catch (e) { _regLogin = { v: lg, dispo: null, propose: '' }; etat.innerHTML = '<span class="mut">vérification impossible (réseau) : on vérifiera à la création</span>'; }
+    majInscription();
+  }, 350);
+}
+function regPrendreLogin(v) { var el = document.getElementById('reg-login'); if (el) { el.value = v; verifierLoginDispo(); } }
+
 async function sInscrire() {
-  const prenom = document.getElementById('reg-prenom').value.trim();
-  const taille = document.getElementById('reg-taille').value.trim();
-  const poids = (document.getElementById('reg-poids') ? document.getElementById('reg-poids').value : '').trim();
-  const login = document.getElementById('reg-login').value.trim();
-  const sportSel = document.getElementById('reg-sport');
-  const sport = sportSel ? sportSel.value : 'muscu';
-  // "Années de pratique" n'est demandé qu'en muscu (surcharge progressive). Sinon 0.
-  const annees = (sport === 'muscu') ? document.getElementById('reg-annees').value.trim() : '0';
-  const ddn = document.getElementById('reg-ddn').value;
-  const password = document.getElementById('reg-password').value;
-  const email = (document.getElementById('reg-email') ? document.getElementById('reg-email').value : '').trim();
-  const code = (document.getElementById('reg-code') ? document.getElementById('reg-code').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
-  if (!prenom || !login || !ddn || !taille || !poids || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
-  if (sport === 'muscu' && annees === '') { errEl.textContent = 'Indique tes années de pratique.'; return; }
-  if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
-  if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
-  if (!emailValideFront(email)) { errEl.textContent = 'Email invalide.'; return; }
-  if (!document.getElementById('reg-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
-  errEl.textContent = 'Création...';
+  const m1 = _regManques(1); if (m1.length) { inscriptionEtape(1); return; }
+  const m2 = _regManques(2); if (m2.length) { majInscription(); errEl.textContent = 'Il manque : ' + m2.join(', ') + '.'; return; }
+  const prenom = _regVal('reg-prenom'), login = _regVal('reg-login'), email = _regVal('reg-email');
+  const password = document.getElementById('reg-password').value;
+  const sport = _regVal('reg-sport') || 'muscu';
+  const annees = (sport === 'muscu') ? _regVal('reg-annees') : '0';
+  const ddn = _regVal('reg-ddn'), taille = _regVal('reg-taille'), poids = String(_regVal('reg-poids')).replace(',', '.');
+  const sexe = _regSegVal('reg-sexe-seg'), code = _regVal('reg-code');
+  const aCoach = _regSegVal('reg-coach-seg') === 'oui';
+  errEl.textContent = 'Création…';
   try {
     // Inscription en POST (données + mot de passe dans le corps, pas dans l'URL)
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, poids, annees, password, sport, email, code })
+      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, poids, annees, password, sport, email, code, sexe })
     });
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
       if (athlete && !athlete.login) athlete.login = login;
+      if (athlete && !athlete.sexe) athlete.sexe = sexe;
       localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
+      try { localStorage.setItem('nv_onb_a_coach', aCoach ? '1' : '0'); } catch (e) {}
       showToast('Bienvenue ' + prenom + ' !');
       ouvrirApp();
       // Nouveau compte → onboarding IMMÉDIAT (sans attendre le 1er chargement serveur).
       // _onbChecked évite un 2e déclenchement quand getAppData revient.
       try { if (sport === 'muscu' && typeof ouvrirOnboarding === 'function') { _onbChecked = true; ouvrirOnboarding(); } } catch (e) {}
-    } else { errEl.textContent = data.message || 'Ce login est déjà utilisé.'; }
-  } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
+    } else {
+      // Message précis du serveur (login pris, e-mail invalide, champ manquant…).
+      errEl.textContent = data.message || data.erreur || 'Inscription refusée. Vérifie les champs.';
+      if (data.login_pris) { _regLogin = { v: login, dispo: false, propose: '' }; inscriptionEtape(1); verifierLoginDispo(); }
+      if (data.code_requis) { _regCodeRequis = true; var w = document.getElementById('reg-code-wrap'); if (w) w.style.display = ''; inscriptionEtape(1); var h = document.getElementById('reg-manque-1'); if (h) h.textContent = data.message; }
+    }
+  } catch(e) { errEl.textContent = 'Pas de connexion au serveur. Vérifie ton réseau et réessaie.'; }
 }
 
 function arreterChronoEtReinitSeance() {
@@ -11838,6 +11919,7 @@ function switchAuthMode(mode) {
       sel.value = 'muscu';
     }
     majChampsSportInscription();
+    inscriptionEtape(1);
   }
 }
 
@@ -11848,6 +11930,7 @@ function majChampsSportInscription() {
   const sport = sel ? sel.value : 'muscu';
   const anneesWrap = document.getElementById('reg-annees-wrap');
   if (anneesWrap) anneesWrap.style.display = (sport === 'muscu') ? '' : 'none';
+  if (typeof majInscription === 'function') majInscription();
 }
 
 function ouvrirConfidentialite(ev) { if (ev) ev.preventDefault(); document.getElementById('modal-confidentialite').style.display = 'flex'; }
@@ -11868,6 +11951,7 @@ function switchCoachAuthMode(mode) {
       sel.value = 'muscu';
     }
     majRoleSelonSport();
+    majInscriptionCoach();
   }
 }
 
@@ -11882,23 +11966,54 @@ function majRoleSelonSport() {
   if (prepaOpt) prepaOpt.style.display = '';
 }
 
+var _regCoachLogin = { v: '', dispo: null }, _regCoachTimer = null;
+function _regCoachManques() {
+  var m = [];
+  if (!_regVal('reg-coach-nom')) m.push('nom');
+  var em = _regVal('reg-coach-email'); if (!em) m.push('e-mail'); else if (!emailValideFront(em)) m.push('e-mail valide');
+  var lg = _regVal('reg-coach-login'); if (!lg) m.push('login'); else if (_regCoachLogin.v === lg && _regCoachLogin.dispo === false) m.push('un autre login (celui-ci est pris)');
+  var pw = (document.getElementById('reg-coach-password') || {}).value || ''; if (pw.length < 6) m.push(pw ? 'mot de passe (6 caractères min.)' : 'mot de passe');
+  if (!_regVal('reg-coach-sport')) m.push('sport');
+  if (!(document.getElementById('reg-coach-consent') || {}).checked) m.push('accord sur les données');
+  return m;
+}
+function majInscriptionCoach() {
+  var m = _regCoachManques(), btn = document.getElementById('reg-coach-btn'), h = document.getElementById('reg-coach-manque');
+  if (btn) btn.classList.toggle('reg-off', m.length > 0);
+  if (h) h.textContent = m.length ? 'Il manque : ' + m.join(', ') + '.' : '';
+}
+function verifierLoginCoachDispo() {
+  var el = document.getElementById('reg-coach-login'), etat = document.getElementById('reg-coach-login-etat');
+  if (!el || !etat) return;
+  var lg = el.value.trim();
+  clearTimeout(_regCoachTimer);
+  if (!lg) { etat.innerHTML = ''; _regCoachLogin = { v: '', dispo: null }; majInscriptionCoach(); return; }
+  _regCoachTimer = setTimeout(async function () {
+    try {
+      var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'loginDispo', type: 'c', login: lg }) });
+      var j = await r.json();
+      if (el.value.trim() !== lg) return;
+      _regCoachLogin = { v: lg, dispo: !!j.dispo };
+      etat.innerHTML = j.dispo ? '<span class="ok">disponible ✓</span>' : '<span class="ko">déjà pris : choisis-en un autre</span>';
+    } catch (e) { _regCoachLogin = { v: lg, dispo: null }; etat.innerHTML = ''; }
+    majInscriptionCoach();
+  }, 400);
+}
+
 async function sInscrireCoach() {
-  const nom = document.getElementById('reg-coach-nom').value.trim();
-  const login = document.getElementById('reg-coach-login').value.trim();
-  const email = (document.getElementById('reg-coach-email') ? document.getElementById('reg-coach-email').value : '').trim();
+  const nom = _regVal('reg-coach-nom');
+  const login = _regVal('reg-coach-login');
+  const email = _regVal('reg-coach-email');
   const password = document.getElementById('reg-coach-password').value;
-  const sportSel = document.getElementById('reg-coach-sport');
-  const sport = sportSel ? sportSel.value : 'muscu';
+  const sport = _regVal('reg-coach-sport') || 'muscu';
   const roleSel = document.getElementById('reg-coach-role');
   // Rôle choisi par l'utilisateur (coach ou préparateur), quel que soit le sport.
   const role = (roleSel && (roleSel.value === 'coach' || roleSel.value === 'prepa')) ? roleSel.value : 'coach';
   const errEl = document.getElementById('reg-coach-error');
   errEl.textContent = '';
-  if (!nom || !login || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
-  if (!emailValideFront(email)) { errEl.textContent = 'Email invalide.'; return; }
-  if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
-  if (!document.getElementById('reg-coach-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
-  errEl.textContent = 'Création...';
+  const m = _regCoachManques();
+  if (m.length) { majInscriptionCoach(); errEl.textContent = 'Il manque : ' + m.join(', ') + '.'; return; }
+  errEl.textContent = 'Création…';
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -11910,10 +12025,10 @@ async function sInscrireCoach() {
       coach = data.coach;
       localStorage.setItem('muscu_coach', JSON.stringify(coach));
       localStorage.removeItem('muscu_coach_vue');
-      _coachVientDeSinscrire = true;   // nouveau coach → visite guidée automatique (1 fois)
+      _coachVientDeSinscrire = true;   // nouveau coach → onboarding coach puis visite (1 fois)
       ouvrirEspaceCoach();
-    } else { errEl.textContent = data.error || data.message || 'Cet identifiant coach est déjà utilisé.'; }
-  } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
+    } else { errEl.textContent = data.error || data.message || 'Inscription refusée. Vérifie les champs.'; }
+  } catch(e) { errEl.textContent = 'Pas de connexion au serveur. Vérifie ton réseau et réessaie.'; }
 }
 
 // ── Données de démo (14 joueurs foot, symptômes variés) — depuis Réglages coach ──

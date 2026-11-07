@@ -110,7 +110,7 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
 
   // ── 3. Parcours réel par l'aiguillage ──
   { const { handler, warns } = load({ PEPPER: 'pep' });   // mode observation
-    const reg = await (await post(handler, { action: 'register', login: '4321', password: 'secret1', prenom: 'Zoé', ddn: '2000-01-01', taille: '170', poids: '60', annees: '2', sport: 'muscu', email: 'z@x.fr' })).json();
+    const reg = await (await post(handler, { action: 'register', login: '4321', password: 'secret1', prenom: 'Zoé', ddn: '2000-01-01', taille: '170', poids: '60', annees: '2', sport: 'muscu', email: 'z@x.fr', sexe: 'F' })).json();
     eq(reg.success, 'inscription OK', reg);
     // (la base EN MÉMOIRE renvoie un tableau sur insert().select().single() → pas d'id ;
     //  en prod Supabase renvoie la ligne : le jeton d'inscription est testé via withSession
@@ -121,7 +121,7 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
     eq(r1.status === 200, 'observation : appel sans jeton NON refusé', r1.status);
     eq(warns.some(w => /observation/.test(w) && /getAppData/.test(w)), 'observation : appel journalisé', warns); }
   { const { handler } = load({ PEPPER: 'pep', AUTH_ENFORCE: '1' });   // mode strict
-    const reg = await (await post(handler, { action: 'register', login: '5678', password: 'secret1', prenom: 'Léo', ddn: '2000-01-01', taille: '180', poids: '75', annees: '2', sport: 'muscu', email: 'l@x.fr' })).json();
+    const reg = await (await post(handler, { action: 'register', login: '5678', password: 'secret1', prenom: 'Léo', ddn: '2000-01-01', taille: '180', poids: '75', annees: '2', sport: 'muscu', email: 'l@x.fr', sexe: 'H' })).json();
     const lg0 = await (await post(handler, { action: 'login', login: '5678', password: 'secret1' })).json();
     const id = lg0.athlete.athlete_id, tok = lg0.token;
     const sans = await get(handler, 'action=getAppData&athlete_id=' + id);
