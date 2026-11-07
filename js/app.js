@@ -10007,7 +10007,7 @@ function _exoMatChips(ctx, rerender) {
 }
 function _exoSousTitre(e) {
   if (!e) return '';
-  var b = []; if (e.materiel) b.push(e.materiel);
+  var b = []; if (e.statut === 'en_attente') b.push('en attente de validation'); if (e.materiel) b.push(e.materiel);
   if (e.muscle_secondaire && _pbcMusAff(e.muscle_secondaire) !== _pbcMusAff(e.muscle)) b.push('+ ' + _pbcMusAff(e.muscle_secondaire) + ' ½');
   return b.join(' · ');
 }
@@ -10020,13 +10020,16 @@ function ouvrirCreerExercice(onCree) {
   ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
   var opts = function (vide) { return (vide ? '<option value="">' + vide + '</option>' : '') + _EXO_MUS_CLES.map(function (m) { return '<option value="' + m[1] + '">' + m[0] + '</option>'; }).join(''); };
   ov.innerHTML = '<div class="cx-sheet"><div class="cx-grab"></div><div class="cx-t">Nouvel exercice</div>'
-    + '<label class="cx-l" for="cx-nom">Nom</label><input id="cx-nom" class="cx-i" maxlength="60" placeholder="ex. Curl araignée">'
-    + '<label class="cx-l" for="cx-mus">Muscle</label><select id="cx-mus" class="cx-i">' + opts('Choisir…') + '</select>'
+    + '<label class="cx-l" for="cx-nom">Nom</label><input id="cx-nom" class="cx-i" maxlength="60" placeholder="ex. Curl araignée" oninput="_cxSuggestions()">'
+    + '<div id="cx-sug"></div>'
+    + '<label class="cx-l" for="cx-mus">Muscle</label><select id="cx-mus" class="cx-i" onchange="_cxSuggestions()">' + opts('Choisir…') + '</select>'
     + '<label class="cx-l" for="cx-sec">Muscle secondaire (facultatif, compté ½ série)</label><select id="cx-sec" class="cx-i">' + opts('Aucun') + '</select>'
     + '<label class="cx-l" for="cx-mat">Matériel</label><select id="cx-mat" class="cx-i">' + _EXO_MAT.map(function (m) { return '<option>' + m + '</option>'; }).join('') + '</select>'
     + '<div id="cx-err" class="cx-err" hidden></div>'
+    + '<div class="cx-info">Il sera visible par toi et tes athlètes tout de suite, et ajouté au catalogue commun après validation par Novalyz.</div>'
     + '<div class="cx-btns"><button type="button" class="cx-b" onclick="document.getElementById(\'_cx-ov\').remove()">Annuler</button><button type="button" class="cx-b p" id="cx-ok">Créer</button></div></div>';
   document.body.appendChild(ov);
+  _cxOnCree = onCree;
   document.getElementById('cx-ok').onclick = async function () {
     var err = document.getElementById('cx-err'), nom = document.getElementById('cx-nom').value.trim(), mus = document.getElementById('cx-mus').value, sec = document.getElementById('cx-sec').value, mat = document.getElementById('cx-mat').value;
     var fail = function (t) { err.textContent = t; err.hidden = false; };
@@ -10037,12 +10040,51 @@ function ouvrirCreerExercice(onCree) {
     this.disabled = true;
     var r = null; try { r = await _cdPost({ action: 'creerExercice', exercice: nom, muscle: mus, muscle_secondaire: sec || '', materiel: mat }); } catch (e) {}
     this.disabled = false;
-    if (!r || !r.ok) return fail((r && r.erreur) || 'Création impossible pour le moment (réseau ?).');
+    if (!r || !r.ok) {
+      if (r && r.existant) { fail(r.erreur); _cxSuggestions([r.existant.exercice]); return; }
+      return fail((r && r.erreur) || 'Création impossible pour le moment (réseau ?).');
+    }
     try { exercicesData.push(r.exercice); } catch (e) {}
-    ov.remove(); showToast('✓ « ' + nom + ' » ajouté au catalogue');
+    ov.remove(); showToast('✓ « ' + nom + ' » créé : visible par toi et tes athlètes, en attente de validation');
     if (typeof onCree === 'function') onCree(r.exercice);
   };
   setTimeout(function () { try { document.getElementById('cx-nom').focus(); } catch (e) {} }, 50);
+}
+// « Il existe peut-être déjà » (07/11) : exercices du catalogue qui partagent un mot significatif
+// avec le nom saisi (ou le même muscle si un mot commun), pour éviter les quasi-doublons.
+var _cxOnCree = null;
+var _CX_VIDES = { a: 1, au: 1, aux: 1, la: 1, le: 1, les: 1, de: 1, du: 1, des: 1, en: 1, et: 1, uni: 1, prise: 1 };
+function _cxMots(t) { return _normTxt(t || '').split(/[^a-z0-9]+/).filter(function (w) { return w.length >= 3 && !_CX_VIDES[w]; }); }
+function _cxSuggestions(forces) {
+  var box = document.getElementById('cx-sug'); if (!box) return;
+  var nomEl = document.getElementById('cx-nom'), musEl = document.getElementById('cx-mus');
+  var nom = nomEl ? nomEl.value : '', mus = musEl ? musEl.value : '';
+  var liste = [];
+  if (forces && forces.length) liste = forces.slice();
+  else {
+    var mots = _cxMots(nom); if (!mots.length) { box.innerHTML = ''; return; }
+    var sc = [];
+    (exercicesData || []).forEach(function (x) {
+      var m2 = _cxMots(x.exercice), n = 0;
+      mots.forEach(function (w) { if (m2.some(function (v) { return v === w || (w.length >= 4 && (v.indexOf(w) === 0 || w.indexOf(v) === 0)); })) n++; });
+      if (!n) return;
+      if (mus && _pbcMusAff(x.muscle) === _pbcMusAff(mus)) n += 0.5;
+      sc.push([n, x.exercice]);
+    });
+    sc.sort(function (a, b) { return b[0] - a[0]; });
+    liste = sc.slice(0, 4).map(function (z) { return z[1]; });
+  }
+  if (!liste.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="cx-sug"><div class="cx-sug-t">Il existe peut-être déjà</div>' + liste.map(function (n) {
+    var x = (exercicesData || []).filter(function (e) { return e.exercice === n; })[0];
+    return '<div class="cx-sug-it"><span><b>' + escapeHtml(n) + '</b>' + (x ? '<small>' + escapeHtml(_pbcMusAff(x.muscle) + (_exoSousTitre(x) ? ' · ' + _exoSousTitre(x) : '')) + '</small>' : '') + '</span>'
+      + '<button type="button" onclick="_cxUtiliser(\'' + String(n).replace(/\\/g, '').replace(/'/g, "\\'") + '\')">Utiliser celui-ci</button></div>';
+  }).join('') + '</div>';
+}
+function _cxUtiliser(nom) {
+  var x = (exercicesData || []).filter(function (e) { return e.exercice === nom; })[0] || { exercice: nom };
+  var ov = document.getElementById('_cx-ov'); if (ov) ov.remove();
+  if (typeof _cxOnCree === 'function') _cxOnCree(x);
 }
 function _pbcMusAff(m) { var k = _normTxt(m || ''); if (!k) return 'Autres'; for (var i = 0; i < _PBC_MUS.length; i++) if (k.indexOf(_PBC_MUS[i][0]) === 0) return _PBC_MUS[i][1]; return _musCap(String(m).trim()); }
 // Muscle « opposé » proposé en superset (agoniste / antagoniste).
@@ -18426,8 +18468,19 @@ async function chargerExercices() {
     const res = await fetch(`${SCRIPT_URL}?action=exercices`);
     const data = await res.json();
     exercicesData = data.exercices || [];
-    if (exercicesData.length) { try { localStorage.setItem('nv_exercices', JSON.stringify(exercicesData)); } catch (e) {} }
-    else throw new Error('vide');
+    if (!exercicesData.length) throw new Error('vide');
+    // 07/11 : + exercices créés par le coach, en attente de validation (privés : lui et ses athlètes).
+    try {
+      var body = { action: 'exercicesPrives' };
+      if (!_estCoachConnecte() && typeof athlete !== 'undefined' && athlete && athlete.athlete_id) body.athlete_id = athlete.athlete_id;
+      if (_estCoachConnecte() || body.athlete_id) {
+        var rp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+        var jp = await rp.json();
+        var deja = {}; exercicesData.forEach(function (x) { deja[String(x.exercice_id)] = 1; });
+        ((jp && jp.exercices) || []).forEach(function (x) { if (!deja[String(x.exercice_id)]) exercicesData.push(x); });
+      }
+    } catch (e) {}
+    try { localStorage.setItem('nv_exercices', JSON.stringify(exercicesData)); } catch (e) {}
   } catch(e) {
     try { exercicesData = JSON.parse(localStorage.getItem('nv_exercices') || '[]') || []; } catch (e2) { exercicesData = []; }
   }

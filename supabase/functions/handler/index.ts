@@ -3059,7 +3059,12 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
 async function handleGetExercices(): Promise<Response> {
   // catalogue complet depuis la table exercices ; le front lit data.exercices
   const { data } = await sb().from('exercices').select('*').order('exercice')
-  const exercices = (data || []).filter(r => r.exercice_id).map(r => ({
+  // 07/11 : catalogue COMMUN = exercices validés. Ceux créés par un coach et pas encore
+  // validés (statut 'en_attente') ne sont visibles que de ce coach et de ses athlètes (exercicesPrives).
+  return jsonResp({ exercices: _exoLignes((data || []).filter((r: any) => (r.statut || 'valide') === 'valide')) })
+}
+function _exoLignes(rows: any[]): any[] {
+  return (rows || []).filter(r => r.exercice_id).map(r => ({
     exercice_id: r.exercice_id,
     exercice: r.exercice,
     muscle: normMuscle(r.muscle),
@@ -3067,9 +3072,23 @@ async function handleGetExercices(): Promise<Response> {
     increment_kg: r.increment_kg || '2.5 / 5kg',
     // Catalogue 06/11 : matériel, disciplines (liste « muscu,street… »), type de mesure, auteur (coach).
     materiel: r.materiel || '', disciplines: r.disciplines || 'muscu', mesure: r.mesure || 'charge_reps', cree_par: r.cree_par || '',
+    statut: r.statut || 'valide',
   }))
-  return jsonResp({ exercices })
 }
+// Exercices en attente de validation du coach de la session (coach : les siens ; athlète : ceux de SON coach).
+async function handleExercicesPrives(body: any): Promise<Response> {
+  let cid = ''
+  if (body._sessRole === 'c') cid = String(body._sessId || '')
+  else if (body.athlete_id) {
+    const { data: a } = await sb().from('athletes').select('coach_id').eq('id', String(body.athlete_id)).single()
+    cid = String((a as any)?.coach_id || '')
+  }
+  if (!cid) return jsonResp({ exercices: [] })
+  const { data } = await sb().from('exercices').select('*').eq('cree_par', 'coach:' + cid).eq('statut', 'en_attente').order('exercice')
+  return jsonResp({ exercices: _exoLignes(data || []) })
+}
+// Clé de nom normalisée (même règle que la colonne nom_cle + index unique en base, 07/11).
+const _nomCle = (t: any) => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 // Catalogue 06/11 — un coach crée un exercice : muscle choisi dans la liste fermée (14), plus de saisie libre.
 const CAT_MUSCLES = ['Pectoraux', 'Dos', 'Trapèze', 'Epaule', 'Biceps', 'Triceps', 'Avant-bras', 'Abdominaux', 'Lombaires', 'Quadriceps', 'Ischio', 'Fessier', 'Adducteur', 'Mollets']
@@ -3082,14 +3101,26 @@ async function handleCreerExercice(body: any): Promise<Response> {
   if (!nom || nom.length > 60) return jsonResp({ erreur: 'Nom manquant ou trop long (60 caractères max)' })
   if (!CAT_MUSCLES.includes(muscle)) return jsonResp({ erreur: 'Muscle inconnu' })
   if (sec && (!CAT_MUSCLES.includes(sec) || sec === muscle)) return jsonResp({ erreur: 'Muscle secondaire invalide' })
-  const { data: tous } = await sb().from('exercices').select('exercice_id,exercice')
-  const k = (t: any) => String(t || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  if ((tous || []).some((e: any) => k(e.exercice) === k(nom))) return jsonResp({ erreur: 'Cet exercice existe déjà' })
-  const id = String(Math.max(0, ...(tous || []).map((e: any) => Number(e.exercice_id) || 0)) + 1)
-  const row = { exercice_id: id, exercice: nom, muscle, muscle_secondaire: sec, increment_kg: materiel === 'Haltères' ? '2' : '2.5', materiel, disciplines: 'muscu', mesure: 'charge_reps', cree_par: 'coach:' + String(body._sessId || '') }
-  const { error } = await sb().from('exercices').insert(row)
-  if (error) return jsonResp({ erreur: error.message })
-  return jsonResp({ ok: true, exercice: row })
+  const { data: tous } = await sb().from('exercices').select('exercice_id,exercice,statut,cree_par')
+  const cle = _nomCle(nom), moi = 'coach:' + String(body._sessId || '')
+  const meme = (tous || []).find((e: any) => _nomCle(e.exercice) === cle)
+  if (meme) {
+    const enAttente = (meme.statut || 'valide') === 'en_attente'
+    return jsonResp({ erreur: enAttente && meme.cree_par !== moi ? 'Un autre coach a déjà proposé cet exercice : il sera dans le catalogue dès qu\'il est validé.' : 'Cet exercice existe déjà : utilise « ' + meme.exercice + ' ».', existant: { exercice_id: meme.exercice_id, exercice: meme.exercice } })
+  }
+  // 07/11 : privé au coach (et à ses athlètes) + « en attente » jusqu'à validation par le porteur.
+  // Unicité garantie en base (exercice_id = clé primaire, nom_cle = index unique) : si deux coachs
+  // créent en même temps, l'un des deux échoue proprement → on retente avec le numéro suivant.
+  let id = Math.max(0, ...(tous || []).map((e: any) => Number(e.exercice_id) || 0)) + 1
+  for (let essai = 0; essai < 3; essai++, id++) {
+    const row = { exercice_id: String(id), exercice: nom, nom_cle: cle, statut: 'en_attente', muscle, muscle_secondaire: sec, increment_kg: materiel === 'Haltères' ? '2' : '2.5', materiel, disciplines: 'muscu', mesure: 'charge_reps', cree_par: moi }
+    const { error } = await sb().from('exercices').insert(row)
+    if (!error) return jsonResp({ ok: true, exercice: row })
+    const msg = String(error.message || '')
+    if (/nom_cle/.test(msg)) return jsonResp({ erreur: 'Cet exercice existe déjà.' })
+    if (!/duplicate|unique|pkey/i.test(msg)) return jsonResp({ erreur: msg })
+  }
+  return jsonResp({ erreur: 'Création impossible, réessaie.' })
 }
 
 async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
@@ -7750,6 +7781,7 @@ Deno.serve(async (req: Request) => {
         case 'planSeance':               return handlePlanSeance(body)
         case 'setRattachement':          return handleSetRattachement(body)
         case 'creerExercice':            return handleCreerExercice(body)
+        case 'exercicesPrives':          return handleExercicesPrives(body)
         case 'movePlanning':             return handleMovePlanning(body)
         case 'unplanPlanning':           return handleUnplanPlanning(body)
         case 'genererProgramme':         return _progMajTrace(action, body, () => handleGenererProgramme(body))
