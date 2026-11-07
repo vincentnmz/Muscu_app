@@ -890,6 +890,9 @@ function _nvzSessionExpiree() {
   window.fetch = function (input, init) {
     var url = (typeof input === 'string') ? input : '';
     if (!url || url.indexOf(SCRIPT_URL) !== 0) return _f(input, init);
+    // 07/11 — Fiche « Exemple » de la visite coach : tout appel qui concerne l'athlète fictif __demo__
+    // est servi en local (données fictives), rien ne part au serveur, rien n'est enregistré.
+    try { if (url.indexOf('__demo__') >= 0 || (init && typeof init.body === 'string' && init.body.indexOf('__demo__') >= 0)) return _demoReponse(url, init); } catch (e) {}
     var action = null;
     try { var m = url.match(/[?&]action=([^&]+)/); if (m) action = decodeURIComponent(m[1]); } catch (e) {}
     try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
@@ -6795,7 +6798,9 @@ function renderCoachHeroEtat(data) {
   const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
   const dernier = be[0] || null;
   const chipDims = [
-    { key: 'sommeil', emoji: '' }, { key: 'energie', emoji: '🔋' },
+    // 07/11 : « énergie » n'est plus dans le questionnaire (WQ_DIMS) → la chip faisait planter le hero
+    // (dim introuvable) quand un ancien relevé avait encore une énergie. Remplacée par le stress.
+    { key: 'sommeil', emoji: '' }, { key: 'stress', emoji: '' },
     { key: 'fatigue', emoji: '' }, { key: 'douleur', emoji: '' }
   ];
   // Le ressenti n'est affiché que s'il est RÉCENT (≤ 7 j) : au-delà, il ne
@@ -6812,6 +6817,7 @@ function renderCoachHeroEtat(data) {
       let txt = (WQ_ANSWERS[cd.key] ? WQ_ANSWERS[cd.key][raw] : raw);
       if (cd.key === 'douleur' && raw >= 2 && _zoneDouleur(dernier.zone)) txt += ' (' + _zoneDouleur(dernier.zone) + ')';
       const dim = WQ_DIMS.find(d => d.key === cd.key);
+      if (!dim) return '';
       const pos = wqPositif(dim, raw);
       const alerte = pos != null && pos < 3;  // point faible → petit point d'alerte
       return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
@@ -21597,7 +21603,7 @@ function ouvrirOnboarding() {
 function ouvrirOnboardingCoach() {
   if (typeof coach === 'undefined' || !coach) return;
   _onbRole = 'c'; _onbPremier = null;
-  _onbSteps = ['c_ce', 'c_premier', 'c_photo'];
+  _onbSteps = ['c_ce', 'c_lui', 'c_journee', 'c_premier', 'c_photo'];   // 07/11 : 5 écrans (maquette v2)
   _onbI = 0;
   _onbOverlay();
   _onbRender();
@@ -21704,18 +21710,29 @@ function _onbContent(step) {
   }
   // ── Coach ──
   if (step === 'c_ce') return { primary: 'Suivant', html: '<div style="margin:auto 0">'
-    + big('', 'Bienvenue, ' + esc(prenom), 'Novalyz lit les données de tes athlètes et te dit qui a besoin de toi.')
+    + big('', 'Bienvenue, ' + esc(prenom), 'Tes athlètes notent leurs séances et leur ressenti. Novalyz analyse tout, chaque jour, et te dit qui a besoin de toi, pourquoi et quoi faire.')
     + '<div style="margin-top:22px">'
-    + pt('!', 'Qui voir aujourd\'hui', 'fatigue, douleur, séances manquées, exercices bloqués')
-    + pt('?', 'Pourquoi ça bloque', 'une piste tirée de ses données, à lui proposer')
-    + pt('✎', 'Son programme', 'tu construis, Novalyz propose, tu décides')
+    + pt('!', 'Qui voir aujourd\'hui', 'fatigue, douleur, séances manquées, exercice bloqué')
+    + pt('?', 'Pourquoi ça bloque', 'une piste tirée de ses séances et de son ressenti')
+    + pt('✎', 'Quoi faire', 'Novalyz propose, tu décides : tu gardes la main')
     + '</div></div>' };
-  if (step === 'c_premier') return { primary: _onbPremier ? 'Suivant' : 'Plus tard', html: '<div style="margin:auto 0;width:100%">' + h1('Ajoute ton premier athlète', 'Tu le feras à la fin de la visite.')
+  if (step === 'c_lui') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%">' + h1('Ce que fait ton athlète, ce que tu reçois')
+    + '<div class="onb-2col"><div class="onb-col"><b>Lui, dans son app</b><span>questionnaire 1 min (sommeil, fatigue, douleur)</span><span>ses séries : charge, reps, effort</span><span>messages, photos, vidéos</span><span>sa montre (pas, sommeil, FC)</span></div>'
+    + '<div class="onb-col on"><b>Toi, ici</b><span>son état du jour</span><span>ses séries des 7 derniers jours</span><span>les alertes, par priorité</span><span>ses analyses, écrites pour un coach</span></div></div>'
+    + '<div style="font-size:12.5px;color:var(--text-muted);text-align:center;margin-top:12px">Il ne saisit rien de plus pour toi : tout vient de ce qu\'il fait déjà.</div></div>' };
+  if (step === 'c_journee') return { primary: 'Suivant', html: '<div style="margin:auto 0">' + h1('Ta journée de coach, en 4 gestes')
+    + pt('☀', 'Le matin : Aujourd\'hui', 'qui a répondu au questionnaire, qui surveiller')
+    + pt('◎', 'Une fiche : « À décider »', 'la piste trouvée et les actions possibles')
+    + pt('✎', 'Son programme', 'builder, Planifier la semaine, ou Novalyz propose')
+    + pt('✉', 'Échanger', 'messages, ou saisir sa séance en présentiel')
+    + '</div>' };
+  if (step === 'c_premier') return { primary: _onbPremier ? 'Suivant' : 'Plus tard', html: '<div style="margin:auto 0;width:100%">' + h1('Ajoute ton premier athlète', 'Tu le feras à la fin de la visite. « Plus tard » : bouton + en haut de l\'écran.')
     + choix('lier', _onbPremier, 'Il a déjà un compte', 'demande-lui son login à 4 chiffres → tu lui envoies une demande, il l\'accepte')
-    + choix('creer', _onbPremier, 'Je crée son compte', 'tu remplis son profil, il reçoit ses accès')
+    // 07/11 : « il reçoit ses accès » était faux (aucun e-mail envoyé à la création, vérifié handleCoachCreerAthlete).
+    + choix('creer', _onbPremier, 'Je crée son compte', 'tu remplis son profil, puis tu lui donnes son login et son mot de passe pour qu\'il se connecte')
     + '</div>' };
   if (step === 'c_photo') return { primary: 'C\'est parti → visite de l\'espace coach', onPrimary: '_onbFiniCoach()', html: photoStep('{coach_id:\'' + String(coach.coach_id).replace(/[^0-9A-Za-z_-]/g, '') + '\'}', coach.photo_url || null, coach.nom,
-    'Tes athlètes la voient dans leurs messages.') };
+    'Tes athlètes la voient dans leurs messages et sur « Mon coach ».') };
   return { primary: 'Suivant', html: '' };
 }
 function _onbRender() {
@@ -22054,6 +22071,7 @@ function nvGuideEnd() {
   document.body.classList.remove('nvg-open');
   _nvgClearNav(); _nvgClearSpot();
   if (_nvg.key) _tourMark(_nvg.key);
+  try { _demoFermer(); } catch (e) {}
   // 07/11 : parcours d'arrivée = onboarding → programme → visite → questionnaire du jour (1×/jour, pas pour le coach).
   // Montre choisie à l'onboarding (écran 5) → parcours montre d'abord, le questionnaire viendra au prochain chargement.
   if (_nvg.role === 'ath' && _onbMontre) { _onbMontre = false; setTimeout(function () { try { ouvrirConnexionMontre(); } catch (e) {} }, 500); return; }
@@ -22203,6 +22221,7 @@ var _nvgLiftT = null;
 // nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
 // de piège pendant la visite).
 function _guideCoachGo(sec) {
+  try { _demoFermer(); } catch (e) {}   // carte hors fiche : on quitte la fiche « Exemple »
   var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
   // On délègue à la VRAIE nav : elle ouvre réellement l'écran (y compris Messages /
   // Profil) ET allume le bon item du rail / bandeau → l'écran derrière correspond à
@@ -22211,6 +22230,60 @@ function _guideCoachGo(sec) {
   try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
   if (sec === 'messages' || sec === 'profil') { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
   else { try { coachBandeauGo(sec); } catch (e) {} }
+}
+// ═══════════ FICHE « EXEMPLE » (visite coach sans athlète, 07/11, maquette validée) ═══════════
+// Données 100 % fictives (scripts/demo_fiche.py → vrai moteur → assets/demo/fiche-exemple.json),
+// décalées à la semaine en cours (multiple de 7 jours : les jours de la semaine restent justes).
+var _DEMO_ID = '__demo__', _DEMO_FIN = '2026-11-07', _demoData = null;
+var _DEMO_ATH = { athlete_id: '__demo__', id: '__demo__', nom: 'Léo Exemple', sport: 'muscu', annees_pratique: 3, niveau: 'intermediaire', alertes: [], en_pause: false, photo_url: null };
+function _demoDecale(v, jours) {
+  if (!jours) return v;
+  var sh = function (y, m, d) { var t = new Date(Date.UTC(+y, +m - 1, +d) + jours * 864e5); return t; };
+  var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  var txt = function (x) {
+    return x.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function (a, y, m, d) { var t = sh(y, m, d); return t.getUTCFullYear() + '-' + p2(t.getUTCMonth() + 1) + '-' + p2(t.getUTCDate()); })
+            .replace(/\b(\d{2})\/(\d{2})\/(\d{4})\b/g, function (a, d, m, y) { var t = sh(y, m, d); return p2(t.getUTCDate()) + '/' + p2(t.getUTCMonth() + 1) + '/' + t.getUTCFullYear(); });
+  };
+  var walk = function (o) {
+    if (typeof o === 'string') return txt(o);
+    if (Array.isArray(o)) return o.map(walk);
+    if (o && typeof o === 'object') { var r = {}; Object.keys(o).forEach(function (k) { r[txt(k)] = walk(o[k]); }); return r; }
+    return o;
+  };
+  return walk(v);
+}
+async function _demoCharger() {
+  if (_demoData) return _demoData;
+  var r = await fetch('assets/demo/fiche-exemple.json'); var d = await r.json();
+  var ecart = Math.floor((Date.now() - Date.parse(_DEMO_FIN + 'T12:00:00')) / 864e5);
+  _demoData = _demoDecale(d, ecart > 0 ? Math.floor(ecart / 7) * 7 : 0);
+  return _demoData;
+}
+function _demoReponse(url, init) {
+  var action = null;
+  try { var m = url.match(/[?&]action=([^&]+)/); if (m) action = decodeURIComponent(m[1]); } catch (e) {}
+  try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
+  var rep = function (o) { return new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } }); };
+  if (action === 'getAppData') return _demoCharger().then(function (d) { return rep(d); });
+  if (action === 'getCoachProgramme') return _demoCharger().then(function (d) { return rep({ ok: true, lignes: (d.programme || []).map(function (l, i) { return Object.assign({ row_index: i + 1 }, l); }) }); });
+  if (action === 'getSeancesDetail') return _demoCharger().then(function (d) { return rep({ ok: true, seances: d.seances_detail || [], seances_detail: d.seances_detail || [] }); });
+  if (action === 'getPlanning') return _demoCharger().then(function (d) { return rep({ ok: true, rows: d.planning || [] }); });
+  // Tout le reste (messages, écritures…) : réponse vide, rien d'envoyé ni d'enregistré.
+  return Promise.resolve(rep({ success: true, ok: true, commentaires: [], lignes: [], rows: [], items: [], data: [] }));
+}
+function _demoActif() { try { return typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id === _DEMO_ID; } catch (e) { return false; } }
+function _demoBandeau() {
+  var ex = document.getElementById('demo-bandeau');
+  if (!_demoActif()) { if (ex) ex.remove(); return; }
+  if (ex) return;
+  var b = document.createElement('div'); b.id = 'demo-bandeau'; b.className = 'demo-bandeau';
+  b.innerHTML = '<b>Exemple · données fictives</b><span>Ta 1<sup>re</sup> vraie fiche apparaîtra quand tu auras lié un athlète.</span>';
+  document.body.appendChild(b);
+}
+function _demoFermer() {
+  if (!_demoActif()) return;
+  try { retourListeAthletesCoach(); } catch (e) {}
+  try { var b = document.getElementById('demo-bandeau'); if (b) b.remove(); } catch (e) {}
 }
 function _guideCoachFiche(subtab) {
   try {
@@ -22221,7 +22294,9 @@ function _guideCoachFiche(subtab) {
       return;
     }
     var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
-    if (a) ouvrirDetailAthleteCoach(a, subtab);
+    // 07/11 : coach sans athlète → fiche « Exemple » (données fictives) au lieu de rester sur Équipe.
+    if (!a) a = _DEMO_ATH;
+    if (a) { Promise.resolve(ouvrirDetailAthleteCoach(a, subtab)).then(function () { _demoBandeau(); }, function () {}); _demoBandeau(); }
   } catch (e) {}
 }
 // Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
