@@ -681,6 +681,21 @@ body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
 .nv-auth-seg { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:4px; margin-bottom:16px; }
 .nv-auth-seg button { flex:1; padding:11px; border:none; background:none; color:var(--text-muted); font-size:13px; font-weight:700; border-radius:9px; cursor:pointer; transition:all 0.2s; }
 .nv-auth-seg button.auth-seg-active { background:var(--accent); color:var(--on-accent); }
+.reg-steps { display:flex; gap:6px; margin-bottom:12px; }
+.reg-steps b { flex:1; height:4px; border-radius:2px; background:var(--border); }
+.reg-steps b.on { background:var(--accent); }
+.reg-aide { color:var(--text-muted); font-weight:600; text-transform:none; letter-spacing:0; }
+.reg-intro { font-size:12.5px; color:var(--text-muted); margin:-4px 0 6px; line-height:1.4; }
+.reg-seg { display:flex; gap:6px; }
+.reg-seg button { flex:1; padding:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:13px; font-weight:700; border-radius:10px; cursor:pointer; }
+.reg-seg button.on { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.reg-login-etat { font-size:12px; font-weight:600; min-height:16px; margin:4px 0 6px; }
+.reg-login-etat .ok { color:var(--good); } .reg-login-etat .ko { color:var(--bad, #e5484d); } .reg-login-etat .mut { color:var(--text-muted); font-weight:500; }
+.reg-prop { border:0; background:none; padding:0; color:var(--accent); font-weight:700; font-size:12px; text-decoration:underline; cursor:pointer; }
+.btn.reg-off { opacity:.45; }
+.reg-manque { font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px; min-height:15px; }
+.reg-manque.reg-flash { color:var(--bad, #e5484d); }
+.reg-retour { display:block; margin:10px auto 0; border:0; background:none; color:var(--text-muted); font-size:13px; font-weight:600; cursor:pointer; }
 
 /* Bascule de rôle à la connexion (piste A) : athlète / coach·prépa au même niveau. */
 .nv-role-switch { display:flex; gap:9px; margin:0 0 16px; }
@@ -1428,3 +1443,37 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 
 /* 07/11 — fiche coach ▸ Analyses (ordi) : diagnostic dans la colonne de droite, collant */
 @media (min-width:992px){ #tab-historique .ma-colrail.ma-rail-colle{position:sticky;top:112px;align-self:start} #tab-historique .ma-diag-rail > div{margin-top:0!important} }
+
+/* Photo de profil (07/11) */
+.pp-row { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+.pp-row:empty { display:none; }
+.pp-av { flex:none; border-radius:999px; overflow:hidden; background:var(--accent-a12, rgba(26,95,255,.12)); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; }
+.pp-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.pp-act { flex:1; min-width:0; }
+.pp-t { font-weight:800; font-size:14px; }
+.pp-s { font-size:11.5px; color:var(--text-muted); margin:2px 0 8px; }
+.pp-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.pp-btns button { border:1px solid var(--border); background:var(--surface2); color:var(--accent); border-radius:9px; padding:7px 10px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.pp-btns button.pp-del { color:var(--danger); }
+
+/* Onboarding partie 1 (07/11) */
+.onb-steps { display:flex; gap:5px; flex:1; max-width:220px; }
+.onb-steps b { flex:1; height:4px; border-radius:2px; background:var(--border); }
+.onb-steps b.on { background:var(--accent); }
+.onb-li { display:flex; gap:12px; align-items:flex-start; margin-bottom:13px; text-align:left; }
+.onb-ic { flex:none; width:30px; height:30px; border-radius:10px; background:var(--accent-a12, rgba(26,95,255,.12)); color:var(--accent); font-weight:800; font-size:14px; display:grid; place-items:center; }
+.onb-li-t { font-weight:800; font-size:14.5px; }
+.onb-li-s { font-size:13px; color:var(--text-muted); line-height:1.45; }
+.onb-ch { display:block; width:100%; text-align:left; padding:14px 15px; border:1.5px solid var(--border); background:var(--surface); border-radius:15px; margin-bottom:10px; cursor:pointer; font:inherit; color:var(--text); }
+.onb-ch b { display:block; font-size:15px; font-weight:800; }
+.onb-ch span { display:block; font-size:12.5px; color:var(--text-muted); margin-top:3px; line-height:1.4; }
+.onb-ch .onb-then { color:var(--accent); font-weight:700; margin-top:6px; }
+.onb-ch.on { border-color:var(--accent); background:var(--accent-a12, rgba(26,95,255,.08)); box-shadow:0 0 0 1px var(--accent) inset; }
+.onb-prim { width:100%; margin-top:16px; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--on-accent, #fff); font:inherit; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 6px 18px rgba(26,95,255,.3); }
+.onb-row2 { display:flex; gap:8px; }
+.onb-sec { flex:1; padding:12px; border:1px solid var(--border); background:var(--surface2); color:var(--accent); border-radius:12px; font:inherit; font-size:13.5px; font-weight:800; cursor:pointer; }
+.onb-promo { position:relative; padding:15px; border-radius:15px; margin-bottom:14px; background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.12)); border:1px solid rgba(124,92,255,.25); }
+.onb-promo b { display:block; font-size:15px; font-weight:800; margin-bottom:4px; padding-right:62px; }
+.onb-promo span { display:block; font-size:12.5px; color:var(--text-muted); line-height:1.45; }
+.onb-promo .onb-soon { position:absolute; top:13px; right:12px; display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); background:var(--accent-a12, rgba(26,95,255,.12)); border-radius:999px; padding:4px 9px; }
+.onb-promo .onb-sec { width:100%; }
