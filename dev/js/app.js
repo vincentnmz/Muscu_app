@@ -2487,12 +2487,14 @@ async function supprimerCompteCoach() {
     const data = await res.json();
     if (data.success) {
       showToast('Compte supprimé.');
+      // 07/11 : avant, showView('view-landing') (vue inexistante) → page presque blanche, panneau Réglages
+      // resté ouvert, coach « toujours connecté ». Désormais : même déconnexion complète que le bouton Déco.
       setTimeout(() => {
-        coach = null;
-        localStorage.removeItem('muscu_coach'); _nvzTokClear();
-        localStorage.removeItem('muscu_coach_vue');
-        document.body.classList.remove('coach-active');
-        showView('view-landing');
+        try { fermerReglagesCoach(); } catch (e) {}
+        try { seDeconnecterCoach(); } catch (e) {
+          coach = null; localStorage.removeItem('muscu_coach'); localStorage.removeItem('muscu_coach_vue'); _nvzTokClear();
+          document.body.classList.remove('coach-active'); location.reload();
+        }
       }, 1200);
     } else {
       showToast('Erreur : ' + (data.error || 'suppression échouée'), '#e5484d');
@@ -21569,7 +21571,7 @@ function _maybeOnboarding() {
 // Athlète (5 écrans) : ce que fait Novalyz · ta routine · qui fait ton programme ·
 // ta photo (facultatif) · pour aller plus loin (morpho, montre) → puis la visite (partie 2).
 // Coach (3 écrans, nouveau) : ce que Novalyz fait pour toi · ton premier athlète · ta photo.
-var _onbRole = 'a', _onbProg = null, _onbPremier = null, _onbCoachPendingTour = false;
+var _onbRole = 'a', _onbProg = null, _onbPremier = null, _onbCoachPendingTour = false, _onbMontre = false;
 function _onbOverlay() {
   var ov = document.getElementById('onb-overlay');
   if (!ov) {
@@ -21682,7 +21684,10 @@ function _onbContent(step) {
       + '<span class="onb-promo-r">→ Tu sais quoi prioriser et quels exercices choisir pour construire ton programme. Photos non conservées.</span>'
       + (ia ? '<button type="button" class="onb-sec" style="margin-top:10px" onclick="_onbMorpho()">Faire mon analyse</button>' : '<span class="onb-soon">bientôt</span>') + '</div>';
     return { primary: 'C\'est parti → visite de l\'app', onPrimary: '_onbTerminer()', html: '<div style="margin:auto 0;width:100%">' + h1('2 choses à essayer')
-      + promo + pt('⌚', 'Connecte ta montre', '2 minutes, guidé selon ta marque : Réglages ▸ Appareils ▸ Connecter ma montre') + '</div>' };
+      + promo + pt('⌚', 'Connecte ta montre', '2 minutes, guidé selon ta marque : pas, sommeil et FC au repos sans rien saisir.')
+      + (_estAppNative() ? '<button type="button" class="onb-sec' + (_onbMontre ? ' on' : '') + '" style="width:100%;margin-top:2px" onclick="_onbMontre=!_onbMontre;_onbRender()">' + (_onbMontre ? '✓ Je la connecte juste après la visite' : 'Connecter ma montre après la visite') + '</button>'
+        : '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Dans l\'app Android : Réglages ▸ Appareils ▸ Connecter ma montre.</div>')
+      + '</div>' };
   }
   if (step === 'coachinfo') {
     var loginBox = login
@@ -22050,6 +22055,8 @@ function nvGuideEnd() {
   _nvgClearNav(); _nvgClearSpot();
   if (_nvg.key) _tourMark(_nvg.key);
   // 07/11 : parcours d'arrivée = onboarding → programme → visite → questionnaire du jour (1×/jour, pas pour le coach).
+  // Montre choisie à l'onboarding (écran 5) → parcours montre d'abord, le questionnaire viendra au prochain chargement.
+  if (_nvg.role === 'ath' && _onbMontre) { _onbMontre = false; setTimeout(function () { try { ouvrirConnexionMontre(); } catch (e) {} }, 500); return; }
   if (_nvg.role === 'ath') setTimeout(function () { try { _maybeQuotidienEtat(); } catch (e) {} }, 600);
 }
 // Nettoie les emphases de nav (remise à zéro z-index / opacité).
@@ -27165,6 +27172,7 @@ function _hcConnected(a) {
 }
 function _hcMarkConnected() {
   try { if (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) localStorage.setItem('nvz_hc_connected_' + athlete.athlete_id, '1'); } catch (e) {}
+  try { _tjMontreCta(); } catch (e) {}   // la carte « Connecte ta montre » d'Aujourd'hui disparaît
 }
 var _DS_THEME = {
   ds:   { acc: 'var(--tj-accent)', accS: 'var(--tj-accent-strong)', s2: 'var(--tj-surface2)', bd: 'var(--tj-border)', sf: 'var(--tj-surface)', tx: 'var(--tj-text)', mu: 'var(--tj-muted)', su: 'var(--tj-subtle)', gd: 'var(--tj-good)' },
@@ -27288,11 +27296,31 @@ async function renderDashSteps(attempt) {
   renderStepsChart('ds');
 }
 
+// ── « Connecte ta montre » sur Aujourd'hui (07/11, validé) ──
+// Visible seulement dans l'app Android (Health Connect), montre pas connectée à CE compte, hors « Plus tard » (7 j).
+function _tjMontreCleSnooze() { return 'nv_montre_plus_tard_' + (athlete && athlete.athlete_id); }
+function _tjMontreCta() {
+  var el = document.getElementById('tj-montre-cta'); if (!el) return;
+  var ok = false;
+  try {
+    var snooze = 0; try { snooze = Number(localStorage.getItem(_tjMontreCleSnooze())) || 0; } catch (e) {}
+    ok = !!athlete && _estAppNative() && !_hcConnected(athlete) && Date.now() > snooze;
+  } catch (e) { ok = false; }
+  if (!ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = '<div class="tjm-row"><span class="tjm-ic" aria-hidden="true">⌚</span><div class="tjm-tx"><b>Connecte ta montre</b><span>Pas, sommeil, FC au repos sans rien saisir · 2 min, guidé selon ta marque</span></div></div>'
+    + '<div class="tjm-btns"><button type="button" class="tjm-later" onclick="_tjMontrePlusTard()">Plus tard</button><button type="button" class="tjm-go" onclick="ouvrirConnexionMontre()">Connecter</button></div>';
+}
+function _tjMontrePlusTard() {
+  try { localStorage.setItem(_tjMontreCleSnooze(), String(Date.now() + 7 * 864e5)); } catch (e) {}
+  _tjMontreCta();
+}
 // Écran État — section « Ma montre » : pas (live Health Connect) + sommeil / FC
 // repos en « bientôt » (nécessitent le fork du plugin natif + un stockage serveur).
 // Thème global (pas .tj). Masquée hors app native.
 async function renderEtatMontre(attempt) {
   attempt = attempt || 0;
+  try { _tjMontreCta(); } catch (e) {}
   var el = document.getElementById('et-montre'), sec = document.getElementById('et-montre-sec');
   var mini = document.getElementById('et-montre-mini');
   if (!el) return;
