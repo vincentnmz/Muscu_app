@@ -15910,7 +15910,26 @@ function _maMuscuExercice(data) {
     +   '<div class="ma-colrail">' + _agMount + _maNovaAsk() + '</div>'
     + '</div>');
   if (_agMount) { try { cdAgRender(); } catch (e) {} }
+  _maRailDiag();
 }
+// 07/11 (option B validée) — fiche coach ▸ Analyses sur ordi (≥ 992 px) : « Pourquoi ça bloque » passe dans la
+// colonne de droite (vide côté coach), collante en défilant. Mobile / tablette portrait et page athlète : inchangés.
+function _maRailDiag() {
+  try {
+    if (!(typeof _maCoach !== 'undefined' && _maCoach)) return;
+    var host = document.getElementById('ma-muscu-detail'); if (!host) return;
+    var g = host.querySelector('.ma-cols2'), d = host.querySelector('.ma-diagbox'); if (!g || !d) return;
+    var main = g.querySelector('.ma-colmain'), rail = g.querySelector('.ma-colrail');
+    var ordi = window.matchMedia && window.matchMedia('(min-width: 992px)').matches;
+    if (ordi && d.parentNode !== rail) { d.classList.add('ma-diag-rail'); rail.classList.add('ma-rail-colle'); rail.insertBefore(d, rail.firstChild); }
+    else if (!ordi && d.parentNode === rail) {
+      d.classList.remove('ma-diag-rail'); rail.classList.remove('ma-rail-colle');
+      var ref = [].filter.call(main.querySelectorAll('.ma-sec'), function (x) { return /Dernières séances/.test(x.textContent); })[0];
+      main.insertBefore(d, ref && ref.parentNode === main ? ref : null);
+    }
+  } catch (e) {}
+}
+try { if (window.matchMedia) { var _mqRail = window.matchMedia('(min-width: 992px)'); (_mqRail.addEventListener ? _mqRail.addEventListener('change', _maRailDiag) : _mqRail.addListener(_maRailDiag)); } } catch (e) {}
 
 var _maExoSel = null, _maExoMetric = 'cr';
 // Échappe une chaîne pour un littéral JS entre apostrophes DANS un attribut onclick à guillemets.
@@ -16149,7 +16168,7 @@ function _maProgExo(data) {
     }
   } catch (e) {}
   var diagBox = '';
-  try { var _dg = (typeof _lv3Diags === 'function') ? _lv3Diags(data).filter(function (x) { return x.exo === sel; })[0] : null; if (_dg) diagBox = _lv3DiagCardHtml(_dg); } catch (e) {}
+  try { var _dg = (typeof _lv3Diags === 'function') ? _lv3Diags(data).filter(function (x) { return x.exo === sel; })[0] : null; if (_dg) diagBox = '<div class="ma-diagbox">' + _lv3DiagCardHtml(_dg) + '</div>'; } catch (e) {}
   return pick + statBox + chart + explBox + stagBox + aimBox + diagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
