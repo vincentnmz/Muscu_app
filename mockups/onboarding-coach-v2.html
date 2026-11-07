@@ -1,0 +1,189 @@
+<title>Onboarding coach v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : A partie 1 coach (5 écrans) · B visite avec fiche exemple · questions */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --subtle:#8a94ad; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --good:#0a9a52; --good-soft:#e3f6ec; --warn:#c77700; --bad:#c43c3c; --bad-soft:#fdeaea; --violet:#7c5cff;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --bad:#ff7b7b; --bad-soft:#3a1a1f; --violet:#a78bff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --subtle:#7884a3; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --good:#3ccf86; --good-soft:#123326; --warn:#ffb14a; --bad:#ff7b7b; --bad-soft:#3a1a1f; --violet:#a78bff; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(19px,3.4vw,25px);margin:4px 0 6px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0 0 4px}
+.lead{color:var(--muted);max-width:76ch;margin:0}
+.sec{display:flex;flex-direction:column;gap:12px}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tag i{font-style:normal;background:var(--accent);color:var(--surface);border-radius:6px;padding:1px 7px;letter-spacing:0}
+.cap{font-size:12.5px;color:var(--muted);margin:0}
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;gap:9px;box-shadow:0 10px 30px rgba(20,33,61,.08);min-width:0}
+.steps{display:flex;gap:4px}.steps b{flex:1;height:4px;border-radius:4px;background:var(--line)}.steps b.on{background:var(--accent)}
+.ttl{font-weight:700;font-size:16px}
+.sm{font-size:12.5px;color:var(--muted);margin:0}
+.f{display:flex;flex-direction:column;gap:3px}
+.f label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);font-weight:700}
+.in{border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.in.err{border-color:var(--bad);background:var(--bad-soft)}
+.in .ok{color:var(--good);font-weight:700;font-size:11.5px}
+.in .ko{color:var(--bad);font-weight:700;font-size:11.5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg{display:flex;gap:6px}.seg span{flex:1;text-align:center;border:1.5px solid var(--line);border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:700}
+.seg span.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.btn{border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:13px;border:1.5px solid var(--line);background:var(--surface2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.off{background:var(--line);border-color:var(--line);color:var(--subtle)}
+.hint{font-size:11.5px;color:var(--bad);font-weight:700}
+.big{text-align:center;display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.big .t{font-family:var(--f-display);font-size:17px}
+.li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:4px 10px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.li .ic{grid-row:1 / span 2;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+.li b{font-size:13px}.li span{font-size:11.5px;color:var(--muted)}
+.ch{border:1.5px solid var(--line);border-radius:13px;padding:10px 11px;display:flex;flex-direction:column;gap:3px}
+.ch.on{border-color:var(--accent);background:var(--accent-soft)}
+.ch b{font-size:13.5px}.ch span{font-size:11.5px;color:var(--muted)}
+.ch .then{font-size:11px;color:var(--accent);font-weight:700}
+.av{width:84px;height:84px;border-radius:24px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-size:26px;margin:4px auto;border:2px dashed var(--accent)}
+.promo{border-radius:14px;padding:12px;background:linear-gradient(135deg,var(--violet),var(--accent));color:#fff;display:flex;flex-direction:column;gap:4px}
+.promo b{font-size:14px}.promo span{font-size:12px;opacity:.92}
+.soon{display:inline-block;font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 6px;background:rgba(255,255,255,.25)}
+.deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.dc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:6px}
+.dc .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.dc .h b{font-size:14px}.dc .h span{font-size:10.5px;color:var(--subtle);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.dc ul{margin:0;padding-left:17px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.dc ul b{color:var(--fg)}
+.new{font-size:9.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:5px;padding:0 5px;margin-left:3px}
+.exs{display:flex;flex-direction:column;gap:6px}
+.ex{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px}
+.ex .u{color:var(--accent);font-weight:700;font-size:11.5px;white-space:nowrap}
+.warnbox{border:1.5px solid var(--warn);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:6px}
+.warnbox b{font-size:12.5px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.panel ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chips span{border:1.5px solid var(--line);border-radius:999px;padding:4px 9px;font-size:11.5px;font-weight:700}
+.chips span.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th,.tbl td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle)}
+.ok2{color:var(--good);font-weight:700}.later{color:var(--warn);font-weight:700}
+.tw{overflow-x:auto}
+.sr{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px}
+.sr small{color:var(--muted)}
+.cible{background:var(--good-soft);color:var(--good);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:700}
+.circ{border:1.5px solid var(--violet);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.circ .h{font-size:11px;font-weight:700;color:var(--violet);letter-spacing:.06em;text-transform:uppercase}
+</style>
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · MAQUETTE · À VALIDER</div>
+    <h1>Onboarding coach, version 2</h1>
+    <p class="lead">Tes retours : partie 1 trop légère, et dans la visite la fiche athlète ne s'ouvre pas (on reste sur Équipe). Vérifié : avec au moins un athlète, la visite ouvre bien sa fiche ; le souci touche le coach qui vient de s'inscrire, donc sans athlète. Corrigé aussi : l'écran « Je crée son compte » disait « il reçoit ses accès », c'est faux (aucun e-mail n'est envoyé à la création), le coach lui donne son login et son mot de passe.</p>
+  </header>
+
+  <section class="sec">
+    <h2>A · Partie 1 coach : 5 écrans au lieu de 3</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>1</i>Ce que Novalyz fait pour toi</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b></b><b></b><b></b><b></b></div>
+          <div class="big"><div class="t">Bienvenue, Max</div><p class="sm">Tes athlètes notent leurs séances et leur ressenti. Novalyz analyse tout, chaque jour, et te dit qui a besoin de toi, pourquoi et quoi faire.</p></div>
+          <div class="li"><span class="ic">!</span><b>Qui voir aujourd'hui</b><span>fatigue, douleur, séances manquées, exercice bloqué</span></div>
+          <div class="li"><span class="ic">?</span><b>Pourquoi ça bloque</b><span>une piste tirée de ses séances et de son ressenti</span></div>
+          <div class="li"><span class="ic">✎</span><b>Quoi faire</b><span>Novalyz propose, tu décides : tu gardes la main</span></div>
+          <div class="btn p">Suivant</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>2</i>Lui / toi</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b></b><b></b><b></b></div>
+          <div class="ttl">Ce que fait ton athlète, ce que tu reçois</div>
+          <div class="row2">
+            <div class="ch"><b>Lui, dans son app</b><span>• questionnaire 1 min (sommeil, fatigue, douleur)</span><span>• ses séries : charge, reps, effort</span><span>• messages, photos, vidéos</span><span>• sa montre (pas, sommeil, FC)</span></div>
+            <div class="ch on"><b>Toi, ici</b><span>• son état du jour</span><span>• ses séries des 7 derniers jours</span><span>• les alertes, par priorité</span><span>• ses analyses, écrites pour un coach</span></div>
+          </div>
+          <div class="sm">Il ne saisit rien de plus pour toi : tout vient de ce qu'il fait déjà.</div>
+          <div class="btn p">Suivant</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>3</i>Ta journée en 4 gestes</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b></div>
+          <div class="ttl">Ta journée de coach, en 4 gestes</div>
+          <div class="li"><span class="ic">☀</span><b>Le matin : Aujourd'hui</b><span>qui a répondu au questionnaire, qui surveiller</span></div>
+          <div class="li"><span class="ic">◎</span><b>Une fiche : « À décider »</b><span>la piste trouvée et les actions possibles</span></div>
+          <div class="li"><span class="ic">✎</span><b>Son programme</b><span>builder, Planifier la semaine, ou Novalyz propose</span></div>
+          <div class="li"><span class="ic">✉</span><b>Échanger</b><span>messages, ou saisir sa séance en présentiel</span></div>
+          <div class="btn p">Suivant</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>4</i>Ton premier athlète</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div>
+          <div class="ttl">Ajoute ton premier athlète</div>
+          <div class="ch on"><b>Il a déjà un compte</b><span>demande-lui son login à 4 chiffres → tu lui envoies une demande → il l'accepte dans son app</span></div>
+          <div class="ch"><b>Je crée son compte</b><span>tu remplis son profil, puis <b>tu lui donnes son login et son mot de passe</b> pour qu'il se connecte</span></div>
+          <div class="sm">Tu le feras à la fin de la visite. « Plus tard » : bouton + en haut de l'écran.</div>
+          <div class="btn">Plus tard</div>
+        </div>
+      </div>
+      <div class="shot"><div class="tag"><i>5</i>Ta photo</div>
+        <div class="phone">
+          <div class="steps"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
+          <div class="ttl">Ajoute ta photo</div>
+          <div class="av">MD</div>
+          <p class="sm" style="text-align:center">Tes athlètes la voient dans leurs messages et sur « Mon coach ».</p>
+          <div class="row2"><div class="btn">Galerie</div><div class="btn">Appareil photo</div></div>
+          <div class="btn p">C'est parti → visite de l'espace coach</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>B · Visite : une fiche « Exemple » quand tu n'as pas encore d'athlète</h2>
+    <div class="board">
+      <div class="shot"><div class="tag"><i>B1</i>Fiche ▸ Aperçu</div>
+        <div class="phone">
+          <div class="warnbox" style="border-color:var(--accent)"><b style="color:var(--accent)">Exemple · données fictives</b><span class="sm">Ta 1re vraie fiche apparaîtra quand tu auras lié un athlète.</span></div>
+          <div class="chips"><span class="on">Aperçu</span><span>Analyses</span><span>Séances</span><span>Programme</span><span>Forme</span></div>
+          <div class="ch" style="background:var(--good-soft);border-color:var(--good)"><b>Léo (exemple) · Prêt</b><span>récup bonne · 3/4 séances cette semaine</span></div>
+          <div class="sr"><span>À décider · Squat bloqué depuis 3 séances</span><small>piste : sommeil</small></div>
+          <div class="sr"><span>Séries 7 j</span><small>Pectoraux 12 · Dos 10 · Quadri 8</small></div>
+        </div>
+        <p class="cap">Les cartes « Fiche ▸ Aperçu / Analyses / Séances / Programme / Forme » ouvrent cette fiche exemple et passent d'un onglet à l'autre, comme avec un vrai athlète.</p>
+      </div>
+      <div class="shot"><div class="tag"><i>B2</i>Comment c'est fait</div>
+        <div class="phone">
+          <div class="ttl">Fiche exemple</div>
+          <div class="sm">• 6 semaines d'entraînement <b>inventées</b> (4 séances, charges qui montent, un exercice bloqué, une semaine avec mauvais sommeil), calculées par le vrai moteur Novalyz.</div>
+          <div class="sm">• Rien n'est enregistré : la fiche n'existe que pendant la visite, aucun athlète n'est créé.</div>
+          <div class="sm">• Aucune donnée réelle (ni la tienne, ni celle d'un athlète).</div>
+          <div class="sm">• Revoir la visite plus tard : si tu as des athlètes, elle ouvre la fiche du premier.</div>
+        </div>
+        <p class="cap">Les chiffres de l'exemple sortent du vrai moteur appliqué à des données fictives : ce que tu vois est exactement ce que Novalyz afficherait.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Questions pour toi</h2>
+    <div class="panel">
+      <ol>
+        <li><b>Partie 1 en 5 écrans</b> (dont « Lui / toi » et « Ta journée en 4 gestes ») : ça te va ? Des choses à ajouter ou retirer ?</li>
+        <li><b>Fiche exemple</b> avec des données fictives quand le coach n'a pas encore d'athlète : d'accord ?</li>
+        <li>Tu disais que la visite coach « a une partie de l'athlète » : c'est bien ces cartes « Fiche ▸ … » affichées sur l'écran Équipe, ou autre chose (une carte précise) ?</li>
+      </ol>
+    </div>
+  </section>
+</div>
