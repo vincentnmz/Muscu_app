@@ -11,6 +11,14 @@ export const site = {
   statut: 'beta' as 'beta' | 'lancement',
 };
 
+// Mentions légales. Éditeur = personne physique, pas encore de statut (à compléter le jour où une
+// micro-entreprise / société existe : ajouter forme, SIREN, adresse).
+export const editeur = {
+  nom: '',                                     // ← prénom + nom de l'éditeur (obligatoire avant mise en ligne)
+  statut: null as null | { forme: string; siren: string; adresse: string },
+};
+export const hebergeurSite = { nom: 'GitHub, Inc.', adresse: '88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis', url: 'https://github.com' };
+
 // Boutons d'appel : texte, lien, visibilité, selon le statut.
 // Lot 4 : le formulaire /beta remplacera le lien e-mail provisoire.
 export const cta = {

@@ -5,7 +5,7 @@
   --ink: #070B14; --night: #0B1736; --blue: #1A5FFF; --blue-2: #5B8CFF; --ice: #EEF2FB; --paper: #F7F8FB;
   --line: #DCE3F2; --muted: #556180; --white: #FFFFFF; --good: #0A9A55; --warn: #C96A00;
   --bg: var(--paper); --fg: var(--ink); --card: var(--white);
-  --f-sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --f-sans: 'Archivo Variable', 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --f-mark: 'Michroma', 'Arial Narrow', system-ui, sans-serif;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px; --s9: 112px;
   --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px; --r-phone: 34px;

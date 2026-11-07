@@ -11,9 +11,10 @@ const annee = new Date().getFullYear();
       <p class="sig">{site.signature.join(' ')}</p>
     </div>
     <nav aria-label="Pied de page">
-      <a href="#comment">Comment ça marche</a>
-      <a href="#coach">Pour les coachs</a>
-      <a href="#vision">Vision</a>
+      <a href="/#comment">Comment ça marche</a>
+      <a href="/coachs-et-structures">Coachs &amp; structures</a>
+      <a href="/contact">Contact</a>
+      <a href="/#vision">Vision</a>
     </nav>
     <div class="contact">
       <a href={`mailto:${site.email}`}>{site.email}</a>
@@ -23,8 +24,8 @@ const annee = new Date().getFullYear();
   </div>
   <div class="wrap legal">
     <span>© {annee} Novalyz</span>
-    {/* Mentions légales : lot 3 (pas de lien tant que la page n'existe pas) */}
-    <a href={`${site.appUrl}/privacy.html`}>Confidentialité</a>
+    <a href="/mentions-legales">Mentions légales</a>
+    <a href="/confidentialite">Confidentialité</a>
   </div>
 </footer>
 <style>

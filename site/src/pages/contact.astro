@@ -1,0 +1,37 @@
+---
+import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
+import { site } from '../config/site';
+const m = (sujet: string) => `mailto:${site.email}?subject=${encodeURIComponent(sujet)}`;
+const cartes = [
+  { t: 'Rejoindre la bêta', d: 'Tu veux tester l’app (Android, ou dans le navigateur sur iPhone et ordinateur).', l: m('Rejoindre la bêta Novalyz'), c: 'Écrire' },
+  { t: 'Coach ou préparateur', d: 'Vous voulez suivre vos athlètes avec Novalyz Coach.', l: m('Novalyz Coach'), c: 'Écrire' },
+  { t: 'Club ou structure', d: 'Vous voulez construire Novalyz Pro avec nous.', l: m('Novalyz Pro : parlons-en'), c: 'Parlons-en' },
+  { t: 'Une question, un retour', d: 'Sur l’app, tes données, ou autre chose.', l: m('Question sur Novalyz'), c: 'Écrire' },
+];
+---
+<Base title="Novalyz · Contact" description="Écrire à l’équipe Novalyz : bêta, coachs, clubs et structures, questions." path="/contact">
+  <PageHead eyebrow="Contact" titre="Écris-nous." intro={`Une seule adresse : ${site.email}. Nous répondons nous-mêmes.`}>
+  </PageHead>
+  <section class="c">
+    <div class="wrap">
+      <ul class="cartes">
+        {cartes.map((k) => (
+          <li><h2>{k.t}</h2><p>{k.d}</p><a href={k.l}>{k.c} →</a></li>
+        ))}
+      </ul>
+      <p class="autres">Aussi sur Instagram : <a href={site.instagram.url} rel="noopener">@{site.instagram.handle}</a></p>
+    </div>
+  </section>
+</Base>
+<style>
+  .c { padding: var(--s8) 0 var(--s9); }
+  .cartes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); }
+  .cartes li { border: 1px solid var(--line); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+  .cartes h2 { font-size: 20px; font-variation-settings: 'wdth' 110; }
+  .cartes p { color: var(--muted); flex: 1; }
+  .cartes a { color: var(--blue); font-weight: 700; text-decoration: none; margin-top: 6px; }
+  .autres { margin-top: var(--s6); color: var(--muted); }
+  .autres a { color: var(--blue); }
+  @media (max-width: 700px) { .cartes { grid-template-columns: 1fr; } }
+</style>
