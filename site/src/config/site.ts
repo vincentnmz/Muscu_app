@@ -3,7 +3,7 @@
 export const site = {
   nom: 'NOVALYZ',
   signature: ['Mesurer.', 'Comprendre.', 'Progresser.'],
-  url: 'https://www.novalyz.com',
+  url: 'https://www.novalyz.fr',
   appUrl: 'https://app.novalyz.fr',
   api: 'https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service',   // serveur de l'app (action publique inscriptionBeta)
   email: 'hello@novalyz.fr',

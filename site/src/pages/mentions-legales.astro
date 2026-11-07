@@ -14,14 +14,14 @@ import '../styles/doc.css';
       {editeur.statut ? (
         <p><b>{editeur.nom}</b>, {editeur.statut.forme}, SIREN {editeur.statut.siren}, {editeur.statut.adresse}.</p>
       ) : (
-        <p>Le site www.novalyz.com est édité à titre personnel par <b>{editeur.nom || <span class="a-completer">prénom et nom à compléter</span>}</b>, personne physique.</p>
+        <p>Le site www.novalyz.fr est édité à titre personnel par <b>{editeur.nom || <span class="a-completer">prénom et nom à compléter</span>}</b>, personne physique.</p>
       )}
       <p>Contact : <a href={`mailto:${site.email}`}>{site.email}</a></p>
       <p>Directeur de la publication : {editeur.nom || <span class="a-completer">prénom et nom à compléter</span>}.</p>
 
       <h2>Hébergement du site</h2>
       <p>{hebergeurSite.nom}, {hebergeurSite.adresse}. <a href={hebergeurSite.url} rel="noopener">github.com</a></p>
-      <p>Le nom de domaine est enregistré auprès d’OVH. L’application Novalyz (<a href={site.appUrl}>{site.appUrl.replace('https://', '')}</a>) a ses propres prestataires techniques, présentés dans sa <a href={`${site.appUrl}/privacy.html`}>politique de confidentialité</a>.</p>
+      <p>Les noms de domaine novalyz.fr et novalyz.com sont enregistrés auprès d’OVH. L’application Novalyz (<a href={site.appUrl}>{site.appUrl.replace('https://', '')}</a>) a ses propres prestataires techniques, présentés dans sa <a href={`${site.appUrl}/privacy.html`}>politique de confidentialité</a>.</p>
 
       <h2>Propriété intellectuelle</h2>
       <p>Le nom Novalyz, le logo, les textes, les captures d’écran et les visuels de ce site sont la propriété de l’éditeur. Toute reproduction sans autorisation est interdite. Les captures montrent l’app avec un compte fictif (« Léo ») : aucune donnée réelle n’y figure.</p>
