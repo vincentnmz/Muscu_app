@@ -2560,7 +2560,15 @@ async function ouvrirEspaceCoach() {
       const _ck = document.getElementById('prepa-cockpit');
       if (_ck) _ck.style.display = 'none';
       listeEl.style.display = '';
-      listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte. Utilise le bouton « Lier un athlète » en haut pour en ajouter.</div>';
+      listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète pour l’instant. Touche « + » en haut pour lier ou créer ton premier athlète.</div>';
+      // 07/11 : nouveau coach sans athlète → retirer l'écran de démarrage tout de suite (avant : resté 12 s,
+      // il cachait l'onboarding coach et la visite) + vider la liste d'un éventuel compte précédent.
+      athletesCoach = [];
+      try { if (coach && data.ia_active != null) coach.ia_active = !!data.ia_active; } catch (_) {}
+      try { _nvSplashHide(); } catch (_) {}
+      // Écran ordi (rail + sections) et onboarding coach : avant, lancés seulement après le chargement
+      // des athlètes → un NOUVEAU coach (0 athlète) avait une page blanche sur ordi et jamais d'onboarding.
+      try { _coachDeskStore([], [], [], { total: 0, surveiller: 0, intervention: 0, absents: 0, aVoir: 0, pctAJour: 0 }); } catch (_) {}
       return;
     }
     athletesCoach = athletes;
@@ -8588,10 +8596,10 @@ function _coachDeskAujourdhui() {
     + '<div class="cs-brief-date">' + dFR + ' · ' + _tot + ' athlète' + (_tot > 1 ? 's' : '') + ' suivi' + (_tot > 1 ? 's' : '') + '</div>'
     + '<div class="cs-brief-row">'
     + '<div class="cs-ring">' + ring + '<div class="cs-ring-v"><b>' + pct + '%</b><s>à jour</s></div></div>'
-    + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_av === 0 ? 'tout le monde est à jour' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
+    + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_tot === 0 ? 'aucun athlète pour l\'instant' : _av === 0 ? 'tout le monde est à jour' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
     + '<div class="cs-brief-pills">' + bpill(k.surveiller, 'à surveiller') + bpill(k.intervention, 'intervention') + '</div>'
     + '</div></div>';
-  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + (p.icon ? p.icon + ' ' : '') + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour</div>';
+  var watch = !_tot ? '<div class="cs-empty">Ajoute ton premier athlète : il a déjà un compte (son login à 4 chiffres) ou tu crées le sien.<div style="margin-top:10px"><button class="cs-btn p" onclick="ouvrirModalLierAthlete()">+ Lier ou créer un athlète</button></div></div>' : (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + (p.icon ? p.icon + ' ' : '') + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour</div>';
   var msgs = (d.enrich || []).filter(function (e) { return e.msgNonLus > 0; }).map(function (e) { return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--accent)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>' + e.msgNonLus + ' message' + (e.msgNonLus > 1 ? 's' : '') + ' non lu' + (e.msgNonLus > 1 ? 's' : '') + '</span></div></div>'; }).join('') || '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun message non lu.</span></div></div>';
   // Questionnaires bien-être récents (qui a répondu, quand, + signal fatigue).
   var quest = (d.enrich || []).map(function (e) {
@@ -15978,8 +15986,20 @@ function _maLectureNovalyzBloc(data) {
   var recos = []; try { if (_nvPropsAthlete(data)) recos = _lxRecos(L, V, niveauXp, data); } catch (e) {}   // D3 : pas de recos Novalyz si le coach a la main
   var reco = '';
   if (!recos.length) { try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {} }
-  // Rien à montrer (nouvel athlète sans aucune donnée) → on masque le bloc.
-  if (!constats.length && !cls.length && f.pct <= 0) return '';
+  // Rien à montrer : nouvel athlète sans aucune séance → état vide qui explique quand l'analyse arrive
+  // (07/11 : avant, bloc masqué → écran « vide » dans la visite d'un nouveau compte). Sinon, bloc masqué.
+  if (!constats.length && !cls.length && f.pct <= 0) {
+    var _nbS = ((data && data.seances_detail) || []).length;
+    if (_nbS) return '';
+    return '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:16px 15px;margin:6px 0 16px">'
+      + '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700">Lecture Novalyz · Analyses</div>'
+      + '<div style="font-size:15px;font-weight:800;color:var(--text)">Tes analyses démarrent avec ta 1<sup>re</sup> séance</div>'
+      + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5">Note tes séries (charge, reps, effort) : Novalyz s\'en sert pour tout le reste.</div>'
+      + '<div style="font-size:12.5px;line-height:1.55;color:var(--text)">'
+      + '<div style="margin-bottom:5px"><b>Dès la 2<sup>e</sup> séance sur un même exercice</b> : records, progrès, ce qui bloque et pourquoi.</div>'
+      + '<div><b>Après 2 semaines</b> : tendances de volume par muscle et régularité.</div></div>'
+      + '<button onclick="switchTab(\'seance\')" style="align-self:flex-start;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:10px 14px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">Démarrer une séance</button></div>';
+  }
 
   var TON = { positif: '#00A854', neutre: 'var(--text-subtle)', attention: '#E07800' };
   // ── Verdict d'entraînement (jamais rouge ici : état-du-jour rouge → Aujourd'hui) ──
@@ -21616,8 +21636,16 @@ function _onbContent(step) {
   }
   if (step === 'plus') {
     var ia = !!(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.recompenses && dernierAppData.recompenses.ia_active);
-    var promo = '<div class="onb-promo"><b>Découvre ta morpho : 3 photos + tes mesures</b>'
-      + '<span>Novalyz analyse ta silhouette (face, profil, dos) et la longueur de tes segments pour te dire quels muscles sont en avance ou en retard.</span>'
+    // Pitch morpho (07/11, demande porteur) : pas « une IA qui regarde une photo » — vérifié contre
+    // handleAnalyseMorpho : leviers → exercices par RÈGLES FIXES (pas l'IA) ; photos → IA (avance / retard) ;
+    // objectif + antécédents pris en compte ; photos non conservées. Croisement avec les séances : à venir.
+    var promo = '<div class="onb-promo"><b>Ton programme sur mesure commence par ta morpho</b>'
+      + '<span>3 photos + quelques mesures (bras, fémur, tronc…). Ce n\'est pas juste une IA qui regarde une photo :</span>'
+      + '<ul class="onb-promo-l">'
+      + '<li><b>Tes mesures</b> → Novalyz calcule tes leviers et te dit quels exercices conviennent à ta morphologie (règles fixes, pas l\'IA).</li>'
+      + '<li><b>Tes photos</b> → l\'IA repère les muscles en avance et en retard.</li>'
+      + '<li><b>Ton objectif et tes antécédents</b> sont pris en compte.</li></ul>'
+      + '<span class="onb-promo-r">→ Tu sais quoi prioriser et quels exercices choisir pour construire ton programme. Photos non conservées.</span>'
       + (ia ? '<button type="button" class="onb-sec" style="margin-top:10px" onclick="_onbMorpho()">Faire mon analyse</button>' : '<span class="onb-soon">bientôt</span>') + '</div>';
     return { primary: 'C\'est parti → visite de l\'app', onPrimary: '_onbTerminer()', html: '<div style="margin:auto 0;width:100%">' + h1('2 choses à essayer')
       + promo + pt('⌚', 'Connecte ta montre', '2 minutes, guidé selon ta marque : Réglages ▸ Appareils ▸ Connecter ma montre') + '</div>' };
@@ -22178,7 +22206,7 @@ function _guideAthleteCards() {
         '<b>Montre</b> : « synchronisée à… », Actualiser, données « anciennes » signalées', 'Nutrition · photos &amp; mensurations · objectifs · douleurs &amp; blessures'] },
     { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: hasCoach ? 'Ton coach &amp; Novalyz IA' : 'Novalyz IA &amp; morpho', lead: 'Échanger.', go: aGo('conseils'),
       feats: (hasCoach ? ['<b>Messagerie</b> avec ton coach (photos, vidéos)'] : ['Tu pourras <b>lier un coach</b> plus tard (Réglages ▸ Mon coach)'])
-        .concat([_iaBadge(ia) + '<b>Novalyz IA</b>, branchée sur tes données (jamais de chiffre inventé)', _iaBadge(ia) + '<b>Analyse morpho</b> : 3 photos + tes mesures de segments → muscles en avance / en retard']) },
+        .concat([_iaBadge(ia) + '<b>Novalyz IA</b>, branchée sur tes données (jamais de chiffre inventé)', _iaBadge(ia) + '<b>Analyse morpho</b> : 3 photos + tes mesures → muscles à prioriser et <b>exercices adaptés à tes leviers</b>, pour un programme sur mesure']) },
     { ic: 'gear', scr: 'Réglages', t: 'Réglages', lead: 'Ton compte.', go: aGo('reglages'),
       feats: ['Profil (sexe, années, zones prioritaires) et <b>photo</b>', 'Coach lié · e-mail · <b>rapport par e-mail</b>', '<b>Connecter / changer ma montre</b> (guidé par marque), import de fichiers', 'Export / suppression des données · revoir la visite'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),

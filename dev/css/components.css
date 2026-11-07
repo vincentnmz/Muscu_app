@@ -1487,3 +1487,8 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .cx-sug-it small { display:block; font-size:11px; color:var(--text-muted); }
 .cx-sug-it button { flex:none; border:1px solid var(--accent); background:var(--surface); color:var(--accent); border-radius:9px; padding:6px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 .cx-info { font-size:11.5px; color:var(--text-muted); line-height:1.4; margin-top:10px; }
+
+.onb-promo .onb-promo-l { margin:8px 0 6px; padding-left:18px; font-size:12.5px; color:var(--text); line-height:1.45; }
+.onb-promo .onb-promo-l li { margin-bottom:4px; }
+.onb-promo .onb-promo-r { color:var(--accent); font-weight:700; }
+.onb-promo .onb-promo-l b { display:inline; font-size:inherit; margin:0; padding:0; }
