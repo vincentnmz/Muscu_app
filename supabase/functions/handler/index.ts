@@ -1828,7 +1828,7 @@ async function _invaliderTokensReset(athlete_id: string): Promise<void> {
 // Audit connexion C10 (02/11) : bandeau unique (logo + logotype NOVALYZ sur bloc noir, nid d'abeille
 // bleu) — une image plutôt qu'un fond CSS, ignoré par certains logiciels de mail. Hébergé sous /dev/
 // (conservé par le déploiement de main) ; secret MAIL_LOGO_URL pour pointer ailleurs sans redéployer.
-const MAIL_LOGO_URL = Deno.env.get('MAIL_LOGO_URL') || 'https://vincentnmz.github.io/Muscu_app/dev/assets/mail-header.png'
+const MAIL_LOGO_URL = Deno.env.get('MAIL_LOGO_URL') || 'https://app.novalyz.fr/assets/mail-header.png'
 function _mailHeader(): string {
   return `<div style="max-width:620px;margin:0 auto 14px">
     <img src="${MAIL_LOGO_URL}" width="620" alt="Novalyz — Analyze · Plan · Perform" style="display:block;width:100%;max-width:620px;height:auto;border:0;border-radius:14px">
@@ -1864,7 +1864,7 @@ function _csvRows(rows: any[]): string {
 
 // C2 (02/11) : liens des mails vers la PROD par défaut (avant : préprod /dev/). Secret APP_BASE_URL prioritaire.
 function _appLien(param: string, val: string): string {
-  const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://vincentnmz.github.io/Muscu_app/'
+  const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://app.novalyz.fr/'
   return baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + param + '=' + encodeURIComponent(val)
 }
 // Coquille simple des mails de compte (reset, bienvenue, confirmation).
@@ -5072,7 +5072,7 @@ function _chipStatut(statut: string): string {
 // Pages. Choix e-mail : une image PNG s'affiche dans TOUS les clients (Gmail,
 // Outlook…), contrairement au SVG/CSS. Les assets sont dans assets/roues/ (livrés
 // avec le front). ⚠️ visibles seulement une fois la branche déployée sur Pages.
-const ROUE_BASE = Deno.env.get('ROUE_BASE') || 'https://vincentnmz.github.io/Muscu_app/assets/roues/'
+const ROUE_BASE = Deno.env.get('ROUE_BASE') || 'https://app.novalyz.fr/assets/roues/'
 function _roueImg(pct: number, size = 118, variant = '', alt?: string): string {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)))
   const pre = variant ? variant + '-' : ''   // '' = turquoise (défaut), 'b' = bleu, 'v' = violet
