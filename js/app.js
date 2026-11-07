@@ -1942,7 +1942,6 @@ function _regManques(etape) {
     if (!/^\d{4}$/.test(lg)) m.push('login (4 chiffres)');
     else if (_regLogin.v === lg && _regLogin.dispo === false) m.push('un autre login (celui-ci est pris)');
     if (!_regSegVal('reg-coach-seg')) m.push('coach oui / non');
-    if (_regCodeRequis && !_regVal('reg-code')) m.push("code d'invitation");
   } else {
     if (!_regSegVal('reg-sexe-seg')) m.push('sexe');
     var age = _regAge(_regVal('reg-ddn')); if (!(age >= 10 && age <= 100)) m.push('date de naissance');
@@ -1989,7 +1988,9 @@ function verifierLoginDispo() {
       var j = await r.json();
       if (el.value !== lg) return;
       _regLogin = { v: lg, dispo: !!j.dispo, propose: j.propose || '' };
-      if (j.code_requis) { _regCodeRequis = true; var w = document.getElementById('reg-code-wrap'); if (w) w.style.display = ''; }
+      // 07/11 : plus de champ « code d'invitation » (inscription ouverte, demande porteur). Si le secret
+      // BETA_INVITE_CODE est encore posé sur le serveur, on le dit clairement au lieu d'afficher un champ.
+      if (j.code_requis) _regCodeRequis = true;
       etat.innerHTML = j.dispo ? '<span class="ok">disponible ✓</span>'
         : '<span class="ko">déjà pris</span>' + (j.propose ? ' · <button type="button" class="reg-prop" onclick="regPrendreLogin(\'' + j.propose + '\')">essaie ' + j.propose + '</button>' : '');
     } catch (e) { _regLogin = { v: lg, dispo: null, propose: '' }; etat.innerHTML = '<span class="mut">vérification impossible (réseau) : on vérifiera à la création</span>'; }
@@ -2008,7 +2009,7 @@ async function sInscrire() {
   const sport = _regVal('reg-sport') || 'muscu';
   const annees = (sport === 'muscu') ? _regVal('reg-annees') : '0';
   const ddn = _regVal('reg-ddn'), taille = _regVal('reg-taille'), poids = String(_regVal('reg-poids')).replace(',', '.');
-  const sexe = _regSegVal('reg-sexe-seg'), code = _regVal('reg-code');
+  const sexe = _regSegVal('reg-sexe-seg'), code = '';
   const aCoach = _regSegVal('reg-coach-seg') === 'oui';
   errEl.textContent = 'Création…';
   try {
@@ -2034,7 +2035,7 @@ async function sInscrire() {
       // Message précis du serveur (login pris, e-mail invalide, champ manquant…).
       errEl.textContent = data.message || data.erreur || 'Inscription refusée. Vérifie les champs.';
       if (data.login_pris) { _regLogin = { v: login, dispo: false, propose: '' }; inscriptionEtape(1); verifierLoginDispo(); }
-      if (data.code_requis) { _regCodeRequis = true; var w = document.getElementById('reg-code-wrap'); if (w) w.style.display = ''; inscriptionEtape(1); var h = document.getElementById('reg-manque-1'); if (h) h.textContent = data.message; }
+      if (data.code_requis) errEl.textContent = 'Les inscriptions sont fermées pour le moment. Réessaie plus tard.';
     }
   } catch(e) { errEl.textContent = 'Pas de connexion au serveur. Vérifie ton réseau et réessaie.'; }
 }
@@ -9997,19 +9998,25 @@ async function pbcDupliquer(ri) {
 var _pbcEnc = { ri: null, sid: null, onglet: 'seance', q: '' };
 function pbcEnchainer(ri, sid) { _pbcEnc = { ri: ri, sid: sid, onglet: 'seance', q: '' }; _pbcEncRender(); }
 // 05/11 — Muscles affichés (regroupe les fautes de saisie du catalogue : « Moletts », « fessier », « Triceps␣ »).
-var _PBC_MUS = [['pectora', 'Pectoraux'], ['dos', 'Dos'], ['epaul', 'Épaules'], ['biceps', 'Biceps'], ['triceps', 'Triceps'], ['quadri', 'Quadriceps'], ['ischio', 'Ischios'], ['fess', 'Fessiers'], ['adduct', 'Adducteurs'], ['mol', 'Mollets'], ['abdo', 'Abdominaux'], ['lomb', 'Lombaires'], ['trap', 'Trapèzes'], ['avant-bras', 'Avant-bras'], ['avant bras', 'Avant-bras']];
+var _PBC_MUS = [['pectora', 'Pectoraux'], ['dos', 'Dos'], ['epaul', 'Épaules'], ['biceps', 'Biceps'], ['triceps', 'Triceps'], ['quadri', 'Quadriceps'], ['ischio', 'Ischios'], ['fess', 'Fessiers'], ['adduct', 'Adducteurs'], ['mol', 'Mollets'], ['abdo', 'Abdominaux'], ['corps', 'Corps entier'], ['lomb', 'Lombaires'], ['trap', 'Trapèzes'], ['avant-bras', 'Avant-bras'], ['avant bras', 'Avant-bras']];
 // ── Catalogue 06/11 (maquette validée) : filtre matériel commun aux 3 écrans de choix (ajout au programme,
 // séance libre, « Enchaîner avec… »), sous-titre « matériel · + secondaire ½ », création d'exercice par un coach.
-var _EXO_MAT = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Autre'];
+var _EXO_MAT = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Sac lesté', 'Kettlebell', 'Médecine-ball', 'Pneu / masse', 'Autre'];
+// 07/11 — exercices fonctionnels : une seule puce « Fonctionnel » regroupe leur matériel (et tout exercice
+// de la discipline « fonctionnel », ex. burpees au poids du corps) ; le sous-titre garde le matériel précis.
+var _EXO_MAT_FX = ['Sac lesté', 'Kettlebell', 'Médecine-ball', 'Pneu / masse'];
+var _EXO_MAT_CHIPS = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Fonctionnel', 'Autre'];
+function _exoEstFx(e) { return !!e && (_EXO_MAT_FX.indexOf(String(e.materiel || '')) >= 0 || /(^|,)\s*fonctionnel\s*(,|$)/.test(String(e.disciplines || ''))); }
 var _exoMat = { xp: '', libre: '', pbc: '' };
-var _EXO_MUS_CLES = [['Pectoraux', 'Pectoraux'], ['Dos', 'Dos'], ['Trapèzes', 'Trapèze'], ['Épaules', 'Epaule'], ['Biceps', 'Biceps'], ['Triceps', 'Triceps'], ['Avant-bras', 'Avant-bras'], ['Abdominaux', 'Abdominaux'], ['Lombaires', 'Lombaires'], ['Quadriceps', 'Quadriceps'], ['Ischios', 'Ischio'], ['Fessiers', 'Fessier'], ['Adducteurs', 'Adducteur'], ['Mollets', 'Mollets']];
+var _EXO_MUS_CLES = [['Pectoraux', 'Pectoraux'], ['Dos', 'Dos'], ['Trapèzes', 'Trapèze'], ['Épaules', 'Epaule'], ['Biceps', 'Biceps'], ['Triceps', 'Triceps'], ['Avant-bras', 'Avant-bras'], ['Abdominaux', 'Abdominaux'], ['Lombaires', 'Lombaires'], ['Quadriceps', 'Quadriceps'], ['Ischios', 'Ischio'], ['Fessiers', 'Fessier'], ['Adducteurs', 'Adducteur'], ['Mollets', 'Mollets'], ['Corps entier', 'Corps entier']];
 function _exoDeNom(n) { var k = String(n || '').trim(); return (exercicesData || []).filter(function (x) { return x && String(x.exercice).trim() === k; })[0] || null; }
-function _exoMatOk(e, ctx) { var m = _exoMat[ctx]; return !m || String((e && e.materiel) || '') === m; }
+function _exoMatOk(e, ctx) { var m = _exoMat[ctx]; if (!m) return true; if (m === 'Fonctionnel') return _exoEstFx(e); return String((e && e.materiel) || '') === m; }
 function _exoMatDispo() { return (exercicesData || []).some(function (x) { return x && x.materiel; }); }
 function _exoMatChips(ctx, rerender) {
   if (!_exoMatDispo()) return '';
   var cur = _exoMat[ctx] || '';
-  return '<div class="exo-matchips" role="group" aria-label="Matériel">' + [''].concat(_EXO_MAT).map(function (m) {
+  var dispo = {}; (exercicesData || []).forEach(function (x) { if (x) { dispo[String(x.materiel || '')] = 1; if (_exoEstFx(x)) dispo.Fonctionnel = 1; } });
+  return '<div class="exo-matchips" role="group" aria-label="Matériel">' + [''].concat(_EXO_MAT_CHIPS.filter(function (m) { return dispo[m] || m === cur; })).map(function (m) {
     return '<button type="button" class="exo-matc' + (cur === m ? ' on' : '') + '" onclick="_exoMat.' + ctx + '=' + (m ? '\'' + m + '\'' : '\'\'') + ';' + rerender + '">' + escapeHtml(m || 'Tout matériel') + '</button>';
   }).join('') + '</div>';
 }
@@ -13222,7 +13229,33 @@ function ajouterSerie() {
   }
 }
 
+// ── Exercices fonctionnels dans la saisie (07/11, maquette validée) ──
+// Sac lesté : poids fixes 5 → 30 kg (un bouton par sac) · fentes : reps PAR JAMBE ·
+// poids du corps / pneu / masse : charge 0 pré-remplie (la série se note en reps, comme les pompes).
+var _FX_SACS = [5, 10, 15, 20, 25, 30];
+function _fxExo() { try { return exoEnCours ? (exercicesData || []).filter(function (x) { return x.exercice === exoEnCours.exerciceNom; })[0] || null : null; } catch (e) { return null; } }
+function _fxSaisie() {
+  var e = _fxExo(), nom = exoEnCours ? String(exoEnCours.exerciceNom || '') : '';
+  var lr = document.getElementById('saisie-lbl-reps'); if (lr) lr.textContent = /^fente/i.test(_normTxt(nom)) ? 'Reps (par jambe)' : 'Reps';
+  var mat = e ? String(e.materiel || '') : '';
+  var lc = document.getElementById('saisie-lbl-charge'), ch = document.getElementById('inp-charge');
+  var pdc = mat === 'Poids du corps' || mat === 'Pneu / masse';
+  if (lc) lc.textContent = pdc ? 'Charge (0 = sans)' : 'Charge (kg)';
+  if (pdc && ch && ch.value === '' && !(exoEnCours && exoEnCours.series && exoEnCours.series.length)) ch.value = '0';
+  var box = document.getElementById('fx-sac'); if (!box) return;
+  if (mat !== 'Sac lesté') { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = '<div class="saisie-lbl">Sac</div><div class="fx-sac-row">' + _FX_SACS.map(function (k) { return '<button type="button" data-kg="' + k + '" onclick="_fxSac(' + k + ')">' + k + ' kg</button>'; }).join('') + '</div>';
+  _fxSacMaj();
+  setTimeout(_fxSacMaj, 0);   // la cible pré-remplit la charge juste après
+}
+function _fxSac(k) { var ch = document.getElementById('inp-charge'); if (ch) ch.value = String(k); _fxSacMaj(); }
+function _fxSacMaj() {
+  var ch = document.getElementById('inp-charge'), v = ch ? Number(String(ch.value).replace(',', '.')) : NaN;
+  document.querySelectorAll('#fx-sac button').forEach(function (b) { b.classList.toggle('on', Number(b.getAttribute('data-kg')) === v); });
+}
 function majSeriesActuel() {
+  try { _fxSaisie(); } catch (e) {}
   try { _reposWheelInit(); } catch (e) {}
   const list = document.getElementById('series-list-actuel');
   const total = exoEnCours.series.length;
@@ -14911,8 +14944,9 @@ function _maMuscuAgg(daily, startISO, endISO) {
       if ((o.series || 0) > 0) seances++;
       series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0;
       rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
-      Object.keys(o.spm || {}).forEach(function (mm) { spm[mm] = (spm[mm] || 0) + o.spm[mm]; });
-      Object.keys(o.vpm || {}).forEach(function (mm) { vpm[mm] = (vpm[mm] || 0) + o.vpm[mm]; });
+      // 07/11 : « Corps entier » (burpees, pneu…) compte dans séances / séries / reps, pas par muscle.
+      Object.keys(o.spm || {}).forEach(function (mm) { if (_musKey(mm) === 'corps entier') return; spm[mm] = (spm[mm] || 0) + o.spm[mm]; });
+      Object.keys(o.vpm || {}).forEach(function (mm) { if (_musKey(mm) === 'corps entier') return; vpm[mm] = (vpm[mm] || 0) + o.vpm[mm]; });
     }
   });
   return { seances: seances, series: series, reps: reps, tonnage_kg: Math.round(tonnage), tonnage: Math.round(tonnage / 100) / 10, rpe_moyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, series_par_muscle: spm, volume_par_muscle: vpm };

@@ -1492,3 +1492,9 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .onb-promo .onb-promo-l li { margin-bottom:4px; }
 .onb-promo .onb-promo-r { color:var(--accent); font-weight:700; }
 .onb-promo .onb-promo-l b { display:inline; font-size:inherit; margin:0; padding:0; }
+
+/* Sac lesté : un bouton par poids (07/11) */
+.fx-sac { margin-top:12px; }
+.fx-sac-row { display:flex; flex-wrap:wrap; gap:6px; }
+.fx-sac-row button { flex:1 0 calc(33% - 6px); min-width:64px; padding:9px 4px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); border-radius:10px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+.fx-sac-row button.on { border-color:var(--accent); background:var(--accent); color:var(--on-accent, #fff); }

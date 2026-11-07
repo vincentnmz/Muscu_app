@@ -638,6 +638,7 @@ function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date
 // « Triceps␣ ») qui ne correspondaient jamais aux objectifs de volume (« Mollets »…) →
 // séries jamais comptées. Clé canonique : sans espaces parasites, casse/alias unifiés.
 const _MUSCLE_ALIAS: Record<string, string> = {
+  'corps entier': 'Corps entier',   // 07/11 : exercices fonctionnels (burpees, pneu…) — hors volume par muscle
   moletts: 'Mollets', mollet: 'Mollets', mollets: 'Mollets', fessier: 'Fessier', fessiers: 'Fessier',
   ischio: 'Ischio', ischios: 'Ischio', epaule: 'Epaule', epaules: 'Epaule', abdominaux: 'Abdominaux', abdos: 'Abdominaux',
   triceps: 'Triceps', biceps: 'Biceps', dos: 'Dos', pectoraux: 'Pectoraux', quadriceps: 'Quadriceps',
@@ -1031,7 +1032,7 @@ function _secMap(exoRows: any[]): Record<string, string> {
   return m
 }
 function _addSeriesMuscle(acc: Record<string, number>, r: any, secByExo?: Record<string, string>) {
-  if (r.muscle) acc[r.muscle] = (acc[r.muscle] || 0) + 1
+  if (r.muscle && normMuscle(r.muscle) !== 'Corps entier') acc[r.muscle] = (acc[r.muscle] || 0) + 1   // 07/11 : corps entier hors volume par muscle
   const sec = secByExo && secByExo[String(r.exercice || '').trim().toLowerCase()]
   if (sec && sec !== normMuscle(r.muscle)) acc[sec] = (acc[sec] || 0) + 0.5
 }
@@ -3091,8 +3092,10 @@ async function handleExercicesPrives(body: any): Promise<Response> {
 const _nomCle = (t: any) => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 // Catalogue 06/11 — un coach crée un exercice : muscle choisi dans la liste fermée (14), plus de saisie libre.
-const CAT_MUSCLES = ['Pectoraux', 'Dos', 'Trapèze', 'Epaule', 'Biceps', 'Triceps', 'Avant-bras', 'Abdominaux', 'Lombaires', 'Quadriceps', 'Ischio', 'Fessier', 'Adducteur', 'Mollets']
-const CAT_MATERIEL = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Autre']
+// 07/11 : « Corps entier » (burpees, pneu, slam ball…) : compte dans la séance, PAS dans le volume par muscle
+// (absent de VOLUME_CIBLES_NIVEAU → jamais dans volume_obti). Matériel fonctionnel ajouté.
+const CAT_MUSCLES = ['Pectoraux', 'Dos', 'Trapèze', 'Epaule', 'Biceps', 'Triceps', 'Avant-bras', 'Abdominaux', 'Lombaires', 'Quadriceps', 'Ischio', 'Fessier', 'Adducteur', 'Mollets', 'Corps entier']
+const CAT_MATERIEL = ['Barre', 'Haltères', 'Machine', 'Poulie', 'Smith', 'Poids du corps', 'Sac lesté', 'Kettlebell', 'Médecine-ball', 'Pneu / masse', 'Autre']
 async function handleCreerExercice(body: any): Promise<Response> {
   if (body._sessRole !== 'c') return jsonResp({ erreur: 'Réservé aux coachs' })
   const nom = String(body.exercice || '').replace(/\s+/g, ' ').trim()
