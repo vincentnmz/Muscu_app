@@ -4,7 +4,7 @@ import Button from '../components/Button.astro';
 import Phone from '../components/Phone.astro';
 import Status from '../components/Status.astro';
 import ForceChart from '../components/ForceChart.astro';
-import { site, cta, ctaPrincipal } from '../config/site';
+import { site, cta, ctaPrincipal, preuves } from '../config/site';
 
 // Chaque affirmation ci-dessous est vérifiée dans le code de l'app (voir mockups/site-vitrine-conception.html).
 const title = 'Novalyz · Tes données d’entraînement, transformées en décisions';
@@ -45,8 +45,12 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
         <p class="lead">Les charges dans un carnet, le ressenti dans la tête, le sommeil dans la montre, les échanges avec le coach dans une autre appli. Les informations existent, mais elles sont dispersées, et personne n’a le temps de les croiser.</p>
         <p class="lead">Collecter davantage ne suffit pas. Ce qui manque, c’est de comprendre ce qu’elles disent, et quoi en faire à la prochaine séance.</p>
       </div>
-      <svg class="points" viewBox="0 0 600 120" aria-hidden="true">
-        {[[30,80],[80,30],[130,95],[170,50],[230,88],[270,22],[320,70],[360,40],[410,96],[450,60],[500,28],[560,74]].map(([px,py]) => <circle cx={px} cy={py} r="4" />)}
+      <svg class="points" viewBox="0 0 600 120" aria-hidden="true" data-anim="points">
+        <path class="trend" d="M30,100 L560,24" pathLength="1" />
+        {[[30,80],[80,30],[130,95],[170,50],[230,88],[270,22],[320,70],[360,40],[410,96],[450,60],[500,28],[560,74]].map(([px,py], i) => {
+          const ty = 100 - (76 * (px - 30)) / 530;   // point aligné sur la tendance
+          return <circle cx={px} cy={py} r="4" style={`--dy:${(ty - py).toFixed(1)}px;--d:${i * 40}ms`} />;
+        })}
       </svg>
     </div>
   </section>
@@ -58,7 +62,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
       <h2 id="h-comment" class="display">Trois gestes. Une seule logique.</h2>
     </div>
 
-    <article class="chap wrap" aria-labelledby="h-mesurer">
+    <article class="chap wrap" aria-labelledby="h-mesurer" data-anim="chap">
       <div class="chap-txt">
         <p class="chap-n"><span>01</span> Mesurer</p>
         <h3 id="h-mesurer" class="display">Tout ce qui compte, en quelques secondes.</h3>
@@ -71,7 +75,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
       <div class="chap-vis"><Phone src="/captures/questionnaire.webp" alt="Questionnaire du matin de Novalyz : qualité du sommeil, fatigue générale, stress, courbatures." tilt={2} /></div>
     </article>
 
-    <article class="chap chap-dark" aria-labelledby="h-comprendre">
+    <article class="chap chap-dark" aria-labelledby="h-comprendre" data-anim="chap">
       <div class="wrap chap-in">
         <div class="chap-txt">
           <p class="chap-n"><span>02</span> Comprendre</p>
@@ -86,7 +90,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
       </div>
     </article>
 
-    <article class="chap chap-dark chap-prog" aria-labelledby="h-progresser">
+    <article class="chap chap-dark chap-prog" aria-labelledby="h-progresser" data-anim="chap">
       <div class="wrap chap-in">
         <div class="chap-txt">
           <p class="chap-n"><span>03</span> Progresser</p>
@@ -130,6 +134,66 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
         <li><p class="et-h">À terme <Status etat="prevu" /></p><p>Novalyz Pro : clubs, centres de formation, académies.</p></li>
         <li><p class="et-h">Notre vision <Status etat="prevu" /></p><p>La même logique, mesurer, comprendre, progresser, appliquée à tous les sports.</p></li>
       </ol>
+    </div>
+  </section>
+
+  <!-- CONFIANCE -->
+  <section class="confiance" aria-labelledby="h-confiance">
+    <div class="wrap">
+      <p class="eyebrow">Tes données</p>
+      <h2 id="h-confiance" class="display">Tes données restent les tiennes.</h2>
+      <ul class="conf-grid">
+        <li><b>Ton coach, si tu le choisis</b><span>Un coach ne suit ton compte que si tu acceptes sa demande. Tu peux le quitter quand tu veux.</span></li>
+        <li><b>Export et suppression</b><span>Tu exportes tes données ou supprimes ton compte depuis l’app.</span></li>
+        <li><b>Photos privées</b><span>Tes photos de suivi ne sont visibles que par toi et ton coach.</span></li>
+        <li><b>En toute transparence</b><span>Ce que nous collectons et pourquoi : <a href={`${site.appUrl}/privacy.html`}>politique de confidentialité</a>.</span></li>
+      </ul>
+      {preuves.temoignages.length > 0 && <div class="preuves">{/* emplacement prêt : témoignages réels uniquement */}</div>}
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="faq" aria-labelledby="h-faq">
+    <div class="wrap faq-grid">
+      <div>
+        <p class="eyebrow">Questions</p>
+        <h2 id="h-faq" class="display">Les questions qu’on nous pose.</h2>
+        <p class="lead">Une autre question ? <a href={`mailto:${site.email}`}>{site.email}</a></p>
+      </div>
+      <div class="faq-list">
+        <details>
+          <summary>Qu’est-ce que Novalyz ?</summary>
+          <p>Une plateforme qui transforme tes séances et ton ressenti en décisions : comment t’entraîner, si c’est bien fait, comment progresser. Tu notes tes séries et ton état du matin, Novalyz analyse et te le dit en clair.</p>
+        </details>
+        <details>
+          <summary>À qui s’adresse Novalyz ?</summary>
+          <p>Aujourd’hui, aux sportifs qui font de la musculation, avec ou sans coach, et aux coachs et préparateurs physiques qui suivent des athlètes. Les clubs et structures sont la prochaine étape (Novalyz Pro).</p>
+        </details>
+        <details>
+          <summary>Novalyz est-il uniquement pour la musculation ?</summary>
+          <p>Aujourd’hui, l’analyse complète est faite pour la musculation ; l’app enregistre aussi le cardio et les séances Hyrox. Novalyz est conçu pour s’adapter à d’autres sports, qui arriveront progressivement. Ils ne sont pas encore disponibles.</p>
+        </details>
+        <details>
+          <summary>Est-il disponible ?</summary>
+          <p>Novalyz est en bêta. L’app Android est en test fermé sur Google Play ; sur iPhone et ordinateur, elle fonctionne dans le navigateur.</p>
+        </details>
+        <details>
+          <summary>Comment participer à la bêta ?</summary>
+          <p>Clique sur « Rejoindre la bêta » et écris-nous : on t’ajoute au test (Android) ou on t’envoie le lien de l’app web (iPhone, ordinateur).</p>
+        </details>
+        <details>
+          <summary>Est-ce payant ?</summary>
+          <p>Pendant la bêta, Novalyz est gratuit. Une offre Premium est prévue pour certaines fonctions avancées ; elle sera annoncée avant d’être mise en place.</p>
+        </details>
+        <details>
+          <summary>Faut-il une montre ?</summary>
+          <p>Non. Elle est facultative : sur Android, si tu la relies via Health Connect, Novalyz récupère tes pas, ton sommeil et ta fréquence cardiaque au repos, sans rien saisir.</p>
+        </details>
+        <details>
+          <summary>Qu’est-ce que Novalyz Pro ?</summary>
+          <p>La prochaine étape : un espace pour les clubs, centres de formation et académies. Il n’est pas encore disponible. Si tu représentes une structure, écris-nous pour le construire avec nous.</p>
+        </details>
+      </div>
     </div>
   </section>
 
@@ -211,4 +275,52 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
     .etapes { grid-template-columns: 1fr 1fr; row-gap: 28px; }
   }
   @media (max-width: 520px) { .etapes { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--line); } .etapes li { padding: 0 0 0 22px; } .etapes li::before { top: 6px; left: -7px; } }
+  /* ── Confiance ── */
+  .confiance { padding: var(--s9) 0 var(--s8); border-top: 1px solid var(--line); }
+  .confiance h2 { font-size: clamp(28px, 4vw, 46px); margin: 14px 0 0; }
+  .conf-grid { list-style: none; padding: 0; margin: var(--s7) 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5); }
+  .conf-grid li { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 2px solid var(--blue); }
+  .conf-grid b { font-size: 17px; font-variation-settings: 'wdth' 108; }
+  .conf-grid span { color: var(--muted); font-size: 15.5px; }
+  .conf-grid a, .faq a { color: var(--blue); }
+  /* ── FAQ ── */
+  .faq { padding: var(--s8) 0 var(--s9); }
+  .faq-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--s7); align-items: start; }
+  .faq h2 { font-size: clamp(28px, 3.8vw, 44px); margin: 14px 0 18px; }
+  .faq-list { border-top: 1px solid var(--line); }
+  details { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; position: relative; font-weight: 700; font-size: 17.5px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ""; position: absolute; right: 6px; top: 50%; width: 12px; height: 12px; border-right: 2px solid var(--blue); border-bottom: 2px solid var(--blue); transform: translateY(-70%) rotate(45deg); transition: transform .2s ease; }
+  details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+  details p { padding: 0 0 22px; color: var(--muted); max-width: 62ch; }
+  @media (max-width: 900px) { .conf-grid { grid-template-columns: 1fr 1fr; } .faq-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .conf-grid { grid-template-columns: 1fr; } }
+
+  /* ── 5 animations (coupées si « réduire les animations ») ──
+     La page est complète sans JavaScript : les états de départ ne s'appliquent que sous html.anim. */
+  .points .trend { fill: none; stroke: var(--blue); stroke-width: 2; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: .5; }
+  .points circle { transition: transform 1s cubic-bezier(.2,.7,.2,1) var(--d), opacity .6s; }
+  :global(html.anim) .points.on circle { transform: translateY(var(--dy)); opacity: .9; }
+  :global(html.anim) .points.on .trend { stroke-dashoffset: 0; transition: stroke-dashoffset 1.2s ease .5s; }
+  :global(html.anim) [data-anim="chap"] .chap-txt { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  :global(html.anim) [data-anim="chap"] .chap-vis { opacity: 0; transform: translateY(40px); transition: opacity .9s ease .12s, transform .9s ease .12s; }
+  :global(html.anim) [data-anim="chap"].on .chap-txt, :global(html.anim) [data-anim="chap"].on .chap-vis { opacity: 1; transform: none; }
+  :global(html.anim) .hero .sig span { opacity: 0; transform: translateY(8px); animation: sigIn .6s ease forwards; }
+  :global(html.anim) .hero .sig .s0 { animation-delay: .5s; } :global(html.anim) .hero .sig .s1 { animation-delay: .9s; } :global(html.anim) .hero .sig .s2 { animation-delay: 1.3s; }
+  :global(html.anim) .hero-vis { animation: phoneIn 1s cubic-bezier(.2,.7,.2,1) .15s both; }
+  @keyframes sigIn { to { opacity: 1; transform: none; } }
+  @keyframes phoneIn { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: none; } }
 </style>
+
+<script>
+  // Animations : seulement si le navigateur le permet et si l'utilisateur n'a pas demandé moins d'animations.
+  const calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!calme && 'IntersectionObserver' in window) {
+    document.documentElement.classList.add('anim');
+    const io = new IntersectionObserver((entrees) => {
+      entrees.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+    }, { threshold: 0.25 });
+    document.querySelectorAll('[data-anim]').forEach((el) => io.observe(el));
+  }
+</script>

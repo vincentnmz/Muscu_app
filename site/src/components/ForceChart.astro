@@ -14,7 +14,7 @@ const ticks = [] as number[]; for (let t = lo; t <= hi; t += 5) ticks.push(t);
 const court = (d: string) => d.slice(0, 5);
 const pct = Math.round(data.pct);
 ---
-<figure class="chart">
+<figure class="chart" data-anim="chart">
   <figcaption>
     <span class="t">Force estimée · {data.exo}</span>
     <span class="p num">+{pct} % <small>en 6 semaines</small></span>
@@ -41,4 +41,8 @@ const pct = Math.round(data.pct);
   .dot { fill: #0B1736; stroke: var(--blue-2); stroke-width: 2; }
   .end { fill: #fff; stroke: var(--blue); stroke-width: 3; }
   .src { margin-top: 10px; font-size: 12.5px; color: #8091B8; }
+  :global(html.anim) .chart .line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  :global(html.anim) .chart .area, :global(html.anim) .chart circle { opacity: 0; transition: opacity .6s ease 1.1s; }
+  :global(html.anim) .chart.on .line { stroke-dashoffset: 0; transition: stroke-dashoffset 1.4s ease .1s; }
+  :global(html.anim) .chart.on .area, :global(html.anim) .chart.on circle { opacity: 1; }
 </style>
