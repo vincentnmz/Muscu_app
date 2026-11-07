@@ -2408,6 +2408,7 @@ function ouvrirReglagesCoach() {
   }
   try { prefillCoachReglages(); } catch (_) {}
   try { switchCoachReglagesTab('compte'); } catch (_) {}
+  try { _ppRenderCoach(); } catch (_) {}
   try { renderCoachReglagesV2(); chargerCoachPrefs().then(function () { renderCoachReglagesV2(); try { majUiPushCoach(); } catch (e) {} }); } catch (_) {}   // écran 9 (05/11)
   try { majUiCockpitPref(); } catch (_) {}
   // Réglages coach = vraie page plein écran (comme la vue athlète) : pas de fond
@@ -2563,6 +2564,7 @@ async function ouvrirEspaceCoach() {
       return;
     }
     athletesCoach = athletes;
+    try { if (coach && data.ia_active != null) coach.ia_active = !!data.ia_active; } catch (_) {}
     renderListeAthletesCoach(); // role-aware : prépa → cockpit, coach → accueil classique
     // Restaurer la fiche athlète consultée avant un rechargement
     try {
@@ -2591,6 +2593,8 @@ function ouvrirModalLierAthlete() {
 
 function fermerModalLierAthlete() {
   document.getElementById('modal-lier-athlete').style.display = 'none';
+  // Onboarding coach (07/11) : « ton premier athlète » choisi → la visite démarre une fois la fenêtre fermée.
+  if (typeof _onbCoachPendingTour !== 'undefined' && _onbCoachPendingTour) { _onbCoachPendingTour = false; setTimeout(function () { nvTourCoach(); }, 450); }
 }
 
 /* __RESET_MDP_START__
@@ -2829,7 +2833,108 @@ function prefillProfilReglages() {
   set('prof-sexe', (athlete.sexe === 'H' || athlete.sexe === 'F') ? athlete.sexe : '');
   try { _profZonesRender(); } catch (e) {}
   try { _renderMonCoach(); } catch (e) {}
+  try { _ppRenderAthlete(); } catch (e) {}
   var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
+}
+
+// ═══════════ PHOTO DE PROFIL (07/11) — athlète et coach ═══════════
+// Recadrée en carré 400 px (JPEG) dans l'app, envoyée sur une URL d'upload signée
+// (bucket privé), relue via URL signée. Serveur : photoProfilUploadUrl / photoProfil /
+// supprimerPhotoProfil. Cible : {athlete_id} (soi, ou un athlète lié côté coach) ou {coach_id}.
+var _pp = { cible: null, onDone: null, busy: false };
+function _ppCarre(file) {
+  return new Promise(function (ok, ko) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      try {
+        var c = Math.min(img.naturalWidth, img.naturalHeight), T = 400;
+        var cv = document.createElement('canvas'); cv.width = T; cv.height = T;
+        cv.getContext('2d').drawImage(img, (img.naturalWidth - c) / 2, (img.naturalHeight - c) / 2, c, c, 0, 0, T, T);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (b) { b ? ok(b) : ko(new Error('blob')); }, 'image/jpeg', 0.86);
+      } catch (e) { ko(e); }
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); ko(new Error('img')); };
+    img.src = url;
+  });
+}
+// src : 'gal' | 'cam'. cible : { athlete_id } | { coach_id }. onDone(url|null)
+function photoProfilChoisir(src, cible, onDone) {
+  if (_pp.busy) { showToast('⏳ Envoi en cours…'); return; }
+  _pp.cible = cible; _pp.onDone = onDone || null;
+  var inp = document.getElementById(src === 'cam' ? 'pp-input-cam' : 'pp-input-gal');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+async function _ppChoisi(input) {
+  var f = input && input.files && input.files[0]; if (!f || !_pp.cible) return;
+  if (!/^image\//.test(f.type)) { showToast('Choisis une photo', '#ff4444'); return; }
+  if (f.size > 25 * 1024 * 1024) { showToast('Photo trop lourde (max 25 Mo)', '#ff4444'); return; }
+  _pp.busy = true;
+  try {
+    showToast('Envoi de la photo…');
+    var blob = await _ppCarre(f);
+    var post = function (o) { return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(o) }).then(function (r) { return r.json(); }); };
+    var d1 = await post(Object.assign({ action: 'photoProfilUploadUrl' }, _pp.cible));
+    if (!d1 || !d1.success || !d1.signedUrl) throw new Error('upload-url');
+    var put = await fetch(d1.signedUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }, body: blob });
+    if (!put.ok) throw new Error('put-' + put.status);
+    var d2 = await post(Object.assign({ action: 'photoProfil' }, _pp.cible));
+    var url = (d2 && d2.url) || null;
+    _ppMemo(_pp.cible, url);
+    showToast('Photo enregistrée');
+    if (_pp.onDone) _pp.onDone(url);
+  } catch (e) { showToast('Échec de l\'envoi de la photo', '#ff4444'); }
+  finally { _pp.busy = false; }
+}
+async function photoProfilSupprimer(cible, onDone) {
+  if (!confirm('Retirer ta photo ?')) return;
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: 'supprimerPhotoProfil' }, cible)) });
+    var j = await r.json();
+    if (!j || !j.success) throw new Error('x');
+    _ppMemo(cible, null); showToast('Photo retirée'); if (onDone) onDone(null);
+  } catch (e) { showToast('Suppression impossible', '#ff4444'); }
+}
+// Garde l'URL en mémoire là où l'app la lit (athlète : dernierAppData ; coach : coach / liste).
+function _ppMemo(cible, url) {
+  try {
+    if (cible.athlete_id) {
+      if (athlete && String(athlete.athlete_id) === String(cible.athlete_id) && typeof dernierAppData !== 'undefined' && dernierAppData) dernierAppData.photo_url = url;
+      if (typeof athletesCoach !== 'undefined' && Array.isArray(athletesCoach)) athletesCoach.forEach(function (a) { if (String(a.athlete_id) === String(cible.athlete_id)) a.photo_url = url; });
+    } else if (cible.coach_id && typeof coach !== 'undefined' && coach) { coach.photo_url = url; }
+  } catch (e) {}
+}
+function _ppInitiales(nom) {
+  var p = String(nom || '').trim().split(/\s+/).filter(Boolean);
+  return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+}
+function _ppAvatarHtml(url, nom, size) {
+  var t = size || 64;
+  return '<div class="pp-av" style="width:' + t + 'px;height:' + t + 'px;font-size:' + Math.round(t * 0.36) + 'px">'
+    + (url ? '<img src="' + escapeHtml(url) + '" alt="">' : escapeHtml(_ppInitiales(nom))) + '</div>';
+}
+// Bloc « photo + boutons » (Réglages athlète / coach, onboarding).
+function _ppBlocHtml(url, nom, cibleJs, refreshJs) {
+  return _ppAvatarHtml(url, nom, 64)
+    + '<div class="pp-act"><div class="pp-t">Photo de profil</div><div class="pp-s">Visible par toi et ' + (cibleJs.indexOf('coach_id') >= 0 ? 'tes athlètes' : 'ton coach') + '.</div>'
+    + '<div class="pp-btns"><button type="button" onclick="photoProfilChoisir(\'gal\',' + cibleJs + ',' + refreshJs + ')">Galerie</button>'
+    + '<button type="button" onclick="photoProfilChoisir(\'cam\',' + cibleJs + ',' + refreshJs + ')">Appareil photo</button>'
+    + (url ? '<button type="button" class="pp-del" onclick="photoProfilSupprimer(' + cibleJs + ',' + refreshJs + ')">Retirer</button>' : '') + '</div></div>';
+}
+function _ppRenderAthlete() {
+  var el = document.getElementById('pp-athlete'); if (!el || !athlete) return;
+  var url = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.photo_url : null;
+  el.innerHTML = _ppBlocHtml(url, athlete.nom, '{athlete_id:\'' + String(athlete.athlete_id).replace(/'/g, '') + '\'}', '_ppRenderAthlete');
+}
+async function _ppRenderCoach(force) {
+  var el = document.getElementById('pp-coach'); if (!el || typeof coach === 'undefined' || !coach) return;
+  if (force !== false && coach.photo_url === undefined) {
+    try {
+      var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'photoProfil', coach_id: coach.coach_id }) });
+      var j = await r.json(); coach.photo_url = (j && j.url) || null;
+    } catch (e) { coach.photo_url = null; }
+  }
+  el.innerHTML = _ppBlocHtml(coach.photo_url || null, coach.nom, '{coach_id:\'' + String(coach.coach_id).replace(/'/g, '') + '\'}', 'function(){_ppRenderCoach(false)}');
 }
 
 // Zones à développer en priorité (03/11) — Réglages ▸ Profil : enregistrées à chaque choix.
@@ -3830,7 +3935,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       <!-- Hero d'accueil (comme le briefing muscu) : Bonjour + nom + infos joueur.
            L'avatar accepte une photo (d.photo) et retombe sur les initiales sinon. -->
       <div id="fjd-hero" class="fjd-hero">
-        <div class="fjd-hero-av">${d.photo ? `<img src="${escapeHtml(d.photo)}" alt="">` : escapeHtml(initiales)}</div>
+        <div class="fjd-hero-av">${(d.photo || d.photo_url) ? `<img src="${escapeHtml(d.photo || d.photo_url)}" alt="">` : escapeHtml(initiales)}</div>
         <div style="min-width:0;flex:1;">
           <div class="fjd-hero-grt">Bonjour</div>
           <div class="fjd-hero-name">${escapeHtml(d.nom || 'Joueur')}</div>
@@ -6657,6 +6762,7 @@ function renderCoachHeroEtat(data) {
   const el = document.getElementById('cd-hero');
   const a = coachAthleteCourant;
   if (!el || !a) return;
+  window._cdHeroData = data;
   let m = null;
   try { m = computeMarqueursCoach(data, a); } catch (_) {}
   const s = (m && m.statut) ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
@@ -6722,7 +6828,7 @@ function renderCoachHeroEtat(data) {
   el.style.cssText = `position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:${heroBg};background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.20));`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${ini}</div>
+      <button type="button" title="Changer la photo" onclick="photoProfilChoisir('gal',{athlete_id:'${String(a.athlete_id).replace(/[^0-9A-Za-z_-]/g,'')}'},function(u){ if (coachAthleteCourant) coachAthleteCourant.photo_url = u; if (window._cdHeroData) window._cdHeroData.photo_url = u; try { renderCoachHeroEtat(window._cdHeroData || {}); } catch (e) {} })" style="width:46px;height:46px;border-radius:13px;border:0;padding:0;overflow:hidden;cursor:pointer;color:inherit;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${(a.photo_url || (data && data.photo_url)) ? `<img src="${escapeHtml(a.photo_url || data.photo_url)}" alt="" style="width:100%;height:100%;object-fit:cover">` : ini}</button>
       <div style="flex:1;min-width:0;">
         <div style="font-size:17px;font-weight:900;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
         <div style="font-size:11.5px;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaBits.filter(Boolean).map(escapeHtml).join(' · ')}</div>
@@ -11242,7 +11348,8 @@ function _renderMonCoach() {
       + '<button onclick="repondreDemandeCoach(true)" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Accepter</button></div>';
   } else if (_athleteAUnCoach()) {
     var nom = escapeHtml(String(athlete.coach_nom || '').trim() || 'ton coach');
-    el.innerHTML = '<div style="font-size:14px">Tu es suivi par <b>' + nom + '</b>.</div>'
+    var cph = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.coach_photo_url : null;
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' + _ppAvatarHtml(cph, athlete.coach_nom || 'Coach', 40) + '<div style="font-size:14px">Tu es suivi par <b>' + nom + '</b>.</div></div>'
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4">Ton coach voit tes séances, tes analyses et ton ressenti, et peut modifier ton programme.</div>'
       + '<button onclick="quitterMonCoach()" style="width:100%;margin-top:10px;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Quitter mon coach</button>';
   } else {
@@ -21351,13 +21458,12 @@ function _maybeOnboarding() {
   // et le générateur se reproposait à chaque connexion sans programme.)
   if (!dernierAppData.onboarding_vu) { ouvrirOnboarding(); return; }
 }
-function ouvrirOnboarding() {
-  if (!athlete) return;
-  var hasCoach = !!(athlete && athlete.coach_id);
-  // 'nav' (slide statique « Où trouver quoi ») retiré : remplacé par la visite
-  // guidée contextuelle (nvTourAthlete) lancée à la fin de l'intro.
-  _onbSteps = hasCoach ? ['promesse', 'marche', 'diff', 'coachinfo'] : ['promesse', 'marche', 'diff', 'profil'];
-  _onbI = 0;
+// ── Onboarding partie 1 (07/11, maquette validée « Inscription et onboarding ») ──
+// Athlète (5 écrans) : ce que fait Novalyz · ta routine · qui fait ton programme ·
+// ta photo (facultatif) · pour aller plus loin (morpho, montre) → puis la visite (partie 2).
+// Coach (3 écrans, nouveau) : ce que Novalyz fait pour toi · ton premier athlète · ta photo.
+var _onbRole = 'a', _onbProg = null, _onbPremier = null, _onbCoachPendingTour = false;
+function _onbOverlay() {
   var ov = document.getElementById('onb-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -21368,64 +21474,139 @@ function ouvrirOnboarding() {
   }
   ov.style.display = 'flex';
   try { document.body.classList.add('onb-open'); } catch (e) {}   // masque la bulle « Demande à Novalyz »
+}
+function ouvrirOnboarding() {
+  if (!athlete) return;
+  _onbRole = 'a';
+  var aCoachDit = false; try { aCoachDit = localStorage.getItem('nv_onb_a_coach') === '1'; } catch (e) {}
+  _onbProg = (athlete && athlete.coach_id) || aCoachDit ? 'coach' : 'novalyz';
+  _onbSteps = ['ce', 'routine', 'prog', 'photo', 'plus'];
+  _onbI = 0;
+  _onbOverlay();
+  _onbRender();
+}
+function ouvrirOnboardingCoach() {
+  if (typeof coach === 'undefined' || !coach) return;
+  _onbRole = 'c'; _onbPremier = null;
+  _onbSteps = ['c_ce', 'c_premier', 'c_photo'];
+  _onbI = 0;
+  _onbOverlay();
   _onbRender();
 }
 function fermerOnboarding() { var ov = document.getElementById('onb-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('onb-open'); } catch (e) {} }
 function _onbNext() { if (_onbI < _onbSteps.length - 1) { _onbI++; _onbRender(); } }
 function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
-function _onbChoix(c) {
+function _onbSel(v) { if (_onbRole === 'c') _onbPremier = (_onbPremier === v ? null : v); else _onbProg = v; _onbRender(); }
+// Fin de la partie 1 athlète : applique le choix « qui fait ton programme ».
+function _onbTerminer() {
+  if (_onbRole === 'c') return _onbFiniCoach();
   _savePref('onboarding_vu', 1);
-  if (c === 'novalyz') { _onbPendingTour = true; fermerOnboarding(); ouvrirGenProgramme(); }
-  else if (c === 'mine') { _onbPendingTour = true; _savePref('prog_auto_off', 1); fermerOnboarding(); ouvrirConstruireProgramme(); }
-  else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
+  var lie = !!(athlete && athlete.coach_id);
+  if (_onbProg === 'novalyz' && !lie) { _onbPendingTour = true; fermerOnboarding(); ouvrirGenProgramme(); }
+  else if (_onbProg === 'mine' && !lie) { _onbPendingTour = true; _savePref('prog_auto_off', 1); fermerOnboarding(); ouvrirConstruireProgramme(); }
+  else if (_onbProg === 'coach' && !lie) { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
+  else _onbFini();
 }
-function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
+function _onbFini() {
+  if (_onbRole === 'c') return _onbFiniCoach();
+  _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450);
+}
+function _onbFiniCoach() {
+  _tourMark('onb_coach_vu'); fermerOnboarding();
+  if (_onbPremier) { _onbCoachPendingTour = true; try { ouvrirModalLierAthlete(); if (_onbPremier === 'creer') switchLierMode('creer'); } catch (e) {} }
+  else setTimeout(function () { nvTourCoach(); }, 450);
+}
+// Ouvre la morpho depuis l'onboarding (IA active) : onboarding marqué vu, visite plus tard.
+function _onbMorpho() { _savePref('onboarding_vu', 1); fermerOnboarding(); try { ouvrirMorpho(); } catch (e) {} }
 function _onbContent(step) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
-  var prenom = 'toi'; try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
+  var prenom = 'toi'; try { var nm = _onbRole === 'c' ? (coach && coach.nom) : (athlete && athlete.nom); if (nm) prenom = String(nm).trim().split(/\s+/)[0]; } catch (e) {}
   var login = (athlete && athlete.login) ? String(athlete.login) : '';
-  var big = function (emoji, titre, sous) { return '<div style="text-align:center;margin:auto 0"><div style="font-size:46px;margin-bottom:14px">' + emoji + '</div><h1 style="font-size:23px;margin:0 0 10px;line-height:1.2">' + titre + '</h1><div style="font-size:14.5px;color:var(--text-muted);line-height:1.5;max-width:420px;margin:0 auto">' + sous + '</div></div>'; };
-  var pt = function (n, t, s) { return '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;text-align:left"><span style="flex:none;width:26px;height:26px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center">' + n + '</span><div><div style="font-weight:800;font-size:14.5px">' + t + '</div><div style="font-size:13px;color:var(--text-muted);line-height:1.45">' + s + '</div></div></div>'; };
-  var nav = function (emoji, t, s) { return '<div style="display:flex;gap:11px;align-items:center;padding:11px 13px;background:var(--surface2);border-radius:12px;margin-bottom:8px;text-align:left"><span style="font-size:20px;flex:none">' + emoji + '</span><div><div style="font-weight:800;font-size:13.5px">' + t + '</div><div style="font-size:12px;color:var(--text-muted)">' + s + '</div></div></div>'; };
-  if (step === 'promesse') return { primary: 'Suivant', html: big('', 'Bienvenue, ' + esc(prenom), 'Novalyz, c\'est ton analyste d\'entraînement. Je te donne un cadre, je regarde comment tu l\'exécutes, et je te dis ce qui va et ce qui ne va pas.') };
-  if (step === 'marche') return { primary: 'Suivant', html: '<div style="margin:auto 0"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Comment ça marche</h1>' + pt('①', 'Un cadre', 'Un programme : séances, charges et cibles. Tu fais tes séances et tu notes ton ressenti.') + pt('②', 'Est-ce bien fait ?', 'Novalyz compare ce que tu réalises à tes cibles et te le dit clairement.') + pt('③', 'Quoi progresser', 'Tendances, alertes et une « Lecture Novalyz » qui t\'explique la suite.') + '</div>' };
-  if (step === 'diff') return { primary: 'Suivant', html: big('', 'Données + ressenti', 'Je ne regarde pas que les chiffres : je croise tes données ET ton ressenti pour décider avec toi, pas à ta place.') };
-  if (step === 'nav') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Où trouver quoi</h1>' + nav('🏠', 'Accueil', 'Ton « aujourd\'hui » : état du jour, séance, alertes.') + nav('🏋', 'Entraînement', 'Tes séances et ton programme.') + nav('', 'Analyses', 'Tes stats et la Lecture Novalyz.') + nav('❤', 'État', 'Ta récupération et ton bien-être.') + nav('', 'Conversation', 'Ton coach ou l\'assistant.') + '</div>' };
+  var big = function (emoji, titre, sous) { return '<div style="text-align:center;margin:auto 0">' + (emoji ? '<div style="font-size:46px;margin-bottom:14px">' + emoji + '</div>' : '') + '<h1 style="font-size:23px;margin:0 0 10px;line-height:1.2">' + titre + '</h1><div style="font-size:14.5px;color:var(--text-muted);line-height:1.5;max-width:420px;margin:0 auto">' + sous + '</div></div>'; };
+  var pt = function (n, t, s) { return '<div class="onb-li"><span class="onb-ic">' + n + '</span><div><div class="onb-li-t">' + t + '</div><div class="onb-li-s">' + s + '</div></div></div>'; };
+  var h1 = function (t, sous) { return '<h1 style="font-size:22px;margin:0 0 ' + (sous ? '6' : '16') + 'px;text-align:center;line-height:1.25">' + t + '</h1>' + (sous ? '<div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px;line-height:1.45">' + sous + '</div>' : ''); };
+  var choix = function (v, sel, t, s, ensuite) { return '<button type="button" class="onb-ch' + (sel === v ? ' on' : '') + '" onclick="_onbSel(\'' + v + '\')"><b>' + t + '</b><span>' + s + '</span>' + (ensuite ? '<span class="onb-then">→ ensuite : ' + ensuite + '</span>' : '') + '</button>'; };
+  var photoStep = function (cibleJs, url, nom, txt) {
+    return '<div style="margin:auto 0;text-align:center">' + h1('Ajoute ta photo')
+      + '<div style="display:flex;justify-content:center;margin-bottom:14px">' + _ppAvatarHtml(url, nom, 96) + '</div>'
+      + '<div style="font-size:13.5px;color:var(--text-muted);line-height:1.5;max-width:340px;margin:0 auto 16px">' + txt + '</div>'
+      + '<div class="onb-row2"><button type="button" class="onb-sec" onclick="photoProfilChoisir(\'gal\',' + cibleJs + ',function(){_onbRender()})">Galerie</button>'
+      + '<button type="button" class="onb-sec" onclick="photoProfilChoisir(\'cam\',' + cibleJs + ',function(){_onbRender()})">Appareil photo</button></div></div>';
+  };
+
+  // ── Athlète ──
+  if (step === 'ce') return { primary: 'Suivant', html: '<div style="margin:auto 0">'
+    + big('', 'Bienvenue, ' + esc(prenom), 'Novalyz transforme tes séances et ton ressenti en décisions.')
+    + '<div style="margin-top:22px">'
+    + pt('1', 'Comment t\'entraîner', 'un programme, une cible par série, la séance du jour')
+    + pt('2', 'Si c\'est bien fait', 'records, progrès, ce qui bloque et pourquoi')
+    + pt('3', 'Comment progresser', '3 actions par semaine, adaptées à ta forme')
+    + '</div></div>' };
+  if (step === 'routine') return { primary: 'Suivant', html: '<div style="margin:auto 0">' + h1('Ta routine, en 4 gestes')
+    + pt('☀', 'Chaque jour : 1 min de questionnaire', 'sommeil, fatigue, douleur → ton état du jour')
+    + pt('⏱', 'À chaque séance : tes séries', 'charge, reps, effort ; Novalyz te donne la cible')
+    + pt('📈', 'Quand tu veux : tes analyses', 'le verdict en clair, puis les chiffres')
+    + pt('⌚', 'Ta montre (facultatif)', 'pas, sommeil, FC au repos, sans rien saisir')
+    + '</div>' };
+  if (step === 'prog') {
+    if (athlete && athlete.coach_id) return { primary: 'Suivant', html: big('🤝', 'Ton coach fait ton programme', 'Il construit ton programme et suit tes analyses. Toi, tu fais tes séances et tu notes ton ressenti : Novalyz s\'occupe du reste.') };
+    return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%">' + h1('Qui fait ton programme ?')
+      + choix('novalyz', _onbProg, 'Novalyz me le construit', '3 questions (objectif, jours, matériel)', 'ton programme est prêt, tu peux le modifier')
+      + choix('mine', _onbProg, 'Je le fais moi-même', 'tu crées tes séances, ou tu fais des séances libres', 'l\'éditeur de programme')
+      + choix('coach', _onbProg, 'J\'ai un coach', 'il construit ton programme et suit tes analyses', 'ton login à lui donner')
+      + '<div style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:6px">Tu pourras changer plus tard.</div></div>' };
+  }
+  if (step === 'photo') {
+    var urlA = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.photo_url : null;
+    return { primary: urlA ? 'Suivant' : 'Plus tard', html: photoStep('{athlete_id:\'' + String(athlete.athlete_id).replace(/[^0-9A-Za-z_-]/g, '') + '\'}', urlA, athlete.nom,
+      'Ton coach te reconnaît d\'un coup d\'œil. Recadrée en carré, visible seulement par toi et ton coach.') };
+  }
+  if (step === 'plus') {
+    var ia = !!(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.recompenses && dernierAppData.recompenses.ia_active);
+    var promo = '<div class="onb-promo"><b>Découvre ta morpho : 3 photos + tes mesures</b>'
+      + '<span>Novalyz analyse ta silhouette (face, profil, dos) et la longueur de tes segments pour te dire quels muscles sont en avance ou en retard.</span>'
+      + (ia ? '<button type="button" class="onb-sec" style="margin-top:10px" onclick="_onbMorpho()">Faire mon analyse</button>' : '<span class="onb-soon">bientôt</span>') + '</div>';
+    return { primary: 'C\'est parti → visite de l\'app', onPrimary: '_onbTerminer()', html: '<div style="margin:auto 0;width:100%">' + h1('2 choses à essayer')
+      + promo + pt('⌚', 'Connecte ta montre', '2 minutes, guidé selon ta marque : Réglages ▸ Appareils ▸ Connecter ma montre') + '</div>' };
+  }
   if (step === 'coachinfo') {
-    var dejaLie = !!(athlete && athlete.coach_id);
-    if (dejaLie) return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: big('🤝', 'Tu es suivi par ton coach', 'Ton coach construit ton programme et suit tes analyses. Toi, tu fais tes séances et tu notes ton ressenti — Novalyz s\'occupe du reste.') };
     var loginBox = login
       ? '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:28px;letter-spacing:.12em;color:var(--accent);margin:4px 0 2px">' + esc(login) + '</div>'
       : '<div style="font-size:13px;font-weight:700;margin:4px 0 2px">Ton identifiant à 4 chiffres (celui avec lequel tu te connectes)</div>';
-    return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">'
-      + big('🤝', 'Relie-toi à ton coach', 'C\'est ton coach qui construit ton programme et suit tes analyses. Pour qu\'il te voie, il t\'envoie une demande que tu acceptes.')
+    return { primary: 'J\'ai compris → visite de l\'app', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">'
+      + big('🤝', 'Relie-toi à ton coach', 'Pour qu\'il te voie, il t\'envoie une demande que tu acceptes.')
       + '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted)">Donne ton login à ton coach :</div>' + loginBox + '</div>'
       + '<div style="margin-top:14px;text-align:left">'
       + pt('1', 'Envoie ce login à ton coach', 'Par message, en salle… c\'est tout ce dont il a besoin.')
-      + pt('2', 'Il t\'envoie une demande', 'Depuis son espace (« + Lier un athlète »), avec ton login. Tu l\'acceptes dans ton app.')
+      + pt('2', 'Il t\'envoie une demande', 'Depuis son espace (« + Lier un athlète »). Tu l\'acceptes dans ton app.')
       + pt('3', 'Ton programme arrive ici', 'Dès qu\'il te l\'a assigné, tu le retrouves dans Entraînement.')
       + '</div></div>' };
   }
-  // profil
-  var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer;font-family:inherit;color:var(--text)"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
-  return { html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 6px;text-align:center">Comment veux-tu être suivi ?</h1><div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px">Tu pourras changer d\'avis plus tard.</div>'
-    + card('novalyz', '', 'Novalyz me construit un programme', 'Réponds à 3 questions, Novalyz assemble un programme de départ adapté.')
-    + card('mine', '', 'Je gère mon programme moi-même', 'Tu crées (ou importes) tes propres séances. Novalyz ne te proposera plus de plan.')
-    + card('coach', '🤝', 'J\'ai un coach', 'C\'est ton coach qui te fait ton programme.')
-    // Annonce (non cliquable) : le programme selon la morphologie arrive après le test
-    // fermé (décision 29/10) → on le montre sans laisser croire qu'il existe déjà.
-    + '<div aria-disabled="true" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px dashed var(--border);background:var(--surface2);border-radius:15px;margin-bottom:10px;opacity:.75;cursor:default"><span style="font-size:24px;flex:none"></span><div style="flex:1"><div style="font-weight:800;font-size:15px">Programme selon ta morphologie</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">Analyse morpho par photos + programme personnalisé.</div></div><span style="flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-a12,rgba(26,95,255,.12));border-radius:999px;padding:4px 9px">Bientôt</span></div>'
+  // ── Coach ──
+  if (step === 'c_ce') return { primary: 'Suivant', html: '<div style="margin:auto 0">'
+    + big('', 'Bienvenue, ' + esc(prenom), 'Novalyz lit les données de tes athlètes et te dit qui a besoin de toi.')
+    + '<div style="margin-top:22px">'
+    + pt('!', 'Qui voir aujourd\'hui', 'fatigue, douleur, séances manquées, exercices bloqués')
+    + pt('?', 'Pourquoi ça bloque', 'une piste tirée de ses données, à lui proposer')
+    + pt('✎', 'Son programme', 'tu construis, Novalyz propose, tu décides')
+    + '</div></div>' };
+  if (step === 'c_premier') return { primary: _onbPremier ? 'Suivant' : 'Plus tard', html: '<div style="margin:auto 0;width:100%">' + h1('Ajoute ton premier athlète', 'Tu le feras à la fin de la visite.')
+    + choix('lier', _onbPremier, 'Il a déjà un compte', 'demande-lui son login à 4 chiffres → tu lui envoies une demande, il l\'accepte')
+    + choix('creer', _onbPremier, 'Je crée son compte', 'tu remplis son profil, il reçoit ses accès')
     + '</div>' };
+  if (step === 'c_photo') return { primary: 'C\'est parti → visite de l\'espace coach', onPrimary: '_onbFiniCoach()', html: photoStep('{coach_id:\'' + String(coach.coach_id).replace(/[^0-9A-Za-z_-]/g, '') + '\'}', coach.photo_url || null, coach.nom,
+    'Tes athlètes la voient dans leurs messages.') };
+  return { primary: 'Suivant', html: '' };
 }
 function _onbRender() {
   var inner = document.getElementById('onb-inner'); if (!inner) return;
   var step = _onbSteps[_onbI], c = _onbContent(step);
-  var dots = _onbSteps.map(function (s, i) { return '<span style="width:7px;height:7px;border-radius:999px;background:' + (i === _onbI ? 'var(--accent)' : 'var(--border)') + '"></span>'; }).join('');
-  var top = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-    + (_onbI > 0 && _onbSteps.length > 1 ? '<button onclick="_onbBack()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:0 6px 0 0">‹</button>' : '<span style="width:22px"></span>')
-    + '<div style="display:flex;gap:6px;align-items:center">' + dots + '</div>'
-    + '<button onclick="_onbFini()" style="background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;font-weight:600">Passer</button></div>';
-  var btn = c.primary ? '<button onclick="' + (c.onPrimary || '_onbNext()') + '" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">' + c.primary + '</button>' : '';
+  var dots = _onbSteps.length > 1 ? '<div class="onb-steps">' + _onbSteps.map(function (s, i) { return '<b' + (i <= _onbI ? ' class="on"' : '') + '></b>'; }).join('') + '</div>' : '';
+  var top = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">'
+    + (_onbI > 0 && _onbSteps.length > 1 ? '<button onclick="_onbBack()" aria-label="Retour" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:0 6px 0 0">‹</button>' : '<span style="width:22px"></span>')
+    + dots
+    + '<button onclick="' + (_onbRole === 'c' ? '_onbFiniCoach()' : '_onbFini()') + '" style="background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;font-weight:600">Passer</button></div>';
+  var btn = c.primary ? '<button class="onb-prim" onclick="' + (c.onPrimary || '_onbNext()') + '">' + c.primary + '</button>' : '';
   inner.innerHTML = top + '<div style="flex:1;display:flex;flex-direction:column">' + c.html + '</div>' + btn;
 }
 
@@ -21831,7 +22012,7 @@ function _nvgNavHtml(c) {
     var scr = String(c.scr || ''), sec = null, fiche = null;
     if (scr.indexOf('Fiche') === 0) {
       sec = 'equipe';
-      fiche = scr.indexOf('Aperçu') >= 0 ? 'overview' : scr.indexOf('Progression') >= 0 ? 'prog' : scr.indexOf('Séances') >= 0 ? 'seances' : scr.indexOf('Programme') >= 0 ? 'programme' : scr.indexOf('Conversation') >= 0 ? 'conseils' : scr.indexOf('IA') >= 0 ? 'ia' : 'overview';
+      fiche = scr.indexOf('Aperçu') >= 0 ? 'overview' : (scr.indexOf('Progression') >= 0 || scr.indexOf('Analyses') >= 0) ? 'prog' : scr.indexOf('Forme') >= 0 ? 'forme' : scr.indexOf('Séances') >= 0 ? 'seances' : scr.indexOf('Programme') >= 0 ? 'programme' : scr.indexOf('Conversation') >= 0 ? 'conseils' : scr.indexOf('IA') >= 0 ? 'ia' : 'overview';
     } else {
       sec = scr.indexOf('Aujourd') === 0 ? 'aujourdhui' : scr.indexOf('Équipe') === 0 ? 'equipe' : scr.indexOf('Analyses') === 0 ? 'analyses' : scr.indexOf('Messages') === 0 ? 'messages' : scr.indexOf('Profil') === 0 ? 'profil' : null;
     }
@@ -21839,13 +22020,13 @@ function _nvgNavHtml(c) {
     var strip = '<div class="nvg-strip">' + SEC.map(function (s) { return '<div class="nvg-tb' + (s[0] === sec ? ' on' : '') + '"><span class="e">' + s[1] + '</span>' + s[2] + '</div>'; }).join('') + '</div>';
     var subs = '';
     if (fiche) {
-      var SUB = [['overview', 'Aperçu'], ['prog', 'Progression'], ['seances', 'Séances'], ['programme', 'Programme'], ['conseils', 'Conversation'], ['ia', 'IA']];
+      var SUB = [['overview', 'Aperçu'], ['prog', 'Analyses'], ['seances', 'Séances'], ['programme', 'Programme'], ['forme', 'Forme'], ['conseils', 'Conversation']];
       subs = '<div class="nvg-crumb">Équipe › <b>Fiche athlète</b></div><div class="nvg-subs">' + SUB.map(function (su) { return '<span class="nvg-sub' + (su[0] === fiche ? ' on' : '') + '">' + su[1] + '</span>'; }).join('') + '</div>';
     }
     return { top: subs, strip: strip };
   }
   // Athlète : clé de nav déduite de l'icône de la carte.
-  var ICNAV = { home: 'accueil', dumb: 'seance', chart: 'historique', heart: 'etat', watch: 'reglages', body: 'conversation', gift: null };
+  var ICNAV = { home: 'accueil', dumb: 'seance', chart: 'historique', heart: 'etat', watch: 'reglages', gear: 'reglages', body: 'conversation', gift: null };
   var nav = c.nav || ICNAV[c.ic] || null;
   var TAB = [['accueil', '🏠', 'Auj.'], ['seance', '🏋️', 'Entraîn.'], ['historique', '📊', 'Analyses'], ['etat', '❤️', 'Forme'], ['conversation', '💬', 'Coach/IA'], ['reglages', '⚙️', 'Réglages']];
   return { top: '', strip: '<div class="nvg-strip">' + TAB.map(function (t) { return '<div class="nvg-tb' + (t[0] === nav ? ' on' : '') + '"><span class="e">' + t[1] + '</span>' + t[2] + '</div>'; }).join('') + '</div>' };
@@ -21920,60 +22101,61 @@ function _guideCoachFiche(subtab) {
   } catch (e) {}
 }
 // Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
-var _ONB_BT = '<span style="font-size:8px;font-weight:800;background:rgba(224,120,0,.14);color:#E07800;border-radius:5px;padding:1px 5px;margin-right:5px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle">Prochainement</span>';
+var _ONB_BT = '<span style="font-size:8px;font-weight:800;background:rgba(224,120,0,.14);color:#E07800;border-radius:5px;padding:1px 5px;margin-right:5px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle">Bientôt</span>';
+// Visite partie 2 (07/11) : inventaire complet, une carte par écran (maquette validée).
+// IA / morpho : badge « Bientôt » SEULEMENT si la clé IA n'est pas posée sur le serveur (ia_active).
+function _iaBadge(on) { return on ? '' : _ONB_BT; }
 function _guideAthleteCards() {
   var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  var ia = !!(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.recompenses && dernierAppData.recompenses.ia_active);
   var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
   return [
-    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton tableau de bord quotidien — tu reviens toujours ici.', go: aGo('accueil'),
-      feats: ['Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b> (reco qui change chaque jour)', 'Ta <b>séance du jour</b> à lancer en un geste', 'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>', 'Tes <b>badges &amp; récompenses</b>', _ONB_BT + 'Le bouton <b>« Demande à Novalyz »</b> (assistant IA)'] },
-    { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Ton programme et tes séances.', go: aGo('seance'),
-      feats: ['<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>', '<b>Démarre une séance</b> : saisie série par série (charge, reps, RPE) + <b>chrono de repos</b>',
-        hasCoach ? 'Ton <b>coach construit ton programme</b> : tu le suis et l’exécutes ici' : '<b>Crée ton programme</b> (séances, % du 1RM, RPE cible) ou laisse <b>Novalyz te le proposer</b> en 3 questions'] },
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Tous les jours : tu reviens toujours ici.', go: aGo('accueil'),
+      feats: ['Ton <b>état du jour</b> (prêt / vigilance) et pourquoi', 'Le <b>questionnaire</b> (1 min) et « ta normale »', 'Ta <b>séance du jour</b> à lancer', 'Depuis ta dernière séance : <b>records</b>, <b>progrès</b>, exercices <b>bloqués</b>',
+        '<b>Plan de la semaine</b> : 3 actions qui se cochent seules', '<b>Ma semaine</b> : séances prévues, faites, en séance libre, en plus', 'Régularité · montre · récompenses'] },
+    { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Tes séances.', go: aGo('seance'),
+      feats: [hasCoach ? 'Ton programme, construit par <b>ton coach</b>' : 'Ton programme : <b>Novalyz</b> te le construit, ou <b>tu le fais toi-même</b>',
+        '<b>Cible par série</b> + effort (RPE) + <b>chrono de repos</b>', 'Exercice <b>bloqué</b> : pas de +1 rep forcé, le levier à la place',
+        '<b>Séance libre</b> : Novalyz te demande « remplace laquelle ? »', 'Catalogue par <b>muscle et matériel</b> · enchaîner (biset, superset)', 'Agenda · cardio · Hyrox'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses', lead: 'Comprendre ce que disent tes données.', go: aGo('historique'),
-      feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Évolution</b> : charge, <b>force estimée</b>, volume, charge à viser, pourquoi ça bloque', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
-    { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton ressenti, croisé avec l’entraînement.', go: aGo('etat'),
-      feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Mes suivis</b> : <b>photos avant/après</b> + <b>mensurations</b> (taille, bras, % masse grasse…)', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
-    { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
-      feats: ['Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>', 'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…', 'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme'] },
-    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: hasCoach ? 'Ton coach &amp; l’IA' : 'Assistant IA &amp; analyse morpho',
-      lead: 'Tes analyses (verdict, tendances, « mot de Novalyz ») viennent du <b>moteur Novalyz</b> — ce n’est pas de l’IA, et c’est déjà actif. Ici, en plus :', go: aGo('conseils'),
-      feats: hasCoach
-        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', _ONB_BT + '<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', _ONB_BT + '<b>Analyse morpho par IA</b> : photos → groupes <b>en avance / en retard</b>']
-        : [_ONB_BT + '<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', _ONB_BT + '<b>Analyse morpho par IA</b> : photos → groupes <b>en avance / en retard</b>', 'Tu pourras <b>lier un coach</b> plus tard (messages, photos, vidéos)'] },
+      feats: ['<b>Résumé</b> : verdict, records, progrès, bloqué + <b>pourquoi + levier</b>', '<b>Force estimée</b> sur 6 semaines, fiabilité, volume par muscle, balance',
+        '<b>Évolution</b> : ce que Novalyz vise la prochaine fois', '<b>Tendances</b> : régularité, tonnage, exercices en progrès, fréquence', '<b>Historique</b> (« Changer » sur une séance libre) · Cardio · Croisé'] },
+    { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton corps et ton ressenti.', go: aGo('etat'),
+      feats: ['<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ressenti 7 j · charge &amp; fraîcheur · poids',
+        '<b>Montre</b> : « synchronisée à… », Actualiser, données « anciennes » signalées', 'Nutrition · photos &amp; mensurations · objectifs · douleurs &amp; blessures'] },
+    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: hasCoach ? 'Ton coach &amp; Novalyz IA' : 'Novalyz IA &amp; morpho', lead: 'Échanger.', go: aGo('conseils'),
+      feats: (hasCoach ? ['<b>Messagerie</b> avec ton coach (photos, vidéos)'] : ['Tu pourras <b>lier un coach</b> plus tard (Réglages ▸ Mon coach)'])
+        .concat([_iaBadge(ia) + '<b>Novalyz IA</b>, branchée sur tes données (jamais de chiffre inventé)', _iaBadge(ia) + '<b>Analyse morpho</b> : 3 photos + tes mesures de segments → muscles en avance / en retard']) },
+    { ic: 'gear', scr: 'Réglages', t: 'Réglages', lead: 'Ton compte.', go: aGo('reglages'),
+      feats: ['Profil (sexe, années, zones prioritaires) et <b>photo</b>', 'Coach lié · e-mail · <b>rapport par e-mail</b>', '<b>Connecter / changer ma montre</b> (guidé par marque), import de fichiers', 'Export / suppression des données · revoir la visite'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
-      feats: ['Suivi · forme · montre · analyses de base + <b>export de tes données</b> : gratuit', 'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium', 'Programme &amp; analyse morpho IA, analyses avancées : <b>Premium</b>', '<b>Rapports automatiques</b> (ton bilan envoyé par e-mail) : <b>Premium</b>'] }
+      feats: ['Suivi · forme · montre · analyses + <b>export de tes données</b> : gratuit', 'Novalyz IA : <b>3 questions / jour</b> gratuites, illimité en Premium', 'Analyse morpho, programme avancé, <b>rapports automatiques</b> : <b>Premium</b>'] }
   ];
 }
-// Deck COACH (détaillé).
+// Deck COACH (inventaire complet, 9 cartes).
 function _guideCoachCards() {
   var G = function (s) { return function () { _guideCoachGo(s); }; };
   var F = function (sub) { return function () { _guideCoachFiche(sub); }; };
+  var ia = !!(typeof coach !== 'undefined' && coach && coach.ia_active);
   return [
-    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton point de départ chaque jour : qui a besoin de toi.', go: G('aujourdhui'),
-      feats: ['<b>Briefing équipe</b> : % à jour, athlètes à voir', '<b>Qui a répondu</b> au questionnaire bien-être (7 j) + relance', '<b>À surveiller</b> : athlètes triés par priorité + motif', '<b>Messages non lus</b> en un coup d’œil'] },
-    { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Tout ton effectif.', go: G('equipe'),
-      feats: ['Statut, niveau, <b>assiduité</b>, dernière séance par athlète', '<b>Enregistrer un athlète</b> : invitation ou création du compte', 'Clique une ligne pour <b>ouvrir sa fiche</b>'] },
-    { ic: 'folder', scr: 'Fiche ▸ Aperçu', t: 'Fiche athlète ▸ Aperçu', lead: 'Le résumé qui parle AU COACH.', go: F('overview'),
-      feats: ['<b>Coup d’œil</b> : entraînement (charge · reps · RPE) + état du jour', '<b>Lecture Novalyz pour le coach</b> en tête (analyse + reco)', 'Cartes : récup, charge &amp; assiduité, montre, poids · <b>agenda</b> à droite', '<b>Objectifs</b> &amp; <b>blessures</b> · <b>Export du bilan</b> client'] },
-    { ic: 'chart', scr: 'Fiche ▸ Progression', t: 'Fiche ▸ Progression', lead: 'Ses analyses dans le temps.', go: F('prog'),
-      feats: ['<b>Évolution</b> &amp; <b>Tendances</b> (muscu + cardio), sélecteur de période', '<b>Agenda daté</b> dans la colonne de droite', '<b>Photo &amp; mensurations</b> du client'] },
-    { ic: 'clip', scr: 'Fiche ▸ Séances', t: 'Fiche ▸ Séances', lead: 'Ce qu’il a réellement fait.', go: F('seances'),
-      feats: ['<b>Historique</b> des séances réalisées', '<b>Détail par exercice</b> : séries · charges · reps · <b>RPE</b>', '<b>Dernière séance</b> mise en repère · « charger plus »'] },
-    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Fiche ▸ Programme', lead: 'Construis et planifie ses séances.', go: F('programme'),
-      feats: ['<b>Builder</b> : charges en % du 1RM, <b>RPE cible</b>, groupé par muscle', '<b>Agenda daté</b> : planifie semaine par semaine, <b>glisser-déposer</b>', '<b>Jour conseillé</b> directement sur la séance', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
-    { ic: 'chat', scr: 'Fiche ▸ Conversation', t: 'Fiche ▸ Conversation', lead: 'Échange direct avec l’athlète.', go: F('conseils'),
-      feats: ['<b>Messages, photos, vidéos</b> (technique) + <b>caméra en direct</b>', '<b>Répondre aux alertes</b> de la semaine · <b>Marquer traité</b>', 'Conseils envoyés depuis l’analyse'] },
-    { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
-      feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
-    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Toutes tes conversations.', go: G('messages'),
-      feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
-    { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
-      feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
-    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'IA coach &amp; analyse morpho', go: F('overview'), hi: '#cd-ia-card', lead: 'Ce bloc, sur la fiche de chaque athlète. L’<b>analyse des données</b> (état, vigilance, risque de surcharge) est faite par le <b>moteur Novalyz</b> — pas de l’IA, déjà active. En plus, deux briques <b>IA</b> arrivent :',
-      feats: [_ONB_BT + '<b>Assistant IA coach</b> : demande une analyse, une priorité de travail ou un avis sur le risque — réponse appuyée sur les données de l’athlète (jamais de chiffre inventé)', _ONB_BT + '<b>Analyse morpho-anatomique par IA</b> : photos → groupes <b>en avance / en retard</b>'] },
-    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
-      feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton cockpit : qui a besoin de toi.', go: G('aujourdhui'),
+      feats: ['<b>Briefing équipe</b> · <b>qui a répondu</b> au questionnaire', '<b>À surveiller</b>, par priorité, avec le motif', 'Entraînement à regarder · <b>messages non lus</b>'] },
+    { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Ton effectif.', go: G('equipe'),
+      feats: ['État, niveau, assiduité, plan de la semaine', '<b>Lier</b> un athlète (son login à 4 chiffres) ou <b>créer</b> son compte', 'Clique une ligne pour ouvrir sa fiche'] },
+    { ic: 'folder', scr: 'Fiche ▸ Aperçu', t: 'Fiche ▸ Aperçu', lead: 'Décider.', go: F('overview'),
+      feats: ['État du jour · <b>À décider</b> : la piste trouvée dans ses données + les actions', 'Alertes · entraînement · séries 7 j · prochaine séance · charge &amp; assiduité', '<b>Saisir sa séance en présentiel</b> · contexte (déload, reprise)'] },
+    { ic: 'chart', scr: 'Fiche ▸ Analyses', t: 'Fiche ▸ Analyses', lead: 'Comprendre.', go: F('prog'),
+      feats: ['Ses analyses, écrites pour toi (ton coach)', 'Sur ordinateur : <b>pourquoi ça bloque</b> reste visible à droite'] },
+    { ic: 'clip', scr: 'Fiche ▸ Séances', t: 'Fiche ▸ Séances', lead: 'Ce qu’il a fait.', go: F('seances'),
+      feats: ['Détail série par série, bilan, douleur', 'Séance libre : <b>« remplace quelle séance ? »</b> (tu peux corriger)'] },
+    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Fiche ▸ Programme', lead: 'Construire.', go: F('programme'),
+      feats: ['Builder, agenda, <b>Planifier la semaine</b>', '<b>Novalyz propose</b>, tu décides (qui a la main)', '<b>Créer un exercice</b> s’il manque au catalogue'] },
+    { ic: 'heart', scr: 'Fiche ▸ Forme', t: 'Fiche ▸ Forme', lead: 'Son corps (onglet sur mobile).', go: F('forme'),
+      feats: ['Récupération, sommeil, FC, pas, nutrition', 'Montre : fraîcheur des données (« ancien » si plus de 2 jours)', _iaBadge(ia) + '<b>Novalyz IA</b> et <b>analyse morpho</b> sur la fiche'] },
+    { ic: 'chat', scr: 'Analyses · Messages', t: 'Analyses équipe · Messages', lead: 'Toute l’équipe.', go: G('analyses'),
+      feats: ['Assiduité, douleurs, progression, volume par muscle, charge', 'Messages : filtres, <b>message à plusieurs</b>, photos et vidéos'] },
+    { ic: 'gift', scr: 'Profil', t: 'Profil · Gratuit / Premium', lead: 'Ton espace coach.', go: G('profil'),
+      feats: ['Notifications, groupes, export, <b>photo</b> · revoir la visite', 'Cockpit · suivi d’équipe · fiches : gratuit', 'Novalyz IA : <b>3 questions / jour</b>, illimité en Premium · plus d’athlètes, rapports : <b>Premium</b>'] }
   ];
 }
 function _stepsAthlete() {
@@ -22061,6 +22243,8 @@ function _maybeCoachTour() {
   if (!document.body.classList.contains('coach-active')) return;
   if (document.body.classList.contains('athlete-selected')) return;
   _coachTourTried = true;
+  // 07/11 : nouveau coach → partie 1 (3 écrans) d'abord, qui lance la visite à la fin.
+  if (!_tourSeen('onb_coach_vu')) { setTimeout(function () { ouvrirOnboardingCoach(); }, 500); return; }
   setTimeout(function () { if (document.body.classList.contains('coach-active') && !document.body.classList.contains('athlete-selected')) nvTourCoach(); }, 700);
 }
 

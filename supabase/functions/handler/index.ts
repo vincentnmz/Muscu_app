@@ -2986,6 +2986,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     pas_quotidiens,
     sante_historique,
     montre_sync,
+    ...(await (async () => {   // 07/11 : photo de profil (la sienne + celle de son coach)
+      const pa = _avatarPath('a', String(athleteId)), cId = String((athData as any)?.coach_id || '')
+      const pc = cId ? _avatarPath('c', cId) : ''
+      const u = await _avatarUrls([pa, pc])
+      return { photo_url: u[pa] || null, coach_photo_url: pc ? (u[pc] || null) : null }
+    })()),
     nutri_historique,
     mensurations,
     suivi_photos,
@@ -3147,6 +3153,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     } catch (_) { /* repli ancien calcul */ }
   }))
 
+  const avatars = await _avatarUrls(athletes.map(a => _avatarPath('a', String(a.id))))   // 07/11 photo de profil
   const result = athletes.map(ath => {
     const perfs = (perfsAll || []).filter(r => r.athlete_id === ath.id)
     const pauses = (pauseAll || []).filter(r => r.athlete_id === ath.id)
@@ -3159,6 +3166,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     const strategieA = ath.strategie || (sportA === 'muscu' ? getStrategieFromAnnees(anneesA) : '')
     return {
       athlete_id: String(ath.id), id: ath.id, nom: ath.nom, sport: sportA, en_pause: enPause,
+      photo_url: avatars[_avatarPath('a', String(ath.id))] || null,
       derniere_seance: dates.length ? fmtFR(dates[dates.length - 1]) : null,
       annees_pratique: anneesA,                         // ← rétabli (perdu à la migration) : pilote le niveau côté coach
       niveau: getNiveauExperience(anneesA),
@@ -3168,7 +3176,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     }
   })
 
-  return jsonResp({ ok: true, athletes: result })
+  return jsonResp({ ok: true, athletes: result, ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') })
 }
 
 async function handleGetCommentaires(params: URLSearchParams): Promise<Response> {
@@ -5937,6 +5945,49 @@ async function handleEnvoyerMediaCoach(body: any): Promise<Response> {
   return jsonResp({ success: true, id: comment_id, media_type, media_url })
 }
 
+// ── Photo de profil (07/11) — athlète ET coach, bucket PRIVÉ 'suivi-photos' ─────
+// Chemin FIXE par personne (pas de colonne en base) : athlète « <id>/avatar.jpg » (supprimée
+// avec son dossier à la suppression du compte), coach « coachs/<id>/avatar.jpg ».
+// Lecture : URL signée (2 h). Écriture : URL d'upload signée en upsert (remplace l'ancienne).
+// Droits : authCheck (athlète = la sienne ; coach = la sienne ou celle d'un athlète LIÉ).
+const _avatarPath = (role: 'a' | 'c', id: string) => role === 'a' ? `${id}/avatar.jpg` : `coachs/${id}/avatar.jpg`
+async function _avatarUrls(paths: string[]): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  const ps = paths.filter(Boolean)
+  if (!ps.length) return out
+  try {
+    const { data } = await sb().storage.from('suivi-photos').createSignedUrls(ps, 7200)
+    ;(data || []).forEach((s: any, i: number) => { if (s && s.signedUrl && !s.error) out[ps[i]] = s.signedUrl })
+  } catch (_) { /* pas de photo / bucket absent : best-effort */ }
+  return out
+}
+function _avatarCible(body: any): { role: 'a' | 'c'; id: string } | null {
+  if (body.athlete_id) return { role: 'a', id: String(body.athlete_id) }
+  if (body.coach_id) return { role: 'c', id: String(body.coach_id) }
+  return null
+}
+async function handlePhotoProfilUploadUrl(body: any): Promise<Response> {
+  const c = _avatarCible(body)
+  if (!c) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const path = _avatarPath(c.role, c.id)
+  const { data, error } = await sb().storage.from('suivi-photos').createSignedUploadUrl(path, { upsert: true })
+  if (error || !data) return jsonResp({ success: false, error: (error && error.message) || 'upload-url' })
+  return jsonResp({ success: true, path: data.path, signedUrl: data.signedUrl })
+}
+async function handlePhotoProfil(body: any): Promise<Response> {
+  const c = _avatarCible(body)
+  if (!c) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const p = _avatarPath(c.role, c.id)
+  const u = await _avatarUrls([p])
+  return jsonResp({ success: true, url: u[p] || null })
+}
+async function handleSupprimerPhotoProfil(body: any): Promise<Response> {
+  const c = _avatarCible(body)
+  if (!c) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  try { await sb().storage.from('suivi-photos').remove([_avatarPath(c.role, c.id)]) } catch (_) {}
+  return jsonResp({ success: true })
+}
+
 // ── Suivi corps (N3) : mensurations (indicateurs) + photos (bucket 'suivi-photos') ─
 // Saisie PAR L'ATHLÈTE ; le coach consulte via getAppData. Mensurations en cm
 // (masse_grasse en %), 1 ligne/mesure/date. Photos : upload signé direct → Storage.
@@ -7637,6 +7688,9 @@ Deno.serve(async (req: Request) => {
         case 'login':                    return withSession(await handleLogin(new URLSearchParams({ login: body.login, password: body.password })), 'a')
         case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: body.annees == null ? '' : String(body.annees), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '', sexe: body.sexe || '' })), 'a')
         case 'loginDispo':               return handleLoginDispo(body)
+        case 'photoProfilUploadUrl':     return handlePhotoProfilUploadUrl(body)
+        case 'photoProfil':              return handlePhotoProfil(body)
+        case 'supprimerPhotoProfil':     return handleSupprimerPhotoProfil(body)
         case 'registerCoach':            return withSession(await handleRegisterCoach(body), 'c')
         case 'seedDemoFoot':             return handleSeedDemoFoot(body)
         case 'clearDemoFoot':            return handleClearDemoFoot(body)

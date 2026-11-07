@@ -385,6 +385,10 @@
     </div><!-- /.nv-login-body -->
   </div>
 
+  <!-- Photo de profil (07/11) : entrées fichier partagées (athlète, coach, onboarding) -->
+  <input type="file" id="pp-input-gal" accept="image/*" style="display:none" onchange="_ppChoisi(this)">
+  <input type="file" id="pp-input-cam" accept="image/*" capture="user" style="display:none" onchange="_ppChoisi(this)">
+
   <!-- MODAL Confidentialité / RGPD -->
   <div id="modal-confidentialite" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px;">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:22px;">
@@ -2063,6 +2067,7 @@
         <!-- Profil -->
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Profil</h2></div>
         <div class="card">
+          <div class="pp-row" id="pp-athlete"></div>
           <label>Nom affiché <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">— vu par ton coach</span></label>
           <input type="text" id="prof-prenom" placeholder="Ton nom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
           <div style="display:flex;gap:8px;margin-top:8px;">
@@ -3147,6 +3152,7 @@
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Profil coach</div>
       <div class="card" style="padding:14px 16px;margin:0;">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="coach-reglages-nom">—</div>
+        <div class="pp-row" id="pp-coach"></div>
         <label>Nom affiché</label>
         <input type="text" id="coach-prof-nom" placeholder="Ton nom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
         <label style="display:block;margin-top:8px;">Email <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">(récupération + notifs)</span></label>

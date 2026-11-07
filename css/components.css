@@ -1443,3 +1443,37 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 
 /* 07/11 — fiche coach ▸ Analyses (ordi) : diagnostic dans la colonne de droite, collant */
 @media (min-width:992px){ #tab-historique .ma-colrail.ma-rail-colle{position:sticky;top:112px;align-self:start} #tab-historique .ma-diag-rail > div{margin-top:0!important} }
+
+/* Photo de profil (07/11) */
+.pp-row { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+.pp-row:empty { display:none; }
+.pp-av { flex:none; border-radius:999px; overflow:hidden; background:var(--accent-a12, rgba(26,95,255,.12)); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; }
+.pp-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.pp-act { flex:1; min-width:0; }
+.pp-t { font-weight:800; font-size:14px; }
+.pp-s { font-size:11.5px; color:var(--text-muted); margin:2px 0 8px; }
+.pp-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.pp-btns button { border:1px solid var(--border); background:var(--surface2); color:var(--accent); border-radius:9px; padding:7px 10px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.pp-btns button.pp-del { color:var(--danger); }
+
+/* Onboarding partie 1 (07/11) */
+.onb-steps { display:flex; gap:5px; flex:1; max-width:220px; }
+.onb-steps b { flex:1; height:4px; border-radius:2px; background:var(--border); }
+.onb-steps b.on { background:var(--accent); }
+.onb-li { display:flex; gap:12px; align-items:flex-start; margin-bottom:13px; text-align:left; }
+.onb-ic { flex:none; width:30px; height:30px; border-radius:10px; background:var(--accent-a12, rgba(26,95,255,.12)); color:var(--accent); font-weight:800; font-size:14px; display:grid; place-items:center; }
+.onb-li-t { font-weight:800; font-size:14.5px; }
+.onb-li-s { font-size:13px; color:var(--text-muted); line-height:1.45; }
+.onb-ch { display:block; width:100%; text-align:left; padding:14px 15px; border:1.5px solid var(--border); background:var(--surface); border-radius:15px; margin-bottom:10px; cursor:pointer; font:inherit; color:var(--text); }
+.onb-ch b { display:block; font-size:15px; font-weight:800; }
+.onb-ch span { display:block; font-size:12.5px; color:var(--text-muted); margin-top:3px; line-height:1.4; }
+.onb-ch .onb-then { color:var(--accent); font-weight:700; margin-top:6px; }
+.onb-ch.on { border-color:var(--accent); background:var(--accent-a12, rgba(26,95,255,.08)); box-shadow:0 0 0 1px var(--accent) inset; }
+.onb-prim { width:100%; margin-top:16px; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--on-accent, #fff); font:inherit; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 6px 18px rgba(26,95,255,.3); }
+.onb-row2 { display:flex; gap:8px; }
+.onb-sec { flex:1; padding:12px; border:1px solid var(--border); background:var(--surface2); color:var(--accent); border-radius:12px; font:inherit; font-size:13.5px; font-weight:800; cursor:pointer; }
+.onb-promo { position:relative; padding:15px; border-radius:15px; margin-bottom:14px; background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.12)); border:1px solid rgba(124,92,255,.25); }
+.onb-promo b { display:block; font-size:15px; font-weight:800; margin-bottom:4px; padding-right:62px; }
+.onb-promo span { display:block; font-size:12.5px; color:var(--text-muted); line-height:1.45; }
+.onb-promo .onb-soon { position:absolute; top:13px; right:12px; display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); background:var(--accent-a12, rgba(26,95,255,.12)); border-radius:999px; padding:4px 9px; }
+.onb-promo .onb-sec { width:100%; }
