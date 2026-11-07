@@ -22072,6 +22072,7 @@ function nvGuideEnd() {
   _nvgClearNav(); _nvgClearSpot();
   if (_nvg.key) _tourMark(_nvg.key);
   try { _demoFermer(); } catch (e) {}
+  try { _demoEquipe(false); } catch (e) {}
   // 07/11 : parcours d'arrivée = onboarding → programme → visite → questionnaire du jour (1×/jour, pas pour le coach).
   // Montre choisie à l'onboarding (écran 5) → parcours montre d'abord, le questionnaire viendra au prochain chargement.
   if (_nvg.role === 'ath' && _onbMontre) { _onbMontre = false; setTimeout(function () { try { ouvrirConnexionMontre(); } catch (e) {} }, 500); return; }
@@ -22222,6 +22223,10 @@ var _nvgLiftT = null;
 // de piège pendant la visite).
 function _guideCoachGo(sec) {
   try { _demoFermer(); } catch (e) {}   // carte hors fiche : on quitte la fiche « Exemple »
+  if (sec !== 'analyses') { try { _demoEquipe(false); } catch (e) {} }
+  // 07/11 : après la fermeture d'une fiche (barre du bas masquée pendant la fiche), la surbrillance
+  // de l'onglet était calculée trop tôt → on la recalcule une fois la vraie nav posée.
+  [350, 900].forEach(function (t) { setTimeout(function () { try { if (document.getElementById('nvg-ov')) _nvgLiftNav(); } catch (e) {} }, t); });
   var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
   // On délègue à la VRAIE nav : elle ouvre réellement l'écran (y compris Messages /
   // Profil) ET allume le bon item du rail / bandeau → l'écran derrière correspond à
@@ -22285,6 +22290,40 @@ function _demoFermer() {
   try { retourListeAthletesCoach(); } catch (e) {}
   try { var b = document.getElementById('demo-bandeau'); if (b) b.remove(); } catch (e) {}
 }
+// Analyses équipe dans la visite d'un coach SANS athlète (07/11) : l'équipe est remplie avec « Léo Exemple »
+// le temps de la carte (mêmes calculs que la vraie équipe, données fictives servies en local), puis vidée.
+var _demoEquipeOn = false;
+function _demoEquipe(on) {
+  try {
+    if (on) {
+      if (_demoEquipeOn || (athletesCoach && athletesCoach.length)) return;
+      _demoEquipeOn = true; athletesCoach = [_DEMO_ATH];
+      var hb = document.getElementById('coach-home-body'); if (hb) hb.style.display = '';
+      var le = document.getElementById('liste-athletes-coach'); if (le) le.style.display = 'none';
+      _demoBandeauEquipe(true);
+      renderCoachSynthese([_DEMO_ATH]).then(function () {
+        try { coachBandeauApply(); } catch (e) {} try { if (_coachDeskAny()) renderCoachDesktop(); } catch (e) {}
+        try { if (document.getElementById('nvg-ov')) _nvgLiftNav(); } catch (e) {}
+      }, function () {});
+    } else if (_demoEquipeOn) {
+      _demoEquipeOn = false; athletesCoach = [];
+      try { delete _coachSynthCache[_DEMO_ID]; } catch (e) {}
+      _demoBandeauEquipe(false);
+      var hb2 = document.getElementById('coach-home-body'); if (hb2) hb2.style.display = 'none';
+      var le2 = document.getElementById('liste-athletes-coach'); if (le2) le2.style.display = '';
+      try { renderCoachSynthese([]); } catch (e) {}
+      try { _coachDeskStore([], [], [], { total: 0, surveiller: 0, intervention: 0, absents: 0, aVoir: 0, pctAJour: 0 }); } catch (e) {}
+    }
+  } catch (e) {}
+}
+function _demoBandeauEquipe(on) {
+  var ex = document.getElementById('demo-bandeau');
+  if (!on) { if (ex && !_demoActif()) ex.remove(); return; }
+  if (ex) return;
+  var b = document.createElement('div'); b.id = 'demo-bandeau'; b.className = 'demo-bandeau';
+  b.innerHTML = '<b>Exemple · données fictives</b><span>Ton équipe apparaîtra quand tu auras lié un athlète.</span>';
+  document.body.appendChild(b);
+}
 function _guideCoachFiche(subtab) {
   try {
     if (document.body.classList.contains('athlete-selected')) {
@@ -22295,7 +22334,7 @@ function _guideCoachFiche(subtab) {
     }
     var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
     // 07/11 : coach sans athlète → fiche « Exemple » (données fictives) au lieu de rester sur Équipe.
-    if (!a) a = _DEMO_ATH;
+    if (!a || a === _DEMO_ATH) { try { _demoEquipe(false); } catch (e) {} a = _DEMO_ATH; }
     if (a) { Promise.resolve(ouvrirDetailAthleteCoach(a, subtab)).then(function () { _demoBandeau(); }, function () {}); _demoBandeau(); }
   } catch (e) {}
 }
@@ -22351,7 +22390,7 @@ function _guideCoachCards() {
       feats: ['Builder, agenda, <b>Planifier la semaine</b>', '<b>Novalyz propose</b>, tu décides (qui a la main)', '<b>Créer un exercice</b> s’il manque au catalogue'] },
     { ic: 'heart', scr: 'Fiche ▸ Forme', t: 'Fiche ▸ Forme', lead: 'Son corps (onglet sur mobile).', go: F('forme'),
       feats: ['Récupération, sommeil, FC, pas, nutrition', 'Montre : fraîcheur des données (« ancien » si plus de 2 jours)', _iaBadge(ia) + '<b>Novalyz IA</b> et <b>analyse morpho</b> sur la fiche'] },
-    { ic: 'chat', scr: 'Analyses · Messages', t: 'Analyses équipe · Messages', lead: 'Toute l’équipe.', go: G('analyses'),
+    { ic: 'chat', scr: 'Analyses · Messages', t: 'Analyses équipe · Messages', lead: 'Toute l’équipe.', go: function () { _guideCoachGo('analyses'); _demoEquipe(true); },
       feats: ['Assiduité, douleurs, progression, volume par muscle, charge', 'Messages : filtres, <b>message à plusieurs</b>, photos et vidéos'] },
     { ic: 'gift', scr: 'Profil', t: 'Profil · Gratuit / Premium', lead: 'Ton espace coach.', go: G('profil'),
       feats: ['Notifications, groupes, export, <b>photo</b> · revoir la visite', 'Cockpit · suivi d’équipe · fiches : gratuit', 'Novalyz IA : <b>3 questions / jour</b>, illimité en Premium · plus d’athlètes, rapports : <b>Premium</b>'] }
