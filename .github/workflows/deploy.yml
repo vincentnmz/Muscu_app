@@ -41,6 +41,9 @@ jobs:
             DEST=gh-pages/dev
           fi
           mkdir -p "$DEST"
+          # Domaine perso (07/11) : app.novalyz.fr (DNS OVH : CNAME app → vincentnmz.github.io).
+          # Le fichier CNAME à la racine de gh-pages fixe le domaine (l'ancienne adresse github.io y redirige).
+          echo "app.novalyz.fr" > gh-pages/CNAME
           # Fichiers racine de la coquille
           cp index.html manifest.json sw.js privacy.html "$DEST"/ 2>/dev/null || true
           cp "logo novalyz.png" "$DEST"/ 2>/dev/null || true

@@ -43,7 +43,7 @@ function loadBackend(store, fetchImpl, logs) {
   let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
   js = js.split('\n').filter(l => !/^import\s/.test(l)).join('\n');
   js += '\n;this.__api = { handleRequestPasswordReset, handleResetPassword, handleChangePassword, handleCoachResetAthlete, handleLogin, handleRegister, sha256hex, hashSalted, verifyPwd };';
-  const env = { RESEND_API_KEY: KEY, APP_BASE_URL: 'https://vincentnmz.github.io/Muscu_app/dev/', PEPPER: 'test-pepper' };
+  const env = { RESEND_API_KEY: KEY, APP_BASE_URL: 'https://app.novalyz.fr/dev/', PEPPER: 'test-pepper' };
   const sandbox = {
     createClient: () => makeEngine(store),
     webpush: { setVapidDetails() {}, sendNotification: async () => {} },

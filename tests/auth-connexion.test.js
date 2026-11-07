@@ -50,7 +50,7 @@ const lien = (html, p) => { const m = html.match(new RegExp('[?&]' + p + '=([^"&
   eq(reg.success && m.to && m.to[0] === 'zoe@x.fr' && /4821/.test(m.html), 'C9 : mail de bienvenue avec le login', m.subject);
   eq(!/MonMotDePasse9/.test(m.html || ''), 'C9 : le mot de passe n\'est JAMAIS dans le mail');
   eq(/mail-header\.png/.test(m.html || '') && /Confirmer mon adresse/.test(m.html || ''), 'C9/C10 : en-tête image + bouton « Confirmer mon adresse »');
-  eq(/^https:\/\/vincentnmz\.github\.io\/Muscu_app\/\?confirm_email=/.test((m.html || '').match(/href="([^"]+confirm_email[^"]+)"/)?.[1] || ''), 'C2 : lien vers la prod (pas /dev/)');
+  eq(/^https:\/\/app\.novalyz\.fr\/\?confirm_email=/.test((m.html || '').match(/href="([^"]+confirm_email[^"]+)"/)?.[1] || ''), 'C2 : lien vers la prod (pas /dev/)');
   const tokC = lien(m.html || '', 'confirm_email');
   eq((await J(A.handleConfirmerEmail({ token: tokC }))).success === true && store.athletes.find(a => a.login === '4821').email_verifie === true, 'C9 : le lien confirme l\'adresse');
   eq(!(await J(A.handleConfirmerEmail({ token: tokC.slice(0, -2) + 'xx' }))).success, 'C9 : lien falsifié refusé');
