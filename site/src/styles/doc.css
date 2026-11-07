@@ -7,6 +7,6 @@
 .doc p + p { margin-top: 10px; }
 .doc ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .doc b { color: var(--fg); }
-.doc a { color: var(--blue); }
+.doc a { color: var(--accent); }
 .doc .maj { font-size: 14px; color: var(--muted); margin-bottom: var(--s6); }
 .doc .a-completer { background: rgba(232,121,43,.16); color: #B4520F; padding: 1px 6px; border-radius: 4px; font-weight: 700; }

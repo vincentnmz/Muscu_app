@@ -8,7 +8,7 @@ const logoBlanc = logo.replace(/#070B14/g, 'currentColor').replace('<svg', '<svg
     <a href="/" class="logo" aria-label="Novalyz, accueil" set:html={logoBlanc} />
     <nav aria-label="Navigation principale">
       <a href="/#comment">Comment ça marche</a>
-      <a href="/coachs-et-structures">Coachs &amp; structures</a>
+      <a href="/coachs-et-structures/">Coachs &amp; structures</a>
       <a href="/#vision">Vision</a>
       {ctaPrincipal.visible && <a class="cta" href={ctaPrincipal.lien}>{ctaPrincipal.texte}</a>}
     </nav>

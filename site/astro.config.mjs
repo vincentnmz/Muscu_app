@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 // Français à la racine, anglais prévu sous /en/ (pas encore traduit).
 export default defineConfig({
   site: 'https://www.novalyz.com',
-  trailingSlash: 'ignore',
+  trailingSlash: 'always',
   i18n: { defaultLocale: 'fr', locales: ['fr', 'en'], routing: { prefixDefaultLocale: false } },
   integrations: [sitemap()],
   build: { format: 'directory' },

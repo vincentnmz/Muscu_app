@@ -13,7 +13,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
 <Base title={title} description={description}>
 
   <!-- HERO -->
-  <section class="hero" aria-labelledby="h-hero">
+  <section class="hero on-dark" aria-labelledby="h-hero">
     <div class="wrap hero-grid">
       <div class="hero-txt">
         <p class="eyebrow">Plateforme de performance sportive · bêta</p>
@@ -75,7 +75,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
       <div class="chap-vis"><Phone src="/captures/questionnaire.webp" alt="Questionnaire du matin de Novalyz : qualité du sommeil, fatigue générale, stress, courbatures." tilt={2} /></div>
     </article>
 
-    <article class="chap chap-dark" aria-labelledby="h-comprendre" data-anim="chap">
+    <article class="chap chap-dark on-dark" aria-labelledby="h-comprendre" data-anim="chap">
       <div class="wrap chap-in">
         <div class="chap-txt">
           <p class="chap-n"><span>02</span> Comprendre</p>
@@ -90,7 +90,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
       </div>
     </article>
 
-    <article class="chap chap-dark chap-prog" aria-labelledby="h-progresser" data-anim="chap">
+    <article class="chap chap-dark chap-prog on-dark" aria-labelledby="h-progresser" data-anim="chap">
       <div class="wrap chap-in">
         <div class="chap-txt">
           <p class="chap-n"><span>03</span> Progresser</p>
@@ -146,7 +146,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
         <li><b>Ton coach, si tu le choisis</b><span>Un coach ne suit ton compte que si tu acceptes sa demande. Tu peux le quitter quand tu veux.</span></li>
         <li><b>Export et suppression</b><span>Tu exportes tes données ou supprimes ton compte depuis l’app.</span></li>
         <li><b>Photos privées</b><span>Tes photos de suivi ne sont visibles que par toi et ton coach.</span></li>
-        <li><b>En toute transparence</b><span>Ce que nous collectons et pourquoi : <a href="/confidentialite">confidentialité</a>.</span></li>
+        <li><b>En toute transparence</b><span>Ce que nous collectons et pourquoi : <a href="/confidentialite/">confidentialité</a>.</span></li>
       </ul>
       {preuves.temoignages.length > 0 && <div class="preuves">{/* emplacement prêt : témoignages réels uniquement */}</div>}
     </div>
@@ -236,7 +236,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
   .chap-dark { background: var(--night); color: #fff; padding: 0; display: block; }
   .chap-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s7); align-items: center; padding-top: var(--s8); padding-bottom: var(--s8); }
   .chap-prog { background: var(--ink); }
-  .chap-n { font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--blue); display: flex; gap: 12px; align-items: center; }
+  .chap-n { font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); display: flex; gap: 12px; align-items: center; }
   .chap-n span { color: var(--muted); }
   .chap-dark .chap-n span { color: #7E8DB2; }
   .chap h3 { font-size: clamp(26px, 3.4vw, 40px); margin: 14px 0 20px; }
@@ -264,8 +264,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
   .beta { background: var(--blue); color: #fff; padding: var(--s8) 0; }
   .beta-in { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); flex-wrap: wrap; }
   .beta h2 { font-size: clamp(28px, 3.8vw, 44px); margin: 12px 0 14px; }
-  .beta .eyebrow { color: #CFDCFF; }
-  .beta .lead { color: #E3EAFF; }
+  .beta .eyebrow, .beta .lead { color: #fff; }
   .beta :global(.btn.primary) { background: #fff; color: var(--blue); }
 
   @media (max-width: 900px) {
@@ -282,7 +281,7 @@ const description = 'Novalyz lit tes séances et ton ressenti pour te dire comme
   .conf-grid li { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 2px solid var(--blue); }
   .conf-grid b { font-size: 17px; font-variation-settings: 'wdth' 108; }
   .conf-grid span { color: var(--muted); font-size: 15.5px; }
-  .conf-grid a, .faq a { color: var(--blue); }
+  .conf-grid a, .faq a { color: var(--accent); }
   /* ── FAQ ── */
   .faq { padding: var(--s8) 0 var(--s9); }
   .faq-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--s7); align-items: start; }

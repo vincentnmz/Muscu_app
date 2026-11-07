@@ -23,8 +23,8 @@ export const hebergeurSite = { nom: 'GitHub, Inc.', adresse: '88 Colin P. Kelly 
 // Boutons d'appel : texte, lien, visibilité, selon le statut.
 export const cta = {
   principal: {
-    beta: { texte: 'Rejoindre la bêta', lien: '/beta', visible: true },
-    lancement: { texte: 'Découvrir Novalyz', lien: '/beta', visible: true },
+    beta: { texte: 'Rejoindre la bêta', lien: '/beta/', visible: true },
+    lancement: { texte: 'Découvrir Novalyz', lien: '/beta/', visible: true },
   },
   secondaire: { texte: 'Voir comment ça marche', lien: '#comment', visible: true },
 };

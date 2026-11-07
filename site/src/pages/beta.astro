@@ -6,7 +6,7 @@ import { site } from '../config/site';
 // Sans JavaScript : le lien e-mail en dessous reste utilisable.
 const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la bêta Novalyz')}`;
 ---
-<Base title="Novalyz · Rejoindre la bêta" description="Teste Novalyz avant tout le monde : laisse ton prénom et ton e-mail, on t’ajoute à la bêta." path="/beta">
+<Base title="Novalyz · Rejoindre la bêta" description="Teste Novalyz avant tout le monde : laisse ton prénom et ton e-mail, on t’ajoute à la bêta." path="/beta/">
   <PageHead eyebrow="Bêta" titre="Teste Novalyz avant tout le monde." intro="30 secondes. Sur Android, on t’ajoute au test Google Play. Sur iPhone ou ordinateur, on t’envoie le lien de l’app web." />
   <section class="f">
     <div class="wrap grid">
@@ -46,7 +46,7 @@ const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la b
         </div>
         <p class="err" id="b-err" role="alert" hidden></p>
         <button type="submit" class="envoyer">Rejoindre la bêta</button>
-        <p class="rgpd">Ton prénom et ton e-mail servent uniquement à t’ajouter à la bêta et à te contacter à son sujet. <a href="/confidentialite">Confidentialité</a></p>
+        <p class="rgpd">Ton prénom et ton e-mail servent uniquement à t’ajouter à la bêta et à te contacter à son sujet. <a href="/confidentialite/">Confidentialité</a></p>
         <noscript><p class="rgpd">Le formulaire a besoin de JavaScript. Sinon, <a href={repli}>écris-nous directement</a>.</p></noscript>
       </form>
       <div class="ok" id="b-ok" hidden tabindex="-1">
@@ -54,7 +54,7 @@ const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la b
         <h2 class="display">Merci, <span id="b-ok-prenom"></span>.</h2>
         <p id="b-ok-txt"></p>
       </div>
-      <aside class="side">
+      <div class="side">
         <h2>Ce qui se passe ensuite</h2>
         <ol>
           <li>On reçoit ta demande et on te répond nous-mêmes.</li>
@@ -62,7 +62,7 @@ const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la b
           <li><b>iPhone ou ordinateur</b> : tu reçois le lien de l’app, qui s’utilise dans le navigateur.</li>
         </ol>
         <p class="aide">Pendant la bêta, Novalyz est gratuit.</p>
-      </aside>
+      </div>
     </div>
   </section>
 </Base>
@@ -106,13 +106,13 @@ const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la b
   label, legend { font-weight: 700; font-size: 15.5px; padding: 0; }
   .fac { font-weight: 400; color: var(--muted); }
   input:not([type=radio]), textarea { font: inherit; font-size: 16px; color: var(--fg); background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px; width: 100%; box-sizing: border-box; }
-  input:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,95,255,.18); }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,95,255,.18); }
   .aide { font-size: 14px; color: var(--muted); }
   .choix { display: flex; flex-wrap: wrap; gap: 10px; }
   .choix label { position: relative; font-weight: 600; }
   .choix input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
   .choix span { display: inline-block; padding: 11px 16px; border: 1.5px solid var(--line); border-radius: var(--r-pill); background: var(--bg); }
-  .choix input:checked + span { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .choix input:checked + span { border-color: var(--accent); background: var(--blue); color: #fff; }
   .choix input:focus-visible + span { box-shadow: 0 0 0 3px rgba(26,95,255,.3); }
   .piege { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .err { color: #C2410C; font-weight: 700; }
@@ -120,7 +120,7 @@ const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la b
   .envoyer:hover { background: #0F4FE6; transform: translateY(-1px); }
   .envoyer:disabled { opacity: .6; cursor: default; transform: none; }
   .rgpd { font-size: 13.5px; color: var(--muted); }
-  .rgpd a, .side a { color: var(--blue); }
+  .rgpd a, .side a { color: var(--accent); }
   .ok h2 { font-size: clamp(28px, 4vw, 42px); }
   .ok p:last-child { color: var(--muted); font-size: 17px; }
   .ok:focus { outline: none; }

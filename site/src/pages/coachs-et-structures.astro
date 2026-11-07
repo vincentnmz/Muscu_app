@@ -8,7 +8,7 @@ import { site, ctaPrincipal } from '../config/site';
 // Partie coach : fonctions vérifiées dans l'app. Partie structures : vision, rien de promis comme disponible.
 const mailPro = `mailto:${site.email}?subject=${encodeURIComponent('Novalyz Pro : parlons-en')}`;
 ---
-<Base title="Novalyz · Pour les coachs et les structures" description="Novalyz Coach : qui a besoin de vous aujourd’hui, pourquoi, et quoi faire. Novalyz Pro : la prochaine étape pour les clubs et centres de formation." path="/coachs-et-structures">
+<Base title="Novalyz · Pour les coachs et les structures" description="Novalyz Coach : qui a besoin de vous aujourd’hui, pourquoi, et quoi faire. Novalyz Pro : la prochaine étape pour les clubs et centres de formation." path="/coachs-et-structures/">
   <PageHead eyebrow="Coachs & structures" titre="Suivre chaque athlète, sans y passer ses soirées." intro="Novalyz Coach est disponible aujourd’hui pour les coachs et préparateurs physiques. Novalyz Pro, pour les clubs et centres de formation, est la prochaine étape." />
 
   <section class="bloc" aria-labelledby="h-coach">
@@ -43,7 +43,7 @@ const mailPro = `mailto:${site.email}?subject=${encodeURIComponent('Novalyz Pro 
     </div>
   </section>
 
-  <section class="bloc pro" aria-labelledby="h-pro">
+  <section class="bloc pro on-dark" aria-labelledby="h-pro">
     <div class="wrap two">
       <div>
         <p class="eyebrow">Novalyz Pro <Status etat="prevu" /></p>
@@ -84,7 +84,7 @@ const mailPro = `mailto:${site.email}?subject=${encodeURIComponent('Novalyz Pro 
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lien { background: #0E1528; } }
   .etapes { list-style: none; counter-reset: e; padding: 0; margin: var(--s6) 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); }
   .etapes li { counter-increment: e; display: flex; flex-direction: column; gap: 6px; padding-top: 16px; border-top: 2px solid var(--blue); }
-  .etapes li::before { content: "0" counter(e); font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; color: var(--blue); }
+  .etapes li::before { content: "0" counter(e); font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; color: var(--accent); }
   .etapes b { font-size: 17.5px; }
   .etapes span { color: var(--muted); font-size: 15.5px; }
   .note { margin-top: var(--s6); font-weight: 700; }
