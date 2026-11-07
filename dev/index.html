@@ -295,11 +295,6 @@
           <select id="reg-sport" onchange="majChampsSportInscription()" style="width:100%;"></select>
           <label>As-tu un coach dans Novalyz ?</label>
           <div class="reg-seg" id="reg-coach-seg"><button type="button" data-v="oui" onclick="regSeg('reg-coach-seg','oui')">Oui</button><button type="button" data-v="non" onclick="regSeg('reg-coach-seg','non')">Non</button></div>
-          <!-- Code bêta : mécanisme serveur conservé (secret BETA_INVITE_CODE) ; champ affiché seulement si le serveur l'exige. -->
-          <div id="reg-code-wrap" style="display:none">
-            <label>Code d'invitation</label>
-            <input type="text" id="reg-code" placeholder="Code reçu pour la bêta" autocomplete="off" autocapitalize="characters">
-          </div>
           <button class="btn btn-accent" id="reg-btn-1" onclick="inscriptionSuivant()">Continuer</button>
           <div id="reg-manque-1" class="reg-manque"></div>
         </div>
@@ -1911,15 +1906,15 @@
               <div class="card-title">Ajouter une série</div>
               <div style="display:flex;gap:12px">
                 <div style="flex:1;min-width:0">
-                  <div class="saisie-lbl">Charge (kg)</div>
+                  <div class="saisie-lbl" id="saisie-lbl-charge">Charge (kg)</div>
                   <div class="stepper-row">
-                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',-0.5)">−</button>
-                    <input type="number" id="inp-charge" class="stepper-num" placeholder="0" step="0.5" min="0" inputmode="decimal">
-                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',0.5)">+</button>
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',-0.5);_fxSacMaj()">−</button>
+                    <input type="number" id="inp-charge" class="stepper-num" placeholder="0" step="0.5" min="0" inputmode="decimal" oninput="_fxSacMaj()">
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',0.5);_fxSacMaj()">+</button>
                   </div>
                 </div>
                 <div style="flex:1;min-width:0">
-                  <div class="saisie-lbl">Reps</div>
+                  <div class="saisie-lbl" id="saisie-lbl-reps">Reps</div>
                   <div class="stepper-row">
                     <button type="button" class="stepper-btn" onclick="stepValue('inp-reps',-1)">−</button>
                     <input type="number" id="inp-reps" class="stepper-num" placeholder="0" min="1" inputmode="numeric">
@@ -1928,6 +1923,8 @@
                 </div>
               </div>
 
+              <!-- 07/11 : sac lesté = poids fixes (5 à 30 kg) → un bouton par sac -->
+              <div id="fx-sac" class="fx-sac" hidden></div>
               <div class="saisie-lbl" style="margin-top:14px">RPE — effort ressenti</div>
               <div class="chip-row" id="rpe-chips">
                 <button type="button" class="saisie-chip" data-v="6" onclick="pickChip('rpe',this,'6')">6<small>facile<br>4+ en réserve</small></button>
