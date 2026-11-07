@@ -1,0 +1,324 @@
+<title>Site vitrine Novalyz · conception</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Michroma&display=swap">
+<style>
+/* Layout : document de conception en une colonne ; les propositions visuelles (palettes, hero, composants) sont rendues en vrai avec les tokens proposés */
+:root{
+  --ink:#070B14; --navy:#0B1736; --blue:#1A5FFF; --blue-2:#4D85FF; --ice:#EEF2FB; --paper:#F7F8FB; --line:#DCE3F2; --muted:#5A6684;
+  --good:#0A9A55; --warn:#D97706; --fg:var(--ink); --bg:var(--paper); --card:#FFFFFF;
+  --f-display:'Archivo',system-ui,sans-serif; --f-mark:'Michroma','Arial Narrow',sans-serif; --f-body:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){ --fg:#E9EEFA; --bg:#0A0F1C; --card:#121A2E; --line:#25304C; --muted:#9AA6C4; --ice:#16203A; color-scheme:dark }}
+:root[data-theme="dark"]{ --fg:#E9EEFA; --bg:#0A0F1C; --card:#121A2E; --line:#25304C; --muted:#9AA6C4; --ice:#16203A; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.55;font-variation-settings:'wdth' 100;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:42px}
+.kicker{font-family:var(--f-mark);font-size:11.5px;letter-spacing:.2em;color:var(--blue)}
+h1{font-family:var(--f-display);font-weight:800;font-variation-settings:'wdth' 112;font-size:clamp(28px,5.4vw,48px);line-height:1.05;letter-spacing:-.01em;margin:8px 0 12px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:800;font-variation-settings:'wdth' 110;font-size:clamp(20px,3vw,26px);margin:0;text-wrap:balance}
+h3{font-size:16px;margin:0}
+p{margin:0}
+.lead{color:var(--muted);max-width:70ch}
+.sec{display:flex;flex-direction:column;gap:14px}
+.sec > .num{font-family:var(--f-mark);font-size:11px;letter-spacing:.18em;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+ul{margin:0;padding-left:19px;display:flex;flex-direction:column;gap:4px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.st{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;border-radius:6px;padding:2px 7px;white-space:nowrap}
+.v{background:#E3F6EC;color:#0A7A44}.f{background:#FFF1DC;color:#9A5300}.i{background:#E6EEFF;color:#1A4FD6}.u{background:#EEF0F4;color:#4A5468}
+.note{border-left:3px solid var(--blue);padding:4px 0 4px 14px;color:var(--fg)}
+/* Hero preview (direction A) */
+.hero{border-radius:20px;overflow:hidden;background:var(--ink);color:#fff;position:relative;padding:34px 28px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:24px;align-items:center}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(70% 90% at 90% 10%,rgba(26,95,255,.55),transparent 60%);pointer-events:none}
+.hero > *{position:relative}
+.hero .mk{font-family:var(--f-mark);font-size:12px;letter-spacing:.22em;color:#9DB8FF}
+.hero h3{font-family:var(--f-display);font-weight:800;font-variation-settings:'wdth' 115;font-size:clamp(24px,3.6vw,36px);line-height:1.05;margin:10px 0}
+.hero p{color:#C6D2EE;font-size:14.5px}
+.hero .sig{display:flex;gap:14px;margin-top:14px;font-family:var(--f-mark);font-size:11px;letter-spacing:.14em;color:#fff}
+.hero .sig span:nth-child(2){color:#9DB8FF}.hero .sig span:nth-child(3){color:var(--blue-2)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.b1{background:var(--blue);color:#fff;border-radius:999px;padding:11px 18px;font-weight:700;font-size:14px}
+.b2{border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:11px 18px;font-weight:700;font-size:14px}
+.phone{justify-self:center;width:170px;aspect-ratio:9/19;border-radius:26px;border:6px solid #1C2335;background:linear-gradient(180deg,#fff 0 16%,#F3F6FD 16% 100%);box-shadow:0 20px 40px rgba(0,0,0,.4);padding:14px 10px;display:flex;flex-direction:column;gap:7px}
+.phone i{display:block;height:9px;border-radius:5px;background:#DCE3F2}
+.phone i.b{background:#FFE7C7;height:34px}.phone i.g{background:#D9F2E5;height:22px}.phone i.s{width:60%}
+@media (max-width:640px){.hero{grid-template-columns:1fr;padding:26px 20px}.phone{width:140px}}
+/* palettes */
+.pal{display:flex;flex-direction:column;gap:10px}
+.sw{display:flex;border-radius:12px;overflow:hidden;height:64px;border:1px solid var(--line)}
+.sw span{flex:1}
+.lbl{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--muted)}
+.typo .a{font-family:var(--f-mark);font-size:22px;letter-spacing:.14em}
+.typo .b{font-family:var(--f-display);font-weight:800;font-variation-settings:'wdth' 115;font-size:30px;line-height:1.05}
+.typo .c{font-family:var(--f-body);font-size:15px}
+.typo .d{font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums;font-size:28px;letter-spacing:-.01em}
+.tree{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--ice);border-radius:12px;padding:14px 16px;white-space:pre;overflow-x:auto;color:var(--fg)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.step{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--card)}
+.step b{display:block;font-family:var(--f-mark);font-size:11px;letter-spacing:.16em;color:var(--blue);margin-bottom:4px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">NOVALYZ · SITE VITRINE · PHASES 1 ET 2 · À VALIDER</div>
+    <h1>Conception du site vitrine</h1>
+    <p class="lead">Audit du projet, positionnement, 3 propositions de Hero, arborescence, direction artistique, design system et plan de développement. Rien n'est codé. Chaque affirmation sur le produit est étiquetée : <span class="st v">VERIFIED</span> vérifié dans le code · <span class="st i">INFERENCE</span> déduction · <span class="st f">FUTURE</span> prévu, pas disponible · <span class="st u">UNKNOWN</span> à confirmer.</p>
+  </header>
+
+  <!-- A -->
+  <section class="sec">
+    <div class="num">A · AUDIT</div>
+    <h2>Le projet existant</h2>
+    <div class="grid2">
+      <div class="card"><h3>Technique</h3><ul>
+        <li>App : HTML / CSS / JavaScript sans framework, PWA, app Android via Capacitor. <span class="st v">VERIFIED</span></li>
+        <li>Serveur : une fonction Supabase (Deno), base Postgres. <span class="st v">VERIFIED</span></li>
+        <li>Hébergement : GitHub Pages, app sur <b>app.novalyz.fr</b>, préprod <b>/dev/</b>. <span class="st v">VERIFIED</span></li>
+        <li>Domaines : novalyz.fr (OVH, vérifié GitHub) et novalyz.com (confirmé par toi). <span class="st v">VERIFIED</span></li>
+        <li>E-mails : hello@novalyz.fr, envoi par Resend sur le domaine novalyz.fr. <span class="st v">VERIFIED</span></li>
+      </ul></div>
+      <div class="card"><h3>Marque</h3><ul>
+        <li>Logo hexagone + barres, versions SVG bleu/noir et blanc/bleu, logotype « NOVALYZ » (assets/logo). <span class="st v">VERIFIED</span></li>
+        <li>Bleu Novalyz #1A5FFF, encre #070B14, violet #7C5CFF dans l'app. <span class="st v">VERIFIED</span></li>
+        <li>Typo de l'app : Michroma (titres) + Quicksand (texte). <span class="st v">VERIFIED</span></li>
+        <li>Instagram : oui, adresse à me donner. LinkedIn : plus tard. <span class="st u">UNKNOWN</span></li>
+        <li>Photos de vraies séances : aucune pour l'instant. Nova : pas utilisée au lancement (voir F). <span class="st v">VERIFIED</span></li>
+      </ul></div>
+    </div>
+    <div class="card tw">
+      <h3>Ce que l'app fait vraiment (ce que le site a le droit d'affirmer)</h3>
+      <table>
+        <tr><th>Fonction</th><th>Statut</th></tr>
+        <tr><td>Saisie des séances série par série : charge, reps, effort (RPE), repos, chrono</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Cible proposée pour chaque série (progression adaptée au niveau)</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Programme : construit par Novalyz (3 questions), fait soi-même, ou par son coach</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Questionnaire du matin (sommeil, fatigue, stress, douleur), comparé à « ta normale »</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>État du jour + « Lecture Novalyz » : ce qui va, ce qui coince, pourquoi, quoi faire</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Analyses : records, progrès, exercice bloqué + raison, volume par muscle, tendances, historique</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Forme : contexte (reprise, semaine légère), poids, mensurations, photos de suivi, objectifs, douleurs</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Montre via Health Connect (Android) : pas, sommeil, fréquence cardiaque au repos</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Cardio et Hyrox (séances chronométrées)</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Coach : qui voir aujourd'hui, fiche athlète, « À décider », programmes, planifier la semaine, messages (photos, vidéos), séance en présentiel, analyses d'équipe</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Rapport par e-mail, export des données</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Disponibilité : app Android en test fermé Google Play ; iPhone et ordinateur via le navigateur (app.novalyz.fr)</td><td><span class="st v">VERIFIED</span></td></tr>
+        <tr><td>Novalyz IA (assistant branché sur les données) et analyse morpho</td><td><span class="st f">FUTURE</span> codés, pas encore activés</td></tr>
+        <tr><td>Autres sports : 10 sports dans le registre de l'app, vue joueur football en démonstration</td><td><span class="st i">INFERENCE</span> base technique prête, produit pas prêt</td></tr>
+        <tr><td>Novalyz Pro (clubs, centres de formation, fédérations)</td><td><span class="st f">FUTURE</span></td></tr>
+        <tr><td>Utilisateurs, clients, partenaires, chiffres</td><td><span class="st u">AUCUN À AFFICHER</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="sec">
+    <div class="num">B · POSITIONNEMENT</div>
+    <h2>Une plateforme qui interprète, pas une app qui stocke</h2>
+    <p class="lead">« La performance sportive guidée par les données » est juste mais interchangeable avec Whoop ou Garmin. Ce qui est vraiment à Novalyz, c'est l'interprétation : l'app ne montre pas que des courbes, elle dit quoi faire et pourquoi, au sportif comme au coach. Le site le dit dès le titre.</p>
+    <div class="card">
+      <p><b>Phrase de positionnement :</b> Novalyz transforme les données d'entraînement et le ressenti en décisions, pour les sportifs et ceux qui les entraînent. Aujourd'hui la musculation et le coaching ; demain tous les sports.</p>
+      <p><b>Signature :</b> Mesurer. Comprendre. Progresser. (élément graphique récurrent, un mot par chapitre du site)</p>
+      <p><b>Ton :</b> précis, direct, tutoiement pour le sportif, vouvoiement sur la page structures.</p>
+    </div>
+  </section>
+
+  <!-- Hero -->
+  <section class="sec">
+    <div class="num">3 PROPOSITIONS DE HERO</div>
+    <h2>Recommandation : la 1</h2>
+    <div class="hero" aria-label="Aperçu de la proposition 1 avec la direction A">
+      <div>
+        <div class="mk">NOVALYZ</div>
+        <h3>Tes données d'entraînement, transformées en décisions.</h3>
+        <p>Novalyz lit tes séances et ton ressenti pour te dire comment t'entraîner, si c'est bien fait et comment progresser. Aujourd'hui pour la musculation et le coaching, demain pour tous les sports.</p>
+        <div class="btns"><span class="b1">Rejoindre la bêta</span><span class="b2">Voir comment ça marche</span></div>
+        <div class="sig"><span>MESURER.</span><span>COMPRENDRE.</span><span>PROGRESSER.</span></div>
+      </div>
+      <div class="phone" aria-hidden="true"><i class="s"></i><i class="b"></i><i></i><i class="s"></i><i class="g"></i><i></i><i class="s"></i><i></i></div>
+    </div>
+    <p class="lead" style="font-size:13.5px">À droite, en vrai : une capture réelle de l'écran Aujourd'hui avec le compte fictif « Léo », légèrement animée.</p>
+    <div class="grid3">
+      <div class="card"><h3>1 · Décisions <span class="st v">RECOMMANDÉE</span></h3><p><b>Tes données d'entraînement, transformées en décisions.</b></p><p class="lead" style="font-size:14px">Dit tout de suite la différence (l'interprétation) et parle au sportif comme au coach.</p></div>
+      <div class="card"><h3>2 · Lisible</h3><p><b>La performance sportive, enfin lisible.</b></p><p class="lead" style="font-size:14px">Sous-titre : « Novalyz rassemble tes séances, ton ressenti et ta forme, puis te dit ce qui compte. » Élégant, mais moins concret.</p></div>
+      <div class="card"><h3>3 · Signature</h3><p><b>Mesurer. Comprendre. Progresser.</b></p><p class="lead" style="font-size:14px">Sous-titre : « La plateforme qui transforme l'entraînement en décisions. » Fort pour la marque, mais ne dit pas ce que fait le produit en 5 secondes.</p></div>
+    </div>
+    <p class="note">Boutons pour tous : principal <b>« Rejoindre la bêta »</b> (l'app est en test fermé), secondaire <b>« Voir comment ça marche »</b>. Jamais « Télécharger » tant que l'app n'est pas publique.</p>
+  </section>
+
+  <!-- C D -->
+  <section class="sec">
+    <div class="num">C · D · ARCHITECTURE ET ARBORESCENCE</div>
+    <h2>Peu de pages, toutes utiles</h2>
+    <p class="lead">Une page par produit (Athlete / Coach / Pro) alors que Pro n'existe pas encore donnerait une impression de vide. La page d'accueil raconte toute l'histoire ; une seule autre page parle aux coachs et aux structures.</p>
+<div class="tree">novalyz.com/                     Accueil (l'histoire complète)
+├── /coachs-et-structures        Novalyz Coach (aujourd'hui) + Novalyz Pro (la prochaine étape)
+├── /beta                        Formulaire « Rejoindre la bêta » (lien à partager sur Instagram)
+├── /contact                     Contact + « Parlons-en » pour les structures
+├── /mentions-legales
+├── /confidentialite             (reprend la politique de l'app)
+└── /en/…                        anglais, prévu dans la structure, pas traduit au lancement
+
+app.novalyz.fr                   l'application (inchangée)</div>
+    <div class="card">
+      <h3>Accueil, section par section (maquette de structure)</h3>
+      <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+        <li><b>Hero</b> : titre, sous-titre, 2 boutons, signature, capture réelle.</li>
+        <li><b>Le constat</b> : « Le sport produit des données. Elles sont dispersées, et rarement exploitées. » Trois phrases, un visuel de points épars qui s'alignent au défilement.</li>
+        <li><b>Mesurer</b> : avant, pendant la séance (séries, charge, reps, effort, questionnaire du matin, montre). Capture réelle de la saisie.</li>
+        <li><b>Comprendre</b> : après (Lecture Novalyz, exercice bloqué + raison, état du jour comparé à ta normale). Capture réelle.</li>
+        <li><b>Progresser</b> : dans le temps (cible de la prochaine série, plan de la semaine, tendances). Une vraie courbe tracée à partir des données fictives de Léo.</li>
+        <li><b>Pour le coach</b> : « Qui a besoin de toi aujourd'hui, pourquoi, et quoi faire. » Capture de l'écran coach + lien vers la page coachs et structures.</li>
+        <li><b>La vision</b> : Aujourd'hui → Demain → À terme → Vision, chaque étape avec son statut (disponible / bientôt / prévu).</li>
+        <li><b>Confiance</b> : état du projet en clair (bêta, Android + navigateur), où sont hébergées les données (Supabase), export des données et suppression du compte depuis l'app (vérifié), lien vers la politique de confidentialité. Emplacements prêts (et masqués) pour témoignages, logos et chiffres.</li>
+        <li><b>Rejoindre la bêta</b> : formulaire court.</li>
+        <li><b>FAQ</b> : 8 questions, uniquement des réponses vérifiées.</li>
+        <li><b>Pied de page</b> : logo, signature, navigation, hello@novalyz.fr, Instagram, mentions légales, confidentialité, ©.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Page « Coachs et structures »</h3>
+      <ul>
+        <li><b>Novalyz Coach, aujourd'hui</b> : qui voir aujourd'hui, la fiche athlète (À décider, analyses, séances, forme), programmes, messages, séance en présentiel, analyses d'équipe. Tout est vérifié.</li>
+        <li><b>Novalyz Pro, la prochaine étape</b> : clubs, centres de formation, académies, puis fédérations. Présenté comme une vision, avec « Construisons-le avec vous » → contact.</li>
+        <li><b>Multisport</b> : « Une logique conçue pour s'adapter aux sports », sans liste de 10 sports.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- F -->
+  <section class="sec">
+    <div class="num">F · DIRECTION ARTISTIQUE</div>
+    <h2>3 directions de couleurs</h2>
+    <div class="grid3">
+      <div class="card pal"><h3>A · Signal <span class="st v">RECOMMANDÉE</span></h3>
+        <div class="sw"><span style="background:#070B14"></span><span style="background:#0B1736"></span><span style="background:#1A5FFF"></span><span style="background:#EEF2FB"></span><span style="background:#F7F8FB"></span></div>
+        <div class="lbl"><span>encre #070B14</span><span>nuit #0B1736</span><span>bleu Novalyz #1A5FFF</span><span>glace #EEF2FB</span></div>
+        <p style="font-size:14px">Base claire et très aérée pour lire, chapitres sombres pour les données (comme un écran de mesure). Un seul accent : le bleu de l'app. Continuité totale avec l'app.</p></div>
+      <div class="card pal"><h3>B · Chrono</h3>
+        <div class="sw"><span style="background:#15181E"></span><span style="background:#F4F2EE"></span><span style="background:#1A5FFF"></span><span style="background:#FF5A1F"></span><span style="background:#D9D5CC"></span></div>
+        <div class="lbl"><span>graphite</span><span>papier</span><span>bleu</span><span>orange chrono</span></div>
+        <p style="font-size:14px">Plus éditorial, l'orange des chronos et des tableaux d'affichage pour les chiffres. Fort, mais l'orange signifie « vigilance » dans l'app : risque de confusion.</p></div>
+      <div class="card pal"><h3>C · Nuit</h3>
+        <div class="sw"><span style="background:#05060B"></span><span style="background:#10142A"></span><span style="background:#7C5CFF"></span><span style="background:#1A5FFF"></span><span style="background:#A9B4D6"></span></div>
+        <div class="lbl"><span>noir</span><span>bleu nuit</span><span>violet</span><span>bleu</span></div>
+        <p style="font-size:14px">Tout en sombre, violet et bleu. Spectaculaire, mais c'est le look « gaming / néon » que tu ne veux pas, et moins lisible longtemps.</p></div>
+    </div>
+    <div class="card typo">
+      <h3>Typographie</h3>
+      <div class="a">NOVALYZ</div>
+      <p class="lead" style="font-size:13.5px">Michroma : uniquement le logotype et les petites étiquettes en capitales (continuité avec l'app). Illisible en texte courant, donc jamais au-delà.</p>
+      <div class="b">Tes données, transformées en décisions.</div>
+      <div class="c">Archivo : titres en version élargie (énergie sportive, sans effet futuriste), texte courant en version normale. Une seule famille variable, gratuite (Google Fonts), chiffres alignés pour les données.</div>
+      <div class="d">72,5 kg × 8 · RPE 8 · +2,5 kg</div>
+    </div>
+    <div class="card"><h3>Images</h3><ul>
+      <li><b>Au lancement</b> : uniquement des captures réelles de l'app (compte fictif « Léo », aucune donnée réelle) dans des cadres de téléphone sobres, et des visuels de données tracés à partir de ces mêmes données fictives.</li>
+      <li><b>Motif</b> : l'hexagone du logo en trame très légère, et des lignes de mesure fines. Pas de dégradés partout, pas de verre dépoli, pas de néon.</li>
+      <li><b>Plus tard</b> : photos de vraies séances (toi, tes athlètes avec accord), emplacements prévus.</li>
+      <li><b>Nova</b> : hors du site au lancement (sur un site qui promet « rien de faux », un personnage virtuel brouille le message) ; à garder pour Instagram.</li>
+    </ul></div>
+    <div class="card"><h3>Animations (5, pas plus)</h3><ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
+      <li>Hero : la capture glisse et la signature s'écrit mot par mot.</li>
+      <li>Le constat : des points épars s'alignent en une courbe au défilement.</li>
+      <li>Mesurer / Comprendre / Progresser : le mot actif s'allume pendant qu'on lit son chapitre.</li>
+      <li>La courbe de progression se trace quand elle devient visible.</li>
+      <li>Boutons et liens : micro-retours au survol et au toucher.</li>
+    </ol><p class="lead" style="font-size:13.5px">Toutes coupées avec « réduire les animations » du téléphone ou de l'ordinateur.</p></div>
+  </section>
+
+  <!-- G -->
+  <section class="sec">
+    <div class="num">G · DESIGN SYSTEM</div>
+    <h2>Mini design system</h2>
+    <div class="card tw"><table>
+      <tr><th>Élément</th><th>Proposition</th></tr>
+      <tr><td>Couleurs</td><td>encre, nuit, bleu, bleu clair, glace, papier, ligne, texte secondaire ; vert = bon, orange = vigilance (mêmes sens que l'app, réservés aux données)</td></tr>
+      <tr><td>Typo</td><td>Archivo 14 / 16 / 20 / 28 / 40 / 56 px (élargie pour les titres) ; Michroma 11–14 px capitales espacées</td></tr>
+      <tr><td>Espacements</td><td>4, 8, 12, 16, 24, 32, 48, 72, 112 px ; sections de 72 px (mobile) à 112 px (ordinateur)</td></tr>
+      <tr><td>Rayons</td><td>8 px (petits éléments), 14 px (cartes), 999 px (boutons), 28 px (cadres téléphone)</td></tr>
+      <tr><td>Ombres</td><td>deux seulement : légère pour les cartes, profonde pour les cadres téléphone</td></tr>
+      <tr><td>Composants</td><td>bouton principal / secondaire / lien, barre de navigation, étiquette de statut (Disponible / Bientôt / Prévu), cadre téléphone, chapitre de récit, carte de FAQ, bandeau bêta, formulaire, pied de page</td></tr>
+      <tr><td>Points de rupture</td><td>360 · 640 · 960 · 1280 · 1600 px, pensé d'abord pour le téléphone</td></tr>
+    </table></div>
+  </section>
+
+  <!-- I K L M -->
+  <section class="sec">
+    <div class="num">I · K · L · M · CONVERSION, SEO, ACCESSIBILITÉ, PERFORMANCE</div>
+    <div class="grid2">
+      <div class="card"><h3>Conversion</h3><ul>
+        <li>Un seul objectif au lancement : rejoindre la bêta.</li>
+        <li>Formulaire : prénom, e-mail, « athlète / coach / structure », « Android / iPhone ». Les Android sont ajoutés au test Google Play, les iPhone reçoivent le lien de l'app web.</li>
+        <li>Texte, lien, statut et visibilité des boutons dans un seul fichier de réglages : passer à « Télécharger » le jour du lancement sans toucher aux pages.</li>
+      </ul></div>
+      <div class="card"><h3>Formulaires</h3><ul>
+        <li>Envoyés à ton serveur Supabase existant (nouvelle action, nouvelle table « inscriptions bêta »), e-mail à hello@novalyz.fr. Pas de service tiers.</li>
+        <li>Anti-spam : champ piège invisible + limite d'envois. Aucune information technique affichée.</li>
+        <li>Pas de cookies ni de traceurs au lancement, donc pas de bandeau cookies.</li>
+      </ul></div>
+      <div class="card"><h3>SEO</h3><ul>
+        <li>Titre, description, Open Graph (l'image de présentation Play réutilisée), canonique, favicon, plan du site, robots.txt.</li>
+        <li>Données structurées : Organisation + Application logicielle (sans note ni prix inventés).</li>
+        <li>Mots visés : Novalyz, suivi d'entraînement, application coach sportif, suivi de progression sportive, plateforme performance sportive. Placés naturellement, sans bourrage.</li>
+      </ul></div>
+      <div class="card"><h3>Accessibilité et performance</h3><ul>
+        <li>Contrastes AA, clavier, focus visible, textes alternatifs, structure H1 / H2 / H3, « réduire les animations » respecté.</li>
+        <li>Pages statiques, presque sans JavaScript, images AVIF / WebP aux bonnes tailles, chargées au besoin. Objectif : Lighthouse ≥ 95 partout.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- N -->
+  <section class="sec">
+    <div class="num">N · ARCHITECTURE TECHNIQUE</div>
+    <h2>Un site séparé de l'app</h2>
+    <div class="card"><ul>
+      <li><b>Astro</b> (site statique) dans un dépôt séparé <b>novalyz-site</b>. Seule entorse à « ne change pas de technologie » : il ne touche pas l'app, n'envoie aucun JavaScript par défaut, et apporte composants, multilingue, plan du site et SEO sans usine à gaz.</li>
+      <li>Hébergé sur <b>GitHub Pages</b> comme l'app, déployé automatiquement à chaque modification.</li>
+      <li><b>www.novalyz.com</b> = site vitrine ; novalyz.com et novalyz.fr redirigent vers www.novalyz.com. L'app reste sur <b>app.novalyz.fr</b> (on pourra ajouter app.novalyz.com plus tard).</li>
+      <li>DNS : je te dirai exactement quoi ajouter (où est géré novalyz.com ?). Rien qui demande un mot de passe ou une clé sans te demander.</li>
+    </ul></div>
+  </section>
+
+  <!-- O -->
+  <section class="sec">
+    <div class="num">O · PLAN DE DÉVELOPPEMENT</div>
+    <div class="steps">
+      <div class="step"><b>LOT 1</b>Design system + gabarit + accueil (Hero et récit), captures réelles de « Léo ». Aperçu en ligne à valider.</div>
+      <div class="step"><b>LOT 2</b>Visuels de données animés (5 animations), vision, confiance, FAQ.</div>
+      <div class="step"><b>LOT 3</b>Page coachs et structures, contact, mentions légales, confidentialité.</div>
+      <div class="step"><b>LOT 4</b>Formulaire bêta (serveur + table, avec ton accord), anti-spam.</div>
+      <div class="step"><b>LOT 5</b>Tests : 5 tailles d'écran, liens, formulaires, console, accessibilité, Lighthouse, SEO.</div>
+      <div class="step"><b>LOT 6</b>Mise en ligne sur www.novalyz.com, redirections, Search Console.</div>
+    </div>
+  </section>
+
+  <!-- changements de brief -->
+  <section class="sec">
+    <div class="num">CE QUE JE CHANGE DANS TON BRIEF</div>
+    <div class="card"><ul>
+      <li><b>Pas de pages Athlete / Coach / Pro séparées</b> au lancement : une page d'accueil complète + une page « Coachs et structures ».</li>
+      <li><b>Titre centré sur les décisions</b> plutôt que « performance guidée par les données », trop générique.</li>
+      <li><b>Pas de photos ni de Nova</b> au lancement : la preuve, c'est le vrai produit.</li>
+      <li><b>Astro</b> pour le site (dépôt séparé), l'app ne change pas.</li>
+      <li><b>Un seul objectif de conversion</b> (la bêta) au lieu de plusieurs boutons concurrents.</li>
+      <li><b>Pas de multisport détaillé</b> : une phrase de vision, jamais une liste de sports pas encore prêts.</li>
+    </ul></div>
+  </section>
+
+  <!-- questions -->
+  <section class="sec">
+    <div class="num">À ME DONNER POUR AVANCER</div>
+    <div class="card"><ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+      <li>Ton <b>adresse Instagram</b>.</li>
+      <li><b>Où est géré novalyz.com</b> (OVH aussi ?).</li>
+      <li><b>Mentions légales</b> : ton nom, et si tu as un statut (micro-entreprise, SIREN) ou non. Je te dirai quoi afficher selon le cas.</li>
+      <li>Validation : <b>Hero 1</b>, <b>couleurs A</b>, <b>Archivo + Michroma</b>, <b>arborescence</b>, <b>Astro</b>.</li>
+    </ol></div>
+  </section>
+</div>
