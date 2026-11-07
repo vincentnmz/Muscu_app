@@ -4,7 +4,7 @@ import PageHead from '../components/PageHead.astro';
 import { site } from '../config/site';
 const m = (sujet: string) => `mailto:${site.email}?subject=${encodeURIComponent(sujet)}`;
 const cartes = [
-  { t: 'Rejoindre la bêta', d: 'Tu veux tester l’app (Android, ou dans le navigateur sur iPhone et ordinateur).', l: m('Rejoindre la bêta Novalyz'), c: 'Écrire' },
+  { t: 'Rejoindre la bêta', d: 'Tu veux tester l’app (Android, ou dans le navigateur sur iPhone et ordinateur).', l: '/beta', c: 'Remplir le formulaire' },
   { t: 'Coach ou préparateur', d: 'Vous voulez suivre vos athlètes avec Novalyz Coach.', l: m('Novalyz Coach'), c: 'Écrire' },
   { t: 'Club ou structure', d: 'Vous voulez construire Novalyz Pro avec nous.', l: m('Novalyz Pro : parlons-en'), c: 'Parlons-en' },
   { t: 'Une question, un retour', d: 'Sur l’app, tes données, ou autre chose.', l: m('Question sur Novalyz'), c: 'Écrire' },

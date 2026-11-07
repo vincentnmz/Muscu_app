@@ -31,6 +31,7 @@ p { margin: 0; }
 .display { font-weight: 800; font-variation-settings: 'wdth' 118; }
 .lead { font-size: clamp(17px, 1.9vw, 20px); color: var(--muted); max-width: 60ch; }
 .num { font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip { position: absolute; left: 12px; top: -60px; background: var(--blue); color: #fff; padding: 10px 14px; border-radius: var(--r-sm); z-index: 100; }
 .skip:focus { top: 12px; }

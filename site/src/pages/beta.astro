@@ -1,0 +1,133 @@
+---
+import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
+import { site } from '../config/site';
+// Formulaire envoyé à l'action publique inscriptionBeta (supabase/functions/handler/index.ts).
+// Sans JavaScript : le lien e-mail en dessous reste utilisable.
+const repli = `mailto:${site.email}?subject=${encodeURIComponent('Rejoindre la bêta Novalyz')}`;
+---
+<Base title="Novalyz · Rejoindre la bêta" description="Teste Novalyz avant tout le monde : laisse ton prénom et ton e-mail, on t’ajoute à la bêta." path="/beta">
+  <PageHead eyebrow="Bêta" titre="Teste Novalyz avant tout le monde." intro="30 secondes. Sur Android, on t’ajoute au test Google Play. Sur iPhone ou ordinateur, on t’envoie le lien de l’app web." />
+  <section class="f">
+    <div class="wrap grid">
+      <form id="beta" novalidate data-api={site.api}>
+        <div class="champ">
+          <label for="b-prenom">Prénom</label>
+          <input id="b-prenom" name="prenom" autocomplete="given-name" maxlength="60" required />
+        </div>
+        <div class="champ">
+          <label for="b-email">E-mail</label>
+          <input id="b-email" name="email" type="email" autocomplete="email" maxlength="200" required aria-describedby="b-email-aide" />
+          <p id="b-email-aide" class="aide">Sur Android, mets l’adresse de ton compte Google (celle du Play Store) : c’est elle qui ouvre l’accès au test.</p>
+        </div>
+        <fieldset class="champ">
+          <legend>Tu es</legend>
+          <div class="choix">
+            <label><input type="radio" name="profil" value="athlete" required /><span>Sportif</span></label>
+            <label><input type="radio" name="profil" value="coach" /><span>Coach</span></label>
+            <label><input type="radio" name="profil" value="structure" /><span>Club ou structure</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="champ">
+          <legend>Ton appareil</legend>
+          <div class="choix">
+            <label><input type="radio" name="appareil" value="android" required /><span>Android</span></label>
+            <label><input type="radio" name="appareil" value="iphone" /><span>iPhone</span></label>
+            <label><input type="radio" name="appareil" value="ordinateur" /><span>Ordinateur</span></label>
+          </div>
+        </fieldset>
+        <div class="champ">
+          <label for="b-msg">Un mot ? <span class="fac">(facultatif)</span></label>
+          <textarea id="b-msg" name="message" rows="3" maxlength="1000" placeholder="Ton sport, ce que tu attends de Novalyz…"></textarea>
+        </div>
+        <div class="piege" aria-hidden="true">
+          <label for="b-site">Ne pas remplir</label>
+          <input id="b-site" name="site_web" tabindex="-1" autocomplete="off" />
+        </div>
+        <p class="err" id="b-err" role="alert" hidden></p>
+        <button type="submit" class="envoyer">Rejoindre la bêta</button>
+        <p class="rgpd">Ton prénom et ton e-mail servent uniquement à t’ajouter à la bêta et à te contacter à son sujet. <a href="/confidentialite">Confidentialité</a></p>
+        <noscript><p class="rgpd">Le formulaire a besoin de JavaScript. Sinon, <a href={repli}>écris-nous directement</a>.</p></noscript>
+      </form>
+      <div class="ok" id="b-ok" hidden tabindex="-1">
+        <p class="eyebrow">C’est noté</p>
+        <h2 class="display">Merci, <span id="b-ok-prenom"></span>.</h2>
+        <p id="b-ok-txt"></p>
+      </div>
+      <aside class="side">
+        <h2>Ce qui se passe ensuite</h2>
+        <ol>
+          <li>On reçoit ta demande et on te répond nous-mêmes.</li>
+          <li><b>Android</b> : on ajoute ton adresse à la liste des testeurs, puis tu installes Novalyz depuis le Play Store.</li>
+          <li><b>iPhone ou ordinateur</b> : tu reçois le lien de l’app, qui s’utilise dans le navigateur.</li>
+        </ol>
+        <p class="aide">Pendant la bêta, Novalyz est gratuit.</p>
+      </aside>
+    </div>
+  </section>
+</Base>
+<script>
+  const f = document.getElementById('beta') as HTMLFormElement;
+  const err = document.getElementById('b-err')!;
+  const btn = f.querySelector('button') as HTMLButtonElement;
+  const montrer = (t: string) => { err.textContent = t; err.hidden = false; };
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.hidden = true;
+    const d = Object.fromEntries(new FormData(f).entries()) as Record<string, string>;
+    if (!String(d.prenom || '').trim()) return montrer('Indique ton prénom.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(d.email || '').trim())) return montrer('Vérifie ton e-mail.');
+    if (!d.profil) return montrer('Dis-nous si tu es sportif, coach ou une structure.');
+    if (!d.appareil) return montrer('Choisis ton appareil.');
+    const source = new URLSearchParams(location.search).get('src') || '';
+    btn.disabled = true; btn.textContent = 'Envoi…';
+    try {
+      const r = await fetch(f.dataset.api!, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'inscriptionBeta', ...d, source }) });
+      const j = await r.json().catch(() => ({}));
+      if (!j.success) throw new Error(j.error || '');
+      const ok = document.getElementById('b-ok')!;
+      document.getElementById('b-ok-prenom')!.textContent = String(d.prenom).trim();
+      document.getElementById('b-ok-txt')!.textContent = d.appareil === 'android'
+        ? 'On t’ajoute au test Google Play et on t’écrit dès que c’est prêt.'
+        : 'On t’envoie le lien de l’app par e-mail.';
+      f.hidden = true; ok.hidden = false; ok.focus();
+    } catch (x) {
+      const m = (x as Error).message;
+      montrer((m || 'L’envoi n’a pas marché.') + ' Tu peux aussi nous écrire à hello@novalyz.fr.');
+      btn.disabled = false; btn.textContent = 'Rejoindre la bêta';
+    }
+  });
+</script>
+<style>
+  .f { padding: var(--s8) 0 var(--s9); }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: var(--s7); align-items: start; }
+  form, .ok { display: flex; flex-direction: column; gap: 22px; max-width: 560px; }
+  .champ { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  label, legend { font-weight: 700; font-size: 15.5px; padding: 0; }
+  .fac { font-weight: 400; color: var(--muted); }
+  input:not([type=radio]), textarea { font: inherit; font-size: 16px; color: var(--fg); background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px; width: 100%; box-sizing: border-box; }
+  input:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,95,255,.18); }
+  .aide { font-size: 14px; color: var(--muted); }
+  .choix { display: flex; flex-wrap: wrap; gap: 10px; }
+  .choix label { position: relative; font-weight: 600; }
+  .choix input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .choix span { display: inline-block; padding: 11px 16px; border: 1.5px solid var(--line); border-radius: var(--r-pill); background: var(--bg); }
+  .choix input:checked + span { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .choix input:focus-visible + span { box-shadow: 0 0 0 3px rgba(26,95,255,.3); }
+  .piege { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .err { color: #C2410C; font-weight: 700; }
+  .envoyer { align-self: flex-start; min-height: 52px; padding: 0 28px; border: 0; border-radius: var(--r-pill); background: var(--blue); color: #fff; font: inherit; font-weight: 700; font-size: 16.5px; cursor: pointer; transition: transform .15s ease, background-color .15s ease; }
+  .envoyer:hover { background: #0F4FE6; transform: translateY(-1px); }
+  .envoyer:disabled { opacity: .6; cursor: default; transform: none; }
+  .rgpd { font-size: 13.5px; color: var(--muted); }
+  .rgpd a, .side a { color: var(--blue); }
+  .ok h2 { font-size: clamp(28px, 4vw, 42px); }
+  .ok p:last-child { color: var(--muted); font-size: 17px; }
+  .ok:focus { outline: none; }
+  .side { background: var(--ice); border-radius: 20px; padding: 26px; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .side { background: #0E1528; } }
+  .side h2 { font-size: 19px; font-variation-settings: 'wdth' 110; margin-bottom: 14px; }
+  .side ol { margin: 0 0 16px; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; color: var(--muted); }
+  .side b { color: var(--fg); }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>

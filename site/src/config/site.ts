@@ -5,6 +5,7 @@ export const site = {
   signature: ['Mesurer.', 'Comprendre.', 'Progresser.'],
   url: 'https://www.novalyz.com',
   appUrl: 'https://app.novalyz.fr',
+  api: 'https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service',   // serveur de l'app (action publique inscriptionBeta)
   email: 'hello@novalyz.fr',
   instagram: { handle: 'novalyzpro', url: 'https://www.instagram.com/novalyzpro/' },
   linkedin: null as null | string,            // à renseigner quand la page existera
@@ -14,16 +15,15 @@ export const site = {
 // Mentions légales. Éditeur = personne physique, pas encore de statut (à compléter le jour où une
 // micro-entreprise / société existe : ajouter forme, SIREN, adresse).
 export const editeur = {
-  nom: '',                                     // ← prénom + nom de l'éditeur (obligatoire avant mise en ligne)
+  nom: 'Vincent Portefaix',
   statut: null as null | { forme: string; siren: string; adresse: string },
 };
 export const hebergeurSite = { nom: 'GitHub, Inc.', adresse: '88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis', url: 'https://github.com' };
 
 // Boutons d'appel : texte, lien, visibilité, selon le statut.
-// Lot 4 : le formulaire /beta remplacera le lien e-mail provisoire.
 export const cta = {
   principal: {
-    beta: { texte: 'Rejoindre la bêta', lien: 'mailto:hello@novalyz.fr?subject=Rejoindre%20la%20b%C3%AAta%20Novalyz', visible: true },
+    beta: { texte: 'Rejoindre la bêta', lien: '/beta', visible: true },
     lancement: { texte: 'Découvrir Novalyz', lien: '/beta', visible: true },
   },
   secondaire: { texte: 'Voir comment ça marche', lien: '#comment', visible: true },
