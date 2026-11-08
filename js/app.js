@@ -2210,6 +2210,8 @@ function switchRole(role) {
 function toggleEspaceCoach(ev) { if (ev) ev.preventDefault(); switchRole('coach'); }
 function retourEspaceAthlete(ev) { if (ev) ev.preventDefault(); switchRole('athlete'); }
 
+// 08/11 : comptes coach de démonstration (prêtés à des coachs pour avis) → présentation rejouée à chaque connexion.
+var _COACH_DEMO_LOGINS = ['0202'];
 async function seConnecterCoach() {
   const login = document.getElementById('inp-login-coach').value.trim();
   const password = document.getElementById('inp-password-coach').value;
@@ -2230,6 +2232,11 @@ async function seConnecterCoach() {
       coach = data.coach;
       localStorage.setItem('muscu_coach', JSON.stringify(coach));
       localStorage.removeItem('muscu_coach_vue');
+      // Compte coach de démonstration : la présentation (5 écrans + visite) se rejoue à chaque connexion.
+      if (_COACH_DEMO_LOGINS.indexOf(String(coach.login || login)) >= 0) {
+        _coachVientDeSinscrire = true; _coachTourTried = false;
+        try { ['onb_coach_vu', 'tour_coach_vu'].forEach(function (k) { localStorage.removeItem('nvz_' + k + '_' + _tourScope()); }); } catch (e) {}
+      }
       ouvrirEspaceCoach();
     } else { errEl.textContent = data.error || 'Login ou mot de passe incorrect.'; }
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
