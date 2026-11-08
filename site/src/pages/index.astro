@@ -1,0 +1,325 @@
+---
+import Base from '../layouts/Base.astro';
+import Button from '../components/Button.astro';
+import Phone from '../components/Phone.astro';
+import Status from '../components/Status.astro';
+import ForceChart from '../components/ForceChart.astro';
+import { site, cta, ctaPrincipal, preuves } from '../config/site';
+
+// Chaque affirmation ci-dessous est vérifiée dans le code de l'app (voir mockups/site-vitrine-conception.html).
+const title = 'Novalyz · Tes données d’entraînement, transformées en décisions';
+const description = 'Novalyz lit tes séances et ton ressenti pour te dire comment t’entraîner, si c’est bien fait et comment progresser. Pour les sportifs et les coachs. Bêta ouverte.';
+---
+<Base title={title} description={description}>
+
+  <!-- HERO -->
+  <section class="hero on-dark" aria-labelledby="h-hero">
+    <div class="wrap hero-grid">
+      <div class="hero-txt">
+        <p class="eyebrow">Plateforme de performance sportive · bêta</p>
+        <h1 id="h-hero" class="display">Tes données d’entraînement, transformées en décisions.</h1>
+        <p class="lead">Novalyz lit tes séances et ton ressenti pour te dire comment t’entraîner, si c’est bien fait et comment progresser. Aujourd’hui pour la musculation et le coaching, demain pour tous les sports.</p>
+        <div class="btns">
+          {ctaPrincipal.visible && <Button href={ctaPrincipal.lien}>{ctaPrincipal.texte}</Button>}
+          {cta.secondaire.visible && <Button href={cta.secondaire.lien} variant="ghost">{cta.secondaire.texte}</Button>}
+        </div>
+        <p class="sig" aria-label="Mesurer. Comprendre. Progresser.">
+          {site.signature.map((m, i) => <span class={`s${i}`}>{m}</span>)}
+        </p>
+      </div>
+      <div class="hero-vis">
+        <Phone src="/captures/aujourdhui.webp" alt="Écran Aujourd’hui de Novalyz : état du jour « Reste vigilant » à cause d’un sommeil dégradé, comparé à la normale du sportif." eager tilt={-3} />
+        <p class="cap">Écran réel de l’app · données fictives</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONSTAT -->
+  <section class="constat" aria-labelledby="h-constat">
+    <div class="wrap constat-grid">
+      <div>
+        <p class="eyebrow">Le constat</p>
+        <h2 id="h-constat" class="display">Le sport produit des données. Rarement des décisions.</h2>
+      </div>
+      <div class="constat-txt">
+        <p class="lead">Les charges dans un carnet, le ressenti dans la tête, le sommeil dans la montre, les échanges avec le coach dans une autre appli. Les informations existent, mais elles sont dispersées, et personne n’a le temps de les croiser.</p>
+        <p class="lead">Collecter davantage ne suffit pas. Ce qui manque, c’est de comprendre ce qu’elles disent, et quoi en faire à la prochaine séance.</p>
+      </div>
+      <svg class="points" viewBox="0 0 600 120" aria-hidden="true" data-anim="points">
+        <path class="trend" d="M30,100 L560,24" pathLength="1" />
+        {[[30,80],[80,30],[130,95],[170,50],[230,88],[270,22],[320,70],[360,40],[410,96],[450,60],[500,28],[560,74]].map(([px,py], i) => {
+          const ty = 100 - (76 * (px - 30)) / 530;   // point aligné sur la tendance
+          return <circle cx={px} cy={py} r="4" style={`--dy:${(ty - py).toFixed(1)}px;--d:${i * 40}ms`} />;
+        })}
+      </svg>
+    </div>
+  </section>
+
+  <!-- COMMENT ÇA MARCHE -->
+  <section id="comment" class="chapitres" aria-labelledby="h-comment">
+    <div class="wrap">
+      <p class="eyebrow">Comment ça marche</p>
+      <h2 id="h-comment" class="display">Trois gestes. Une seule logique.</h2>
+    </div>
+
+    <article class="chap wrap" aria-labelledby="h-mesurer" data-anim="chap">
+      <div class="chap-txt">
+        <p class="chap-n"><span>01</span> Mesurer</p>
+        <h3 id="h-mesurer" class="display">Tout ce qui compte, en quelques secondes.</h3>
+        <ul>
+          <li><b>Le matin</b>, un questionnaire de 15 secondes : sommeil, fatigue, stress, douleur.</li>
+          <li><b>Pendant la séance</b>, chaque série : charge, répétitions, effort ressenti, repos.</li>
+          <li><b>Avec ta montre</b> (Android, via Health Connect) : pas, sommeil, fréquence cardiaque au repos.</li>
+        </ul>
+      </div>
+      <div class="chap-vis"><Phone src="/captures/questionnaire.webp" alt="Questionnaire du matin de Novalyz : qualité du sommeil, fatigue générale, stress, courbatures." tilt={2} /></div>
+    </article>
+
+    <article class="chap chap-dark on-dark" aria-labelledby="h-comprendre" data-anim="chap">
+      <div class="wrap chap-in">
+        <div class="chap-txt">
+          <p class="chap-n"><span>02</span> Comprendre</p>
+          <h3 id="h-comprendre" class="display">Ce qui va, ce qui coince, et pourquoi.</h3>
+          <ul>
+            <li><b>Ton état du jour</b>, comparé à ta propre normale, pas à une moyenne générale.</li>
+            <li><b>Tes records et tes progrès</b>, et l’exercice qui bloque, avec la raison la plus probable.</li>
+            <li><b>La Lecture Novalyz</b> : ce qu’il faut retenir, en phrases claires, avant les chiffres.</li>
+          </ul>
+        </div>
+        <div class="chap-vis"><Phone src="/captures/analyses.webp" alt="Analyses Novalyz : verdict, records, et le squat bloqué depuis 3 séances avec la raison : effort en hausse à charge égale." tilt={-2} /></div>
+      </div>
+    </article>
+
+    <article class="chap chap-dark chap-prog on-dark" aria-labelledby="h-progresser" data-anim="chap">
+      <div class="wrap chap-in">
+        <div class="chap-txt">
+          <p class="chap-n"><span>03</span> Progresser</p>
+          <h3 id="h-progresser" class="display">La prochaine séance, déjà réfléchie.</h3>
+          <ul>
+            <li><b>Une cible pour chaque série</b>, adaptée à ton niveau et à ta dernière séance.</li>
+            <li><b>Quand monter la charge, quand consolider</b>, selon tes répétitions et ton effort ressenti.</li>
+            <li><b>Un plan pour la semaine</b>, qui se coche tout seul quand tu t’entraînes.</li>
+          </ul>
+        </div>
+        <div class="chap-vis chart-vis"><ForceChart /></div>
+      </div>
+    </article>
+  </section>
+
+  <!-- COACH -->
+  <section id="coach" class="coach" aria-labelledby="h-coach">
+    <div class="wrap chap">
+      <div class="chap-txt">
+        <p class="eyebrow">Pour les coachs <Status etat="dispo" /></p>
+        <h2 id="h-coach" class="display">Qui a besoin de toi aujourd’hui, pourquoi, et quoi faire.</h2>
+        <p class="lead">Tes athlètes notent leurs séances et leur ressenti dans leur app. Toi, tu vois l’essentiel, et tu gardes la main : Novalyz propose, tu décides.</p>
+        <ul>
+          <li><b>Le matin</b>, qui a répondu au questionnaire et qui surveiller.</li>
+          <li><b>Sur chaque fiche</b>, « À décider » : la piste trouvée dans ses données, et les actions possibles.</li>
+          <li><b>Programmes, messages, séance en présentiel</b>, analyses de toute l’équipe.</li>
+        </ul>
+      </div>
+      <div class="chap-vis"><Phone src="/captures/coach.webp" alt="Fiche athlète côté coach : état du jour « Vigilance », et le bloc « À décider » sur le squat bloqué avec une proposition." tilt={2} /></div>
+    </div>
+  </section>
+
+  <!-- VISION -->
+  <section id="vision" class="vision" aria-labelledby="h-vision">
+    <div class="wrap">
+      <p class="eyebrow">Notre vision</p>
+      <h2 id="h-vision" class="display">Une plateforme conçue pour évoluer avec les sports.</h2>
+      <ol class="etapes">
+        <li><p class="et-h">Aujourd’hui <Status etat="dispo" /></p><p>Musculation, entraînement individuel et coaching.</p></li>
+        <li><p class="et-h">Demain <Status etat="bientot" /></p><p>Analyse avancée, assistant Novalyz IA branché sur tes données, analyse morphologique.</p></li>
+        <li><p class="et-h">À terme <Status etat="prevu" /></p><p>Novalyz Pro : clubs, centres de formation, académies.</p></li>
+        <li><p class="et-h">Notre vision <Status etat="prevu" /></p><p>La même logique, mesurer, comprendre, progresser, appliquée à tous les sports.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- CONFIANCE -->
+  <section class="confiance" aria-labelledby="h-confiance">
+    <div class="wrap">
+      <p class="eyebrow">Tes données</p>
+      <h2 id="h-confiance" class="display">Tes données restent les tiennes.</h2>
+      <ul class="conf-grid">
+        <li><b>Ton coach, si tu le choisis</b><span>Un coach ne suit ton compte que si tu acceptes sa demande. Tu peux le quitter quand tu veux.</span></li>
+        <li><b>Export et suppression</b><span>Tu exportes tes données ou supprimes ton compte depuis l’app.</span></li>
+        <li><b>Photos privées</b><span>Tes photos de suivi ne sont visibles que par toi et ton coach.</span></li>
+        <li><b>En toute transparence</b><span>Ce que nous collectons et pourquoi : <a href="/confidentialite/">confidentialité</a>.</span></li>
+      </ul>
+      {preuves.temoignages.length > 0 && <div class="preuves">{/* emplacement prêt : témoignages réels uniquement */}</div>}
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="faq" aria-labelledby="h-faq">
+    <div class="wrap faq-grid">
+      <div>
+        <p class="eyebrow">Questions</p>
+        <h2 id="h-faq" class="display">Les questions qu’on nous pose.</h2>
+        <p class="lead">Une autre question ? <a href={`mailto:${site.email}`}>{site.email}</a></p>
+      </div>
+      <div class="faq-list">
+        <details>
+          <summary>Qu’est-ce que Novalyz ?</summary>
+          <p>Une plateforme qui transforme tes séances et ton ressenti en décisions : comment t’entraîner, si c’est bien fait, comment progresser. Tu notes tes séries et ton état du matin, Novalyz analyse et te le dit en clair.</p>
+        </details>
+        <details>
+          <summary>À qui s’adresse Novalyz ?</summary>
+          <p>Aujourd’hui, aux sportifs qui font de la musculation, avec ou sans coach, et aux coachs et préparateurs physiques qui suivent des athlètes. Les clubs et structures sont la prochaine étape (Novalyz Pro).</p>
+        </details>
+        <details>
+          <summary>Novalyz est-il uniquement pour la musculation ?</summary>
+          <p>Aujourd’hui, l’analyse complète est faite pour la musculation ; l’app enregistre aussi le cardio et les séances Hyrox. Novalyz est conçu pour s’adapter à d’autres sports, qui arriveront progressivement. Ils ne sont pas encore disponibles.</p>
+        </details>
+        <details>
+          <summary>Est-il disponible ?</summary>
+          <p>Novalyz est en bêta. L’app Android est en test fermé sur Google Play ; sur iPhone et ordinateur, elle fonctionne dans le navigateur.</p>
+        </details>
+        <details>
+          <summary>Comment participer à la bêta ?</summary>
+          <p>Clique sur « Rejoindre la bêta » et remplis le formulaire (30 secondes) : on t’ajoute au test (Android) ou on t’envoie le lien de l’app web (iPhone, ordinateur).</p>
+        </details>
+        <details>
+          <summary>Est-ce payant ?</summary>
+          <p>Pendant la bêta, Novalyz est gratuit. Une offre Premium est prévue pour certaines fonctions avancées ; elle sera annoncée avant d’être mise en place.</p>
+        </details>
+        <details>
+          <summary>Faut-il une montre ?</summary>
+          <p>Non. Elle est facultative : sur Android, si tu la relies via Health Connect, Novalyz récupère tes pas, ton sommeil et ta fréquence cardiaque au repos, sans rien saisir.</p>
+        </details>
+        <details>
+          <summary>Qu’est-ce que Novalyz Pro ?</summary>
+          <p>La prochaine étape : un espace pour les clubs, centres de formation et académies. Il n’est pas encore disponible. Si tu représentes une structure, écris-nous pour le construire avec nous.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- BÊTA -->
+  <section class="beta" aria-labelledby="h-beta">
+    <div class="wrap beta-in">
+      <div>
+        <p class="eyebrow">Bêta</p>
+        <h2 id="h-beta" class="display">Teste Novalyz avant tout le monde.</h2>
+        <p class="lead">L’app Android est en test fermé sur Google Play, et fonctionne aussi dans le navigateur (iPhone, ordinateur). Laisse ton e-mail, on t’ajoute.</p>
+      </div>
+      {ctaPrincipal.visible && <Button href={ctaPrincipal.lien}>{ctaPrincipal.texte}</Button>}
+    </div>
+  </section>
+
+</Base>
+
+<style>
+  .hero { background: var(--ink); color: #fff; position: relative; overflow: hidden; padding: calc(120px + env(safe-area-inset-top, 0px)) 0 var(--s8); }
+  .hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 70% at 85% 25%, rgba(26,95,255,.45), transparent 65%); pointer-events: none; }
+  .hero-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--s7); align-items: center; }
+  .hero h1 { font-size: clamp(38px, 6.2vw, 74px); margin: 18px 0 22px; }
+  .hero .lead { color: #C3CFEA; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .sig { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 34px; font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+  .sig .s0 { color: #fff; } .sig .s1 { color: #9DB8FF; } .sig .s2 { color: var(--blue-2); }
+  .hero-vis { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .cap { font-size: 12.5px; color: #8E9BBB; }
+
+  .constat { padding: var(--s9) 0 var(--s8); }
+  .constat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s6) var(--s7); align-items: start; }
+  .constat h2 { font-size: clamp(30px, 4.2vw, 50px); margin-top: 14px; }
+  .constat-txt { display: flex; flex-direction: column; gap: 18px; }
+  .points { grid-column: 1 / -1; width: 100%; height: auto; margin-top: var(--s5); }
+  .points circle { fill: var(--blue); opacity: .55; }
+
+  .chapitres { padding: var(--s8) 0 0; }
+  .chapitres > .wrap h2 { font-size: clamp(30px, 4.2vw, 50px); margin-top: 14px; }
+  .chap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s7); align-items: center; padding-top: var(--s8); padding-bottom: var(--s8); }
+  .chap-dark { background: var(--night); color: #fff; padding: 0; display: block; }
+  .chap-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s7); align-items: center; padding-top: var(--s8); padding-bottom: var(--s8); }
+  .chap-prog { background: var(--ink); }
+  .chap-n { font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); display: flex; gap: 12px; align-items: center; }
+  .chap-n span { color: var(--muted); }
+  .chap-dark .chap-n span { color: #7E8DB2; }
+  .chap h3 { font-size: clamp(26px, 3.4vw, 40px); margin: 14px 0 20px; }
+  .chap ul, .coach ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; max-width: 54ch; }
+  .chap li, .coach li { padding-left: 22px; position: relative; color: var(--muted); }
+  .chap li::before, .coach li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 2px; background: var(--blue); }
+  .chap li b, .coach li b { color: var(--fg); }
+  .chap-dark li { color: #B9C5E3; } .chap-dark li b { color: #fff; }
+  .chap-vis { display: flex; justify-content: center; }
+
+  .coach { background: var(--ice); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .coach { background: #0E1528; } }
+  .coach h2 { font-size: clamp(28px, 3.8vw, 46px); margin: 14px 0 18px; }
+  .coach .lead { margin-bottom: 22px; }
+  .coach .eyebrow { display: flex; align-items: center; gap: 12px; }
+
+  .vision { padding: var(--s9) 0; }
+  .vision h2 { font-size: clamp(28px, 4vw, 48px); margin-top: 14px; max-width: 18ch; }
+  .etapes { list-style: none; margin: var(--s7) 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--line); }
+  .etapes li { padding: 22px 22px 0 0; position: relative; color: var(--muted); }
+  .etapes li::before { content: ""; position: absolute; top: -7px; left: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--blue); }
+  .etapes li:first-child::before { background: var(--blue); }
+  .et-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 800; font-size: 19px; color: var(--fg); margin-bottom: 8px; font-variation-settings: 'wdth' 110; }
+
+  .beta { background: var(--blue); color: #fff; padding: var(--s8) 0; }
+  .beta-in { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); flex-wrap: wrap; }
+  .beta h2 { font-size: clamp(28px, 3.8vw, 44px); margin: 12px 0 14px; }
+  .beta .eyebrow, .beta .lead { color: #fff; }
+  .beta :global(.btn.primary) { background: #fff; color: var(--blue); }
+
+  @media (max-width: 900px) {
+    .hero-grid, .constat-grid, .chap, .chap-in { grid-template-columns: 1fr; }
+    .hero { padding-top: calc(104px + env(safe-area-inset-top, 0px)); }
+    .chap-vis { order: 2; }
+    .etapes { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+  }
+  @media (max-width: 520px) { .etapes { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--line); } .etapes li { padding: 0 0 0 22px; } .etapes li::before { top: 6px; left: -7px; } }
+  /* ── Confiance ── */
+  .confiance { padding: var(--s9) 0 var(--s8); border-top: 1px solid var(--line); }
+  .confiance h2 { font-size: clamp(28px, 4vw, 46px); margin: 14px 0 0; }
+  .conf-grid { list-style: none; padding: 0; margin: var(--s7) 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5); }
+  .conf-grid li { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 2px solid var(--blue); }
+  .conf-grid b { font-size: 17px; font-variation-settings: 'wdth' 108; }
+  .conf-grid span { color: var(--muted); font-size: 15.5px; }
+  .conf-grid a, .faq a { color: var(--accent); }
+  /* ── FAQ ── */
+  .faq { padding: var(--s8) 0 var(--s9); }
+  .faq-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--s7); align-items: start; }
+  .faq h2 { font-size: clamp(28px, 3.8vw, 44px); margin: 14px 0 18px; }
+  .faq-list { border-top: 1px solid var(--line); }
+  details { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; position: relative; font-weight: 700; font-size: 17.5px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ""; position: absolute; right: 6px; top: 50%; width: 12px; height: 12px; border-right: 2px solid var(--blue); border-bottom: 2px solid var(--blue); transform: translateY(-70%) rotate(45deg); transition: transform .2s ease; }
+  details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+  details p { padding: 0 0 22px; color: var(--muted); max-width: 62ch; }
+  @media (max-width: 900px) { .conf-grid { grid-template-columns: 1fr 1fr; } .faq-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .conf-grid { grid-template-columns: 1fr; } }
+
+  /* ── 5 animations (coupées si « réduire les animations ») ──
+     La page est complète sans JavaScript : les états de départ ne s'appliquent que sous html.anim. */
+  .points .trend { fill: none; stroke: var(--blue); stroke-width: 2; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: .5; }
+  .points circle { transition: transform 1s cubic-bezier(.2,.7,.2,1) var(--d), opacity .6s; }
+  :global(html.anim) .points.on circle { transform: translateY(var(--dy)); opacity: .9; }
+  :global(html.anim) .points.on .trend { stroke-dashoffset: 0; transition: stroke-dashoffset 1.2s ease .5s; }
+  :global(html.anim) [data-anim="chap"] .chap-txt { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  :global(html.anim) [data-anim="chap"] .chap-vis { opacity: 0; transform: translateY(40px); transition: opacity .9s ease .12s, transform .9s ease .12s; }
+  :global(html.anim) [data-anim="chap"].on .chap-txt, :global(html.anim) [data-anim="chap"].on .chap-vis { opacity: 1; transform: none; }
+  :global(html.anim) .hero .sig span { opacity: 0; transform: translateY(8px); animation: sigIn .6s ease forwards; }
+  :global(html.anim) .hero .sig .s0 { animation-delay: .5s; } :global(html.anim) .hero .sig .s1 { animation-delay: .9s; } :global(html.anim) .hero .sig .s2 { animation-delay: 1.3s; }
+  :global(html.anim) .hero-vis { animation: phoneIn 1s cubic-bezier(.2,.7,.2,1) .15s both; }
+  @keyframes sigIn { to { opacity: 1; transform: none; } }
+  @keyframes phoneIn { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: none; } }
+</style>
+
+<script>
+  // Animations : seulement si le navigateur le permet et si l'utilisateur n'a pas demandé moins d'animations.
+  const calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!calme && 'IntersectionObserver' in window) {
+    document.documentElement.classList.add('anim');
+    const io = new IntersectionObserver((entrees) => {
+      entrees.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+    }, { threshold: 0.25 });
+    document.querySelectorAll('[data-anim]').forEach((el) => io.observe(el));
+  }
+</script>

@@ -1,0 +1,20 @@
+---
+interface Props { eyebrow: string; titre: string; intro?: string }
+const { eyebrow, titre, intro } = Astro.props;
+---
+<section class="ph on-dark">
+  <div class="wrap">
+    <p class="eyebrow">{eyebrow}</p>
+    <h1 class="display">{titre}</h1>
+    {intro && <p class="lead">{intro}</p>}
+    <slot />
+  </div>
+</section>
+<style>
+  .ph { background: var(--ink); color: #fff; position: relative; overflow: hidden; padding: calc(128px + env(safe-area-inset-top, 0px)) 0 var(--s8); }
+  .ph::before { content: ""; position: absolute; inset: 0; background: radial-gradient(55% 80% at 90% 10%, rgba(26,95,255,.4), transparent 65%); pointer-events: none; }
+  .ph .wrap { position: relative; }
+  .ph .eyebrow { color: var(--blue-2); }
+  h1 { font-size: clamp(34px, 5.4vw, 64px); margin: 16px 0 18px; max-width: 18ch; }
+  .lead { color: #C3CFEA; max-width: 60ch; }
+</style>

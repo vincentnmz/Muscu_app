@@ -1,0 +1,48 @@
+---
+// Vraie courbe : « force estimée » calculée par la fonction de l'app (_lv3Forces, js/lecture-v3.js)
+// sur les données FICTIVES de Léo (6 dernières semaines). Aucun chiffre inventé.
+import data from '../data/force-leo.json';
+const pts = data.points;
+const W = 560, H = 230, pl = 44, pr = 18, pt = 20, pb = 36;
+const vs = pts.map((p) => p.v);
+const lo = Math.floor((Math.min(...vs) - 3) / 5) * 5, hi = Math.ceil((Math.max(...vs) + 3) / 5) * 5;
+const x = (i: number) => pl + (i * (W - pl - pr)) / (pts.length - 1);
+const y = (v: number) => pt + ((hi - v) * (H - pt - pb)) / (hi - lo);
+const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+const area = `${line} L${x(pts.length - 1).toFixed(1)},${H - pb} L${x(0).toFixed(1)},${H - pb} Z`;
+const ticks = [] as number[]; for (let t = lo; t <= hi; t += 5) ticks.push(t);
+const court = (d: string) => d.slice(0, 5);
+const pct = Math.round(data.pct);
+---
+<figure class="chart" data-anim="chart">
+  <figcaption>
+    <span class="t">Force estimée · {data.exo}</span>
+    <span class="p num">+{pct} % <small>en 6 semaines</small></span>
+  </figcaption>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Force estimée au ${data.exo} : de ${vs[0]} à ${vs[vs.length - 1]} kg en 6 semaines, soit +${pct} %.`}>
+    {ticks.map((t) => (<g><line x1={pl} x2={W - pr} y1={y(t)} y2={y(t)} class="grid" /><text x={pl - 8} y={y(t) + 4} class="ax" text-anchor="end">{t}</text></g>))}
+    <path d={area} class="area" />
+    <path d={line} class="line" pathLength="1" />
+    {pts.map((p, i) => (<g><circle cx={x(i)} cy={y(p.v)} r={i === pts.length - 1 ? 5 : 3.2} class={i === pts.length - 1 ? 'end' : 'dot'} /><text x={x(i)} y={H - 12} class="ax" text-anchor="middle">{court(p.date)}</text></g>))}
+  </svg>
+  <p class="src">Données fictives de « Léo », calculées par le moteur de Novalyz. Charge, répétitions et effort ressenti de chaque séance.</p>
+</figure>
+<style>
+  .chart { margin: 0; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: var(--r-lg); padding: 20px 20px 16px; }
+  figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .t { font-family: var(--f-mark); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: #9DB0DA; }
+  .p { font-size: 28px; font-weight: 800; color: #fff; font-variation-settings: 'wdth' 112; }
+  .p small { font-size: 13px; font-weight: 600; color: #9DB0DA; }
+  svg { width: 100%; height: auto; display: block; }
+  .grid { stroke: rgba(255,255,255,.08); stroke-width: 1; }
+  .ax { fill: #8091B8; font-size: 11px; font-family: var(--f-sans); }
+  .area { fill: url(#none); fill: rgba(26,95,255,.16); }
+  .line { fill: none; stroke: var(--blue-2); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .dot { fill: #0B1736; stroke: var(--blue-2); stroke-width: 2; }
+  .end { fill: #fff; stroke: var(--blue); stroke-width: 3; }
+  .src { margin-top: 10px; font-size: 12.5px; color: #8091B8; }
+  :global(html.anim) .chart .line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  :global(html.anim) .chart .area, :global(html.anim) .chart circle { opacity: 0; transition: opacity .6s ease 1.1s; }
+  :global(html.anim) .chart.on .line { stroke-dashoffset: 0; transition: stroke-dashoffset 1.4s ease .1s; }
+  :global(html.anim) .chart.on .area, :global(html.anim) .chart.on circle { opacity: 1; }
+</style>

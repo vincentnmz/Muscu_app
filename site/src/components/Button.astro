@@ -1,0 +1,15 @@
+---
+interface Props { href: string; variant?: 'primary' | 'ghost' | 'light'; }
+const { href, variant = 'primary' } = Astro.props;
+const ext = /^https?:/.test(href);
+---
+<a class:list={['btn', variant]} href={href} {...(ext ? { rel: 'noopener' } : {})}><slot /></a>
+<style>
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 22px; border-radius: var(--r-pill); font-weight: 700; font-size: 16px; text-decoration: none; transition: transform .15s ease, background-color .15s ease, border-color .15s ease; }
+  .btn:hover { transform: translateY(-1px); }
+  .primary { background: var(--blue); color: #fff; }
+  .primary:hover { background: #0F4FE6; }
+  .ghost { border: 1px solid rgba(255,255,255,.34); color: #fff; }
+  .ghost:hover { border-color: #fff; }
+  .light { border: 1px solid var(--line); color: var(--fg); background: var(--card); }
+</style>

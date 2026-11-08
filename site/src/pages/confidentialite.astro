@@ -1,0 +1,38 @@
+---
+import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
+import { site, hebergeurSite } from '../config/site';
+import '../styles/doc.css';
+// Partie « site » : vérifiée sur le build (aucun cookie, aucun script tiers, polices servies par le site).
+// Partie « application » : résumé de privacy.html (source de vérité, lien vers le texte complet).
+---
+<Base title="Novalyz · Confidentialité" description="Ce que le site et l’application Novalyz font de tes données." path="/confidentialite/">
+  <PageHead eyebrow="Confidentialité" titre="Tes données, en clair." intro="Deux parties : ce site, qui ne collecte que ce que tu envoies par le formulaire bêta, et l’application, qui a sa propre politique détaillée." />
+  <section class="doc">
+    <div class="wrap">
+      <p class="maj">Dernière mise à jour : 7 novembre 2026</p>
+
+      <h2>Ce site (www.novalyz.fr)</h2>
+      <ul>
+        <li><b>Aucun cookie</b>, aucun outil de mesure d’audience, aucune publicité.</li>
+        <li><b>Aucun service tiers</b> chargé par les pages : les polices et les images sont servies par le site lui-même.</li>
+        <li><b>Formulaire bêta</b> : ton prénom, ton e-mail, ton profil, ton appareil et ton message éventuel sont envoyés au serveur de Novalyz (hébergé chez Supabase) et transmis par e-mail à l’équipe. Ils servent uniquement à t’ajouter à la bêta et à te contacter à son sujet ; ils ne sont ni vendus ni partagés. Ils sont supprimés à la fin de la bêta, et au plus tard 12 mois après ton inscription. Sur Android, ton adresse est ajoutée à la liste des testeurs de Google Play.</li>
+        <li>L’hébergeur ({hebergeurSite.nom}) enregistre, comme tout serveur, des journaux techniques (dont l’adresse IP) pour faire fonctionner et sécuriser le service. Nous n’y avons pas accès pour suivre les visiteurs.</li>
+        <li>Quand tu nous écris par e-mail, nous utilisons ton message uniquement pour te répondre.</li>
+      </ul>
+
+      <h2>L’application Novalyz</h2>
+      <p>L’application traite les données que tu y saisis (séances, ressenti, profil) pour t’apporter le suivi et l’analyse. En résumé :</p>
+      <ul>
+        <li>Nous <b>ne vendons pas</b> tes données et ne les utilisons pas pour de la publicité.</li>
+        <li>Les mots de passe sont stockés <b>hachés</b>, jamais en clair ; les échanges passent par des connexions chiffrées (HTTPS).</li>
+        <li>Un coach ne voit tes données que si tu es rattaché à lui.</li>
+        <li>Tu peux <b>exporter</b> tes données et <b>supprimer</b> ton compte depuis l’app.</li>
+      </ul>
+      <p>Le détail (données traitées, prestataires, Novalyz IA, durée de conservation, mineurs) est dans la <a href={`${site.appUrl}/privacy.html`}>politique de confidentialité de l’application</a>.</p>
+
+      <h2>Tes droits</h2>
+      <p>Tu peux demander l’accès, la rectification ou la suppression de tes données en écrivant à <a href={`mailto:${site.email}`}>{site.email}</a>. Si tu estimes que tes droits ne sont pas respectés, tu peux saisir la CNIL (<a href="https://www.cnil.fr" rel="noopener">cnil.fr</a>).</p>
+    </div>
+  </section>
+</Base>

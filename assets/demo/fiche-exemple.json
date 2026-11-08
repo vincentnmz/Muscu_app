@@ -30,7 +30,7 @@
    "rpe_details": [
     {
      "exo": "Squat",
-     "charge": 95,
+     "charge": 100,
      "rpeAvant": 8,
      "rpeApres": 9
     }
@@ -62,11 +62,11 @@
   "acwr_categorie": "normal",
   "contexte_tag": null,
   "charge_fatigue": {
-   "ctl": 3710,
-   "atl": 2419,
-   "tsb": 1292,
-   "tsbPct": 35,
-   "ratio": 0.65,
+   "ctl": 3881,
+   "atl": 2641,
+   "tsb": 1240,
+   "tsbPct": 32,
+   "ratio": 0.68,
    "fiable": true,
    "source": "tonnage"
   },
@@ -85,206 +85,206 @@
  "coach_demande": null,
  "global": {
   "source": "GLOBAL_ENGINE",
-  "total_seances": 23,
-  "total_series": 300,
-  "total_reps": 2729,
-  "tonnage_total_kg": 153100,
-  "nb_seances": 23,
-  "tonnage_total": 153100,
-  "mean_rpe": 7.4,
+  "total_seances": 39,
+  "total_series": 508,
+  "total_reps": 4633,
+  "tonnage_total_kg": 272791,
+  "nb_seances": 39,
+  "tonnage_total": 272791,
+  "mean_rpe": 7.3,
   "records": {
    "Développé couché incliné haltère": {
-    "charge": 30,
+    "charge": 34,
     "reps": 10,
-    "volume": 300,
+    "volume": 340,
     "date": "05/11/2026"
    },
    "Tirage vertical prise large": {
-    "charge": 60,
-    "reps": 10,
-    "volume": 600,
-    "date": "05/11/2026"
-   },
-   "Élévation latérale haltère": {
-    "charge": 12,
-    "reps": 14,
-    "volume": 168,
-    "date": "05/11/2026"
-   },
-   "Extension poulie corde": {
-    "charge": 30,
-    "reps": 12,
-    "volume": 360,
-    "date": "05/11/2026"
-   },
-   "Squat": {
-    "charge": 95,
-    "reps": 6,
-    "volume": 570,
-    "date": "03/11/2026"
-   },
-   "Leg curl assis": {
-    "charge": 50,
-    "reps": 12,
-    "volume": 600,
-    "date": "03/11/2026"
-   },
-   "Presse inclinée": {
-    "charge": 150,
-    "reps": 12,
-    "volume": 1800,
-    "date": "03/11/2026"
-   },
-   "Mollets debout": {
-    "charge": 65,
-    "reps": 14,
-    "volume": 910,
-    "date": "03/11/2026"
-   },
-   "Développé couché barre": {
-    "charge": 75,
-    "reps": 8,
-    "volume": 600,
-    "date": "02/11/2026"
-   },
-   "Rowing barre": {
     "charge": 65,
     "reps": 10,
     "volume": 650,
-    "date": "02/11/2026"
+    "date": "05/11/2026"
    },
-   "Développé militaire aux haltères": {
-    "charge": 24,
-    "reps": 10,
-    "volume": 240,
-    "date": "02/11/2026"
+   "Élévation latérale haltère": {
+    "charge": 14,
+    "reps": 14,
+    "volume": 196,
+    "date": "05/11/2026"
    },
-   "Curl barre": {
+   "Extension poulie corde": {
     "charge": 35,
     "reps": 12,
     "volume": 420,
+    "date": "05/11/2026"
+   },
+   "Squat": {
+    "charge": 100,
+    "reps": 6,
+    "volume": 600,
+    "date": "03/11/2026"
+   },
+   "Leg curl assis": {
+    "charge": 55,
+    "reps": 12,
+    "volume": 660,
+    "date": "03/11/2026"
+   },
+   "Presse inclinée": {
+    "charge": 160,
+    "reps": 12,
+    "volume": 1920,
+    "date": "03/11/2026"
+   },
+   "Mollets debout": {
+    "charge": 70,
+    "reps": 14,
+    "volume": 980,
+    "date": "03/11/2026"
+   },
+   "Développé couché barre": {
+    "charge": 80,
+    "reps": 8,
+    "volume": 640,
+    "date": "02/11/2026"
+   },
+   "Rowing barre": {
+    "charge": 70,
+    "reps": 10,
+    "volume": 700,
+    "date": "02/11/2026"
+   },
+   "Développé militaire aux haltères": {
+    "charge": 28,
+    "reps": 10,
+    "volume": 280,
+    "date": "02/11/2026"
+   },
+   "Curl barre": {
+    "charge": 40,
+    "reps": 12,
+    "volume": 480,
     "date": "02/11/2026"
    },
    "Soulevé de terre": {
-    "charge": 115,
+    "charge": 120,
     "reps": 5,
-    "volume": 575,
+    "volume": 600,
     "date": "30/10/2026"
    },
    "Fente bulgare": {
-    "charge": 22,
+    "charge": 26,
     "reps": 8,
-    "volume": 176,
+    "volume": 208,
     "date": "30/10/2026"
    },
    "Leg extension": {
-    "charge": 55,
+    "charge": 60,
     "reps": 10,
-    "volume": 550,
+    "volume": 600,
     "date": "30/10/2026"
    },
    "Hip thrust": {
-    "charge": 100,
+    "charge": 110,
     "reps": 8,
-    "volume": 800,
+    "volume": 880,
     "date": "30/10/2026"
    }
   },
   "records_par_exo": {
    "Développé couché incliné haltère": {
-    "charge": 30,
+    "charge": 34,
     "reps": 10,
-    "volume": 300,
+    "volume": 340,
     "date": "05/11/2026"
    },
    "Tirage vertical prise large": {
-    "charge": 60,
-    "reps": 10,
-    "volume": 600,
-    "date": "05/11/2026"
-   },
-   "Élévation latérale haltère": {
-    "charge": 12,
-    "reps": 14,
-    "volume": 168,
-    "date": "05/11/2026"
-   },
-   "Extension poulie corde": {
-    "charge": 30,
-    "reps": 12,
-    "volume": 360,
-    "date": "05/11/2026"
-   },
-   "Squat": {
-    "charge": 95,
-    "reps": 6,
-    "volume": 570,
-    "date": "03/11/2026"
-   },
-   "Leg curl assis": {
-    "charge": 50,
-    "reps": 12,
-    "volume": 600,
-    "date": "03/11/2026"
-   },
-   "Presse inclinée": {
-    "charge": 150,
-    "reps": 12,
-    "volume": 1800,
-    "date": "03/11/2026"
-   },
-   "Mollets debout": {
-    "charge": 65,
-    "reps": 14,
-    "volume": 910,
-    "date": "03/11/2026"
-   },
-   "Développé couché barre": {
-    "charge": 75,
-    "reps": 8,
-    "volume": 600,
-    "date": "02/11/2026"
-   },
-   "Rowing barre": {
     "charge": 65,
     "reps": 10,
     "volume": 650,
-    "date": "02/11/2026"
+    "date": "05/11/2026"
    },
-   "Développé militaire aux haltères": {
-    "charge": 24,
-    "reps": 10,
-    "volume": 240,
-    "date": "02/11/2026"
+   "Élévation latérale haltère": {
+    "charge": 14,
+    "reps": 14,
+    "volume": 196,
+    "date": "05/11/2026"
    },
-   "Curl barre": {
+   "Extension poulie corde": {
     "charge": 35,
     "reps": 12,
     "volume": 420,
+    "date": "05/11/2026"
+   },
+   "Squat": {
+    "charge": 100,
+    "reps": 6,
+    "volume": 600,
+    "date": "03/11/2026"
+   },
+   "Leg curl assis": {
+    "charge": 55,
+    "reps": 12,
+    "volume": 660,
+    "date": "03/11/2026"
+   },
+   "Presse inclinée": {
+    "charge": 160,
+    "reps": 12,
+    "volume": 1920,
+    "date": "03/11/2026"
+   },
+   "Mollets debout": {
+    "charge": 70,
+    "reps": 14,
+    "volume": 980,
+    "date": "03/11/2026"
+   },
+   "Développé couché barre": {
+    "charge": 80,
+    "reps": 8,
+    "volume": 640,
+    "date": "02/11/2026"
+   },
+   "Rowing barre": {
+    "charge": 70,
+    "reps": 10,
+    "volume": 700,
+    "date": "02/11/2026"
+   },
+   "Développé militaire aux haltères": {
+    "charge": 28,
+    "reps": 10,
+    "volume": 280,
+    "date": "02/11/2026"
+   },
+   "Curl barre": {
+    "charge": 40,
+    "reps": 12,
+    "volume": 480,
     "date": "02/11/2026"
    },
    "Soulevé de terre": {
-    "charge": 115,
+    "charge": 120,
     "reps": 5,
-    "volume": 575,
+    "volume": 600,
     "date": "30/10/2026"
    },
    "Fente bulgare": {
-    "charge": 22,
+    "charge": 26,
     "reps": 8,
-    "volume": 176,
+    "volume": 208,
     "date": "30/10/2026"
    },
    "Leg extension": {
-    "charge": 55,
+    "charge": 60,
     "reps": 10,
-    "volume": 550,
+    "volume": 600,
     "date": "30/10/2026"
    },
    "Hip thrust": {
-    "charge": 100,
+    "charge": 110,
     "reps": 8,
-    "volume": 800,
+    "volume": 880,
     "date": "30/10/2026"
    }
   },
@@ -292,7 +292,7 @@
    {
     "seance_id": "Haut B",
     "date": "05/11/2026",
-    "tonnage": 4692,
+    "tonnage": 5255,
     "exercices": [
      "Développé couché incliné haltère",
      "Tirage vertical prise large",
@@ -309,7 +309,7 @@
    {
     "seance_id": "Bas A",
     "date": "03/11/2026",
-    "tonnage": 11755,
+    "tonnage": 12595,
     "exercices": [
      "Squat",
      "Leg curl assis",
@@ -325,7 +325,7 @@
    {
     "seance_id": "Haut A",
     "date": "02/11/2026",
-    "tonnage": 6641,
+    "tonnage": 7272,
     "exercices": [
      "Développé couché barre",
      "Rowing barre",
@@ -351,446 +351,830 @@
   "records_evenements": [
    {
     "exo": "Développé couché barre",
-    "date": "2026-10-05",
+    "date": "2026-09-07",
     "c": 70,
     "r": 8
    },
    {
     "exo": "Rowing barre",
-    "date": "2026-10-05",
+    "date": "2026-09-07",
     "c": 60,
     "r": 10
    },
    {
     "exo": "Développé militaire aux haltères",
-    "date": "2026-10-05",
+    "date": "2026-09-07",
     "c": 20,
     "r": 10
    },
    {
     "exo": "Curl barre",
-    "date": "2026-10-05",
+    "date": "2026-09-07",
     "c": 30,
     "r": 12
    },
    {
     "exo": "Squat",
-    "date": "2026-10-06",
+    "date": "2026-09-08",
     "c": 90,
     "r": 8
    },
    {
     "exo": "Leg curl assis",
-    "date": "2026-10-06",
+    "date": "2026-09-08",
     "c": 45,
     "r": 12
    },
    {
     "exo": "Presse inclinée",
-    "date": "2026-10-06",
+    "date": "2026-09-08",
     "c": 140,
     "r": 12
    },
    {
     "exo": "Mollets debout",
-    "date": "2026-10-06",
+    "date": "2026-09-08",
     "c": 60,
     "r": 14
    },
    {
     "exo": "Développé couché incliné haltère",
-    "date": "2026-10-08",
+    "date": "2026-09-10",
     "c": 26,
     "r": 10
    },
    {
     "exo": "Tirage vertical prise large",
-    "date": "2026-10-08",
+    "date": "2026-09-10",
     "c": 55,
     "r": 10
    },
    {
     "exo": "Élévation latérale haltère",
-    "date": "2026-10-08",
+    "date": "2026-09-10",
     "c": 10,
     "r": 14
    },
    {
     "exo": "Extension poulie corde",
-    "date": "2026-10-08",
+    "date": "2026-09-10",
     "c": 25,
     "r": 12
    },
    {
     "exo": "Soulevé de terre",
-    "date": "2026-10-09",
+    "date": "2026-09-11",
     "c": 110,
     "r": 6
    },
    {
     "exo": "Fente bulgare",
-    "date": "2026-10-09",
+    "date": "2026-09-11",
     "c": 18,
     "r": 10
    },
    {
     "exo": "Leg extension",
-    "date": "2026-10-09",
+    "date": "2026-09-11",
     "c": 50,
     "r": 12
    },
    {
     "exo": "Hip thrust",
-    "date": "2026-10-09",
+    "date": "2026-09-11",
     "c": 90,
     "r": 10
    },
    {
     "exo": "Développé couché barre",
-    "date": "2026-10-12",
+    "date": "2026-09-14",
     "c": 72.5,
     "r": 6
    },
    {
     "exo": "Rowing barre",
-    "date": "2026-10-12",
+    "date": "2026-09-14",
     "c": 62.5,
     "r": 8
    },
    {
     "exo": "Développé militaire aux haltères",
-    "date": "2026-10-12",
+    "date": "2026-09-14",
     "c": 22,
     "r": 8
    },
    {
     "exo": "Curl barre",
-    "date": "2026-10-12",
+    "date": "2026-09-14",
     "c": 32.5,
     "r": 10
    },
    {
     "exo": "Squat",
-    "date": "2026-10-13",
+    "date": "2026-09-15",
     "c": 92.5,
     "r": 6
    },
    {
     "exo": "Leg curl assis",
-    "date": "2026-10-13",
+    "date": "2026-09-15",
     "c": 47.5,
     "r": 10
    },
    {
     "exo": "Presse inclinée",
-    "date": "2026-10-13",
+    "date": "2026-09-15",
     "c": 145,
     "r": 10
    },
    {
     "exo": "Mollets debout",
-    "date": "2026-10-13",
+    "date": "2026-09-15",
     "c": 62.5,
     "r": 12
    },
    {
     "exo": "Développé couché incliné haltère",
-    "date": "2026-10-15",
+    "date": "2026-09-17",
     "c": 28,
     "r": 8
    },
    {
     "exo": "Tirage vertical prise large",
-    "date": "2026-10-15",
+    "date": "2026-09-17",
     "c": 57.5,
     "r": 8
    },
    {
     "exo": "Élévation latérale haltère",
-    "date": "2026-10-15",
+    "date": "2026-09-17",
     "c": 11,
     "r": 12
    },
    {
     "exo": "Extension poulie corde",
-    "date": "2026-10-15",
+    "date": "2026-09-17",
     "c": 27.5,
     "r": 10
    },
    {
     "exo": "Soulevé de terre",
-    "date": "2026-10-16",
+    "date": "2026-09-18",
     "c": 112.5,
     "r": 5
    },
    {
     "exo": "Fente bulgare",
-    "date": "2026-10-16",
+    "date": "2026-09-18",
     "c": 20,
     "r": 8
    },
    {
     "exo": "Leg extension",
-    "date": "2026-10-16",
+    "date": "2026-09-18",
     "c": 52.5,
     "r": 10
    },
    {
     "exo": "Hip thrust",
-    "date": "2026-10-16",
+    "date": "2026-09-18",
     "c": 95,
     "r": 8
    },
    {
     "exo": "Développé couché barre",
-    "date": "2026-10-19",
+    "date": "2026-09-21",
     "c": 72.5,
     "r": 8
    },
    {
     "exo": "Rowing barre",
-    "date": "2026-10-19",
+    "date": "2026-09-21",
     "c": 62.5,
     "r": 10
    },
    {
     "exo": "Développé militaire aux haltères",
-    "date": "2026-10-19",
+    "date": "2026-09-21",
     "c": 22,
     "r": 10
    },
    {
     "exo": "Curl barre",
-    "date": "2026-10-19",
+    "date": "2026-09-21",
     "c": 32.5,
     "r": 12
    },
    {
     "exo": "Squat",
-    "date": "2026-10-20",
-    "c": 95,
-    "r": 6
+    "date": "2026-09-22",
+    "c": 92.5,
+    "r": 8
    },
    {
     "exo": "Leg curl assis",
-    "date": "2026-10-20",
+    "date": "2026-09-22",
     "c": 47.5,
     "r": 12
    },
    {
     "exo": "Presse inclinée",
-    "date": "2026-10-20",
+    "date": "2026-09-22",
     "c": 145,
     "r": 12
    },
    {
     "exo": "Mollets debout",
-    "date": "2026-10-20",
+    "date": "2026-09-22",
     "c": 62.5,
     "r": 14
    },
    {
     "exo": "Développé couché incliné haltère",
-    "date": "2026-10-22",
+    "date": "2026-09-24",
     "c": 28,
     "r": 10
    },
    {
     "exo": "Tirage vertical prise large",
-    "date": "2026-10-22",
+    "date": "2026-09-24",
     "c": 57.5,
     "r": 10
    },
    {
     "exo": "Élévation latérale haltère",
-    "date": "2026-10-22",
+    "date": "2026-09-24",
     "c": 11,
     "r": 14
    },
    {
     "exo": "Extension poulie corde",
-    "date": "2026-10-22",
+    "date": "2026-09-24",
     "c": 27.5,
     "r": 12
    },
    {
     "exo": "Soulevé de terre",
-    "date": "2026-10-23",
+    "date": "2026-09-25",
     "c": 112.5,
     "r": 6
    },
    {
     "exo": "Fente bulgare",
-    "date": "2026-10-23",
+    "date": "2026-09-25",
     "c": 20,
     "r": 10
    },
    {
     "exo": "Leg extension",
-    "date": "2026-10-23",
+    "date": "2026-09-25",
     "c": 52.5,
     "r": 12
    },
    {
     "exo": "Hip thrust",
-    "date": "2026-10-23",
+    "date": "2026-09-25",
     "c": 95,
     "r": 10
    },
    {
     "exo": "Développé couché barre",
-    "date": "2026-10-26",
+    "date": "2026-09-28",
     "c": 75,
     "r": 6
    },
    {
     "exo": "Rowing barre",
-    "date": "2026-10-26",
+    "date": "2026-09-28",
     "c": 65,
     "r": 8
    },
    {
     "exo": "Développé militaire aux haltères",
-    "date": "2026-10-26",
+    "date": "2026-09-28",
     "c": 24,
     "r": 8
    },
    {
     "exo": "Curl barre",
-    "date": "2026-10-26",
+    "date": "2026-09-28",
     "c": 35,
     "r": 10
    },
    {
+    "exo": "Squat",
+    "date": "2026-09-29",
+    "c": 95,
+    "r": 6
+   },
+   {
     "exo": "Leg curl assis",
-    "date": "2026-10-27",
+    "date": "2026-09-29",
     "c": 50,
     "r": 10
    },
    {
     "exo": "Presse inclinée",
-    "date": "2026-10-27",
+    "date": "2026-09-29",
     "c": 150,
     "r": 10
    },
    {
     "exo": "Mollets debout",
-    "date": "2026-10-27",
+    "date": "2026-09-29",
     "c": 65,
     "r": 12
    },
    {
     "exo": "Développé couché incliné haltère",
-    "date": "2026-10-29",
+    "date": "2026-10-01",
     "c": 30,
     "r": 8
    },
    {
     "exo": "Tirage vertical prise large",
-    "date": "2026-10-29",
+    "date": "2026-10-01",
     "c": 60,
     "r": 8
    },
    {
     "exo": "Élévation latérale haltère",
-    "date": "2026-10-29",
+    "date": "2026-10-01",
     "c": 12,
     "r": 12
    },
    {
     "exo": "Extension poulie corde",
-    "date": "2026-10-29",
+    "date": "2026-10-01",
     "c": 30,
     "r": 10
    },
    {
     "exo": "Soulevé de terre",
-    "date": "2026-10-30",
+    "date": "2026-10-02",
     "c": 115,
     "r": 5
    },
    {
     "exo": "Fente bulgare",
-    "date": "2026-10-30",
+    "date": "2026-10-02",
     "c": 22,
     "r": 8
    },
    {
     "exo": "Leg extension",
-    "date": "2026-10-30",
+    "date": "2026-10-02",
     "c": 55,
     "r": 10
    },
    {
     "exo": "Hip thrust",
-    "date": "2026-10-30",
+    "date": "2026-10-02",
     "c": 100,
     "r": 8
    },
    {
     "exo": "Développé couché barre",
-    "date": "2026-11-02",
+    "date": "2026-10-05",
     "c": 75,
     "r": 8
    },
    {
     "exo": "Rowing barre",
-    "date": "2026-11-02",
+    "date": "2026-10-05",
     "c": 65,
     "r": 10
    },
    {
     "exo": "Développé militaire aux haltères",
-    "date": "2026-11-02",
+    "date": "2026-10-05",
     "c": 24,
     "r": 10
    },
    {
     "exo": "Curl barre",
-    "date": "2026-11-02",
+    "date": "2026-10-05",
     "c": 35,
     "r": 12
    },
    {
+    "exo": "Squat",
+    "date": "2026-10-06",
+    "c": 95,
+    "r": 8
+   },
+   {
     "exo": "Leg curl assis",
-    "date": "2026-11-03",
+    "date": "2026-10-06",
     "c": 50,
     "r": 12
    },
    {
     "exo": "Presse inclinée",
-    "date": "2026-11-03",
+    "date": "2026-10-06",
     "c": 150,
     "r": 12
    },
    {
     "exo": "Mollets debout",
-    "date": "2026-11-03",
+    "date": "2026-10-06",
     "c": 65,
     "r": 14
    },
    {
     "exo": "Développé couché incliné haltère",
-    "date": "2026-11-05",
+    "date": "2026-10-08",
     "c": 30,
     "r": 10
    },
    {
     "exo": "Tirage vertical prise large",
-    "date": "2026-11-05",
+    "date": "2026-10-08",
     "c": 60,
     "r": 10
    },
    {
     "exo": "Élévation latérale haltère",
-    "date": "2026-11-05",
+    "date": "2026-10-08",
     "c": 12,
     "r": 14
    },
    {
     "exo": "Extension poulie corde",
-    "date": "2026-11-05",
+    "date": "2026-10-08",
     "c": 30,
+    "r": 12
+   },
+   {
+    "exo": "Soulevé de terre",
+    "date": "2026-10-09",
+    "c": 115,
+    "r": 6
+   },
+   {
+    "exo": "Fente bulgare",
+    "date": "2026-10-09",
+    "c": 22,
+    "r": 10
+   },
+   {
+    "exo": "Leg extension",
+    "date": "2026-10-09",
+    "c": 55,
+    "r": 12
+   },
+   {
+    "exo": "Hip thrust",
+    "date": "2026-10-09",
+    "c": 100,
+    "r": 10
+   },
+   {
+    "exo": "Développé couché barre",
+    "date": "2026-10-12",
+    "c": 77.5,
+    "r": 6
+   },
+   {
+    "exo": "Rowing barre",
+    "date": "2026-10-12",
+    "c": 67.5,
+    "r": 8
+   },
+   {
+    "exo": "Développé militaire aux haltères",
+    "date": "2026-10-12",
+    "c": 26,
+    "r": 8
+   },
+   {
+    "exo": "Curl barre",
+    "date": "2026-10-12",
+    "c": 37.5,
+    "r": 10
+   },
+   {
+    "exo": "Squat",
+    "date": "2026-10-13",
+    "c": 97.5,
+    "r": 6
+   },
+   {
+    "exo": "Leg curl assis",
+    "date": "2026-10-13",
+    "c": 52.5,
+    "r": 10
+   },
+   {
+    "exo": "Presse inclinée",
+    "date": "2026-10-13",
+    "c": 155,
+    "r": 10
+   },
+   {
+    "exo": "Mollets debout",
+    "date": "2026-10-13",
+    "c": 67.5,
+    "r": 12
+   },
+   {
+    "exo": "Développé couché incliné haltère",
+    "date": "2026-10-15",
+    "c": 32,
+    "r": 8
+   },
+   {
+    "exo": "Tirage vertical prise large",
+    "date": "2026-10-15",
+    "c": 62.5,
+    "r": 8
+   },
+   {
+    "exo": "Élévation latérale haltère",
+    "date": "2026-10-15",
+    "c": 13,
+    "r": 12
+   },
+   {
+    "exo": "Extension poulie corde",
+    "date": "2026-10-15",
+    "c": 32.5,
+    "r": 10
+   },
+   {
+    "exo": "Soulevé de terre",
+    "date": "2026-10-16",
+    "c": 117.5,
+    "r": 5
+   },
+   {
+    "exo": "Fente bulgare",
+    "date": "2026-10-16",
+    "c": 24,
+    "r": 8
+   },
+   {
+    "exo": "Leg extension",
+    "date": "2026-10-16",
+    "c": 57.5,
+    "r": 10
+   },
+   {
+    "exo": "Hip thrust",
+    "date": "2026-10-16",
+    "c": 105,
+    "r": 8
+   },
+   {
+    "exo": "Développé couché barre",
+    "date": "2026-10-19",
+    "c": 77.5,
+    "r": 8
+   },
+   {
+    "exo": "Rowing barre",
+    "date": "2026-10-19",
+    "c": 67.5,
+    "r": 10
+   },
+   {
+    "exo": "Développé militaire aux haltères",
+    "date": "2026-10-19",
+    "c": 26,
+    "r": 10
+   },
+   {
+    "exo": "Curl barre",
+    "date": "2026-10-19",
+    "c": 37.5,
+    "r": 12
+   },
+   {
+    "exo": "Squat",
+    "date": "2026-10-20",
+    "c": 100,
+    "r": 6
+   },
+   {
+    "exo": "Leg curl assis",
+    "date": "2026-10-20",
+    "c": 52.5,
+    "r": 12
+   },
+   {
+    "exo": "Presse inclinée",
+    "date": "2026-10-20",
+    "c": 155,
+    "r": 12
+   },
+   {
+    "exo": "Mollets debout",
+    "date": "2026-10-20",
+    "c": 67.5,
+    "r": 14
+   },
+   {
+    "exo": "Développé couché incliné haltère",
+    "date": "2026-10-22",
+    "c": 32,
+    "r": 10
+   },
+   {
+    "exo": "Tirage vertical prise large",
+    "date": "2026-10-22",
+    "c": 62.5,
+    "r": 10
+   },
+   {
+    "exo": "Élévation latérale haltère",
+    "date": "2026-10-22",
+    "c": 13,
+    "r": 14
+   },
+   {
+    "exo": "Extension poulie corde",
+    "date": "2026-10-22",
+    "c": 32.5,
+    "r": 12
+   },
+   {
+    "exo": "Soulevé de terre",
+    "date": "2026-10-23",
+    "c": 117.5,
+    "r": 6
+   },
+   {
+    "exo": "Fente bulgare",
+    "date": "2026-10-23",
+    "c": 24,
+    "r": 10
+   },
+   {
+    "exo": "Leg extension",
+    "date": "2026-10-23",
+    "c": 57.5,
+    "r": 12
+   },
+   {
+    "exo": "Hip thrust",
+    "date": "2026-10-23",
+    "c": 105,
+    "r": 10
+   },
+   {
+    "exo": "Développé couché barre",
+    "date": "2026-10-26",
+    "c": 80,
+    "r": 6
+   },
+   {
+    "exo": "Rowing barre",
+    "date": "2026-10-26",
+    "c": 70,
+    "r": 8
+   },
+   {
+    "exo": "Développé militaire aux haltères",
+    "date": "2026-10-26",
+    "c": 28,
+    "r": 8
+   },
+   {
+    "exo": "Curl barre",
+    "date": "2026-10-26",
+    "c": 40,
+    "r": 10
+   },
+   {
+    "exo": "Leg curl assis",
+    "date": "2026-10-27",
+    "c": 55,
+    "r": 10
+   },
+   {
+    "exo": "Presse inclinée",
+    "date": "2026-10-27",
+    "c": 160,
+    "r": 10
+   },
+   {
+    "exo": "Mollets debout",
+    "date": "2026-10-27",
+    "c": 70,
+    "r": 12
+   },
+   {
+    "exo": "Développé couché incliné haltère",
+    "date": "2026-10-29",
+    "c": 34,
+    "r": 8
+   },
+   {
+    "exo": "Tirage vertical prise large",
+    "date": "2026-10-29",
+    "c": 65,
+    "r": 8
+   },
+   {
+    "exo": "Élévation latérale haltère",
+    "date": "2026-10-29",
+    "c": 14,
+    "r": 12
+   },
+   {
+    "exo": "Extension poulie corde",
+    "date": "2026-10-29",
+    "c": 35,
+    "r": 10
+   },
+   {
+    "exo": "Soulevé de terre",
+    "date": "2026-10-30",
+    "c": 120,
+    "r": 5
+   },
+   {
+    "exo": "Fente bulgare",
+    "date": "2026-10-30",
+    "c": 26,
+    "r": 8
+   },
+   {
+    "exo": "Leg extension",
+    "date": "2026-10-30",
+    "c": 60,
+    "r": 10
+   },
+   {
+    "exo": "Hip thrust",
+    "date": "2026-10-30",
+    "c": 110,
+    "r": 8
+   },
+   {
+    "exo": "Développé couché barre",
+    "date": "2026-11-02",
+    "c": 80,
+    "r": 8
+   },
+   {
+    "exo": "Rowing barre",
+    "date": "2026-11-02",
+    "c": 70,
+    "r": 10
+   },
+   {
+    "exo": "Développé militaire aux haltères",
+    "date": "2026-11-02",
+    "c": 28,
+    "r": 10
+   },
+   {
+    "exo": "Curl barre",
+    "date": "2026-11-02",
+    "c": 40,
+    "r": 12
+   },
+   {
+    "exo": "Leg curl assis",
+    "date": "2026-11-03",
+    "c": 55,
+    "r": 12
+   },
+   {
+    "exo": "Presse inclinée",
+    "date": "2026-11-03",
+    "c": 160,
+    "r": 12
+   },
+   {
+    "exo": "Mollets debout",
+    "date": "2026-11-03",
+    "c": 70,
+    "r": 14
+   },
+   {
+    "exo": "Développé couché incliné haltère",
+    "date": "2026-11-05",
+    "c": 34,
+    "r": 10
+   },
+   {
+    "exo": "Tirage vertical prise large",
+    "date": "2026-11-05",
+    "c": 65,
+    "r": 10
+   },
+   {
+    "exo": "Élévation latérale haltère",
+    "date": "2026-11-05",
+    "c": 14,
+    "r": 14
+   },
+   {
+    "exo": "Extension poulie corde",
+    "date": "2026-11-05",
+    "c": 35,
     "r": 12
    }
   ]
@@ -800,18 +1184,18 @@
    "seances": 3,
    "series": 40,
    "reps": 408,
-   "tonnage": 23.1,
-   "tonnage_kg": 23088,
+   "tonnage": 25.1,
+   "tonnage_kg": 25122,
    "rpe_moyen": 7.5,
    "volume_par_muscle": {
-    "Pectoraux": 3120,
-    "Dos": 4750,
-    "Epaule": 1188,
-    "Triceps": 1050,
-    "Quadriceps": 7340,
-    "Ischio": 1750,
-    "Mollets": 2665,
-    "Biceps": 1225
+    "Pectoraux": 3386,
+    "Dos": 5130,
+    "Epaule": 1386,
+    "Triceps": 1225,
+    "Quadriceps": 7800,
+    "Ischio": 1925,
+    "Mollets": 2870,
+    "Biceps": 1400
    },
    "series_par_muscle": {
     "Pectoraux": 7,
@@ -824,26 +1208,26 @@
     "Biceps": 3
    },
    "frequence_semaine": 3,
-   "monotonie": 0.77,
-   "strain": 17778
+   "monotonie": 0.78,
+   "strain": 19595
   },
   "j14": {
    "seances": 7,
    "series": 92,
    "reps": 833,
-   "tonnage": 48.2,
-   "tonnage_kg": 48211,
+   "tonnage": 52.5,
+   "tonnage_kg": 52456,
    "rpe_moyen": 7.5,
    "volume_par_muscle": {
-    "Pectoraux": 5460,
-    "Dos": 10110,
-    "Epaule": 2160,
-    "Triceps": 1920,
-    "Quadriceps": 15375,
-    "Ischio": 3200,
-    "Mollets": 4940,
-    "Biceps": 2240,
-    "Fessier": 2806
+    "Pectoraux": 5928,
+    "Dos": 10860,
+    "Epaule": 2520,
+    "Triceps": 2240,
+    "Quadriceps": 16380,
+    "Ischio": 3520,
+    "Mollets": 5320,
+    "Biceps": 2560,
+    "Fessier": 3128
    },
    "series_par_muscle": {
     "Pectoraux": 14,
@@ -857,26 +1241,26 @@
     "Fessier": 6
    },
    "frequence_semaine": 3.5,
-   "monotonie": 0.87,
-   "strain": 41944
+   "monotonie": 0.88,
+   "strain": 46161
   },
   "j28": {
    "seances": 15,
    "series": 196,
    "reps": 1777,
-   "tonnage": 101.6,
-   "tonnage_kg": 101552,
+   "tonnage": 110.7,
+   "tonnage_kg": 110713,
    "rpe_moyen": 7.4,
    "volume_par_muscle": {
-    "Pectoraux": 10686,
-    "Dos": 21870,
-    "Epaule": 4140,
-    "Triceps": 3680,
-    "Quadriceps": 32140,
-    "Ischio": 6240,
-    "Mollets": 9690,
-    "Biceps": 4320,
-    "Fessier": 8786
+    "Pectoraux": 11622,
+    "Dos": 23460,
+    "Epaule": 4860,
+    "Triceps": 4320,
+    "Quadriceps": 34325,
+    "Ischio": 6880,
+    "Mollets": 10450,
+    "Biceps": 4960,
+    "Fessier": 9836
    },
    "series_par_muscle": {
     "Pectoraux": 28,
@@ -890,190 +1274,190 @@
     "Fessier": 18
    },
    "frequence_semaine": 3.8,
-   "monotonie": 0.93,
-   "strain": 94443
+   "monotonie": 0.94,
+   "strain": 104070
   },
   "j56": {
-   "seances": 23,
-   "series": 300,
-   "reps": 2729,
-   "tonnage": 153.1,
-   "tonnage_kg": 153100,
+   "seances": 31,
+   "series": 404,
+   "reps": 3681,
+   "tonnage": 221.2,
+   "tonnage_kg": 221243,
    "rpe_moyen": 7.4,
    "volume_par_muscle": {
-    "Pectoraux": 15678,
-    "Dos": 33210,
-    "Epaule": 5940,
-    "Triceps": 5280,
-    "Quadriceps": 48980,
-    "Ischio": 9120,
-    "Mollets": 14250,
-    "Biceps": 6240,
-    "Fessier": 14402
+    "Pectoraux": 22308,
+    "Dos": 47400,
+    "Epaule": 9000,
+    "Triceps": 8000,
+    "Quadriceps": 69835,
+    "Ischio": 13120,
+    "Mollets": 20140,
+    "Biceps": 9280,
+    "Fessier": 22160
    },
    "series_par_muscle": {
-    "Pectoraux": 42,
-    "Dos": 63,
-    "Epaule": 36,
-    "Triceps": 18,
-    "Quadriceps": 57,
-    "Ischio": 18,
-    "Mollets": 18,
-    "Biceps": 18,
-    "Fessier": 30
+    "Pectoraux": 56,
+    "Dos": 85,
+    "Epaule": 48,
+    "Triceps": 24,
+    "Quadriceps": 77,
+    "Ischio": 24,
+    "Mollets": 24,
+    "Biceps": 24,
+    "Fessier": 42
    },
-   "frequence_semaine": 2.9,
-   "monotonie": 0.74,
-   "strain": 113294
+   "frequence_semaine": 3.9,
+   "monotonie": 0.96,
+   "strain": 212393
   },
   "j90": {
-   "seances": 23,
-   "series": 300,
-   "reps": 2729,
-   "tonnage": 153.1,
-   "tonnage_kg": 153100,
-   "rpe_moyen": 7.4,
+   "seances": 39,
+   "series": 508,
+   "reps": 4633,
+   "tonnage": 272.8,
+   "tonnage_kg": 272791,
+   "rpe_moyen": 7.3,
    "volume_par_muscle": {
-    "Pectoraux": 15678,
-    "Dos": 33210,
-    "Epaule": 5940,
-    "Triceps": 5280,
-    "Quadriceps": 48980,
-    "Ischio": 9120,
-    "Mollets": 14250,
-    "Biceps": 6240,
-    "Fessier": 14402
+    "Pectoraux": 27300,
+    "Dos": 58740,
+    "Epaule": 10800,
+    "Triceps": 9600,
+    "Quadriceps": 86675,
+    "Ischio": 16000,
+    "Mollets": 24700,
+    "Biceps": 11200,
+    "Fessier": 27776
    },
    "series_par_muscle": {
-    "Pectoraux": 42,
-    "Dos": 63,
-    "Epaule": 36,
-    "Triceps": 18,
-    "Quadriceps": 57,
-    "Ischio": 18,
-    "Mollets": 18,
-    "Biceps": 18,
-    "Fessier": 30
+    "Pectoraux": 70,
+    "Dos": 107,
+    "Epaule": 60,
+    "Triceps": 30,
+    "Quadriceps": 97,
+    "Ischio": 30,
+    "Mollets": 30,
+    "Biceps": 30,
+    "Fessier": 54
    },
-   "frequence_semaine": 1.8,
-   "monotonie": 0.53,
-   "strain": 81143
+   "frequence_semaine": 3,
+   "monotonie": 0.78,
+   "strain": 212777
   },
   "j180": {
-   "seances": 23,
-   "series": 300,
-   "reps": 2729,
-   "tonnage": 153.1,
-   "tonnage_kg": 153100,
-   "rpe_moyen": 7.4,
+   "seances": 39,
+   "series": 508,
+   "reps": 4633,
+   "tonnage": 272.8,
+   "tonnage_kg": 272791,
+   "rpe_moyen": 7.3,
    "volume_par_muscle": {
-    "Pectoraux": 15678,
-    "Dos": 33210,
-    "Epaule": 5940,
-    "Triceps": 5280,
-    "Quadriceps": 48980,
-    "Ischio": 9120,
-    "Mollets": 14250,
-    "Biceps": 6240,
-    "Fessier": 14402
+    "Pectoraux": 27300,
+    "Dos": 58740,
+    "Epaule": 10800,
+    "Triceps": 9600,
+    "Quadriceps": 86675,
+    "Ischio": 16000,
+    "Mollets": 24700,
+    "Biceps": 11200,
+    "Fessier": 27776
    },
    "series_par_muscle": {
-    "Pectoraux": 42,
-    "Dos": 63,
-    "Epaule": 36,
-    "Triceps": 18,
-    "Quadriceps": 57,
-    "Ischio": 18,
-    "Mollets": 18,
-    "Biceps": 18,
-    "Fessier": 30
+    "Pectoraux": 70,
+    "Dos": 107,
+    "Epaule": 60,
+    "Triceps": 30,
+    "Quadriceps": 97,
+    "Ischio": 30,
+    "Mollets": 30,
+    "Biceps": 30,
+    "Fessier": 54
    },
-   "frequence_semaine": 0.9,
-   "monotonie": 0.35,
-   "strain": 53585
+   "frequence_semaine": 1.5,
+   "monotonie": 0.48,
+   "strain": 130940
   },
   "j270": {
-   "seances": 23,
-   "series": 300,
-   "reps": 2729,
-   "tonnage": 153.1,
-   "tonnage_kg": 153100,
-   "rpe_moyen": 7.4,
+   "seances": 39,
+   "series": 508,
+   "reps": 4633,
+   "tonnage": 272.8,
+   "tonnage_kg": 272791,
+   "rpe_moyen": 7.3,
    "volume_par_muscle": {
-    "Pectoraux": 15678,
-    "Dos": 33210,
-    "Epaule": 5940,
-    "Triceps": 5280,
-    "Quadriceps": 48980,
-    "Ischio": 9120,
-    "Mollets": 14250,
-    "Biceps": 6240,
-    "Fessier": 14402
+    "Pectoraux": 27300,
+    "Dos": 58740,
+    "Epaule": 10800,
+    "Triceps": 9600,
+    "Quadriceps": 86675,
+    "Ischio": 16000,
+    "Mollets": 24700,
+    "Biceps": 11200,
+    "Fessier": 27776
    },
    "series_par_muscle": {
-    "Pectoraux": 42,
-    "Dos": 63,
-    "Epaule": 36,
-    "Triceps": 18,
-    "Quadriceps": 57,
-    "Ischio": 18,
-    "Mollets": 18,
-    "Biceps": 18,
-    "Fessier": 30
+    "Pectoraux": 70,
+    "Dos": 107,
+    "Epaule": 60,
+    "Triceps": 30,
+    "Quadriceps": 97,
+    "Ischio": 30,
+    "Mollets": 30,
+    "Biceps": 30,
+    "Fessier": 54
    },
-   "frequence_semaine": 0.6,
-   "monotonie": 0.28,
-   "strain": 42868
+   "frequence_semaine": 1,
+   "monotonie": 0.38,
+   "strain": 103661
   },
   "j365": {
-   "seances": 23,
-   "series": 300,
-   "reps": 2729,
-   "tonnage": 153.1,
-   "tonnage_kg": 153100,
-   "rpe_moyen": 7.4,
+   "seances": 39,
+   "series": 508,
+   "reps": 4633,
+   "tonnage": 272.8,
+   "tonnage_kg": 272791,
+   "rpe_moyen": 7.3,
    "volume_par_muscle": {
-    "Pectoraux": 15678,
-    "Dos": 33210,
-    "Epaule": 5940,
-    "Triceps": 5280,
-    "Quadriceps": 48980,
-    "Ischio": 9120,
-    "Mollets": 14250,
-    "Biceps": 6240,
-    "Fessier": 14402
+    "Pectoraux": 27300,
+    "Dos": 58740,
+    "Epaule": 10800,
+    "Triceps": 9600,
+    "Quadriceps": 86675,
+    "Ischio": 16000,
+    "Mollets": 24700,
+    "Biceps": 11200,
+    "Fessier": 27776
    },
    "series_par_muscle": {
-    "Pectoraux": 42,
-    "Dos": 63,
-    "Epaule": 36,
-    "Triceps": 18,
-    "Quadriceps": 57,
-    "Ischio": 18,
-    "Mollets": 18,
-    "Biceps": 18,
-    "Fessier": 30
+    "Pectoraux": 70,
+    "Dos": 107,
+    "Epaule": 60,
+    "Triceps": 30,
+    "Quadriceps": 97,
+    "Ischio": 30,
+    "Mollets": 30,
+    "Biceps": 30,
+    "Fessier": 54
    },
-   "frequence_semaine": 0.4,
-   "monotonie": 0.24,
-   "strain": 36744
+   "frequence_semaine": 0.7,
+   "monotonie": 0.32,
+   "strain": 87293
   },
   "semaineCal": {
    "seances": 3,
    "series": 40,
    "reps": 408,
-   "tonnage": 23.1,
-   "tonnage_kg": 23088,
+   "tonnage": 25.1,
+   "tonnage_kg": 25122,
    "rpe_moyen": 7.5,
    "volume_par_muscle": {
-    "Pectoraux": 3120,
-    "Dos": 4750,
-    "Epaule": 1188,
-    "Triceps": 1050,
-    "Quadriceps": 7340,
-    "Ischio": 1750,
-    "Mollets": 2665,
-    "Biceps": 1225
+    "Pectoraux": 3386,
+    "Dos": 5130,
+    "Epaule": 1386,
+    "Triceps": 1225,
+    "Quadriceps": 7800,
+    "Ischio": 1925,
+    "Mollets": 2870,
+    "Biceps": 1400
    },
    "series_par_muscle": {
     "Pectoraux": 7,
@@ -1092,15 +1476,15 @@
    "nb_exercices": 4,
    "nb_series": 13,
    "rpe_moyen": 7.3,
-   "tonnage_kg": 4692,
-   "tonnage_t": 4.7
+   "tonnage_kg": 5255,
+   "tonnage_t": 5.3
   }
  },
  "comparison": {
   "j7_vs_j7prec": {
    "tonnage": {
-    "j7": 23088,
-    "j7_prec": 25123,
+    "j7": 25122,
+    "j7_prec": 27334,
     "evol_pct": -8
    },
    "seances": {
@@ -1114,96 +1498,96 @@
    "charge_details": [
     {
      "exercice": "Développé couché incliné haltère",
-     "charge_actuelle": 30,
-     "charge_prec": 30,
+     "charge_actuelle": 34,
+     "charge_prec": 34,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Tirage vertical prise large",
-     "charge_actuelle": 60,
-     "charge_prec": 60,
+     "charge_actuelle": 65,
+     "charge_prec": 65,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Élévation latérale haltère",
-     "charge_actuelle": 12,
-     "charge_prec": 12,
+     "charge_actuelle": 14,
+     "charge_prec": 14,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Extension poulie corde",
-     "charge_actuelle": 30,
-     "charge_prec": 30,
+     "charge_actuelle": 35,
+     "charge_prec": 35,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Squat",
-     "charge_actuelle": 95,
-     "charge_prec": 95,
+     "charge_actuelle": 100,
+     "charge_prec": 100,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Leg curl assis",
-     "charge_actuelle": 50,
-     "charge_prec": 50,
+     "charge_actuelle": 55,
+     "charge_prec": 55,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Presse inclinée",
-     "charge_actuelle": 150,
-     "charge_prec": 150,
+     "charge_actuelle": 160,
+     "charge_prec": 160,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Mollets debout",
-     "charge_actuelle": 65,
-     "charge_prec": 65,
+     "charge_actuelle": 70,
+     "charge_prec": 70,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Développé couché barre",
-     "charge_actuelle": 75,
-     "charge_prec": 75,
+     "charge_actuelle": 80,
+     "charge_prec": 80,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Rowing barre",
-     "charge_actuelle": 65,
-     "charge_prec": 65,
+     "charge_actuelle": 70,
+     "charge_prec": 70,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Développé militaire aux haltères",
-     "charge_actuelle": 24,
-     "charge_prec": 24,
+     "charge_actuelle": 28,
+     "charge_prec": 28,
      "up": false,
      "down": false,
      "variation": "0%"
     },
     {
      "exercice": "Curl barre",
-     "charge_actuelle": 35,
-     "charge_prec": 35,
+     "charge_actuelle": 40,
+     "charge_prec": 40,
      "up": false,
      "down": false,
      "variation": "0%"
@@ -1212,18 +1596,18 @@
   },
   "j28_vs_j28prec": {
    "tonnage": {
-    "j28": 101552,
-    "j28_prec": 51548,
-    "evol_pct": 97,
-    "courant": 101.6,
-    "precedent": 51.5
+    "j28": 110713,
+    "j28_prec": 110530,
+    "evol_pct": 0,
+    "courant": 110.7,
+    "precedent": 110.5
    },
    "seances": {
     "j28": 15,
-    "j28_prec": 8,
+    "j28_prec": 16,
     "courant": 15,
-    "precedent": 8,
-    "evol_pct": 88
+    "precedent": 16,
+    "evol_pct": -6
    },
    "rpe": {
     "j28": 7.4,
@@ -1233,7 +1617,7 @@
     "diff": 0.1
    },
    "charge": {
-    "evol_pct": 97
+    "evol_pct": 0
    }
   }
  },
@@ -1244,27 +1628,27 @@
    "nb_exercices": 4,
    "nb_series": 13,
    "rpe_moyen": 7.3,
-   "tonnage_kg": 4692,
-   "tonnage_t": 4.7
+   "tonnage_kg": 5255,
+   "tonnage_t": 5.3
   },
   "prochaine_seance": "Bas B",
   "regularite": {
    "seances_j7": 3,
    "seances_semaine": 3,
    "seances_prevues": 4,
-   "streak": 6
+   "streak": 10
   },
   "tonnage": {
-   "j7": 23.1,
+   "j7": 25.1,
    "evol_pct": -8,
-   "j7_prec": 25.1
+   "j7_prec": 27.3
   },
   "muscle_retard": "Abdominaux",
   "acwr": 0.91,
   "progression": null,
   "records_mois": null,
   "streak": {
-   "semaines": 6
+   "semaines": 10
   },
   "alertes": [
    {
@@ -1281,6 +1665,22 @@
  },
  "historique": {
   "dates_seances": {
+   "31/08/2026": "Haut A",
+   "01/09/2026": "Bas A",
+   "03/09/2026": "Haut B",
+   "04/09/2026": "Bas B",
+   "07/09/2026": "Haut A",
+   "08/09/2026": "Bas A",
+   "10/09/2026": "Haut B",
+   "11/09/2026": "Bas B",
+   "14/09/2026": "Haut A",
+   "15/09/2026": "Bas A",
+   "17/09/2026": "Haut B",
+   "18/09/2026": "Bas B",
+   "21/09/2026": "Haut A",
+   "22/09/2026": "Bas A",
+   "24/09/2026": "Haut B",
+   "25/09/2026": "Bas B",
    "28/09/2026": "Haut A",
    "29/09/2026": "Bas A",
    "01/10/2026": "Haut B",
@@ -1328,6 +1728,130 @@
     {
      "date": "05/11/2026",
      "seance": "Haut B",
+     "charge": 34,
+     "reps": 10,
+     "volume": 340,
+     "volTotal": 986,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 34,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 34,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 34,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "29/10/2026",
+     "seance": "Haut B",
+     "charge": 34,
+     "reps": 8,
+     "volume": 272,
+     "volTotal": 782,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 34,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 34,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 34,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "22/10/2026",
+     "seance": "Haut B",
+     "charge": 32,
+     "reps": 10,
+     "volume": 320,
+     "volTotal": 928,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 32,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 32,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 32,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "15/10/2026",
+     "seance": "Haut B",
+     "charge": 32,
+     "reps": 8,
+     "volume": 256,
+     "volTotal": 736,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 32,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 32,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 32,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "08/10/2026",
+     "seance": "Haut B",
      "charge": 30,
      "reps": 10,
      "volume": 300,
@@ -1357,7 +1881,7 @@
      ]
     },
     {
-     "date": "29/10/2026",
+     "date": "01/10/2026",
      "seance": "Haut B",
      "charge": 30,
      "reps": 8,
@@ -1388,7 +1912,7 @@
      ]
     },
     {
-     "date": "22/10/2026",
+     "date": "24/09/2026",
      "seance": "Haut B",
      "charge": 28,
      "reps": 10,
@@ -1419,7 +1943,7 @@
      ]
     },
     {
-     "date": "15/10/2026",
+     "date": "17/09/2026",
      "seance": "Haut B",
      "charge": 28,
      "reps": 8,
@@ -1450,7 +1974,7 @@
      ]
     },
     {
-     "date": "08/10/2026",
+     "date": "10/09/2026",
      "seance": "Haut B",
      "charge": 26,
      "reps": 10,
@@ -1481,7 +2005,7 @@
      ]
     },
     {
-     "date": "01/10/2026",
+     "date": "03/09/2026",
      "seance": "Haut B",
      "charge": 26,
      "reps": 8,
@@ -1515,6 +2039,158 @@
    "Tirage vertical prise large": [
     {
      "date": "05/11/2026",
+     "seance": "Haut B",
+     "charge": 65,
+     "reps": 10,
+     "volume": 650,
+     "volTotal": 2470,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 65,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 65,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 65,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 65,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "29/10/2026",
+     "seance": "Haut B",
+     "charge": 65,
+     "reps": 8,
+     "volume": 520,
+     "volTotal": 1950,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 65,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 65,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 65,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 65,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "22/10/2026",
+     "seance": "Haut B",
+     "charge": 62.5,
+     "reps": 10,
+     "volume": 625,
+     "volTotal": 2375,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 62.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 62.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 62.5,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 62.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "15/10/2026",
+     "seance": "Haut B",
+     "charge": 62.5,
+     "reps": 8,
+     "volume": 500,
+     "volTotal": 1875,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 62.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 62.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 62.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 62.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "08/10/2026",
      "seance": "Haut B",
      "charge": 60,
      "reps": 10,
@@ -1552,7 +2228,7 @@
      ]
     },
     {
-     "date": "29/10/2026",
+     "date": "01/10/2026",
      "seance": "Haut B",
      "charge": 60,
      "reps": 8,
@@ -1590,7 +2266,7 @@
      ]
     },
     {
-     "date": "22/10/2026",
+     "date": "24/09/2026",
      "seance": "Haut B",
      "charge": 57.5,
      "reps": 10,
@@ -1628,7 +2304,7 @@
      ]
     },
     {
-     "date": "15/10/2026",
+     "date": "17/09/2026",
      "seance": "Haut B",
      "charge": 57.5,
      "reps": 8,
@@ -1666,7 +2342,7 @@
      ]
     },
     {
-     "date": "08/10/2026",
+     "date": "10/09/2026",
      "seance": "Haut B",
      "charge": 55,
      "reps": 10,
@@ -1704,7 +2380,7 @@
      ]
     },
     {
-     "date": "01/10/2026",
+     "date": "03/09/2026",
      "seance": "Haut B",
      "charge": 55,
      "reps": 8,
@@ -1746,6 +2422,130 @@
     {
      "date": "05/11/2026",
      "seance": "Haut B",
+     "charge": 14,
+     "reps": 14,
+     "volume": 196,
+     "volTotal": 574,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 14,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 14,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 14,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "29/10/2026",
+     "seance": "Haut B",
+     "charge": 14,
+     "reps": 12,
+     "volume": 168,
+     "volTotal": 490,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 14,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 14,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 14,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "22/10/2026",
+     "seance": "Haut B",
+     "charge": 13,
+     "reps": 14,
+     "volume": 182,
+     "volTotal": 533,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 13,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 13,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 13,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "15/10/2026",
+     "seance": "Haut B",
+     "charge": 13,
+     "reps": 12,
+     "volume": 156,
+     "volTotal": 455,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 13,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 13,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 13,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "08/10/2026",
+     "seance": "Haut B",
      "charge": 12,
      "reps": 14,
      "volume": 168,
@@ -1775,7 +2575,7 @@
      ]
     },
     {
-     "date": "29/10/2026",
+     "date": "01/10/2026",
      "seance": "Haut B",
      "charge": 12,
      "reps": 12,
@@ -1806,7 +2606,7 @@
      ]
     },
     {
-     "date": "22/10/2026",
+     "date": "24/09/2026",
      "seance": "Haut B",
      "charge": 11,
      "reps": 14,
@@ -1837,7 +2637,7 @@
      ]
     },
     {
-     "date": "15/10/2026",
+     "date": "17/09/2026",
      "seance": "Haut B",
      "charge": 11,
      "reps": 12,
@@ -1868,7 +2668,7 @@
      ]
     },
     {
-     "date": "08/10/2026",
+     "date": "10/09/2026",
      "seance": "Haut B",
      "charge": 10,
      "reps": 14,
@@ -1899,7 +2699,7 @@
      ]
     },
     {
-     "date": "01/10/2026",
+     "date": "03/09/2026",
      "seance": "Haut B",
      "charge": 10,
      "reps": 12,
@@ -1934,6 +2734,130 @@
     {
      "date": "05/11/2026",
      "seance": "Haut B",
+     "charge": 35,
+     "reps": 12,
+     "volume": 420,
+     "volTotal": 1225,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 35,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 35,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 35,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "29/10/2026",
+     "seance": "Haut B",
+     "charge": 35,
+     "reps": 10,
+     "volume": 350,
+     "volTotal": 1015,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 35,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 35,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 35,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "22/10/2026",
+     "seance": "Haut B",
+     "charge": 32.5,
+     "reps": 12,
+     "volume": 390,
+     "volTotal": 1137.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 32.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 32.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 32.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "15/10/2026",
+     "seance": "Haut B",
+     "charge": 32.5,
+     "reps": 10,
+     "volume": 325,
+     "volTotal": 942.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 32.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 32.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 32.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "08/10/2026",
+     "seance": "Haut B",
      "charge": 30,
      "reps": 12,
      "volume": 360,
@@ -1963,7 +2887,7 @@
      ]
     },
     {
-     "date": "29/10/2026",
+     "date": "01/10/2026",
      "seance": "Haut B",
      "charge": 30,
      "reps": 10,
@@ -1994,7 +2918,7 @@
      ]
     },
     {
-     "date": "22/10/2026",
+     "date": "24/09/2026",
      "seance": "Haut B",
      "charge": 27.5,
      "reps": 12,
@@ -2025,7 +2949,7 @@
      ]
     },
     {
-     "date": "15/10/2026",
+     "date": "17/09/2026",
      "seance": "Haut B",
      "charge": 27.5,
      "reps": 10,
@@ -2056,7 +2980,7 @@
      ]
     },
     {
-     "date": "08/10/2026",
+     "date": "10/09/2026",
      "seance": "Haut B",
      "charge": 25,
      "reps": 12,
@@ -2087,7 +3011,7 @@
      ]
     },
     {
-     "date": "01/10/2026",
+     "date": "03/09/2026",
      "seance": "Haut B",
      "charge": 25,
      "reps": 10,
@@ -2122,35 +3046,35 @@
     {
      "date": "03/11/2026",
      "seance": "Bas A",
-     "charge": 95,
+     "charge": 100,
      "reps": 6,
-     "volume": 570,
-     "volTotal": 2090,
+     "volume": 600,
+     "volTotal": 2200,
      "series": [
       {
        "serie": 1,
-       "charge": 95,
+       "charge": 100,
        "reps": 6,
        "rpe": 9,
        "repos": 120
       },
       {
        "serie": 2,
-       "charge": 95,
+       "charge": 100,
        "reps": 6,
        "rpe": 9,
        "repos": 120
       },
       {
        "serie": 3,
-       "charge": 95,
+       "charge": 100,
        "reps": 5,
        "rpe": 9,
        "repos": 120
       },
       {
        "serie": 4,
-       "charge": 95,
+       "charge": 100,
        "reps": 5,
        "rpe": 9,
        "repos": 120
@@ -2160,35 +3084,35 @@
     {
      "date": "27/10/2026",
      "seance": "Bas A",
-     "charge": 95,
+     "charge": 100,
      "reps": 6,
-     "volume": 570,
-     "volTotal": 2090,
+     "volume": 600,
+     "volTotal": 2200,
      "series": [
       {
        "serie": 1,
-       "charge": 95,
+       "charge": 100,
        "reps": 6,
        "rpe": 9,
        "repos": 120
       },
       {
        "serie": 2,
-       "charge": 95,
+       "charge": 100,
        "reps": 6,
        "rpe": 9,
        "repos": 120
       },
       {
        "serie": 3,
-       "charge": 95,
+       "charge": 100,
        "reps": 5,
        "rpe": 9,
        "repos": 120
       },
       {
        "serie": 4,
-       "charge": 95,
+       "charge": 100,
        "reps": 5,
        "rpe": 9,
        "repos": 120
@@ -2197,6 +3121,120 @@
     },
     {
      "date": "20/10/2026",
+     "seance": "Bas A",
+     "charge": 100,
+     "reps": 6,
+     "volume": 600,
+     "volTotal": 2200,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "13/10/2026",
+     "seance": "Bas A",
+     "charge": 97.5,
+     "reps": 6,
+     "volume": 585,
+     "volTotal": 2145,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 97.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 97.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 97.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 97.5,
+       "reps": 5,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "06/10/2026",
+     "seance": "Bas A",
+     "charge": 95,
+     "reps": 8,
+     "volume": 760,
+     "volTotal": 2850,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 95,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 95,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 95,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 95,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "29/09/2026",
      "seance": "Bas A",
      "charge": 95,
      "reps": 6,
@@ -2207,34 +3245,72 @@
        "serie": 1,
        "charge": 95,
        "reps": 6,
-       "rpe": 9,
+       "rpe": 7,
        "repos": 120
       },
       {
        "serie": 2,
        "charge": 95,
        "reps": 6,
-       "rpe": 9,
+       "rpe": 7,
        "repos": 120
       },
       {
        "serie": 3,
        "charge": 95,
        "reps": 5,
-       "rpe": 9,
+       "rpe": 7,
        "repos": 120
       },
       {
        "serie": 4,
        "charge": 95,
        "reps": 5,
-       "rpe": 9,
+       "rpe": 8,
        "repos": 120
       }
      ]
     },
     {
-     "date": "13/10/2026",
+     "date": "22/09/2026",
+     "seance": "Bas A",
+     "charge": 92.5,
+     "reps": 8,
+     "volume": 740,
+     "volTotal": 2775,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 92.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 92.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 92.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 92.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "15/09/2026",
      "seance": "Bas A",
      "charge": 92.5,
      "reps": 6,
@@ -2272,7 +3348,7 @@
      ]
     },
     {
-     "date": "06/10/2026",
+     "date": "08/09/2026",
      "seance": "Bas A",
      "charge": 90,
      "reps": 8,
@@ -2310,7 +3386,7 @@
      ]
     },
     {
-     "date": "29/09/2026",
+     "date": "01/09/2026",
      "seance": "Bas A",
      "charge": 90,
      "reps": 6,
@@ -2352,6 +3428,130 @@
     {
      "date": "03/11/2026",
      "seance": "Bas A",
+     "charge": 55,
+     "reps": 12,
+     "volume": 660,
+     "volTotal": 1925,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 55,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "27/10/2026",
+     "seance": "Bas A",
+     "charge": 55,
+     "reps": 10,
+     "volume": 550,
+     "volTotal": 1595,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 55,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 55,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 55,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "20/10/2026",
+     "seance": "Bas A",
+     "charge": 52.5,
+     "reps": 12,
+     "volume": 630,
+     "volTotal": 1837.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 52.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 52.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 52.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "13/10/2026",
+     "seance": "Bas A",
+     "charge": 52.5,
+     "reps": 10,
+     "volume": 525,
+     "volTotal": 1522.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 52.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 52.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 52.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "06/10/2026",
+     "seance": "Bas A",
      "charge": 50,
      "reps": 12,
      "volume": 600,
@@ -2381,7 +3581,7 @@
      ]
     },
     {
-     "date": "27/10/2026",
+     "date": "29/09/2026",
      "seance": "Bas A",
      "charge": 50,
      "reps": 10,
@@ -2412,7 +3612,7 @@
      ]
     },
     {
-     "date": "20/10/2026",
+     "date": "22/09/2026",
      "seance": "Bas A",
      "charge": 47.5,
      "reps": 12,
@@ -2443,7 +3643,7 @@
      ]
     },
     {
-     "date": "13/10/2026",
+     "date": "15/09/2026",
      "seance": "Bas A",
      "charge": 47.5,
      "reps": 10,
@@ -2474,7 +3674,7 @@
      ]
     },
     {
-     "date": "06/10/2026",
+     "date": "08/09/2026",
      "seance": "Bas A",
      "charge": 45,
      "reps": 12,
@@ -2505,7 +3705,7 @@
      ]
     },
     {
-     "date": "29/09/2026",
+     "date": "01/09/2026",
      "seance": "Bas A",
      "charge": 45,
      "reps": 10,
@@ -2540,6 +3740,130 @@
     {
      "date": "03/11/2026",
      "seance": "Bas A",
+     "charge": 160,
+     "reps": 12,
+     "volume": 1920,
+     "volTotal": 5600,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 160,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 160,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 160,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "27/10/2026",
+     "seance": "Bas A",
+     "charge": 160,
+     "reps": 10,
+     "volume": 1600,
+     "volTotal": 4640,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 160,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 160,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 160,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "20/10/2026",
+     "seance": "Bas A",
+     "charge": 155,
+     "reps": 12,
+     "volume": 1860,
+     "volTotal": 5425,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 155,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 155,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 155,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "13/10/2026",
+     "seance": "Bas A",
+     "charge": 155,
+     "reps": 10,
+     "volume": 1550,
+     "volTotal": 4495,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 155,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 155,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 155,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "06/10/2026",
+     "seance": "Bas A",
      "charge": 150,
      "reps": 12,
      "volume": 1800,
@@ -2569,7 +3893,7 @@
      ]
     },
     {
-     "date": "27/10/2026",
+     "date": "29/09/2026",
      "seance": "Bas A",
      "charge": 150,
      "reps": 10,
@@ -2600,7 +3924,7 @@
      ]
     },
     {
-     "date": "20/10/2026",
+     "date": "22/09/2026",
      "seance": "Bas A",
      "charge": 145,
      "reps": 12,
@@ -2631,7 +3955,7 @@
      ]
     },
     {
-     "date": "13/10/2026",
+     "date": "15/09/2026",
      "seance": "Bas A",
      "charge": 145,
      "reps": 10,
@@ -2662,7 +3986,7 @@
      ]
     },
     {
-     "date": "06/10/2026",
+     "date": "08/09/2026",
      "seance": "Bas A",
      "charge": 140,
      "reps": 12,
@@ -2693,7 +4017,7 @@
      ]
     },
     {
-     "date": "29/09/2026",
+     "date": "01/09/2026",
      "seance": "Bas A",
      "charge": 140,
      "reps": 10,
@@ -2728,6 +4052,130 @@
     {
      "date": "03/11/2026",
      "seance": "Bas A",
+     "charge": 70,
+     "reps": 14,
+     "volume": 980,
+     "volTotal": 2870,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 70,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 70,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 70,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "27/10/2026",
+     "seance": "Bas A",
+     "charge": 70,
+     "reps": 12,
+     "volume": 840,
+     "volTotal": 2450,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 70,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 70,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 70,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "20/10/2026",
+     "seance": "Bas A",
+     "charge": 67.5,
+     "reps": 14,
+     "volume": 945,
+     "volTotal": 2767.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 67.5,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 67.5,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 67.5,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "13/10/2026",
+     "seance": "Bas A",
+     "charge": 67.5,
+     "reps": 12,
+     "volume": 810,
+     "volTotal": 2362.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 67.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 67.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 67.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "06/10/2026",
+     "seance": "Bas A",
      "charge": 65,
      "reps": 14,
      "volume": 910,
@@ -2757,7 +4205,7 @@
      ]
     },
     {
-     "date": "27/10/2026",
+     "date": "29/09/2026",
      "seance": "Bas A",
      "charge": 65,
      "reps": 12,
@@ -2788,7 +4236,7 @@
      ]
     },
     {
-     "date": "20/10/2026",
+     "date": "22/09/2026",
      "seance": "Bas A",
      "charge": 62.5,
      "reps": 14,
@@ -2819,7 +4267,7 @@
      ]
     },
     {
-     "date": "13/10/2026",
+     "date": "15/09/2026",
      "seance": "Bas A",
      "charge": 62.5,
      "reps": 12,
@@ -2850,7 +4298,7 @@
      ]
     },
     {
-     "date": "06/10/2026",
+     "date": "08/09/2026",
      "seance": "Bas A",
      "charge": 60,
      "reps": 14,
@@ -2881,7 +4329,7 @@
      ]
     },
     {
-     "date": "29/09/2026",
+     "date": "01/09/2026",
      "seance": "Bas A",
      "charge": 60,
      "reps": 12,
@@ -2915,6 +4363,158 @@
    "Développé couché barre": [
     {
      "date": "02/11/2026",
+     "seance": "Haut A",
+     "charge": 80,
+     "reps": 8,
+     "volume": 640,
+     "volTotal": 2400,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 80,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 80,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 80,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 80,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "26/10/2026",
+     "seance": "Haut A",
+     "charge": 80,
+     "reps": 6,
+     "volume": 480,
+     "volTotal": 1760,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 80,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 80,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 80,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 80,
+       "reps": 5,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "19/10/2026",
+     "seance": "Haut A",
+     "charge": 77.5,
+     "reps": 8,
+     "volume": 620,
+     "volTotal": 2325,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 77.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 77.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 77.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 77.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "12/10/2026",
+     "seance": "Haut A",
+     "charge": 77.5,
+     "reps": 6,
+     "volume": 465,
+     "volTotal": 1705,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 77.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 77.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 77.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 77.5,
+       "reps": 5,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "05/10/2026",
      "seance": "Haut A",
      "charge": 75,
      "reps": 8,
@@ -2952,7 +4552,7 @@
      ]
     },
     {
-     "date": "26/10/2026",
+     "date": "28/09/2026",
      "seance": "Haut A",
      "charge": 75,
      "reps": 6,
@@ -2990,7 +4590,7 @@
      ]
     },
     {
-     "date": "19/10/2026",
+     "date": "21/09/2026",
      "seance": "Haut A",
      "charge": 72.5,
      "reps": 8,
@@ -3028,7 +4628,7 @@
      ]
     },
     {
-     "date": "12/10/2026",
+     "date": "14/09/2026",
      "seance": "Haut A",
      "charge": 72.5,
      "reps": 6,
@@ -3066,7 +4666,7 @@
      ]
     },
     {
-     "date": "05/10/2026",
+     "date": "07/09/2026",
      "seance": "Haut A",
      "charge": 70,
      "reps": 8,
@@ -3104,7 +4704,7 @@
      ]
     },
     {
-     "date": "28/09/2026",
+     "date": "31/08/2026",
      "seance": "Haut A",
      "charge": 70,
      "reps": 6,
@@ -3146,6 +4746,158 @@
     {
      "date": "02/11/2026",
      "seance": "Haut A",
+     "charge": 70,
+     "reps": 10,
+     "volume": 700,
+     "volTotal": 2660,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 70,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 70,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 70,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 70,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "26/10/2026",
+     "seance": "Haut A",
+     "charge": 70,
+     "reps": 8,
+     "volume": 560,
+     "volTotal": 2100,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 70,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 70,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 70,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 70,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "19/10/2026",
+     "seance": "Haut A",
+     "charge": 67.5,
+     "reps": 10,
+     "volume": 675,
+     "volTotal": 2565,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 67.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 67.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 67.5,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 67.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "12/10/2026",
+     "seance": "Haut A",
+     "charge": 67.5,
+     "reps": 8,
+     "volume": 540,
+     "volTotal": 2025,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 67.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 67.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 67.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 4,
+       "charge": 67.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "05/10/2026",
+     "seance": "Haut A",
      "charge": 65,
      "reps": 10,
      "volume": 650,
@@ -3182,7 +4934,7 @@
      ]
     },
     {
-     "date": "26/10/2026",
+     "date": "28/09/2026",
      "seance": "Haut A",
      "charge": 65,
      "reps": 8,
@@ -3220,7 +4972,7 @@
      ]
     },
     {
-     "date": "19/10/2026",
+     "date": "21/09/2026",
      "seance": "Haut A",
      "charge": 62.5,
      "reps": 10,
@@ -3258,7 +5010,7 @@
      ]
     },
     {
-     "date": "12/10/2026",
+     "date": "14/09/2026",
      "seance": "Haut A",
      "charge": 62.5,
      "reps": 8,
@@ -3296,7 +5048,7 @@
      ]
     },
     {
-     "date": "05/10/2026",
+     "date": "07/09/2026",
      "seance": "Haut A",
      "charge": 60,
      "reps": 10,
@@ -3334,7 +5086,7 @@
      ]
     },
     {
-     "date": "28/09/2026",
+     "date": "31/08/2026",
      "seance": "Haut A",
      "charge": 60,
      "reps": 8,
@@ -3376,6 +5128,130 @@
     {
      "date": "02/11/2026",
      "seance": "Haut A",
+     "charge": 28,
+     "reps": 10,
+     "volume": 280,
+     "volTotal": 812,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 28,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 28,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 28,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "26/10/2026",
+     "seance": "Haut A",
+     "charge": 28,
+     "reps": 8,
+     "volume": 224,
+     "volTotal": 644,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 28,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 28,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 28,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "19/10/2026",
+     "seance": "Haut A",
+     "charge": 26,
+     "reps": 10,
+     "volume": 260,
+     "volTotal": 754,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 26,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 26,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 26,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "12/10/2026",
+     "seance": "Haut A",
+     "charge": 26,
+     "reps": 8,
+     "volume": 208,
+     "volTotal": 598,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 26,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "05/10/2026",
+     "seance": "Haut A",
      "charge": 24,
      "reps": 10,
      "volume": 240,
@@ -3405,7 +5281,7 @@
      ]
     },
     {
-     "date": "26/10/2026",
+     "date": "28/09/2026",
      "seance": "Haut A",
      "charge": 24,
      "reps": 8,
@@ -3436,7 +5312,7 @@
      ]
     },
     {
-     "date": "19/10/2026",
+     "date": "21/09/2026",
      "seance": "Haut A",
      "charge": 22,
      "reps": 10,
@@ -3467,7 +5343,7 @@
      ]
     },
     {
-     "date": "12/10/2026",
+     "date": "14/09/2026",
      "seance": "Haut A",
      "charge": 22,
      "reps": 8,
@@ -3498,7 +5374,7 @@
      ]
     },
     {
-     "date": "05/10/2026",
+     "date": "07/09/2026",
      "seance": "Haut A",
      "charge": 20,
      "reps": 10,
@@ -3529,7 +5405,7 @@
      ]
     },
     {
-     "date": "28/09/2026",
+     "date": "31/08/2026",
      "seance": "Haut A",
      "charge": 20,
      "reps": 8,
@@ -3564,6 +5440,130 @@
     {
      "date": "02/11/2026",
      "seance": "Haut A",
+     "charge": 40,
+     "reps": 12,
+     "volume": 480,
+     "volTotal": 1400,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 40,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 40,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 40,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "26/10/2026",
+     "seance": "Haut A",
+     "charge": 40,
+     "reps": 10,
+     "volume": 400,
+     "volTotal": 1160,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 40,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 40,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 40,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "19/10/2026",
+     "seance": "Haut A",
+     "charge": 37.5,
+     "reps": 12,
+     "volume": 450,
+     "volTotal": 1312.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 37.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 37.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 37.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "12/10/2026",
+     "seance": "Haut A",
+     "charge": 37.5,
+     "reps": 10,
+     "volume": 375,
+     "volTotal": 1087.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 37.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 37.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 37.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "05/10/2026",
+     "seance": "Haut A",
      "charge": 35,
      "reps": 12,
      "volume": 420,
@@ -3593,7 +5593,7 @@
      ]
     },
     {
-     "date": "26/10/2026",
+     "date": "28/09/2026",
      "seance": "Haut A",
      "charge": 35,
      "reps": 10,
@@ -3624,7 +5624,7 @@
      ]
     },
     {
-     "date": "19/10/2026",
+     "date": "21/09/2026",
      "seance": "Haut A",
      "charge": 32.5,
      "reps": 12,
@@ -3655,7 +5655,7 @@
      ]
     },
     {
-     "date": "12/10/2026",
+     "date": "14/09/2026",
      "seance": "Haut A",
      "charge": 32.5,
      "reps": 10,
@@ -3686,7 +5686,7 @@
      ]
     },
     {
-     "date": "05/10/2026",
+     "date": "07/09/2026",
      "seance": "Haut A",
      "charge": 30,
      "reps": 12,
@@ -3717,7 +5717,7 @@
      ]
     },
     {
-     "date": "28/09/2026",
+     "date": "31/08/2026",
      "seance": "Haut A",
      "charge": 30,
      "reps": 10,
@@ -3752,6 +5752,130 @@
     {
      "date": "30/10/2026",
      "seance": "Bas B",
+     "charge": 120,
+     "reps": 5,
+     "volume": 600,
+     "volTotal": 1680,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 120,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 120,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 120,
+       "reps": 4,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "23/10/2026",
+     "seance": "Bas B",
+     "charge": 117.5,
+     "reps": 6,
+     "volume": 705,
+     "volTotal": 2115,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 117.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 117.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 117.5,
+       "reps": 6,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "16/10/2026",
+     "seance": "Bas B",
+     "charge": 117.5,
+     "reps": 5,
+     "volume": 587.5,
+     "volTotal": 1645,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 117.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 117.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 117.5,
+       "reps": 4,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "09/10/2026",
+     "seance": "Bas B",
+     "charge": 115,
+     "reps": 6,
+     "volume": 690,
+     "volTotal": 2070,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 115,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 115,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 115,
+       "reps": 6,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "02/10/2026",
+     "seance": "Bas B",
      "charge": 115,
      "reps": 5,
      "volume": 575,
@@ -3781,7 +5905,7 @@
      ]
     },
     {
-     "date": "23/10/2026",
+     "date": "25/09/2026",
      "seance": "Bas B",
      "charge": 112.5,
      "reps": 6,
@@ -3812,7 +5936,7 @@
      ]
     },
     {
-     "date": "16/10/2026",
+     "date": "18/09/2026",
      "seance": "Bas B",
      "charge": 112.5,
      "reps": 5,
@@ -3843,7 +5967,7 @@
      ]
     },
     {
-     "date": "09/10/2026",
+     "date": "11/09/2026",
      "seance": "Bas B",
      "charge": 110,
      "reps": 6,
@@ -3874,7 +5998,7 @@
      ]
     },
     {
-     "date": "02/10/2026",
+     "date": "04/09/2026",
      "seance": "Bas B",
      "charge": 110,
      "reps": 5,
@@ -3909,6 +6033,130 @@
     {
      "date": "30/10/2026",
      "seance": "Bas B",
+     "charge": 26,
+     "reps": 8,
+     "volume": 208,
+     "volTotal": 598,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 26,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "23/10/2026",
+     "seance": "Bas B",
+     "charge": 24,
+     "reps": 10,
+     "volume": 240,
+     "volTotal": 696,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 24,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 24,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 24,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "16/10/2026",
+     "seance": "Bas B",
+     "charge": 24,
+     "reps": 8,
+     "volume": 192,
+     "volTotal": 552,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 24,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 24,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 24,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "09/10/2026",
+     "seance": "Bas B",
+     "charge": 22,
+     "reps": 10,
+     "volume": 220,
+     "volTotal": 638,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 22,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 22,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 22,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "02/10/2026",
+     "seance": "Bas B",
      "charge": 22,
      "reps": 8,
      "volume": 176,
@@ -3938,7 +6186,7 @@
      ]
     },
     {
-     "date": "23/10/2026",
+     "date": "25/09/2026",
      "seance": "Bas B",
      "charge": 20,
      "reps": 10,
@@ -3969,7 +6217,7 @@
      ]
     },
     {
-     "date": "16/10/2026",
+     "date": "18/09/2026",
      "seance": "Bas B",
      "charge": 20,
      "reps": 8,
@@ -4000,7 +6248,7 @@
      ]
     },
     {
-     "date": "09/10/2026",
+     "date": "11/09/2026",
      "seance": "Bas B",
      "charge": 18,
      "reps": 10,
@@ -4031,7 +6279,7 @@
      ]
     },
     {
-     "date": "02/10/2026",
+     "date": "04/09/2026",
      "seance": "Bas B",
      "charge": 18,
      "reps": 8,
@@ -4066,6 +6314,130 @@
     {
      "date": "30/10/2026",
      "seance": "Bas B",
+     "charge": 60,
+     "reps": 10,
+     "volume": 600,
+     "volTotal": 1740,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 60,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 60,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 60,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "23/10/2026",
+     "seance": "Bas B",
+     "charge": 57.5,
+     "reps": 12,
+     "volume": 690,
+     "volTotal": 2012.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 57.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 57.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 57.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "16/10/2026",
+     "seance": "Bas B",
+     "charge": 57.5,
+     "reps": 10,
+     "volume": 575,
+     "volTotal": 1667.5,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 57.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 57.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 57.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "09/10/2026",
+     "seance": "Bas B",
+     "charge": 55,
+     "reps": 12,
+     "volume": 660,
+     "volTotal": 1925,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 55,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "02/10/2026",
+     "seance": "Bas B",
      "charge": 55,
      "reps": 10,
      "volume": 550,
@@ -4095,7 +6467,7 @@
      ]
     },
     {
-     "date": "23/10/2026",
+     "date": "25/09/2026",
      "seance": "Bas B",
      "charge": 52.5,
      "reps": 12,
@@ -4126,7 +6498,7 @@
      ]
     },
     {
-     "date": "16/10/2026",
+     "date": "18/09/2026",
      "seance": "Bas B",
      "charge": 52.5,
      "reps": 10,
@@ -4157,7 +6529,7 @@
      ]
     },
     {
-     "date": "09/10/2026",
+     "date": "11/09/2026",
      "seance": "Bas B",
      "charge": 50,
      "reps": 12,
@@ -4188,7 +6560,7 @@
      ]
     },
     {
-     "date": "02/10/2026",
+     "date": "04/09/2026",
      "seance": "Bas B",
      "charge": 50,
      "reps": 10,
@@ -4223,6 +6595,130 @@
     {
      "date": "30/10/2026",
      "seance": "Bas B",
+     "charge": 110,
+     "reps": 8,
+     "volume": 880,
+     "volTotal": 2530,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 110,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 110,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 110,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "23/10/2026",
+     "seance": "Bas B",
+     "charge": 105,
+     "reps": 10,
+     "volume": 1050,
+     "volTotal": 3045,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 105,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 105,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 105,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "16/10/2026",
+     "seance": "Bas B",
+     "charge": 105,
+     "reps": 8,
+     "volume": 840,
+     "volTotal": 2415,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 105,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 105,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 105,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "09/10/2026",
+     "seance": "Bas B",
+     "charge": 100,
+     "reps": 10,
+     "volume": 1000,
+     "volTotal": 2900,
+     "series": [
+      {
+       "serie": 1,
+       "charge": 100,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 2,
+       "charge": 100,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "serie": 3,
+       "charge": 100,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "date": "02/10/2026",
+     "seance": "Bas B",
      "charge": 100,
      "reps": 8,
      "volume": 800,
@@ -4252,7 +6748,7 @@
      ]
     },
     {
-     "date": "23/10/2026",
+     "date": "25/09/2026",
      "seance": "Bas B",
      "charge": 95,
      "reps": 10,
@@ -4283,7 +6779,7 @@
      ]
     },
     {
-     "date": "16/10/2026",
+     "date": "18/09/2026",
      "seance": "Bas B",
      "charge": 95,
      "reps": 8,
@@ -4314,7 +6810,7 @@
      ]
     },
     {
-     "date": "09/10/2026",
+     "date": "11/09/2026",
      "seance": "Bas B",
      "charge": 90,
      "reps": 10,
@@ -4345,7 +6841,7 @@
      ]
     },
     {
-     "date": "02/10/2026",
+     "date": "04/09/2026",
      "seance": "Bas B",
      "charge": 90,
      "reps": 8,
@@ -4420,32 +6916,356 @@
    }
   ],
   "volume_par_jour": {
-   "2026-11-05": 4692,
-   "2026-11-03": 11755,
-   "2026-11-02": 6641,
-   "2026-10-30": 6011,
-   "2026-10-29": 3780,
-   "2026-10-27": 10165,
-   "2026-10-26": 5167,
-   "2026-10-23": 7197.5,
-   "2026-10-22": 4410.5,
-   "2026-10-20": 11390,
-   "2026-10-19": 6325.5,
-   "2026-10-16": 5742.5,
-   "2026-10-15": 3551.5,
-   "2026-10-13": 9805,
-   "2026-10-12": 4918.5,
-   "2026-10-09": 6862,
-   "2026-10-08": 4129,
-   "2026-10-06": 11635,
-   "2026-10-05": 6010,
-   "2026-10-02": 5474,
-   "2026-10-01": 3323,
-   "2026-09-29": 9445,
-   "2026-09-28": 4670
+   "2026-11-05": 5255,
+   "2026-11-03": 12595,
+   "2026-11-02": 7272,
+   "2026-10-30": 6548,
+   "2026-10-29": 4237,
+   "2026-10-27": 10885,
+   "2026-10-26": 5664,
+   "2026-10-23": 7868.5,
+   "2026-10-22": 4973.5,
+   "2026-10-20": 12230,
+   "2026-10-19": 6956.5,
+   "2026-10-16": 6279.5,
+   "2026-10-15": 4008.5,
+   "2026-10-13": 10525,
+   "2026-10-12": 5415.5,
+   "2026-10-09": 7533,
+   "2026-10-08": 4692,
+   "2026-10-06": 12515,
+   "2026-10-05": 6641,
+   "2026-10-02": 6011,
+   "2026-10-01": 3780,
+   "2026-09-29": 10165,
+   "2026-09-28": 5167,
+   "2026-09-25": 7197.5,
+   "2026-09-24": 4410.5,
+   "2026-09-22": 12075,
+   "2026-09-21": 6325.5,
+   "2026-09-18": 5742.5,
+   "2026-09-17": 3551.5,
+   "2026-09-15": 9805,
+   "2026-09-14": 4918.5,
+   "2026-09-11": 6862,
+   "2026-09-10": 4129,
+   "2026-09-08": 11635,
+   "2026-09-07": 6010,
+   "2026-09-04": 5474,
+   "2026-09-03": 3323,
+   "2026-09-01": 9445,
+   "2026-08-31": 4670
   },
   "daily_muscu": {
    "2026-11-05": {
+    "series": 13,
+    "reps": 143,
+    "tonnage_kg": 5255,
+    "rpe_sum": 95,
+    "rpe_n": 13,
+    "spm": {
+     "Pectoraux": 3,
+     "Triceps": 4.5,
+     "Dos": 4,
+     "Biceps": 2,
+     "Epaule": 3,
+     "Trapèze": 1.5
+    },
+    "vpm": {
+     "Pectoraux": 986,
+     "Dos": 2470,
+     "Epaule": 574,
+     "Triceps": 1225
+    }
+   },
+   "2026-11-03": {
+    "series": 13,
+    "reps": 133,
+    "tonnage_kg": 12595,
+    "rpe_sum": 102,
+    "rpe_n": 13,
+    "spm": {
+     "Quadriceps": 7,
+     "Fessier": 3.5,
+     "Ischio": 3,
+     "Mollets": 3
+    },
+    "vpm": {
+     "Quadriceps": 7800,
+     "Ischio": 1925,
+     "Mollets": 2870
+    }
+   },
+   "2026-11-02": {
+    "series": 14,
+    "reps": 132,
+    "tonnage_kg": 7272,
+    "rpe_sum": 102,
+    "rpe_n": 14,
+    "spm": {
+     "Pectoraux": 4,
+     "Triceps": 3.5,
+     "Dos": 4,
+     "Biceps": 5,
+     "Epaule": 3
+    },
+    "vpm": {
+     "Pectoraux": 2400,
+     "Dos": 2660,
+     "Epaule": 812,
+     "Biceps": 1400
+    }
+   },
+   "2026-10-30": {
+    "series": 12,
+    "reps": 89,
+    "tonnage_kg": 6548,
+    "rpe_sum": 88,
+    "rpe_n": 12,
+    "spm": {
+     "Dos": 3,
+     "Ischio": 3,
+     "Fessier": 6,
+     "Quadriceps": 4.5
+    },
+    "vpm": {
+     "Dos": 1680,
+     "Fessier": 3128,
+     "Quadriceps": 1740
+    }
+   },
+   "2026-10-29": {
+    "series": 13,
+    "reps": 117,
+    "tonnage_kg": 4237,
+    "rpe_sum": 95,
+    "rpe_n": 13,
+    "spm": {
+     "Pectoraux": 3,
+     "Triceps": 4.5,
+     "Dos": 4,
+     "Biceps": 2,
+     "Epaule": 3,
+     "Trapèze": 1.5
+    },
+    "vpm": {
+     "Pectoraux": 782,
+     "Dos": 1950,
+     "Epaule": 490,
+     "Triceps": 1015
+    }
+   },
+   "2026-10-27": {
+    "series": 13,
+    "reps": 115,
+    "tonnage_kg": 10885,
+    "rpe_sum": 102,
+    "rpe_n": 13,
+    "spm": {
+     "Quadriceps": 7,
+     "Fessier": 3.5,
+     "Ischio": 3,
+     "Mollets": 3
+    },
+    "vpm": {
+     "Quadriceps": 6840,
+     "Ischio": 1595,
+     "Mollets": 2450
+    }
+   },
+   "2026-10-26": {
+    "series": 14,
+    "reps": 104,
+    "tonnage_kg": 5664,
+    "rpe_sum": 102,
+    "rpe_n": 14,
+    "spm": {
+     "Pectoraux": 4,
+     "Triceps": 3.5,
+     "Dos": 4,
+     "Biceps": 5,
+     "Epaule": 3
+    },
+    "vpm": {
+     "Pectoraux": 1760,
+     "Dos": 2100,
+     "Epaule": 644,
+     "Biceps": 1160
+    }
+   },
+   "2026-10-23": {
+    "series": 12,
+    "reps": 111,
+    "tonnage_kg": 7868.5,
+    "rpe_sum": 88,
+    "rpe_n": 12,
+    "spm": {
+     "Dos": 3,
+     "Ischio": 3,
+     "Fessier": 6,
+     "Quadriceps": 4.5
+    },
+    "vpm": {
+     "Dos": 2115,
+     "Fessier": 3741,
+     "Quadriceps": 2012.5
+    }
+   },
+   "2026-10-22": {
+    "series": 13,
+    "reps": 143,
+    "tonnage_kg": 4973.5,
+    "rpe_sum": 95,
+    "rpe_n": 13,
+    "spm": {
+     "Pectoraux": 3,
+     "Triceps": 4.5,
+     "Dos": 4,
+     "Biceps": 2,
+     "Epaule": 3,
+     "Trapèze": 1.5
+    },
+    "vpm": {
+     "Pectoraux": 928,
+     "Dos": 2375,
+     "Epaule": 533,
+     "Triceps": 1137.5
+    }
+   },
+   "2026-10-20": {
+    "series": 13,
+    "reps": 133,
+    "tonnage_kg": 12230,
+    "rpe_sum": 102,
+    "rpe_n": 13,
+    "spm": {
+     "Quadriceps": 7,
+     "Fessier": 3.5,
+     "Ischio": 3,
+     "Mollets": 3
+    },
+    "vpm": {
+     "Quadriceps": 7625,
+     "Ischio": 1837.5,
+     "Mollets": 2767.5
+    }
+   },
+   "2026-10-19": {
+    "series": 14,
+    "reps": 132,
+    "tonnage_kg": 6956.5,
+    "rpe_sum": 102,
+    "rpe_n": 14,
+    "spm": {
+     "Pectoraux": 4,
+     "Triceps": 3.5,
+     "Dos": 4,
+     "Biceps": 5,
+     "Epaule": 3
+    },
+    "vpm": {
+     "Pectoraux": 2325,
+     "Dos": 2565,
+     "Epaule": 754,
+     "Biceps": 1312.5
+    }
+   },
+   "2026-10-16": {
+    "series": 12,
+    "reps": 89,
+    "tonnage_kg": 6279.5,
+    "rpe_sum": 88,
+    "rpe_n": 12,
+    "spm": {
+     "Dos": 3,
+     "Ischio": 3,
+     "Fessier": 6,
+     "Quadriceps": 4.5
+    },
+    "vpm": {
+     "Dos": 1645,
+     "Fessier": 2967,
+     "Quadriceps": 1667.5
+    }
+   },
+   "2026-10-15": {
+    "series": 13,
+    "reps": 117,
+    "tonnage_kg": 4008.5,
+    "rpe_sum": 95,
+    "rpe_n": 13,
+    "spm": {
+     "Pectoraux": 3,
+     "Triceps": 4.5,
+     "Dos": 4,
+     "Biceps": 2,
+     "Epaule": 3,
+     "Trapèze": 1.5
+    },
+    "vpm": {
+     "Pectoraux": 736,
+     "Dos": 1875,
+     "Epaule": 455,
+     "Triceps": 942.5
+    }
+   },
+   "2026-10-13": {
+    "series": 13,
+    "reps": 115,
+    "tonnage_kg": 10525,
+    "rpe_sum": 95,
+    "rpe_n": 13,
+    "spm": {
+     "Quadriceps": 7,
+     "Fessier": 3.5,
+     "Ischio": 3,
+     "Mollets": 3
+    },
+    "vpm": {
+     "Quadriceps": 6640,
+     "Ischio": 1522.5,
+     "Mollets": 2362.5
+    }
+   },
+   "2026-10-12": {
+    "series": 14,
+    "reps": 104,
+    "tonnage_kg": 5415.5,
+    "rpe_sum": 102,
+    "rpe_n": 14,
+    "spm": {
+     "Pectoraux": 4,
+     "Triceps": 3.5,
+     "Dos": 4,
+     "Biceps": 5,
+     "Epaule": 3
+    },
+    "vpm": {
+     "Pectoraux": 1705,
+     "Dos": 2025,
+     "Epaule": 598,
+     "Biceps": 1087.5
+    }
+   },
+   "2026-10-09": {
+    "series": 12,
+    "reps": 111,
+    "tonnage_kg": 7533,
+    "rpe_sum": 88,
+    "rpe_n": 12,
+    "spm": {
+     "Dos": 3,
+     "Ischio": 3,
+     "Fessier": 6,
+     "Quadriceps": 4.5
+    },
+    "vpm": {
+     "Dos": 2070,
+     "Fessier": 3538,
+     "Quadriceps": 1925
+    }
+   },
+   "2026-10-08": {
     "series": 13,
     "reps": 143,
     "tonnage_kg": 4692,
@@ -4466,11 +7286,11 @@
      "Triceps": 1050
     }
    },
-   "2026-11-03": {
+   "2026-10-06": {
     "series": 13,
-    "reps": 133,
-    "tonnage_kg": 11755,
-    "rpe_sum": 102,
+    "reps": 141,
+    "tonnage_kg": 12515,
+    "rpe_sum": 95,
     "rpe_n": 13,
     "spm": {
      "Quadriceps": 7,
@@ -4479,12 +7299,12 @@
      "Mollets": 3
     },
     "vpm": {
-     "Quadriceps": 7340,
+     "Quadriceps": 8100,
      "Ischio": 1750,
      "Mollets": 2665
     }
    },
-   "2026-11-02": {
+   "2026-10-05": {
     "series": 14,
     "reps": 132,
     "tonnage_kg": 6641,
@@ -4504,7 +7324,7 @@
      "Biceps": 1225
     }
    },
-   "2026-10-30": {
+   "2026-10-02": {
     "series": 12,
     "reps": 89,
     "tonnage_kg": 6011,
@@ -4522,7 +7342,7 @@
      "Quadriceps": 1595
     }
    },
-   "2026-10-29": {
+   "2026-10-01": {
     "series": 13,
     "reps": 117,
     "tonnage_kg": 3780,
@@ -4543,11 +7363,11 @@
      "Triceps": 870
     }
    },
-   "2026-10-27": {
+   "2026-09-29": {
     "series": 13,
     "reps": 115,
     "tonnage_kg": 10165,
-    "rpe_sum": 102,
+    "rpe_sum": 95,
     "rpe_n": 13,
     "spm": {
      "Quadriceps": 7,
@@ -4561,7 +7381,7 @@
      "Mollets": 2275
     }
    },
-   "2026-10-26": {
+   "2026-09-28": {
     "series": 14,
     "reps": 104,
     "tonnage_kg": 5167,
@@ -4581,7 +7401,7 @@
      "Biceps": 1015
     }
    },
-   "2026-10-23": {
+   "2026-09-25": {
     "series": 12,
     "reps": 111,
     "tonnage_kg": 7197.5,
@@ -4599,7 +7419,7 @@
      "Quadriceps": 1837.5
     }
    },
-   "2026-10-22": {
+   "2026-09-24": {
     "series": 13,
     "reps": 143,
     "tonnage_kg": 4410.5,
@@ -4620,11 +7440,11 @@
      "Triceps": 962.5
     }
    },
-   "2026-10-20": {
+   "2026-09-22": {
     "series": 13,
-    "reps": 133,
-    "tonnage_kg": 11390,
-    "rpe_sum": 102,
+    "reps": 141,
+    "tonnage_kg": 12075,
+    "rpe_sum": 95,
     "rpe_n": 13,
     "spm": {
      "Quadriceps": 7,
@@ -4633,12 +7453,12 @@
      "Mollets": 3
     },
     "vpm": {
-     "Quadriceps": 7165,
+     "Quadriceps": 7850,
      "Ischio": 1662.5,
      "Mollets": 2562.5
     }
    },
-   "2026-10-19": {
+   "2026-09-21": {
     "series": 14,
     "reps": 132,
     "tonnage_kg": 6325.5,
@@ -4658,7 +7478,7 @@
      "Biceps": 1137.5
     }
    },
-   "2026-10-16": {
+   "2026-09-18": {
     "series": 12,
     "reps": 89,
     "tonnage_kg": 5742.5,
@@ -4676,7 +7496,7 @@
      "Quadriceps": 1522.5
     }
    },
-   "2026-10-15": {
+   "2026-09-17": {
     "series": 13,
     "reps": 117,
     "tonnage_kg": 3551.5,
@@ -4697,7 +7517,7 @@
      "Triceps": 797.5
     }
    },
-   "2026-10-13": {
+   "2026-09-15": {
     "series": 13,
     "reps": 115,
     "tonnage_kg": 9805,
@@ -4715,7 +7535,7 @@
      "Mollets": 2187.5
     }
    },
-   "2026-10-12": {
+   "2026-09-14": {
     "series": 14,
     "reps": 104,
     "tonnage_kg": 4918.5,
@@ -4735,7 +7555,7 @@
      "Biceps": 942.5
     }
    },
-   "2026-10-09": {
+   "2026-09-11": {
     "series": 12,
     "reps": 111,
     "tonnage_kg": 6862,
@@ -4753,7 +7573,7 @@
      "Quadriceps": 1750
     }
    },
-   "2026-10-08": {
+   "2026-09-10": {
     "series": 13,
     "reps": 143,
     "tonnage_kg": 4129,
@@ -4774,7 +7594,7 @@
      "Triceps": 875
     }
    },
-   "2026-10-06": {
+   "2026-09-08": {
     "series": 13,
     "reps": 141,
     "tonnage_kg": 11635,
@@ -4792,7 +7612,7 @@
      "Mollets": 2460
     }
    },
-   "2026-10-05": {
+   "2026-09-07": {
     "series": 14,
     "reps": 132,
     "tonnage_kg": 6010,
@@ -4812,7 +7632,7 @@
      "Biceps": 1050
     }
    },
-   "2026-10-02": {
+   "2026-09-04": {
     "series": 12,
     "reps": 89,
     "tonnage_kg": 5474,
@@ -4830,7 +7650,7 @@
      "Quadriceps": 1450
     }
    },
-   "2026-10-01": {
+   "2026-09-03": {
     "series": 13,
     "reps": 117,
     "tonnage_kg": 3323,
@@ -4851,7 +7671,7 @@
      "Triceps": 725
     }
    },
-   "2026-09-29": {
+   "2026-09-01": {
     "series": 13,
     "reps": 115,
     "tonnage_kg": 9445,
@@ -4869,7 +7689,7 @@
      "Mollets": 2100
     }
    },
-   "2026-09-28": {
+   "2026-08-31": {
     "series": 14,
     "reps": 104,
     "tonnage_kg": 4670,
@@ -4896,8 +7716,8 @@
     "volume_fin": 52,
     "rpe_debut": 7.3,
     "rpe_fin": 7.4,
-    "charge_debut": 60,
-    "charge_fin": 62,
+    "charge_debut": 65,
+    "charge_fin": 68,
     "statut": "plateau"
    },
    "s8": {
@@ -4905,8 +7725,8 @@
     "volume_fin": 52,
     "rpe_debut": 7.3,
     "rpe_fin": 7.4,
-    "charge_debut": 57,
-    "charge_fin": 62,
+    "charge_debut": 60,
+    "charge_fin": 68,
     "statut": "positif"
    }
   }
@@ -4935,6 +7755,22 @@
   {
    "date": "03/10/2026",
    "poids": 77.4
+  },
+  {
+   "date": "26/09/2026",
+   "poids": 77.2
+  },
+  {
+   "date": "19/09/2026",
+   "poids": 77
+  },
+  {
+   "date": "12/09/2026",
+   "poids": 76.8
+  },
+  {
+   "date": "05/09/2026",
+   "poids": 76.6
   }
  ],
  "programme": [
@@ -5744,6 +8580,331 @@
    "zone": null,
    "ressenti": "4",
    "note": null
+  },
+  {
+   "date": "28/09/2026",
+   "sommeil": 5,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "26/09/2026",
+   "sommeil": 5,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "25/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "24/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "23/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "22/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "21/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "19/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "18/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "17/09/2026",
+   "sommeil": 5,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "16/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "15/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "14/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "12/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "11/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "10/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "09/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "08/09/2026",
+   "sommeil": 5,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "07/09/2026",
+   "sommeil": 5,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "05/09/2026",
+   "sommeil": 5,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 2,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "04/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "03/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 2,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "02/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "01/09/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
+  },
+  {
+   "date": "31/08/2026",
+   "sommeil": 4,
+   "energie": null,
+   "fatigue": 1,
+   "motivation": null,
+   "douleur": 1,
+   "stress": 1,
+   "courbatures": 1,
+   "zone": null,
+   "ressenti": "4",
+   "note": null
   }
  ],
  "pause": null,
@@ -5768,7 +8929,7 @@
    "constats": [
     {
      "ton": "neutre",
-     "texte": "Volume en hausse sur 4 semaines, mais la période de comparaison inclut une pause de 14 jours : l'évolution n'est pas représentative."
+     "texte": "Volume stable sur 4 semaines (0%)."
     },
     {
      "ton": "attention",
@@ -5793,9 +8954,9 @@
      "priorite": "moyenne"
     }
    ],
-   "confiance": "moyenne",
-   "volume_fiable": false,
-   "volume_raison": "pause de 14 jours dans la période précédente"
+   "confiance": "bonne",
+   "volume_fiable": true,
+   "volume_raison": null
   },
   "cardio": {
    "constats": [
@@ -5847,6 +9008,1782 @@
   {
    "date": "2026-11-05",
    "date_fr": "05/11/2026",
+   "seance_id": "Haut B",
+   "tonnage": 5255,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Développé couché incliné haltère",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 34,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 34,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 34,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Tirage vertical prise large",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 65,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 65,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 65,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 65,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Élévation latérale haltère",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 14,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 14,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 14,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Extension poulie corde",
+     "muscle": "Triceps",
+     "series": [
+      {
+       "charge": 35,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 35,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 35,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-11-03",
+   "date_fr": "03/11/2026",
+   "seance_id": "Bas A",
+   "tonnage": 12595,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Squat",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg curl assis",
+     "muscle": "Ischio",
+     "series": [
+      {
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 55,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Presse inclinée",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 160,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 160,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 160,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Mollets debout",
+     "muscle": "Mollets",
+     "series": [
+      {
+       "charge": 70,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-11-02",
+   "date_fr": "02/11/2026",
+   "seance_id": "Haut A",
+   "tonnage": 7272,
+   "nb_series": 14,
+   "exercices": [
+    {
+     "nom": "Développé couché barre",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 80,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 80,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 80,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 80,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Rowing barre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 70,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Développé militaire aux haltères",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 28,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 28,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 28,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Curl barre",
+     "muscle": "Biceps",
+     "series": [
+      {
+       "charge": 40,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 40,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 40,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-30",
+   "date_fr": "30/10/2026",
+   "seance_id": "Bas B",
+   "tonnage": 6548,
+   "nb_series": 12,
+   "exercices": [
+    {
+     "nom": "Soulevé de terre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 120,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 120,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 120,
+       "reps": 4,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Fente bulgare",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 26,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg extension",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 60,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 60,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 60,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Hip thrust",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 110,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 110,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 110,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-29",
+   "date_fr": "29/10/2026",
+   "seance_id": "Haut B",
+   "tonnage": 4237,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Développé couché incliné haltère",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 34,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 34,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 34,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Tirage vertical prise large",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 65,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 65,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 65,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 65,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Élévation latérale haltère",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 14,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 14,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 14,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Extension poulie corde",
+     "muscle": "Triceps",
+     "series": [
+      {
+       "charge": 35,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 35,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 35,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-27",
+   "date_fr": "27/10/2026",
+   "seance_id": "Bas A",
+   "tonnage": 10885,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Squat",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg curl assis",
+     "muscle": "Ischio",
+     "series": [
+      {
+       "charge": 55,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 55,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 55,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Presse inclinée",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 160,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 160,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 160,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Mollets debout",
+     "muscle": "Mollets",
+     "series": [
+      {
+       "charge": 70,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-26",
+   "date_fr": "26/10/2026",
+   "seance_id": "Haut A",
+   "tonnage": 5664,
+   "nb_series": 14,
+   "exercices": [
+    {
+     "nom": "Développé couché barre",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 80,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 80,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 80,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 80,
+       "reps": 5,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Rowing barre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 70,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 70,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Développé militaire aux haltères",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 28,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 28,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 28,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Curl barre",
+     "muscle": "Biceps",
+     "series": [
+      {
+       "charge": 40,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 40,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 40,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-23",
+   "date_fr": "23/10/2026",
+   "seance_id": "Bas B",
+   "tonnage": 7869,
+   "nb_series": 12,
+   "exercices": [
+    {
+     "nom": "Soulevé de terre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 117.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 117.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 117.5,
+       "reps": 6,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Fente bulgare",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 24,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 24,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 24,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg extension",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 57.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 57.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 57.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Hip thrust",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 105,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 105,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 105,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-22",
+   "date_fr": "22/10/2026",
+   "seance_id": "Haut B",
+   "tonnage": 4974,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Développé couché incliné haltère",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 32,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Tirage vertical prise large",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 62.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 62.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 62.5,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 62.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Élévation latérale haltère",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 13,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 13,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 13,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Extension poulie corde",
+     "muscle": "Triceps",
+     "series": [
+      {
+       "charge": 32.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-20",
+   "date_fr": "20/10/2026",
+   "seance_id": "Bas A",
+   "tonnage": 12230,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Squat",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 6,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 5,
+       "rpe": 9,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg curl assis",
+     "muscle": "Ischio",
+     "series": [
+      {
+       "charge": 52.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 52.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 52.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Presse inclinée",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 155,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 155,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 155,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Mollets debout",
+     "muscle": "Mollets",
+     "series": [
+      {
+       "charge": 67.5,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 14,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 13,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-19",
+   "date_fr": "19/10/2026",
+   "seance_id": "Haut A",
+   "tonnage": 6957,
+   "nb_series": 14,
+   "exercices": [
+    {
+     "nom": "Développé couché barre",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 77.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 77.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 77.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 77.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Rowing barre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 67.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 9,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Développé militaire aux haltères",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 26,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 26,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 26,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Curl barre",
+     "muscle": "Biceps",
+     "series": [
+      {
+       "charge": 37.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 37.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 37.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-16",
+   "date_fr": "16/10/2026",
+   "seance_id": "Bas B",
+   "tonnage": 6280,
+   "nb_series": 12,
+   "exercices": [
+    {
+     "nom": "Soulevé de terre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 117.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 117.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 117.5,
+       "reps": 4,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Fente bulgare",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 24,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 24,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 24,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg extension",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 57.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 57.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 57.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Hip thrust",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 105,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 105,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 105,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-15",
+   "date_fr": "15/10/2026",
+   "seance_id": "Haut B",
+   "tonnage": 4009,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Développé couché incliné haltère",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 32,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Tirage vertical prise large",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 62.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 62.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 62.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 62.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Élévation latérale haltère",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 13,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 13,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 13,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Extension poulie corde",
+     "muscle": "Triceps",
+     "series": [
+      {
+       "charge": 32.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 32.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-13",
+   "date_fr": "13/10/2026",
+   "seance_id": "Bas A",
+   "tonnage": 10525,
+   "nb_series": 13,
+   "exercices": [
+    {
+     "nom": "Squat",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 97.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 97.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 97.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 97.5,
+       "reps": 5,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg curl assis",
+     "muscle": "Ischio",
+     "series": [
+      {
+       "charge": 52.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 52.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 52.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Presse inclinée",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 155,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 155,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 155,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Mollets debout",
+     "muscle": "Mollets",
+     "series": [
+      {
+       "charge": 67.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-12",
+   "date_fr": "12/10/2026",
+   "seance_id": "Haut A",
+   "tonnage": 5416,
+   "nb_series": 14,
+   "exercices": [
+    {
+     "nom": "Développé couché barre",
+     "muscle": "Pectoraux",
+     "series": [
+      {
+       "charge": 77.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 77.5,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 77.5,
+       "reps": 5,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 77.5,
+       "reps": 5,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Rowing barre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 67.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 7,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 67.5,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Développé militaire aux haltères",
+     "muscle": "Epaule",
+     "series": [
+      {
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 26,
+       "reps": 8,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 26,
+       "reps": 7,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Curl barre",
+     "muscle": "Biceps",
+     "series": [
+      {
+       "charge": 37.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 37.5,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 37.5,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-09",
+   "date_fr": "09/10/2026",
+   "seance_id": "Bas B",
+   "tonnage": 7533,
+   "nb_series": 12,
+   "exercices": [
+    {
+     "nom": "Soulevé de terre",
+     "muscle": "Dos",
+     "series": [
+      {
+       "charge": 115,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 115,
+       "reps": 6,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 115,
+       "reps": 6,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Fente bulgare",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 22,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 22,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 22,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Leg extension",
+     "muscle": "Quadriceps",
+     "series": [
+      {
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 55,
+       "reps": 12,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 55,
+       "reps": 11,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    },
+    {
+     "nom": "Hip thrust",
+     "muscle": "Fessier",
+     "series": [
+      {
+       "charge": 100,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 10,
+       "rpe": 7,
+       "repos": 120
+      },
+      {
+       "charge": 100,
+       "reps": 9,
+       "rpe": 8,
+       "repos": 120
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "date": "2026-10-08",
+   "date_fr": "08/10/2026",
    "seance_id": "Haut B",
    "tonnage": 4692,
    "nb_series": 13,
@@ -5956,10 +10893,10 @@
    ]
   },
   {
-   "date": "2026-11-03",
-   "date_fr": "03/11/2026",
+   "date": "2026-10-06",
+   "date_fr": "06/10/2026",
    "seance_id": "Bas A",
-   "tonnage": 11755,
+   "tonnage": 12515,
    "nb_series": 13,
    "exercices": [
     {
@@ -5968,26 +10905,26 @@
      "series": [
       {
        "charge": 95,
-       "reps": 6,
-       "rpe": 9,
+       "reps": 8,
+       "rpe": 7,
        "repos": 120
       },
       {
        "charge": 95,
-       "reps": 6,
-       "rpe": 9,
+       "reps": 8,
+       "rpe": 7,
        "repos": 120
       },
       {
        "charge": 95,
-       "reps": 5,
-       "rpe": 9,
+       "reps": 7,
+       "rpe": 7,
        "repos": 120
       },
       {
        "charge": 95,
-       "reps": 5,
-       "rpe": 9,
+       "reps": 7,
+       "rpe": 8,
        "repos": 120
       }
      ]
@@ -6067,8 +11004,8 @@
    ]
   },
   {
-   "date": "2026-11-02",
-   "date_fr": "02/11/2026",
+   "date": "2026-10-05",
+   "date_fr": "05/10/2026",
    "seance_id": "Haut A",
    "tonnage": 6641,
    "nb_series": 14,
@@ -6184,8 +11121,8 @@
    ]
   },
   {
-   "date": "2026-10-30",
-   "date_fr": "30/10/2026",
+   "date": "2026-10-02",
+   "date_fr": "02/10/2026",
    "seance_id": "Bas B",
    "tonnage": 6011,
    "nb_series": 12,
@@ -6289,8 +11226,8 @@
    ]
   },
   {
-   "date": "2026-10-29",
-   "date_fr": "29/10/2026",
+   "date": "2026-10-01",
+   "date_fr": "01/10/2026",
    "seance_id": "Haut B",
    "tonnage": 3780,
    "nb_series": 13,
@@ -6400,8 +11337,8 @@
    ]
   },
   {
-   "date": "2026-10-27",
-   "date_fr": "27/10/2026",
+   "date": "2026-09-29",
+   "date_fr": "29/09/2026",
    "seance_id": "Bas A",
    "tonnage": 10165,
    "nb_series": 13,
@@ -6413,25 +11350,25 @@
       {
        "charge": 95,
        "reps": 6,
-       "rpe": 9,
+       "rpe": 7,
        "repos": 120
       },
       {
        "charge": 95,
        "reps": 6,
-       "rpe": 9,
+       "rpe": 7,
        "repos": 120
       },
       {
        "charge": 95,
        "reps": 5,
-       "rpe": 9,
+       "rpe": 7,
        "repos": 120
       },
       {
        "charge": 95,
        "reps": 5,
-       "rpe": 9,
+       "rpe": 8,
        "repos": 120
       }
      ]
@@ -6511,8 +11448,8 @@
    ]
   },
   {
-   "date": "2026-10-26",
-   "date_fr": "26/10/2026",
+   "date": "2026-09-28",
+   "date_fr": "28/09/2026",
    "seance_id": "Haut A",
    "tonnage": 5167,
    "nb_series": 14,
@@ -6628,8 +11565,8 @@
    ]
   },
   {
-   "date": "2026-10-23",
-   "date_fr": "23/10/2026",
+   "date": "2026-09-25",
+   "date_fr": "25/09/2026",
    "seance_id": "Bas B",
    "tonnage": 7198,
    "nb_series": 12,
@@ -6733,8 +11670,8 @@
    ]
   },
   {
-   "date": "2026-10-22",
-   "date_fr": "22/10/2026",
+   "date": "2026-09-24",
+   "date_fr": "24/09/2026",
    "seance_id": "Haut B",
    "tonnage": 4411,
    "nb_series": 13,
@@ -6844,10 +11781,10 @@
    ]
   },
   {
-   "date": "2026-10-20",
-   "date_fr": "20/10/2026",
+   "date": "2026-09-22",
+   "date_fr": "22/09/2026",
    "seance_id": "Bas A",
-   "tonnage": 11390,
+   "tonnage": 12075,
    "nb_series": 13,
    "exercices": [
     {
@@ -6855,27 +11792,27 @@
      "muscle": "Quadriceps",
      "series": [
       {
-       "charge": 95,
-       "reps": 6,
-       "rpe": 9,
+       "charge": 92.5,
+       "reps": 8,
+       "rpe": 7,
        "repos": 120
       },
       {
-       "charge": 95,
-       "reps": 6,
-       "rpe": 9,
+       "charge": 92.5,
+       "reps": 8,
+       "rpe": 7,
        "repos": 120
       },
       {
-       "charge": 95,
-       "reps": 5,
-       "rpe": 9,
+       "charge": 92.5,
+       "reps": 7,
+       "rpe": 7,
        "repos": 120
       },
       {
-       "charge": 95,
-       "reps": 5,
-       "rpe": 9,
+       "charge": 92.5,
+       "reps": 7,
+       "rpe": 8,
        "repos": 120
       }
      ]
@@ -6955,8 +11892,8 @@
    ]
   },
   {
-   "date": "2026-10-19",
-   "date_fr": "19/10/2026",
+   "date": "2026-09-21",
+   "date_fr": "21/09/2026",
    "seance_id": "Haut A",
    "tonnage": 6326,
    "nb_series": 14,
@@ -7072,8 +12009,8 @@
    ]
   },
   {
-   "date": "2026-10-16",
-   "date_fr": "16/10/2026",
+   "date": "2026-09-18",
+   "date_fr": "18/09/2026",
    "seance_id": "Bas B",
    "tonnage": 5743,
    "nb_series": 12,
@@ -7177,8 +12114,8 @@
    ]
   },
   {
-   "date": "2026-10-15",
-   "date_fr": "15/10/2026",
+   "date": "2026-09-17",
+   "date_fr": "17/09/2026",
    "seance_id": "Haut B",
    "tonnage": 3552,
    "nb_series": 13,
@@ -7288,8 +12225,8 @@
    ]
   },
   {
-   "date": "2026-10-13",
-   "date_fr": "13/10/2026",
+   "date": "2026-09-15",
+   "date_fr": "15/09/2026",
    "seance_id": "Bas A",
    "tonnage": 9805,
    "nb_series": 13,
@@ -7399,8 +12336,8 @@
    ]
   },
   {
-   "date": "2026-10-12",
-   "date_fr": "12/10/2026",
+   "date": "2026-09-14",
+   "date_fr": "14/09/2026",
    "seance_id": "Haut A",
    "tonnage": 4919,
    "nb_series": 14,
@@ -7516,8 +12453,8 @@
    ]
   },
   {
-   "date": "2026-10-09",
-   "date_fr": "09/10/2026",
+   "date": "2026-09-11",
+   "date_fr": "11/09/2026",
    "seance_id": "Bas B",
    "tonnage": 6862,
    "nb_series": 12,
@@ -7621,8 +12558,8 @@
    ]
   },
   {
-   "date": "2026-10-08",
-   "date_fr": "08/10/2026",
+   "date": "2026-09-10",
+   "date_fr": "10/09/2026",
    "seance_id": "Haut B",
    "tonnage": 4129,
    "nb_series": 13,
@@ -7732,8 +12669,8 @@
    ]
   },
   {
-   "date": "2026-10-06",
-   "date_fr": "06/10/2026",
+   "date": "2026-09-08",
+   "date_fr": "08/09/2026",
    "seance_id": "Bas A",
    "tonnage": 11635,
    "nb_series": 13,
@@ -7843,8 +12780,8 @@
    ]
   },
   {
-   "date": "2026-10-05",
-   "date_fr": "05/10/2026",
+   "date": "2026-09-07",
+   "date_fr": "07/09/2026",
    "seance_id": "Haut A",
    "tonnage": 6010,
    "nb_series": 14,
@@ -7960,8 +12897,8 @@
    ]
   },
   {
-   "date": "2026-10-02",
-   "date_fr": "02/10/2026",
+   "date": "2026-09-04",
+   "date_fr": "04/09/2026",
    "seance_id": "Bas B",
    "tonnage": 5474,
    "nb_series": 12,
@@ -8065,8 +13002,8 @@
    ]
   },
   {
-   "date": "2026-10-01",
-   "date_fr": "01/10/2026",
+   "date": "2026-09-03",
+   "date_fr": "03/09/2026",
    "seance_id": "Haut B",
    "tonnage": 3323,
    "nb_series": 13,
@@ -8176,8 +13113,8 @@
    ]
   },
   {
-   "date": "2026-09-29",
-   "date_fr": "29/09/2026",
+   "date": "2026-09-01",
+   "date_fr": "01/09/2026",
    "seance_id": "Bas A",
    "tonnage": 9445,
    "nb_series": 13,
@@ -8287,8 +13224,8 @@
    ]
   },
   {
-   "date": "2026-09-28",
-   "date_fr": "28/09/2026",
+   "date": "2026-08-31",
+   "date_fr": "31/08/2026",
    "seance_id": "Haut A",
    "tonnage": 4670,
    "nb_series": 14,
@@ -8624,9 +13561,9 @@
  },
  "exo_categories": {},
  "recompenses": {
-  "gagnes": 858,
+  "gagnes": 1493,
   "depenses": 0,
-  "solde": 858,
+  "solde": 1493,
   "claims": [],
   "bareme": {
    "seance": 10,
@@ -8696,7 +13633,7 @@
    {
     "id": "badge_machine",
     "seuil": 1200,
-    "debloque": false
+    "debloque": true
    }
   ],
   "version": 2,

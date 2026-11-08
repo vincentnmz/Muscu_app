@@ -1,0 +1,102 @@
+---
+import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
+import Button from '../components/Button.astro';
+import Phone from '../components/Phone.astro';
+import Status from '../components/Status.astro';
+import { site, ctaPrincipal } from '../config/site';
+// Partie coach : fonctions vérifiées dans l'app. Partie structures : vision, rien de promis comme disponible.
+const mailPro = `mailto:${site.email}?subject=${encodeURIComponent('Novalyz Pro : parlons-en')}`;
+---
+<Base title="Novalyz · Pour les coachs et les structures" description="Novalyz Coach : qui a besoin de vous aujourd’hui, pourquoi, et quoi faire. Novalyz Pro : la prochaine étape pour les clubs et centres de formation." path="/coachs-et-structures/">
+  <PageHead eyebrow="Coachs & structures" titre="Suivre chaque athlète, sans y passer ses soirées." intro="Novalyz Coach est disponible aujourd’hui pour les coachs et préparateurs physiques. Novalyz Pro, pour les clubs et centres de formation, est la prochaine étape." />
+
+  <section class="bloc" aria-labelledby="h-coach">
+    <div class="wrap two">
+      <div>
+        <p class="eyebrow">Novalyz Coach <Status etat="dispo" /></p>
+        <h2 id="h-coach" class="display">Votre équipe, lue pour vous chaque matin.</h2>
+        <p class="lead">Vos athlètes notent leurs séances et leur ressenti dans leur app. Novalyz croise tout et vous montre ce qui demande votre attention. Novalyz propose, vous décidez.</p>
+        <ul class="pts">
+          <li><b>Aujourd’hui</b> : qui a répondu au questionnaire du matin, qui surveiller, et pourquoi.</li>
+          <li><b>Une fiche par athlète</b> : aperçu, analyses, séances, programme et forme, avec un bloc « À décider » quand un exercice bloque.</li>
+          <li><b>Programmes</b> : vous construisez ou ajustez le programme, l’athlète le retrouve dans son app.</li>
+          <li><b>Messages</b> avec chaque athlète, dans l’app.</li>
+          <li><b>Séance en présentiel</b> : vous saisissez la séance pour l’athlète, sur place.</li>
+          <li><b>Analyses équipe</b> : la progression et l’état de tout le groupe.</li>
+          <li><b>Vos propres exercices</b>, en plus du catalogue.</li>
+        </ul>
+      </div>
+      <div class="vis"><Phone src="/captures/coach.webp" alt="Fiche athlète côté coach : état du jour « Vigilance », et le bloc « À décider » sur le squat bloqué avec une proposition." tilt={2} /></div>
+    </div>
+  </section>
+
+  <section class="bloc lien" aria-labelledby="h-lien">
+    <div class="wrap">
+      <h2 id="h-lien" class="display">Relier vos athlètes</h2>
+      <ol class="etapes">
+        <li><b>Vous créez votre compte coach</b><span>Depuis l’app, en quelques minutes.</span></li>
+        <li><b>Vous ajoutez vos athlètes</b><span>Vous créez leur compte, ou vous envoyez une demande à un athlète qui utilise déjà Novalyz.</span></li>
+        <li><b>L’athlète accepte</b><span>Un athlète déjà inscrit garde la main : il accepte votre demande, et peut quitter son coach quand il veut.</span></li>
+      </ol>
+      <p class="note">Pendant la bêta, Novalyz Coach est gratuit.</p>
+    </div>
+  </section>
+
+  <section class="bloc pro on-dark" aria-labelledby="h-pro">
+    <div class="wrap two">
+      <div>
+        <p class="eyebrow">Novalyz Pro <Status etat="prevu" /></p>
+        <h2 id="h-pro" class="display">Clubs, centres de formation, académies.</h2>
+        <p class="lead">Novalyz Pro n’est pas encore disponible. Le moteur d’analyse est le même que celui de l’app : il est conçu pour s’adapter à d’autres sports que la musculation, et à des staffs entiers plutôt qu’à un seul coach.</p>
+        <p class="lead">Si vous représentez une structure, nous cherchons quelques partenaires pour définir avec eux ce dont un staff a vraiment besoin.</p>
+        <div class="btns"><Button href={mailPro}>Parlons-en</Button></div>
+      </div>
+      <ul class="pistes" aria-label="Ce que nous étudions">
+        <li>Plusieurs coachs et préparateurs sur une même équipe</li>
+        <li>D’autres sports que la musculation</li>
+        <li>Suivi du bien-être de tout un effectif</li>
+        <li>Rapports pour le staff</li>
+        <li class="leg">Pistes à l’étude, pas des fonctions disponibles.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="fin">
+    <div class="wrap fin-in">
+      <p class="display">Vous êtes coach ? Testez Novalyz pendant la bêta.</p>
+      {ctaPrincipal.visible && <Button href={ctaPrincipal.lien} variant="light">{ctaPrincipal.texte}</Button>}
+    </div>
+  </section>
+</Base>
+<style>
+  .bloc { padding: var(--s9) 0; }
+  .two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: var(--s7); align-items: center; }
+  .eyebrow { display: flex; align-items: center; gap: 12px; }
+  h2 { font-size: clamp(28px, 3.8vw, 44px); margin: 14px 0 18px; }
+  .lead + .lead { margin-top: 12px; }
+  .pts { list-style: none; padding: 0; margin: 24px 0 0; display: flex; flex-direction: column; gap: 12px; max-width: 56ch; }
+  .pts li { padding-left: 22px; position: relative; color: var(--muted); }
+  .pts li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 2px; background: var(--blue); }
+  .pts b { color: var(--fg); }
+  .vis { display: flex; justify-content: center; }
+  .lien { background: var(--ice); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lien { background: #0E1528; } }
+  .etapes { list-style: none; counter-reset: e; padding: 0; margin: var(--s6) 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); }
+  .etapes li { counter-increment: e; display: flex; flex-direction: column; gap: 6px; padding-top: 16px; border-top: 2px solid var(--blue); }
+  .etapes li::before { content: "0" counter(e); font-family: var(--f-mark); font-size: 12px; letter-spacing: .2em; color: var(--accent); }
+  .etapes b { font-size: 17.5px; }
+  .etapes span { color: var(--muted); font-size: 15.5px; }
+  .note { margin-top: var(--s6); font-weight: 700; }
+  .pro { background: var(--night); color: #fff; }
+  .pro .lead { color: #B9C5E3; }
+  .btns { margin-top: 26px; }
+  .pistes { list-style: none; padding: 26px; margin: 0; border: 1px solid rgba(255,255,255,.14); border-radius: var(--r-lg, 20px); display: flex; flex-direction: column; gap: 14px; color: #DCE4F7; }
+  .pistes li { padding-left: 22px; position: relative; }
+  .pistes li:not(.leg)::before { content: ""; position: absolute; left: 0; top: .55em; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--blue-2); }
+  .pistes .leg { padding: 12px 0 0; border-top: 1px solid rgba(255,255,255,.12); font-size: 13.5px; color: #8E9BBB; }
+  .fin { background: var(--blue); color: #fff; padding: var(--s8) 0; }
+  .fin-in { display: flex; align-items: center; justify-content: space-between; gap: var(--s5); flex-wrap: wrap; }
+  .fin p { font-size: clamp(24px, 3vw, 36px); max-width: 22ch; line-height: 1.1; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } .etapes { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,308 @@
+<title>Kit testeurs Novalyz</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout : une colonne de lecture ; chaque texte à envoyer = bloc avec bouton « Copier » */
+:root{
+  --page:#eef2fb; --surface:#ffffff; --surface2:#f3f6fd; --fg:#14213d; --muted:#5b6785; --line:#dde4f4;
+  --accent:#1a5fff; --accent-soft:#e6eeff; --warn:#b86a00; --warn-soft:#fff3df; --good:#0a8a4a;
+  --f-display:'Michroma','Arial Narrow',sans-serif; --f-body:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --warn:#ffb14a; --warn-soft:#3a2a12; --good:#3ccf86; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0b1120; --surface:#141c31; --surface2:#1a2440; --fg:#e8edfa; --muted:#a0abc8; --line:#28334f;
+  --accent:#6f9bff; --accent-soft:#1c2b52; --warn:#ffb14a; --warn-soft:#3a2a12; --good:#3ccf86; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 56px}
+.wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.brand{font-family:var(--f-display);font-size:12px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(21px,4vw,28px);margin:6px 0 8px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0;text-wrap:balance}
+p{margin:0}
+.lead{color:var(--muted);max-width:68ch}
+.sec{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card ul,.card ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.note{background:var(--warn-soft);border:1px solid var(--warn);border-radius:14px;padding:12px 14px;font-size:14px}
+.note b{color:var(--warn)}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.copy{display:flex;flex-direction:column;gap:8px}
+.copy .hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.copy pre{margin:0;white-space:pre-wrap;word-wrap:break-word;font-family:var(--f-body);font-size:14px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;max-height:none;overflow:auto}
+button{font:inherit;font-size:13px;font-weight:700;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:6px 12px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cal{display:grid;grid-template-columns:90px minmax(0,1fr);gap:6px 12px;font-size:14px}
+.cal b{color:var(--accent)}
+.ph{background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:0 5px;font-weight:700}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">NOVALYZ · TEST FERMÉ · NOVEMBRE 2026</div>
+    <h1>Kit testeurs</h1>
+    <p class="lead">Tout ce qu'il faut pour lancer le test fermé Google Play : l'invitation, les missions de test, la façon de signaler un bug, les relances et les deux questionnaires. Chaque texte a un bouton « Copier ». Remplace seulement ce qui est surligné, par exemple <span class="ph">[LIEN DU TEST]</span>.</p>
+  </header>
+
+  <section class="sec">
+    <h2>1 · Avant d'envoyer quoi que ce soit</h2>
+    <div class="card">
+      <ol>
+        <li><b>Play Console ▸ Tests ▸ Test fermé</b> : ajoute l'adresse <b>Gmail</b> (le compte Google du téléphone) de chaque testeur dans la liste des testeurs.</li>
+        <li>Sur la même page, copie le <b>lien pour rejoindre le test</b> : c'est <span class="ph">[LIEN DU TEST]</span> dans les textes ci-dessous.</li>
+        <li>Vérifie que la version du <b>7 novembre</b> (AAB n° 10) est bien déployée sur la piste de test fermé.</li>
+        <li>Invite <b>au moins 15 personnes</b> : Google en exige 12 inscrites sans interruption, et il y en a toujours qui décrochent.</li>
+      </ol>
+      <div class="note"><b>Règle Google à respecter.</b> Pour un compte développeur personnel récent, il faut <b>au moins 12 testeurs inscrits pendant 14 jours d'affilée</b> avant de pouvoir demander la mise en production. Un testeur qui se désinscrit avant 14 jours ne compte pas ; s'il se réinscrit, ses 14 jours repartent de zéro.</div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>2 · Mail d'invitation · athlète</h2>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Objet : Teste Novalyz avant tout le monde (14 jours)</span><button type="button" data-copy="t1">Copier</button></div>
+<pre id="t1">Salut [PRÉNOM],
+
+Je lance le test de Novalyz, mon application de suivi d'entraînement : tu notes tes séances et ton ressenti, et l'app te dit comment t'entraîner, si c'est bien fait et comment progresser.
+
+J'aimerais que tu la testes pendant 14 jours. Ça prend 5 minutes pour démarrer :
+
+1. Sur ton téléphone Android, ouvre ce lien et accepte de devenir testeur : [LIEN DU TEST]
+2. Installe Novalyz depuis le Play Store (le lien te mène à la bonne page).
+3. Ouvre l'app, crée ton compte athlète et suis l'accueil (2 minutes).
+4. Réponds au mini-questionnaire de départ (1 minute, 4 questions) : [LIEN QUESTIONNAIRE J0 ATHLÈTE]
+
+Très important : reste inscrit au test pendant au moins 14 jours d'affilée et garde l'app installée. Google ne valide l'application que si les testeurs restent jusqu'au bout.
+
+Ce que j'attends de toi : utiliser l'app comme si elle était à toi (tes vraies séances), et me dire tout ce qui bloque, surprend ou manque. Je t'envoie les missions de test juste après.
+
+Pour me faire un retour : réponds à ce mail, écris à hello@novalyz.fr, ou dans l'app : Réglages ▸ Infos ▸ « Contact & envoyer un retour ».
+
+Merci beaucoup !
+Vincent</pre>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>3 · Mail d'invitation · coach / préparateur</h2>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Objet : Teste l'espace coach de Novalyz (14 jours)</span><button type="button" data-copy="t2">Copier</button></div>
+<pre id="t2">Bonjour [PRÉNOM],
+
+Je lance le test de Novalyz. Pour un coach, l'app lit les séances et le ressenti de tes athlètes et te dit chaque jour qui a besoin de toi, pourquoi, et quoi faire. Tu gardes la main sur les programmes.
+
+Je serais ravi que tu testes l'espace coach pendant 14 jours :
+
+1. Sur ton téléphone Android, ouvre ce lien et accepte de devenir testeur : [LIEN DU TEST]
+2. Installe Novalyz depuis le Play Store.
+3. Ouvre l'app, choisis « Coach · Prépa », puis « Créer un compte ». L'accueil te présente l'espace coach, avec une fiche athlète d'exemple.
+4. Ajoute au moins un athlète : soit il a déjà un compte (demande-lui son login à 4 chiffres), soit tu crées son compte et tu lui donnes son login et son mot de passe.
+5. Réponds au mini-questionnaire de départ (1 minute, 4 questions) : [LIEN QUESTIONNAIRE J0 COACH]
+
+L'espace coach fonctionne aussi sur ordinateur, à l'adresse https://app.novalyz.fr (mêmes identifiants).
+
+Très important : reste inscrit au test pendant au moins 14 jours d'affilée et garde l'app installée sur ton téléphone Android, même si tu l'utilises surtout sur ordinateur.
+
+Pour me faire un retour : réponds à ce mail, écris à hello@novalyz.fr, ou dans l'app : Profil ▸ À propos ▸ « Envoyer un retour ».
+
+Merci !
+Vincent</pre>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>4 · Missions de test</h2>
+    <p class="lead">À envoyer juste après l'invitation. Google recommande de faire utiliser un maximum de fonctions : ces listes couvrent toute l'app.</p>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Athlète</span><button type="button" data-copy="t3">Copier</button></div>
+<pre id="t3">Tes missions Novalyz (athlète), sur 14 jours :
+
+Semaine 1
+☐ Crée ton compte et suis l'accueil jusqu'au bout (programme, visite de l'app).
+☐ Choisis comment tu fais ton programme : Novalyz te le construit, tu le fais toi-même, ou ton coach.
+☐ Ajoute ta photo de profil (Réglages ▸ Compte).
+☐ Chaque matin : réponds au questionnaire (1 minute : sommeil, fatigue, stress, douleur).
+☐ Fais au moins 3 séances en notant chaque série (charge, reps, effort).
+☐ Essaie une séance libre et dis à quelle séance prévue elle correspond.
+☐ Si tu as une montre : connecte-la (Aujourd'hui ▸ « Connecte ta montre », ou Réglages ▸ Appareils).
+
+Semaine 2
+☐ Regarde tes analyses : Résumé, Évolution, Tendances, Historique.
+☐ Lis la « Lecture Novalyz » sur Aujourd'hui : est-ce qu'elle dit vrai pour toi ?
+☐ Teste un exercice « fonctionnel » (fentes avec sac, burpees, kettlebell…) si ta salle en a.
+☐ Déclare un contexte dans Forme (semaine légère, reprise, vacances) et regarde si l'analyse change.
+☐ Note une pesée, un objectif ou une douleur dans Forme.
+
+À chaque fois qu'un truc te bloque, te surprend ou te semble faux : envoie-moi un message tout de suite, même court.</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Coach / préparateur</span><button type="button" data-copy="t4">Copier</button></div>
+<pre id="t4">Tes missions Novalyz (coach), sur 14 jours :
+
+Semaine 1
+☐ Crée ton compte coach et suis l'accueil et la visite (avec la fiche « Léo Exemple »).
+☐ Ajoute ta photo (Profil).
+☐ Ajoute au moins 1 athlète : lie un compte existant (login à 4 chiffres) ou crée le sien.
+☐ Construis ou ajuste son programme (fiche ▸ Programme), essaie « Planifier la semaine » et « Novalyz propose ».
+☐ Chaque matin : regarde Aujourd'hui (qui a répondu au questionnaire, qui surveiller).
+
+Semaine 2
+☐ Ouvre la fiche de ton athlète : Aperçu (« À décider »), Analyses, Séances, Forme.
+☐ Échange avec lui dans Messages (texte, photo ou vidéo).
+☐ Saisis une séance pour lui en présentiel (fiche ▸ « Saisir sa séance »).
+☐ Crée un exercice qui manque au catalogue.
+☐ Regarde Analyses équipe.
+☐ Essaie l'espace coach sur ordinateur : https://app.novalyz.fr
+
+À chaque fois qu'un truc te bloque, te surprend ou te semble faux : envoie-moi un message tout de suite, même court.</pre>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>5 · Comment signaler un bug</h2>
+    <div class="card copy">
+      <div class="hd"><span class="tag">À envoyer avec les missions</span><button type="button" data-copy="t5">Copier</button></div>
+<pre id="t5">Pour signaler un bug, le plus utile pour moi :
+
+1. Ce que tu faisais (ex. « je validais ma 3e série de squat »).
+2. Ce qui s'est passé, et ce que tu attendais à la place.
+3. Une capture d'écran si possible.
+4. Ton téléphone (marque et modèle).
+
+Où l'envoyer :
+• par mail : hello@novalyz.fr
+• dans l'app : athlète ▸ Réglages ▸ Infos ▸ « Contact & envoyer un retour » ; coach ▸ Profil ▸ À propos ▸ « Envoyer un retour »
+• ou en commentaire privé sur la page Google Play de Novalyz.
+
+Rien n'est trop petit : une phrase pas claire, un chiffre qui te paraît faux, un bouton introuvable, tout m'aide.</pre>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>6 · Relances</h2>
+    <div class="card">
+      <div class="cal">
+        <b>J0</b><span>Invitation + questionnaire de départ (1 min).</span>
+        <b>J+3</b><span>« Tout va bien ? » + rappel des 14 jours.</span>
+        <b>J+7</b><span>Questionnaire J7 (2 min) + missions de la semaine 2.</span>
+        <b>J+12</b><span>Rappel : ne pas se désinscrire avant J+14.</span>
+        <b>J+14</b><span>Questionnaire J14 (3 min) + merci.</span>
+      </div>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">J+3</span><button type="button" data-copy="t6">Copier</button></div>
+<pre id="t6">Salut [PRÉNOM], petit point au bout de 3 jours : l'installation et la création du compte se sont bien passées ? Si quelque chose t'a bloqué, dis-le-moi, je corrige vite.
+
+Rappel : reste bien inscrit au test et garde l'app installée jusqu'au [DATE J+14], c'est ce qui permet à Google de valider Novalyz. Merci !</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">J+7</span><button type="button" data-copy="t7">Copier</button></div>
+<pre id="t7">Salut [PRÉNOM], une semaine déjà, merci !
+
+Peux-tu répondre à ce questionnaire de 2 minutes (5 questions) : [LIEN QUESTIONNAIRE J7]
+
+Pour la semaine 2, les missions sont surtout côté analyses (je te les remets en dessous). Et si un chiffre ou une phrase de l'app te paraît faux pour toi, c'est exactement ce que je veux savoir.</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">J+12</span><button type="button" data-copy="t8">Copier</button></div>
+<pre id="t8">Salut [PRÉNOM], plus que 2 jours de test ! Surtout ne te désinscris pas et ne désinstalle pas Novalyz avant le [DATE J+14] : sinon Google ne compte pas ta participation et le test repart de zéro. Merci pour ton aide !</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">J+14</span><button type="button" data-copy="t9">Copier</button></div>
+<pre id="t9">Salut [PRÉNOM], c'est la fin des 14 jours, un énorme merci !
+
+Dernière chose (3 minutes, 6 questions) : le questionnaire bilan : [LIEN QUESTIONNAIRE J14]
+
+Tu peux garder l'app et continuer à l'utiliser : tes données restent là. Je te tiens au courant de la suite.</pre>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>7 · Questionnaires J0 · J7 · J14</h2>
+    <p class="lead">Courts exprès : 1, 2 puis 3 minutes. Un formulaire athlète et un formulaire coach à chaque fois (Google Forms ou autre). Ils ne mesurent pas seulement la satisfaction : ils vérifient si Novalyz <b>aide à décider</b> et si ses analyses sont <b>justes</b>. Échelles de 1 (pas du tout) à 5 (tout à fait).</p>
+    <div class="note"><b>Astuce pour qu'ils répondent.</b> Mets toutes les questions sur une seule page, rends obligatoires seulement les questions à choix, et laisse les réponses libres facultatives.</div>
+    <h2 style="font-size:15px">J0 · au départ (1 minute)</h2>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Athlète · 4 questions</span><button type="button" data-copy="q0a">Copier</button></div>
+<pre id="q0a">1. Aujourd'hui, tu suis tes séances comment ? Rien / carnet ou notes / autre appli (laquelle ?) / avec un coach
+2. Ton objectif principal : force / prise de muscle / perte de poids / performance dans un sport / forme et santé
+3. Tu t'entraînes depuis : moins d'1 an / 1 à 3 ans / 3 à 5 ans / plus de 5 ans
+4. En une phrase, qu'attends-tu de Novalyz ? (facultatif)</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Coach · 4 questions</span><button type="button" data-copy="q0c">Copier</button></div>
+<pre id="q0c">1. Combien d'athlètes suis-tu ? 1 à 5 / 6 à 15 / plus de 15
+2. Aujourd'hui, tu suis leurs séances comment ? Rien / tableur / autre logiciel (lequel ?) / messages
+3. Ce qui te prend le plus de temps dans le suivi : (facultatif)
+4. En une phrase, qu'attends-tu de Novalyz ? (facultatif)</pre>
+    </div>
+    <h2 style="font-size:15px">J7 · prise en main et justesse (2 minutes)</h2>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Athlète · 5 questions</span><button type="button" data-copy="q7a">Copier</button></div>
+<pre id="q7a">1. Démarrer avec Novalyz a été simple. (1 à 5)
+2. Noter une séance série par série est rapide. (1 à 5)
+3. La « Lecture Novalyz » du jour collait à ce que tu ressentais : souvent / parfois / rarement / je ne l'ai pas lue
+4. Les cibles proposées pour tes séries étaient : trop faciles / justes / trop dures / je ne les ai pas vues
+5. Ce qui t'a bloqué ou paru faux : (facultatif)</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Coach · 5 questions</span><button type="button" data-copy="q7c">Copier</button></div>
+<pre id="q7c">1. Démarrer avec l'espace coach a été simple. (1 à 5)
+2. Ajouter un athlète et régler son programme a été simple. (1 à 5)
+3. L'écran Aujourd'hui t'a montré les bons athlètes à voir : souvent / parfois / rarement / pas encore assez de données
+4. La piste « À décider » sur la fiche était : utile / pas claire / fausse / je ne l'ai pas vue
+5. Ce qui t'a bloqué ou paru faux : (facultatif)</pre>
+    </div>
+    <h2 style="font-size:15px">J14 · ce que Novalyz a changé (3 minutes)</h2>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Athlète · 6 questions</span><button type="button" data-copy="q14a">Copier</button></div>
+<pre id="q14a">1. Cite une chose que tu as faite différemment grâce à Novalyz (charge, repos, séance allégée, exercice changé…), ou écris « rien ».
+2. Tu fais confiance aux analyses de Novalyz. (1 à 5)
+3. Si Novalyz disparaissait demain, tu serais : très déçu / un peu déçu / pas déçu
+4. La fonction la plus utile pour toi : (facultatif)
+5. Ce qui manque le plus : (facultatif)
+6. Combien paierais-tu par mois, et pour quoi ? (facultatif)</pre>
+    </div>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Coach · 6 questions</span><button type="button" data-copy="q14c">Copier</button></div>
+<pre id="q14c">1. As-tu repéré un athlète à voir grâce à Novalyz, que tu n'aurais pas vu sinon ? Oui / Non (si oui, pour quoi ?)
+2. Avec Novalyz, ton temps de suivi par semaine : diminue / ne change pas / augmente
+3. Tu fais confiance aux analyses de Novalyz. (1 à 5)
+4. Si Novalyz disparaissait demain, tu serais : très déçu / un peu déçu / pas déçu
+5. Ce qui manque le plus : (facultatif)
+6. Combien paierais-tu, et sur quelle base (par mois, par athlète suivi) ? (facultatif)</pre>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>8 · Bilan d'usage réel (fin du test)</h2>
+    <div class="card">
+      <p>Les réponses disent ce que les testeurs pensent ; les données disent ce qu'ils ont fait. À J+14, demande-moi le bilan : pour chaque testeur, nombre de séances notées, questionnaires du matin remplis, régularité semaine par semaine, et pour les coachs, athlètes suivis et messages. Lecture seule de la base, rien à installer.</p>
+      <p class="lead" style="font-size:14px">Ce qui compte le plus : la part de testeurs « très déçus » si Novalyz disparaissait, et les décisions citées à la question 1 de J14.</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>9 · Texte « Comment tester » pour la Play Console</h2>
+    <p class="lead">Pour le champ de description du test ou les notes de version, si la Play Console te le demande.</p>
+    <div class="card copy">
+      <div class="hd"><span class="tag">Court · moins de 500 caractères</span><button type="button" data-copy="t12">Copier</button></div>
+<pre id="t12">Merci de tester Novalyz ! Crée ton compte (athlète ou coach), suis l'accueil, puis utilise l'app pour tes vraies séances pendant 14 jours : questionnaire du matin, saisie des séries, analyses. Signale tout bug ou chose pas claire à hello@novalyz.fr ou dans l'app (Réglages ▸ Infos). Reste inscrit au test au moins 14 jours d'affilée.</pre>
+    </div>
+  </section>
+</div>
+
+<script>
+document.querySelectorAll('button[data-copy]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var el = document.getElementById(b.getAttribute('data-copy')); if (!el) return;
+    var t = el.innerText, done = function () { var o = b.textContent; b.textContent = 'Copié'; setTimeout(function () { b.textContent = o; }, 1400); };
+    try {
+      navigator.clipboard.writeText(t).then(done, function () { sel(el); });
+    } catch (e) { sel(el); }
+  });
+});
+function sel(el) { try { var r = document.createRange(); r.selectNodeContents(el); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {} }
+</script>

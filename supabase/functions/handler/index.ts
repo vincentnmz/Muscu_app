@@ -5823,6 +5823,42 @@ async function handleEnvoyerRetour(body: any): Promise<Response> {
   return jsonResp(ok ? { success: true } : { success: false, error: 'Envoi impossible pour le moment' })
 }
 
+// Site vitrine (lot 4, 07/11) : formulaire « Rejoindre la bêta » (www.novalyz.com/beta). Action PUBLIQUE.
+// Anti-spam : champ piège (site_web, invisible pour un humain) + 5 envois / heure / IP (mémoire de l'instance).
+// Un e-mail déjà inscrit est mis à jour sans nouvel e-mail de notification. Réponse identique dans tous les cas
+// (on ne révèle pas si une adresse est déjà inscrite). Table : supabase/beta_inscriptions.sql.
+const BETA_PROFILS = ['athlete', 'coach', 'structure'], BETA_APPAREILS = ['android', 'iphone', 'ordinateur']
+const _betaRate = new Map<string, { n: number; exp: number }>()
+async function handleInscriptionBeta(body: any, ip = 'unknown'): Promise<Response> {
+  if (String(body.site_web || '').trim()) return jsonResp({ success: true })          // robot : on ne dit rien
+  const now = Date.now(), r = _betaRate.get(ip)
+  if (r && r.exp > now && r.n >= 5) return jsonResp({ success: false, error: 'Trop d’envois. Réessaie dans une heure.' })
+  if (!r || r.exp <= now) _betaRate.set(ip, { n: 1, exp: now + 3_600_000 }); else r.n++
+  const prenom = String(body.prenom || '').trim().replace(/\s+/g, ' ')
+  const email = String(body.email || '').trim().toLowerCase()
+  const profil = String(body.profil || ''), appareil = String(body.appareil || '')
+  const message = String(body.message || '').trim().slice(0, 1000) || null
+  const source = (String(body.source || '').toLowerCase().match(/^[a-z0-9_-]{1,30}$/) || [null])[0]
+  if (!prenom || prenom.length > 60) return jsonResp({ success: false, error: 'Indique ton prénom.' })
+  if (!email || email.length > 200 || !_emailValide(email)) return jsonResp({ success: false, error: 'E-mail invalide.' })
+  if (BETA_PROFILS.indexOf(profil) < 0) return jsonResp({ success: false, error: 'Choisis ton profil.' })
+  if (BETA_APPAREILS.indexOf(appareil) < 0) return jsonResp({ success: false, error: 'Choisis ton appareil.' })
+  const { data: ex } = await sb().from('beta_inscriptions').select('id').eq('email', email).maybeSingle()
+  if (ex) {
+    await sb().from('beta_inscriptions').update({ prenom, profil, appareil, message, updated_at: new Date().toISOString() }).eq('id', (ex as any).id)
+    return jsonResp({ success: true })
+  }
+  const { error } = await sb().from('beta_inscriptions').insert({ prenom, email, profil, appareil, message, source })
+  if (error) { console.error('beta: insertion refusée'); return jsonResp({ success: false, error: 'Enregistrement impossible pour le moment.' }) }
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const lib: Record<string, string> = { athlete: 'Athlète', coach: 'Coach', structure: 'Structure', android: 'Android', iphone: 'iPhone', ordinateur: 'Ordinateur' }
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Nouvelle inscription bêta</b> (site)</p>
+    <p>${esc(prenom)} · ${esc(email)}<br>${lib[profil]} · ${lib[appareil]}${source ? ' · source : ' + esc(source) : ''}</p>${message ? `<p style="white-space:pre-wrap">${esc(message)}</p>` : ''}
+    <p style="color:#666">${appareil === 'android' ? 'À ajouter à la liste des testeurs Google Play (adresse du compte Google).' : 'À qui envoyer le lien de l’app web : https://app.novalyz.fr'}</p></div>`
+  await _envoyerEmail(CONTACT_NOVALYZ, 'Bêta Novalyz — ' + prenom + ' (' + lib[profil] + ', ' + lib[appareil] + ')', html)
+  return jsonResp({ success: true })
+}
+
 async function handleSaveRecapFreq(body: any): Promise<Response> {
   const freq = ['off', 'semaine', 'mois', '3mois'].indexOf(String(body.freq || '')) >= 0 ? String(body.freq) : null
   if (!freq) return jsonResp({ success: false, error: 'Fréquence invalide' })
@@ -7577,7 +7613,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -7762,6 +7798,7 @@ Deno.serve(async (req: Request) => {
       const action = body.action
       const _deny = await _authGate(String(action || ''), params, body); if (_deny) return _deny
       switch (action) {
+        case 'inscriptionBeta':          return handleInscriptionBeta(body, ip)
         case 'login':                    return withSession(await handleLogin(new URLSearchParams({ login: body.login, password: body.password })), 'a')
         case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: body.annees == null ? '' : String(body.annees), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '', sexe: body.sexe || '' })), 'a')
         case 'loginDispo':               return handleLoginDispo(body)
