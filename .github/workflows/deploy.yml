@@ -45,7 +45,7 @@ jobs:
           # Le fichier CNAME à la racine de gh-pages fixe le domaine (l'ancienne adresse github.io y redirige).
           echo "app.novalyz.fr" > gh-pages/CNAME
           # Fichiers racine de la coquille
-          cp index.html manifest.json sw.js privacy.html "$DEST"/ 2>/dev/null || true
+          cp index.html manifest.json sw.js privacy.html avis-coach.html "$DEST"/ 2>/dev/null || true
           cp "logo novalyz.png" "$DEST"/ 2>/dev/null || true
           # Dossiers (on nettoie l'ancien contenu pour éviter les fichiers obsolètes)
           for d in css js assets; do
