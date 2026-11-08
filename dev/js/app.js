@@ -12820,7 +12820,7 @@ function afficherListeSeance() {
     if (sb) sb.addEventListener('click', (ev) => { ev.stopPropagation(); remplacerExoSeance(p.row_index); });
     listeEl.appendChild(div);
     if (isNext) prochainEl = div;
-    if (p.groupe_id) {
+    if (p.groupe_id && partenaires.length > 0) {   // 08/11 : un exercice seul n'est pas un superset
       const tag = document.createElement('div');
       tag.style.cssText = `font-size:11px;color:${couleurGroupe(p.groupe_id)};margin:0 0 10px 4px`;
       tag.textContent = partenaires.length > 0 ? `Superset ${p.groupe_id} · alterne avec ${partenaires.join(', ')}` : `Superset ${p.groupe_id}`;
