@@ -21150,24 +21150,23 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
     add(f.P, f.x);
   }
   // Option A (débutant ; zones prioritaires comprises) : si le minimum n'est toujours pas atteint faute de place, on ajoute l'exercice quand même
-  // (au plus 1 exercice au-delà de la durée choisie par séance) — la séance s'allonge un peu.
+  // (dans la durée choisie ; sinon une série de plus si la séance a encore de la place) — la séance s'allonge un peu.
   _COMP.forEach(function (c) {
     for (var g2 = 0; g2 < 8; g2++) {
       var ci = cible(c[1]); if (!ci || (W[c[1]] || 0) >= ci.min) break;
       var pick = null;
       plan.forEach(function (P) {
-        if (P.over >= 1) return;   // (09/11, porteur : « 8 exercices c'est beaucoup ») 1 exercice au-delà au plus → 7 max
+        if (P.budget < sets) return;   // (09/11, porteur) la durée choisie est respectée : plus d'exercice au-delà
         var x = P.ext.concat(P.decl).filter(function (y) { return y.bk === c[0] && P.keep.indexOf(y) < 0; })[0];
         var dejaLa = P.keep.some(function (y) { return y.bk === c[0]; });
         if (x && !dejaLa && (!pick || P.budget > pick.P.budget)) pick = { P: P, x: x };
       });
       if (!pick) {
         // Plus d'exercice possible (ex. une seule séance jambes) : une série de plus sur l'exercice déjà prévu (4 max : pas de crunch en 6 séries).
-        var up = null; plan.forEach(function (P) { P.keep.forEach(function (y) { if (y.bk === c[0] && (y.sets || sets) < 4 && (!up || y.sets < up.sets)) up = y; }); });
+        var up = null, upP = null; plan.forEach(function (P) { if (P.budget < 1) return; P.keep.forEach(function (y) { if (y.bk === c[0] && (y.sets || sets) < 4 && (!up || y.sets < up.sets)) { up = y; upP = P; } }); });
         if (!up) break;
-        up.sets = (up.sets || sets) + 1; addW(mus(up), 1); continue;
+        up.sets = (up.sets || sets) + 1; upP.budget -= 1; addW(mus(up), 1); continue;
       }
-      if (pick.P.budget < sets) pick.P.over++;
       add(pick.P, pick.x);
     }
   });
@@ -21178,8 +21177,6 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
 // vol (facultatif) = { targets: { Muscle: {min, opt}, _defaut: {min, opt} }, cat: catalogue } → répartition P3.
 function _genProgramme2(objectif, organisation, jours, temps, niveau, vol) {
   var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
-  // Débutant (porteur 09/11) : séances courtes — 6 exercices (+1 au plus pour fessiers / mollets / abdos), quelle que soit la durée.
-  if (niveau === 'debutant') cap = Math.min(cap, _G2_CAP[60]);
   // Maintien = volume allégé (une série de moins, un exercice de moins par séance).
   if (objectif === 'maintien') { sets = Math.max(2, sets - 1); cap = Math.max(3, cap - 1); }
   var alloc = (vol && vol.cat && vol.cat.length) ? _g2Allouer(days, cap, sets, vol, niveau) : null;
@@ -21382,9 +21379,11 @@ function _g2Solution(st) {
 function _g2SousHtml(st, sous, esc) {
   if (!sous.length) return '<div style="font-size:11.5px;line-height:1.45;margin-top:4px;color:#00A854;font-weight:700">✓ Tous les muscles atteignent ton minimum' + ((st.zones || []).length ? ((st.zones.length > 1) ? ', tes zones prioritaires aussi' : ', ta zone prioritaire aussi') : '') + '.</div>';
   var cle = [st.org, st.jours, st.temps, (st.zones || []).join(',')].join('|');
-  var titre = st.niv === 'debutant' ? '' : 'À ' + st.jours + ' j × ' + st.temps + ' min, ';
+  var _pj = st.niv === 'debutant' ? ((_G2_PRESETS[st.preset] || _G2_PRESETS[0]).jours) : st.jours;
+  var titre = 'À ' + _pj + ' j × ' + st.temps + ' min, ';
   var h = '<div style="background:#FFF4E5;border:1px solid #F5C77E;border-radius:12px;padding:10px 12px;margin-top:8px;font-size:12px;line-height:1.5;color:var(--text)"><b>' + titre + sous.length + ' muscle' + (sous.length > 1 ? 's restent' : ' reste') + ' sous ta cible</b> : ' + esc(sous.join(', ')) + '.';
-  if (st.niv === 'debutant' || st.garde === cle) return h + (st.garde === cle ? '<div style="font-size:11px;color:var(--text-subtle);margin-top:5px">Gardé tel quel : ces muscles apparaîtront « sous le minimum » dans tes Analyses.</div>' : '') + '</div>';
+  if (st.niv === 'debutant') return h + '<div style="font-size:11px;color:var(--text-subtle);margin-top:5px">C\'est le choix de durée : tes zones prioritaires et les gros muscles passent d\'abord. Ces muscles apparaîtront « sous le minimum » dans tes Analyses ; une séance plus longue les couvre.</div></div>';
+  if (st.garde === cle) return h + '<div style="font-size:11px;color:var(--text-subtle);margin-top:5px">Gardé tel quel : ces muscles apparaîtront « sous le minimum » dans tes Analyses.</div></div>';
   var S = _g2Solution(st), ORG = { fb: 'Full Body', ul: 'Upper / Lower', ppl: 'PPL', split: 'Split' };
   if (S) {
     var lbl = (S.org !== st.org ? ORG[S.org] + ' ' + S.jours + ' j' + (S.temps !== st.temps ? ' × ' + S.temps + ' min' : '') : (S.jours !== st.jours ? (S.jours + ' jours' + (S.temps !== st.temps ? ' × ' + S.temps + ' min' : '')) : S.temps + ' min'));
@@ -21433,7 +21432,7 @@ function _g2VolCtx(niv, zones) {
 }
 function _g2Lignes() {
   var st = _genState, lignes, vol = _g2VolCtx(st.niv === 'expert' ? 'expert' : st.niv, st.zones || []);
-  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, 60, 'debutant', vol); }
+  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, st.temps || 60, 'debutant', vol); }
   else if (st.but === 'force') { lignes = _genProgrammeForce(st.jours); }
   else { lignes = _genProgramme2(st.but || 'masse', st.org, st.jours, st.temps, st.niv, vol); }
   return _g2Resolve(lignes);
@@ -21570,7 +21569,9 @@ function _genRender0() {
     body += L('Choisis ton programme')
       + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('')
       + _g2ZonesHtml(st)
-      + _semBlockHtml();
+      + _semBlockHtml()
+      // 09/11 (porteur) : la durée se demande à TOUT LE MONDE, débutant compris — et elle est respectée.
+      + L('Temps par séance') + row([45, 60, 75, 90].map(function (t) { return _g2Chip('_g2Set(\'temps\',' + t + ')', st.temps === t, t + ' min'); }).join(''));
   } else {
     var BUTS = [['masse', 'Prise de masse'], ['seche', 'Sèche'], ['maintien', 'Maintien'], ['force', 'Force']];
     body += L('Ton objectif') + row(BUTS.map(function (b) { return _g2Chip('_g2Set(\'but\',\'' + b[0] + '\')', st.but === b[0], b[1]); }).join(''));
