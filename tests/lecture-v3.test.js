@@ -58,14 +58,21 @@ eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau 
   const dMar = mk(9, 120, 7.5); eq(dMar.cause === 'marche' && /\+33 %/.test(dMar.levier), 'Bloqué : 7,5 kg, marche +2,5 kg = +33 % → cause « marche trop grosse »', dMar);
   eq(!/variante/.test(mk(9, 120, 50).levier), 'Bloqué sans cause (intermédiaire) : plus de « change de variante »', mk(9, 120, 50).levier);
   // Gêne sur la zone (seuil 3/5 validé 06/11) : 3/5 « pectoraux » pendant le plateau → cause possible ; 2/5 ignorée.
-  const gene = (niv) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
+  const gene = (niv, zone) => { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
     ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; });
     const P = (d) => ({ date: fr(d), seance: 'pec', charge: 50, reps: 10, series: [{ charge: 50, reps: 10, rpe: 9, repos: 120 }, { charge: 50, reps: 10, rpe: 9, repos: 120 }] });
     dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29'), P('2026-10-22'), P('2026-10-15'), P('2026-10-08')];
-    dd.bien_etre = [{ date: fr('2026-10-22'), douleur: niv, zone: 'Pectoraux droit' }];
+    dd.bien_etre = [{ date: fr('2026-10-22'), douleur: niv, zone: zone || 'Pectoraux droit' }];
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
   const g3 = gene(3); eq(g3.cause === 'gene' && /Possible : gêne/.test(g3.pourquoi), 'Bloqué : gêne 3/5 sur la zone → cause possible « gêne »', g3);
   eq(gene(2).cause !== 'gene', 'Bloqué : gêne 2/5 → ne compte pas (seuil 3/5)', gene(2).cause);
+  // 09/11 : table zone ↔ muscles (validée porteur) — épaule sur un exercice pectoraux = cause possible (zone sollicitée) ; genou sur pectoraux = non.
+  const gEp = gene(3, 'epaule'); eq(gEp.cause === 'gene' && /gêne epaule 3\/5/.test(gEp.pourquoi) && /zone sollicitée par cet exercice/.test(gEp.pourquoi), 'Bloqué : gêne épaule 3/5 sur un exercice pectoraux → cause possible (zone sollicitée)', gEp);
+  eq(gene(3, 'genou').cause !== 'gene', 'Bloqué : gêne genou 3/5 sur un exercice pectoraux → ne compte pas', gene(3, 'genou').cause);
+  eq(!/zone sollicitée/.test(g3.pourquoi), 'Bloqué : gêne sur le muscle lui-même → pas de mention « zone sollicitée »', g3.pourquoi);
+  eq(sb._lv3ZoneTouche('epaule', 'pect') === 2 && sb._lv3ZoneTouche('epaule', 'dos') === 2 && sb._lv3ZoneTouche('epaule', 'epau') === 1, 'Zone : épaule → pectoraux et dos sollicités, épaule = le muscle');
+  eq(sb._lv3ZoneTouche('genou', 'pect') === 0 && sb._lv3ZoneTouche('genou', 'quad') === 2 && sb._lv3ZoneTouche('coude', 'tric') === 2, 'Zone : genou ≠ pectoraux ; genou → quadriceps ; coude → triceps');
+  eq(sb._lv3ZoneTouche('pectoraux droit', 'pect') === 1 && sb._lv3ZoneTouche('autre', 'pect') === 0, 'Zone : muscle direct inchangé ; « autre » ne compte pas');
   // Série plus légère avant les séries de travail : 16 → 19 reps pendant que 7,5 kg passe de 11 à 10.
   { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
     ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; });
