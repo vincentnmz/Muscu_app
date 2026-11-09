@@ -859,7 +859,8 @@ try {
  * Il alimente NovalyzEngine.normaliser() avec des indicateurs génériques
  * (voir le contrat documenté au-dessus de la fonction normaliser, bloc 1).
  * ========================================================================== */
-const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
+// 09/11 — Prod ou préprod : choisi par js/env.js (chargé avant). Par défaut / en secours : PROD.
+const SCRIPT_URL = (typeof window !== 'undefined' && window.NVZ_SCRIPT_URL) || "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
 
 /* ═══════════ SESSION (jeton signé, 28/10/2026) ═══════════
  * UN SEUL point d'entrée pour tous les appels au serveur (pas de modification des

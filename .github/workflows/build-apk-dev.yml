@@ -52,6 +52,13 @@ jobs:
       - name: Assembler www/ (coquille web pour Capacitor)
         run: npm run build:www
 
+      # 09/11 — L'APK Dev parle à la PRÉPROD (projet Supabase séparé, données de
+      # démo) et plus jamais à la prod. Voir js/env.js (défaut = prod si absent).
+      - name: Brancher l'APK Dev sur la préprod
+        run: |
+          sed -i "s/var FORCE = '__NVZ_ENV__'/var FORCE = 'preprod'/" www/js/env.js
+          grep -q "var FORCE = 'preprod'" www/js/env.js && echo "✓ APK Dev → préprod"
+
       - name: Marqueur de build (date + sha) dans l'app
         run: |
           BID="DEV $(date -u +%Y-%m-%d\ %H:%M)Z-${GITHUB_SHA:0:7}"
