@@ -2,7 +2,14 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **7 nov. 2026** (voir le bloc « 07/11 » juste en dessous).
+> Dernière mise à jour : **9 nov. 2026** (voir le bloc « 09/11 » juste en dessous).
+
+## ▶ 09/11 — Audit d'architecture + préprod séparée
+- **Audit architecture/qualité** (rapport livré au porteur, non committé) : aucun problème critique ; `AUTH_ENFORCE=1` **vérifié actif** en prod ; dette 🟠 importante (monolithes `app.js`/`index.ts`, `catch {}` vides, table `indicateurs` fourre-tout, pas de migrations, démo mélangée à la prod). Plan P0→P5.
+- **P0 fait** : CI = `npm test` (87 suites, Node 22) sur push/PR `dev`/`main`.
+- **P1 en cours — préprod séparée FAITE** : projet Supabase gratuit « Novalyz Preprod » (`vqxkeqjaqkkmtzxvqvhi`, se met en pause après 7 j sans usage → la relancer depuis le tableau de bord). Schéma = `supabase/migrations/20261109120000_schema_initial.sql` (empreintes identiques à la prod). Démo = `supabase/seed-preprod.sql` (jim 0202, John 0101, Lucas 9035, mdp `demo2026`, identiques à la prod, dates recalées). Secrets préprod : `PEPPER` (≠ prod), `AUTH_ENFORCE=1` (pas d'e-mails/push/IA). Bascule : `js/env.js` (prod par défaut ; `/dev/` + APK Dev → préprod, localStorage préfixé `nvzpp:` + badge PRÉPROD). Backend préprod auto (`deploy-backend-preprod.yml`, jeton limité Edge Functions du seul projet préprod) ; **prod toujours à la main**. Vérifié : ping, login athlète/coach, 401 sans jeton, getAppData (40 séances), getCoachAthletes.
+- **Reste P1** : journal des migrations appliquées en prod, sortie progressive de `pref`/`alerte_*` hors d'`indicateurs`, décision hachage mdp, données de démo en prod (`is_demo`).
+
 
 ## ▶ 07/11 — Point de reprise (avant test fermé)
 - **Domaine** : app sur **https://app.novalyz.fr/** (préprod `/dev/`), DNS OVH CNAME `app` → `vincentnmz.github.io`, `novalyz.fr` vérifié sur GitHub, HTTPS forcé. `deploy.yml` écrit `gh-pages/CNAME`. `index.ts` : liens e-mails / logo / roues par défaut sur `app.novalyz.fr` (pas de var `APP_BASE_URL`). Politique de confidentialité : `https://app.novalyz.fr/privacy.html` (à mettre dans Play Console ▸ Surveiller et améliorer ▸ Règles et programmes ▸ Contenu de l'appli).
