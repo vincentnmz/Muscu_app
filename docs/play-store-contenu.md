@@ -9,7 +9,7 @@
 ## Fiche Play Store
 
 **Catégorie** : Appli · **Santé et remise en forme** · tags : entraînement / musculation, suivi d'activité, fitness.
-**Contact** : e-mail `portefaixvincent@gmail.com` · tel : (facultatif, vide) · site : `https://vincentnmz.github.io/Muscu_app/` (facultatif).
+**Contact** : e-mail `hello@novalyz.fr` · tel : (facultatif, vide) · site : `https://www.novalyz.fr` (facultatif). *(09/11 : à reporter dans la Play Console si ce n'est pas déjà fait.)*
 
 ### Nom de l'application (max 30)
 ```
@@ -36,7 +36,7 @@ CE QUE NOVALYZ FAIT POUR TOI
 • Nutrition — objectifs de calories et macros (protéines, glucides, lipides) calculés depuis ton poids, ton objectif et ton niveau d'activité, avec suivi au quotidien.
 • Cardio & Hyrox — saisie et analyse de tes sorties (course, vélo, rameur…) et de tes Hyrox.
 • Programme — construis ou génère ton programme (jours, charges en % du 1RM, RPE cible) et compare prévu vs réalisé.
-• Montre & capteurs — importe automatiquement tes séances, tes pas, ton sommeil et ta fréquence cardiaque via Health Connect (Fitbit, Garmin, Samsung, Polar, Coros…).
+• Montre & capteurs — importe automatiquement tes séances, tes pas, ton sommeil et ta fréquence cardiaque depuis les montres et applis qui partagent leurs données avec Health Connect.
 
 AVEC OU SANS COACH
 En solo, Novalyz est ton analyste de performance. Si tu as un coach, tu partages ton suivi et tu échanges avec lui directement dans l'app (messages, photos et vidéos de ta technique).
@@ -58,7 +58,7 @@ Novalyz est un outil d'aide à l'entraînement et au bien-être sportif. Il ne f
 - **Instructions** : « App en français. Écran de connexion → saisir ces identifiants. Aucune fonctionnalité payante. Compte avec ~1 an de données. »
 
 ## Suppression de compte / données
-- **URL suppression de compte** : `https://vincentnmz.github.io/Muscu_app/privacy.html#suppression-compte`
+- **URL suppression de compte** : `https://app.novalyz.fr/privacy.html#suppression-compte`
 - Suppression partielle sans supprimer le compte ? → **Non**.
 
 ## Annonces

@@ -192,3 +192,9 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Méthode** : étapes validées, **maquette avant gros feature**, livrer via SendUserFile (render) + push.
 - Commits : footer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` + `Claude-Session: https://claude.ai/code/session_01Dyo8fwGQF8enz2j8mVwhAb`.
 - **APK dev** : workflow `build-apk-dev.yml` (dispatch via `gh api`, release `novalyz-apk-dev`). Supabase `project_id = jhbrvgguybynzeceeceu`.
+
+## 09/11 — Audit des promesses + gêne ↔ exercices
+- Audit des promesses (site, Play Store, app, Instagram) : doc « Audit des promesses Novalyz ». Corrigé : visite « gratuit pendant la bêta » (IA 2 questions/jour, Premium prévu, plus de « rapports automatiques »), questionnaire « 15 secondes » partout, site (cible par série quand l'athlète gère son programme), fiche Play Store (hello@novalyz.fr, www.novalyz.fr, montres via Health Connect).
+- Moteur (lecture-v3.js) : une gêne ≥ 3/5 sur une ZONE compte aussi pour les exercices qui la sollicitent (table `_LV3_ZONE_MUS`, validée porteur : épaule → épaules/pectoraux/dos ; coude → biceps/triceps ; poignet/main/avant-bras → avant-bras/biceps ; haut du dos → dos/trapèzes ; lombaires → dos/ischios/lombaires ; hanche/aine → fessiers/adducteurs/quadriceps ; genou → quadriceps/ischios ; cheville/pied → mollets). Mention « (zone sollicitée par cet exercice) ».
+- Séance : plus d'étiquette « Superset » pour un exercice seul.
+- Compte coach démo 0202 (John + Lucas fictifs), présentation rejouée à chaque connexion ; questionnaire avis-coach.html.
