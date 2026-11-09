@@ -20905,6 +20905,7 @@ function _g2Build(day, cap, prio) {
   return _g2Trie(_g2Cands(day).slice(0, cap), prio);
 }
 // Blocs des zones prioritaires (cibles marquées prio par _zpAppliquer) → { bk: 1 }.
+var _SANS_CIBLE = { 'Trapèze': 1, 'Avant-bras': 1, 'Lombaires': 1, 'Adducteur': 1, 'Corps entier': 1 };
 var _G2_BKMUS = { Pectoraux: 'pecs', Dos: 'dos', Epaule: 'epaules', Biceps: 'biceps', Triceps: 'triceps', Quadriceps: 'quad', Ischio: 'ischios', Fessier: 'fessiers', Mollets: 'mollets', Abdominaux: 'abdos' };
 function _g2PrioBks(vol) {
   var T = (vol && vol.targets) || {}, o = {};
@@ -21057,7 +21058,7 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
   var _BK = { Pectoraux: 'pecs', Dos: 'dos', Epaule: 'epaules', Biceps: 'biceps', Triceps: 'triceps', Quadriceps: 'quad', Ischio: 'ischios', Fessier: 'fessiers', Mollets: 'mollets', Abdominaux: 'abdos' };
   var _BAS = /quad|ischios|fessiers|mollets/, _HAUT = /pecs|dos|epaules|biceps|triceps/;
   var _PRIO = [];
-  Object.keys(T).forEach(function (m) { if (T[m] && T[m].prio && _BK[m] && !_COMP.some(function (c) { return c[1] === m; })) _PRIO.push([_BK[m], m, m === 'Abdominaux' ? /./ : (_BAS.test(_BK[m]) ? _BAS : _HAUT)]); });
+  Object.keys(T).forEach(function (m) { if (T[m] && T[m].prio && _BK[m]) _PRIO.push([_BK[m], m, m === 'Abdominaux' ? /./ : (_BAS.test(_BK[m]) ? _BAS : _HAUT)]); });
   if (niveau === 'debutant') _COMP = _COMP.concat(_PRIO);   // débutant : dépassement de durée autorisé (option A)
   _PRIO.concat(_COMP).forEach(function (c) {
     if (!_G2_BLOCKS[c[0]]) return;
@@ -21070,7 +21071,8 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
   var mus = function (x) { return x.mus || (x.mus = _g2MusCand(x, cat)); };
   var addW = function (mm, n) { if (mm[0]) W[mm[0]] = (W[mm[0]] || 0) + n; if (mm[1] && mm[1] !== mm[0]) W[mm[1]] = (W[mm[1]] || 0) + n / 2; };
   var add = function (P, x) { x.sets = sets; P.keep.push(x); P.budget -= sets; addW(mus(x), sets); };
-  var deficit = function (m) { var c = cible(m); return c ? (c.min - (W[m] || 0)) / c.min : -1; };
+  // (09/11) déficit seulement pour un muscle qui a SA cible : pas de shrugs ajoutés pour « combler » les trapèzes via la cible par défaut.
+  var deficit = function (m) { var c = T[m] || (T._defaut && !_SANS_CIBLE[m] ? T._defaut : null); return c ? (c.min - (W[m] || 0)) / c.min : -1; };
   var sousMax = function (mm, n) { var c0 = cible(mm[0]), c1 = mm[1] ? cible(mm[1]) : null;
     return (!c0 || (W[mm[0]] || 0) + n <= c0.opt * 1.5) && (!c1 || (W[mm[1]] || 0) + n / 2 <= c1.opt * 1.5); };
   // 0) Zones prioritaires (03/11) : servies EN PREMIER (un exercice par séance où c'est logique), dans la durée choisie.
@@ -21078,9 +21080,36 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
     // Angle tournant (B) ; s'il ferait dépasser le maximum récupérable d'un muscle (secondaire compris), on prend l'angle suivant.
     var ord = pool.slice().sort(function (a, b) { return (a.si === s0 ? 0 : 1) - (b.si === s0 ? 0 : 1); });
     var x = ord.filter(function (y) { return sousMax(mus(y), sets); })[0] || pool.filter(function (y) { return y.si === s0; })[0] || pool.filter(function (y) { return y.si === 0; })[0]; if (x && P.budget >= sets) add(P, x); }); });
+  // 0 bis) (porteur 09/11) Les zones prioritaires passent AVANT les autres muscles : on les complète jusqu'à
+  // leur minimum (un exercice de plus, sinon une série de plus) avant de répartir le reste de la durée.
+  // Les autres muscles prennent les places restantes (ils peuvent donc passer sous leur minimum).
+  for (var gp = 0; gp < 200; gp++) {
+    var pb = null, pd = 1e-9;
+    _PRIO.forEach(function (c) { var d = deficit(c[1]); if (d > pd) { pd = d; pb = c; } });
+    if (!pb) break;
+    var pick0 = null;
+    plan.forEach(function (P) {
+      if (P.budget < sets) return;
+      var s0 = _g2PrioSlot(pb[0], (P.d.off || 0) + P.keep.filter(function (y) { return y.bk === pb[0]; }).length);
+      var pool0 = P.ext.concat(P.decl).filter(function (y) { return y.bk === pb[0] && P.keep.indexOf(y) < 0 && !P.keep.some(function (k) { return k.bk === y.bk && k.si === y.si; }); });
+      var x0 = pool0.filter(function (y) { return y.si === s0; })[0] || pool0[0];
+      if (x0 && (!pick0 || P.budget > pick0.P.budget)) pick0 = { P: P, x: x0 };
+    });
+    if (pick0) { add(pick0.P, pick0.x); continue; }
+    var up0 = null;
+    plan.forEach(function (P) { if (P.budget < 1) return; P.keep.forEach(function (y) { if (y.bk === pb[0] && y.sets <= sets && (!up0 || P.budget > up0.P.budget)) up0 = { P: P, x: y }; }); });
+    if (!up0) break;
+    up0.x.sets++; up0.P.budget -= 1; addW(mus(up0.x), 1);
+  }
   // 1) un exercice par muscle et par séance (comme avant)
   // (09/11) sauf si ce muscle a déjà atteint son maximum récupérable (ex. triceps déjà très sollicité par les développés).
-  plan.forEach(function (P) { P.decl.filter(function (x) { return x.pk === 0 && P.keep.indexOf(x) < 0 && !P.keep.some(function (y) { return y.bk === x.bk; }); }).forEach(function (x) { if (P.budget >= sets && sousMax(mus(x), sets)) add(P, x); }); });
+  // Avec une zone prioritaire choisie, un muscle NON prioritaire qui a déjà son minimum de la semaine ne prend plus
+  // de place ici : la place reste pour les zones prioritaires (étape 2c).
+  var _prioMus = {}; Object.keys(T).forEach(function (m) { if (T[m] && T[m].prio) _prioMus[m] = 1; });
+  var _aPrio = Object.keys(_prioMus).length > 0;
+  // (petits muscles seulement : un full body garde toujours ses pectoraux et son dos)
+  var _assez = function (x) { var m = mus(x)[0], c = cible(m); return _aPrio && !_prioMus[m] && (_G2_MUSRANK[x.bk] || 9) >= 3 && c && (W[m] || 0) >= c.min; };
+  plan.forEach(function (P) { P.decl.filter(function (x) { return x.pk === 0 && P.keep.indexOf(x) < 0 && !P.keep.some(function (y) { return y.bk === x.bk; }); }).forEach(function (x) { if (P.budget >= sets && sousMax(mus(x), sets) && !_assez(x)) add(P, x); }); });
   for (var guard = 0; guard < 400; guard++) {
     // 2a) muscle le plus en retard : un exercice de plus (pool étendu)
     var best = null, bestD = 1e-9;
@@ -21096,6 +21125,17 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
       P.keep.forEach(function (x) { if (x.sets > sets) return; var d = deficit(mus(x)[0]); if (d > bestD && sousMax(mus(x), 1)) { bestD = d; bb = { P: P, x: x }; } });
     });
     if (bb) { bb.x.sets++; bb.P.budget -= 1; addW(mus(bb.x), 1); continue; }
+    // 2c) (porteur 09/11) minimums atteints : la place restante va d'abord aux zones prioritaires, jusqu'à leur optimum.
+    var fp = null, fpd = 1e-9;
+    _PRIO.concat(_COMP.filter(function (c) { var t = cible(c[1]); return t && t.prio; })).forEach(function (c) {
+      var t = cible(c[1]); if (!t) return; var d = (t.opt - (W[c[1]] || 0)) / t.opt; if (d <= fpd) return;
+      plan.forEach(function (P) {
+        if (P.budget < sets) return;
+        var x = P.ext.concat(P.decl).filter(function (y) { return y.bk === c[0] && P.keep.indexOf(y) < 0 && !P.keep.some(function (k) { return k.bk === y.bk && k.si === y.si; }); })[0];
+        if (x && sousMax(mus(x), sets) && (!fp || d > fpd || P.budget > fp.P.budget)) { fpd = d; fp = { P: P, x: x }; }
+      });
+    });
+    if (fp) { add(fp.P, fp.x); continue; }
     // 3) minimums atteints (ou impossibles) : compléter dans l'ordre d'origine sans dépasser le maximum
     var f = null;
     plan.forEach(function (P) {
