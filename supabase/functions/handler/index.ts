@@ -2457,7 +2457,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const perfs = (perfsAll || []).map((r: any) => ({ ...r, muscle: normMuscle(r.muscle) }))
   // Cibles de volume du NIVEAU de l'athlète (ancienneté effective) — source unique (03/11).
   const niveauAth = getNiveauExperience(anneesEffectives(athData?.annees, athData?.created_at, now))
-  const zonesPrio: string[] = (() => { const r = (prefRows || []).find((x: any) => x.cle === 'zones_prio'); if (!r) return []; try { const a = JSON.parse(String(r.valeur || '[]')); return Array.isArray(a) ? a.filter((z: any) => ZONES_PRIO[String(z)]).slice(0, 2) : [] } catch (_) { return [] } })()
+  // Préférences : athletes.prefs d'abord, ancienne ligne indicateurs en secours (10/11, voir _prefsAthleteLues).
+  const prefsA = _prefsAthleteLues((athData as any)?.prefs, prefRows)
+  const zonesPrio: string[] = Array.isArray(prefsA.zones_prio) ? (prefsA.zones_prio as unknown[]).filter((z: any) => ZONES_PRIO[String(z)]).map(String).slice(0, 2) : []
   const volObtiRows = volumeCiblesRows(niveauAth, zonesPrio)
   void _volObtiDb
   const sport = athData?.sport || 'muscu'
@@ -2900,7 +2902,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       prev = d
     }
   }
-  const _semType = (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire' })()
+  const _semType = prefsA.semaine_type === 'glissant' ? 'glissant' : 'calendaire'
   const _jourSem = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(lundi.getUTCFullYear(), lundi.getUTCMonth(), lundi.getUTCDate())) / 86400000) + 1
   const synthExtras = { reposMoy, reposN: _repVals.length, pausePrevJours, semaineType: _semType, jourSemaine: _jourSem }
 
@@ -2964,21 +2966,21 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       })
     })(),
     seances_detail: seancesDetailArr,
-    semaine_type: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire'; })(),
+    semaine_type: prefsA.semaine_type === 'glissant' ? 'glissant' : 'calendaire',
     // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
-    onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
-    prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
+    onboarding_vu: prefsA.onboarding_vu === true,
+    prog_auto_off: prefsA.prog_auto_off === true,
     // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
     niveau_experience: niveauAth,
     zones_prio: zonesPrio,   // zones à développer en priorité (2 max) — cibles relevées dans volume_obti
     // Écran 6 (04/11, décision porteur) : propositions Novalyz à l'athlète seulement s'il n'a PAS de coach,
     // ou si son coach l'a autorisé (pref novalyz_athlete = '1'). Avec coach : Novalyz propose au coach.
-    novalyz_athlete_ok: (prefRows || []).some((x: any) => x.cle === 'novalyz_athlete' && x.valeur === '1'),
-    propositions_novalyz: !athData?.coach_id || (prefRows || []).some((x: any) => x.cle === 'novalyz_athlete' && x.valeur === '1'),
+    novalyz_athlete_ok: prefsA.novalyz_athlete === true,
+    propositions_novalyz: !athData?.coach_id || prefsA.novalyz_athlete === true,
     prog_maj: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'prog_maj'); if (!r) return null; try { return JSON.parse(String(r.valeur || 'null')) } catch (_) { return null } })(),
     // Cibles de volume de TOUS les niveaux (générateur : niveau choisi dans l'assistant) — même table que volume_obti.
     volume_niveaux: Object.fromEntries(Object.keys(VOLUME_CIBLES_NIVEAU).map(k => [k, volumeCiblesRows(k).map(r => ({ muscle: r.muscle, series_min: r.series_min_semaine, series_opt: r.series_opt_semaine }))])),
-    exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
+    exo_categories: (prefsA.exo_categories && typeof prefsA.exo_categories === 'object' && !Array.isArray(prefsA.exo_categories)) ? prefsA.exo_categories : {},
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
@@ -4875,17 +4877,73 @@ async function handleSaveCoachPref(body: any): Promise<Response> {
   const err = await _coachPrefsEcrire(coachId, { [cle]: val })
   return err ? jsonResp({ success: false, error: err }) : jsonResp({ success: true, valeur: val })
 }
-// Défauts du coach appliqués quand un athlète accepte son suivi (P7).
-async function _prefAthleteUpsert(aid: string, cle: string, valeur: string): Promise<void> {
-  const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle).limit(1)
-  if (ex && ex.length) await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle)
-  else await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur, unite: '', source: 'coach' })
+// ══════════ Préférences ATHLÈTE (10/11/2026, audit P1 étape 2) ══════════
+// Source principale : athletes.prefs (jsonb, valeurs TYPÉES), comme coachs.prefs.
+// Avant : une ligne indicateurs par préférence (seance_id 'pref', valeur texte).
+// Lecture (règle de priorité) : la clé PRÉSENTE dans athletes.prefs fait foi ; l'ancienne ligne
+// indicateurs n'est lue que si la clé est absente de prefs (secours de transition).
+// Écriture : fusion ATOMIQUE dans athletes.prefs (fonction SQL athlete_prefs_merge) ; plus aucune
+// écriture dans indicateurs, sauf si la migration n'est pas encore appliquée (fonction absente) :
+// on écrit alors dans l'ancien stockage, pour que rien ne casse.
+// Hors périmètre (pas des préférences, restent dans indicateurs) : prog_maj, coach_demande.
+const PREFS_ATHLETE_CLES = ['semaine_type', 'onboarding_vu', 'prog_auto_off', 'novalyz_athlete', 'zones_prio', 'exo_categories']
+// Ancienne valeur texte (indicateurs) → valeur typée (athletes.prefs). undefined = illisible.
+function _prefDepuisAncien(cle: string, valeur: unknown): unknown {
+  const t = String(valeur ?? '')
+  if (cle === 'semaine_type') return t === 'glissant' ? 'glissant' : 'calendaire'
+  if (cle === 'onboarding_vu' || cle === 'prog_auto_off' || cle === 'novalyz_athlete') return t === '1'
+  try {
+    const o = JSON.parse(t)
+    if (cle === 'zones_prio') return Array.isArray(o) ? o : undefined
+    if (cle === 'exo_categories') return (o && typeof o === 'object' && !Array.isArray(o)) ? o : undefined
+  } catch (_) { return undefined }
+  return undefined
 }
+// Valeur typée → ancien texte (utilisé seulement si la migration n'est pas appliquée).
+function _prefVersAncien(cle: string, v: unknown): string {
+  if (cle === 'onboarding_vu' || cle === 'prog_auto_off' || cle === 'novalyz_athlete') return v === true ? '1' : '0'
+  if (cle === 'semaine_type') return v === 'glissant' ? 'glissant' : 'calendaire'
+  return JSON.stringify(v)
+}
+// Préférences lues : { clé: valeur typée } pour les clés connues (absente = jamais réglée).
+// prefRows = lignes indicateurs 'pref' triées de la plus récente à la plus ancienne.
+function _prefsAthleteLues(prefsNeuf: unknown, prefRows: any[] | null | undefined): Record<string, unknown> {
+  const neuf: Record<string, unknown> = (prefsNeuf && typeof prefsNeuf === 'object' && !Array.isArray(prefsNeuf)) ? prefsNeuf as Record<string, unknown> : {}
+  const out: Record<string, unknown> = {}
+  for (const cle of PREFS_ATHLETE_CLES) {
+    if (Object.prototype.hasOwnProperty.call(neuf, cle)) { out[cle] = neuf[cle]; continue }
+    const r = (prefRows || []).find((x: any) => x.cle === cle)
+    if (r) { const v = _prefDepuisAncien(cle, r.valeur); if (v !== undefined) out[cle] = v }
+  }
+  return out
+}
+async function _prefAncienEcrire(aid: string, cle: string, valeur: string, source: string): Promise<string | null> {
+  const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle).limit(1)
+  const { error } = (ex && ex.length)
+    ? await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle)
+    : await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur, unite: '', source })
+  return error ? error.message : null
+}
+// Écrit des préférences (patch partiel, valeurs typées). Renvoie un message d'erreur ou null.
+async function _prefsAthleteEcrire(aid: string, patch: Record<string, unknown>, source = 'app'): Promise<string | null> {
+  const { error } = await sb().rpc('athlete_prefs_merge', { p_athlete_id: aid, p_patch: patch })
+  if (!error) return null
+  const code = String((error as any).code || '')
+  // Migration pas encore appliquée (fonction ou colonne inconnue) → ancien stockage.
+  if (['PGRST202', '42883', '42703', 'PGRST204'].includes(code)) {
+    for (const [cle, v] of Object.entries(patch)) { const e = await _prefAncienEcrire(aid, cle, _prefVersAncien(cle, v), source); if (e) return e }
+    return null
+  }
+  return error.message
+}
+// Défauts du coach appliqués quand un athlète accepte son suivi (P7).
 async function _appliquerDefautsCoach(coachId: string, aid: string): Promise<void> {
   try {
     const pr = await _coachPrefs(coachId)
-    if (pr.defauts.novalyz_athlete) await _prefAthleteUpsert(aid, 'novalyz_athlete', '1')
-    if (pr.defauts.semaine_type === 'glissant') await _prefAthleteUpsert(aid, 'semaine_type', 'glissant')
+    const patch: Record<string, unknown> = {}
+    if (pr.defauts.novalyz_athlete) patch.novalyz_athlete = true
+    if (pr.defauts.semaine_type === 'glissant') patch.semaine_type = 'glissant'
+    if (Object.keys(patch).length) await _prefsAthleteEcrire(aid, patch, 'coach')
   } catch (_) { /* best-effort */ }
 }
 // Notification immédiate au coach (douleur forte), selon ses réglages + heures calmes. 1 par athlète et par jour.
@@ -6771,24 +6829,17 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   return jsonResp({ success: true, reward_id, cout: item.cout, type: item.type, solde: solde - item.cout })
 }
 
-// Stockée dans indicateurs (seance_id='pref', cle='semaine_type'). Idempotente.
-// Préférences d'onboarding (drapeaux 0/1) stockées dans indicateurs (seance_id='pref').
-// cle ∈ {onboarding_vu, prog_auto_off}. Idempotent.
+// Préférences drapeaux (onboarding_vu, prog_auto_off, novalyz_athlete) → athletes.prefs (booléens, 10/11).
+// Idempotent.
 async function handleSavePref(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const cle = String(body.cle || '')
   if (!athlete_id || !['onboarding_vu', 'prog_auto_off', 'novalyz_athlete'].includes(cle)) return jsonResp({ success: false, error: 'Paramètres invalides' })
   // « novalyz_athlete » (écran 6, 04/11) : réglé par le COACH (« laisser Novalyz proposer à l'athlète ») — pas par l'athlète.
   if (cle === 'novalyz_athlete' && body._sessRole && body._sessRole !== 'c') return jsonResp({ success: false, error: 'Réservé au coach' })
-  const v = (body.valeur === 0 || body.valeur === '0' || body.valeur === false) ? '0' : '1'
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle).limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle)
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur: v, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const v = !(body.valeur === 0 || body.valeur === '0' || body.valeur === false)
+  const err = await _prefsAthleteEcrire(athlete_id, { [cle]: v })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true })
 }
 
@@ -6813,27 +6864,20 @@ async function _progMajTrace(action: string, body: any, run: () => Promise<Respo
   return res
 }
 
-// Zones à développer en priorité (2 max), choisies par l'athlète ou son coach. JSON dans UNE ligne pref.
+// Zones à développer en priorité (2 max), choisies par l'athlète ou son coach → athletes.prefs.zones_prio (10/11).
 async function handleSaveZonesPrio(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   if (!athlete_id || !Array.isArray(body.zones)) return jsonResp({ success: false, error: 'Paramètres invalides' })
   const zones = [...new Set(body.zones.map((z: any) => String(z)))].filter((z: any) => ZONES_PRIO[z as string]).slice(0, 2)
-  const valeur = JSON.stringify(zones)
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'zones_prio').limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'zones_prio')
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'zones_prio', valeur, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const err = await _prefsAthleteEcrire(athlete_id, { zones_prio: zones })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true, zones })
 }
 
 // Catégorie de chaque exercice choisie par l'athlète (ou son coach) : gros (6-8 reps),
 // moyen (8-12), petit (12-25). Sert aux fourchettes de reps de la lecture et des
-// cibles de saisie. Stockée en JSON dans UNE ligne pref (seance_id='pref',
-// cle='exo_categories'), remplacée à chaque enregistrement. Idempotent.
+// cibles de saisie. Stockée dans athletes.prefs.exo_categories (objet, 10/11 ; avant : ligne
+// indicateurs 'pref'), remplacée à chaque enregistrement. Idempotent.
 const EXO_CATS = ['gros', 'moyen', 'petit']
 async function handleSaveExoCategories(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
@@ -6844,15 +6888,8 @@ async function handleSaveExoCategories(body: any): Promise<Response> {
     const nom = String(k).trim().slice(0, 120), v = String(src[k] || '')
     if (nom && EXO_CATS.includes(v)) out[nom] = v
   }
-  const valeur = JSON.stringify(out)
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'exo_categories').limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'exo_categories')
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'exo_categories', valeur, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const err = await _prefsAthleteEcrire(athlete_id, { exo_categories: out })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true, categories: out })
 }
 
@@ -7318,14 +7355,8 @@ async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   const v = (body.valeur === 'glissant') ? 'glissant' : 'calendaire'
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type').limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type')
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'semaine_type', valeur: v, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const err = await _prefsAthleteEcrire(String(athlete_id), { semaine_type: v })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true })
 }
 
