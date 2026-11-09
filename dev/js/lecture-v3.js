@@ -12,6 +12,20 @@
 var LV3_SEUIL_SOMMEIL = 20;   // séances avec une nuit mesurée avant toute conclusion sommeil → perf
 
 function _lv3Iso(d) { var s = String(d || ''); var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : s.slice(0, 10); }
+// 09/11 (validé porteur) : une gêne déclarée sur une ZONE (articulation) compte aussi pour les exercices
+// dont le muscle travaille cette zone. 1 = la zone EST le muscle, 2 = zone sollicitée par l'exercice, 0 = non.
+var _LV3_ZONE_MUS = [
+  ['epaul', ['epau', 'pect', 'dos']], ['coude', ['bice', 'tric']], ['poign', ['avan', 'bice']], ['main', ['avan', 'bice']],
+  ['avant', ['avan', 'bice']], ['haut', ['dos', 'trap']], ['lomb', ['dos', 'isch', 'lomb']], ['hanch', ['fess', 'addu', 'quad']],
+  ['aine', ['fess', 'addu', 'quad']], ['genou', ['quad', 'isch']], ['chevi', ['moll']], ['pied', ['moll']]
+];
+function _lv3ZoneTouche(z, mk) {
+  z = String(z || ''); mk = String(mk || '');
+  if (!z || !mk) return 0;
+  if (z.indexOf(mk) >= 0) return 1;
+  for (var i = 0; i < _LV3_ZONE_MUS.length; i++) if (z.indexOf(_LV3_ZONE_MUS[i][0]) === 0) return _LV3_ZONE_MUS[i][1].indexOf(mk) >= 0 ? 2 : 0;
+  return 0;
+}
 function _lv3T(d) { var i = _lv3Iso(d); var t = new Date(i + 'T12:00:00').getTime(); return isNaN(t) ? 0 : t; }
 function _lv3Num(x) { var n = Number(x); return isNaN(n) ? 0 : n; }
 function _lv3Fmt(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
@@ -175,12 +189,14 @@ function _lv3Diag(data, exo, kind, nowT) {
       var t0p = _lv3T(recentes[recentes.length - 1].date), mk = _musKey(muscle || '').slice(0, 4);
       var gen = mk ? ((data && data.bien_etre) || []).filter(function (b) {
         var t = _lv3T(b.date), z = _musKey(String(b.zone || b.zone_douloureuse || ''));
-        return t && t >= t0p - 864e5 && t <= nowT && _lv3Num(b.douleur) >= 3 && z && z.indexOf(mk) >= 0;
+        return t && t >= t0p - 864e5 && t <= nowT && _lv3Num(b.douleur) >= 3 && z && _lv3ZoneTouche(z, mk) > 0;
       }) : [];
       if (gen.length) {
         var gMax = Math.max.apply(null, gen.map(function (b) { return _lv3Num(b.douleur); }));
         var gDates = gen.map(function (b) { var d = new Date(_lv3T(b.date)); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); });
-        checks.push({ s: 'ko', t: '<b>Possible : gêne ' + _maE(String(gen[0].zone || gen[0].zone_douloureuse || nom).toLowerCase()) + ' ' + gMax + '/5</b> signalée le ' + gDates.join(', ') });
+        var gZ0 = String(gen[0].zone || gen[0].zone_douloureuse || nom), gZone = ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(gZ0.toLowerCase())) : gZ0).toLowerCase().replace(/_/g, ' ');
+        var gIndir = _lv3ZoneTouche(_musKey(gZone), mk) === 2;
+        checks.push({ s: 'ko', t: '<b>Possible : gêne ' + _maE(gZone) + ' ' + gMax + '/5</b> signalée le ' + gDates.join(', ') + (gIndir ? ' (zone sollicitée par cet exercice)' : '') });
         if (!cause) { cause = 'gene'; levier = 'surveille la zone : tant que la gêne revient, garde ta charge (avis kiné si ça persiste).'; }
       }
     } catch (_) {}
