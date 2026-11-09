@@ -1,3 +1,5 @@
+-- ⚠️ OBSOLÈTE (09/11/2026) : ces jobs hebdo/mensuel n'existent plus en prod, remplacés par
+-- « novalyz-recaps-auto » (quotidien, action cronResumesAuto). NE PAS relancer. Voir supabase/MIGRATIONS.md §4.
 -- Novalyz — Résumés e-mail automatiques : crons qui appellent l'action backend
 -- `cronResumes`. À lancer UNE FOIS dans Supabase ▸ SQL Editor.
 --

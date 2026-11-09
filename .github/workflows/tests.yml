@@ -1,7 +1,11 @@
 name: Tests des calculs
 
-# Lance la suite de vérification des calculs (moteur Novalyz, ACWR, score Bilan)
-# automatiquement à chaque push et pull request sur dev et main.
+# Lance TOUTE la suite de tests (npm test → scripts/run-tests.mjs : 86 suites —
+# moteur, droits d'accès, sessions, saisie, agrégats, lectures…) à chaque push
+# et pull request sur dev et main. Vérification seulement : ne déploie rien et
+# ne bloque pas la mise en ligne (deploy.yml est indépendant).
+# Node 22 : les tests transpilent index.ts avec node:module stripTypeScriptTypes.
+# Aucune dépendance npm nécessaire (modules node intégrés uniquement).
 on:
   push:
     branches: [dev, main]
@@ -18,8 +22,7 @@ jobs:
       - name: Installer Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Vérifier les calculs
-        run: |
-          if [ -f calc.test.js ]; then node calc.test.js; else node tests/calc.test.js; fi
+      - name: Lancer toutes les suites de tests
+        run: node scripts/run-tests.mjs

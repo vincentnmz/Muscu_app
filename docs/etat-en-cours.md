@@ -2,7 +2,18 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **7 nov. 2026** (voir le bloc « 07/11 » juste en dessous).
+> Dernière mise à jour : **9 nov. 2026** (voir le bloc « 09/11 » juste en dessous).
+
+## ▶ 09/11 — Audit d'architecture + préprod séparée
+- **Audit architecture/qualité** (rapport livré au porteur, non committé) : aucun problème critique ; `AUTH_ENFORCE=1` **vérifié actif** en prod ; dette 🟠 importante (monolithes `app.js`/`index.ts`, `catch {}` vides, table `indicateurs` fourre-tout, pas de migrations, démo mélangée à la prod). Plan P0→P5.
+- **P0 fait** : CI = `npm test` (87 suites, Node 22) sur push/PR `dev`/`main`.
+- **P1 en cours — préprod séparée FAITE** : projet Supabase gratuit « Novalyz Preprod » (`vqxkeqjaqkkmtzxvqvhi`, se met en pause après 7 j sans usage → la relancer depuis le tableau de bord). Schéma = `supabase/migrations/20261109120000_schema_initial.sql` (empreintes identiques à la prod). Démo = `supabase/seed-preprod.sql` (jim 0202, John 0101, Lucas 9035, mdp `demo2026`, identiques à la prod, dates recalées). Secrets préprod : `PEPPER` (≠ prod), `AUTH_ENFORCE=1` (pas d'e-mails/push/IA). Bascule : `js/env.js` (prod par défaut ; `/dev/` + APK Dev → préprod, localStorage préfixé `nvzpp:` + badge PRÉPROD). Backend préprod auto (`deploy-backend-preprod.yml`, jeton limité Edge Functions du seul projet préprod) ; **prod toujours à la main**. Vérifié : ping, login athlète/coach, 401 sans jeton, getAppData (40 séances), getCoachAthletes.
+- **Journal des migrations FAIT** : `supabase/MIGRATIONS.md` (règle, état préprod/prod, historique vérifié, crons prod) + `supabase/empreinte-schema.sql` (empreintes prod = préprod ✔) + test `migrations-journal`. Écarts trouvés : `cron-resumes.sql` obsolète (prod = `novalyz-recaps-auto` quotidien) ; déclencheur `ensure_rls` absent de la préprod → ajouté (`20261109150000_rls_auto_enable.sql`).
+- **Données de démo en prod TRAITÉES** : colonne `is_demo` (migration `20261109170000`, prod + préprod) ; 38 athlètes + 4 coachs démo/test marqués en prod (gardés pour les démos) ; `index.ts` `_comptesDemo()` les exclut de `cronPushAlertes` et `cronResumes` (test `comptes-demo`). ⚠️ `index.ts` à redéployer en prod.
+- **P1 étape 1 FAITE — `envois_recus`** : anti-doublon des envois de séance par contrainte UNIQUE (athlete_id, envoi_id), réservation atomique avant écriture ; testé (17 vérifs, concurrence locale + vrai Postgres + vraie préprod) ; migration appliquée préprod + prod. Anciens marqueurs `indicateurs.envoi_id` encore écrits et conservés (transition) → suppression plus tard, après observation. ⚠️ `index.ts` à redéployer en prod puis test réel.
+- **Étape 2 à venir (séparément)** : `indicateurs.pref` → `athletes.prefs`.
+- **Reste P1** : sortie progressive de `pref`/`alerte_*` hors d'`indicateurs`, décision hachage mdp, données de démo en prod (`is_demo`).
+
 
 ## ▶ 07/11 — Point de reprise (avant test fermé)
 - **Domaine** : app sur **https://app.novalyz.fr/** (préprod `/dev/`), DNS OVH CNAME `app` → `vincentnmz.github.io`, `novalyz.fr` vérifié sur GitHub, HTTPS forcé. `deploy.yml` écrit `gh-pages/CNAME`. `index.ts` : liens e-mails / logo / roues par défaut sur `app.novalyz.fr` (pas de var `APP_BASE_URL`). Politique de confidentialité : `https://app.novalyz.fr/privacy.html` (à mettre dans Play Console ▸ Surveiller et améliorer ▸ Règles et programmes ▸ Contenu de l'appli).

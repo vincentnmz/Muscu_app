@@ -73,11 +73,19 @@ function zonesPrioMuscles(zones: any): Record<string, boolean> {
   ;(Array.isArray(zones) ? zones : []).forEach((z: any) => (ZONES_PRIO[String(z)] || []).forEach(m => { out[m] = true }))
   return out
 }
-// Lignes au format de l'ancienne table (muscle, series_min_semaine, series_opt_semaine) pour un niveau.
-function volumeCiblesRows(niveau: string, zones?: any): any[] {
-  const T = VOLUME_CIBLES_NIVEAU[niveau] || VOLUME_CIBLES_NIVEAU.intermediaire
+// Muscles que l'athlète a choisi de ne pas travailler en direct (porteur 09/11 : séance trop courte pour tout
+// couvrir → « retirer des muscles »). Exclus des cibles de volume : jamais signalés « sous le minimum ».
+// Une zone prioritaire ne peut pas être exclue.
+const MUSCLES_EXCLUABLES = ['Pectoraux', 'Dos', 'Quadriceps', 'Fessier', 'Ischio', 'Epaule', 'Biceps', 'Triceps', 'Mollets', 'Abdominaux']
+function musclesExclusValides(exclus: any, zones?: any): string[] {
   const P = zonesPrioMuscles(zones)
-  return Object.keys(T).map(m => {
+  return [...new Set((Array.isArray(exclus) ? exclus : []).map((m: any) => String(m)))].filter(m => MUSCLES_EXCLUABLES.includes(m) && !P[m])
+}
+// Lignes au format de l'ancienne table (muscle, series_min_semaine, series_opt_semaine) pour un niveau.
+function volumeCiblesRows(niveau: string, zones?: any, exclus?: any): any[] {
+  const T = VOLUME_CIBLES_NIVEAU[niveau] || VOLUME_CIBLES_NIVEAU.intermediaire
+  const P = zonesPrioMuscles(zones), X = musclesExclusValides(exclus, zones)
+  return Object.keys(T).filter(m => !X.includes(m)).map(m => {
     const mn = P[m] ? Math.round((T[m][0] + T[m][1]) / 2) : T[m][0]
     return { muscle: m, series_min_semaine: mn, series_opt_semaine: T[m][1], series_max_semaine: Math.round(T[m][1] * 1.5), prio: !!P[m] }
   })
@@ -2457,8 +2465,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const perfs = (perfsAll || []).map((r: any) => ({ ...r, muscle: normMuscle(r.muscle) }))
   // Cibles de volume du NIVEAU de l'athlète (ancienneté effective) — source unique (03/11).
   const niveauAth = getNiveauExperience(anneesEffectives(athData?.annees, athData?.created_at, now))
-  const zonesPrio: string[] = (() => { const r = (prefRows || []).find((x: any) => x.cle === 'zones_prio'); if (!r) return []; try { const a = JSON.parse(String(r.valeur || '[]')); return Array.isArray(a) ? a.filter((z: any) => ZONES_PRIO[String(z)]).slice(0, 2) : [] } catch (_) { return [] } })()
-  const volObtiRows = volumeCiblesRows(niveauAth, zonesPrio)
+  // Préférences : athletes.prefs d'abord, ancienne ligne indicateurs en secours (10/11, voir _prefsAthleteLues).
+  const prefsA = _prefsAthleteLues((athData as any)?.prefs, prefRows)
+  const zonesPrio: string[] = Array.isArray(prefsA.zones_prio) ? (prefsA.zones_prio as unknown[]).filter((z: any) => ZONES_PRIO[String(z)]).map(String).slice(0, 2) : []
+  const musclesExclus = musclesExclusValides(prefsA.muscles_exclus, zonesPrio)   // 09/11
+  const volObtiRows = volumeCiblesRows(niveauAth, zonesPrio, musclesExclus)
   void _volObtiDb
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
@@ -2900,7 +2911,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       prev = d
     }
   }
-  const _semType = (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire' })()
+  const _semType = prefsA.semaine_type === 'glissant' ? 'glissant' : 'calendaire'
   const _jourSem = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(lundi.getUTCFullYear(), lundi.getUTCMonth(), lundi.getUTCDate())) / 86400000) + 1
   const synthExtras = { reposMoy, reposN: _repVals.length, pausePrevJours, semaineType: _semType, jourSemaine: _jourSem }
 
@@ -2964,21 +2975,22 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       })
     })(),
     seances_detail: seancesDetailArr,
-    semaine_type: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire'; })(),
+    semaine_type: prefsA.semaine_type === 'glissant' ? 'glissant' : 'calendaire',
     // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
-    onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
-    prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
+    onboarding_vu: prefsA.onboarding_vu === true,
+    prog_auto_off: prefsA.prog_auto_off === true,
     // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
     niveau_experience: niveauAth,
     zones_prio: zonesPrio,   // zones à développer en priorité (2 max) — cibles relevées dans volume_obti
+    muscles_exclus: musclesExclus,   // 09/11 : muscles retirés par choix (séance trop courte) — absents de volume_obti
     // Écran 6 (04/11, décision porteur) : propositions Novalyz à l'athlète seulement s'il n'a PAS de coach,
     // ou si son coach l'a autorisé (pref novalyz_athlete = '1'). Avec coach : Novalyz propose au coach.
-    novalyz_athlete_ok: (prefRows || []).some((x: any) => x.cle === 'novalyz_athlete' && x.valeur === '1'),
-    propositions_novalyz: !athData?.coach_id || (prefRows || []).some((x: any) => x.cle === 'novalyz_athlete' && x.valeur === '1'),
+    novalyz_athlete_ok: prefsA.novalyz_athlete === true,
+    propositions_novalyz: !athData?.coach_id || prefsA.novalyz_athlete === true,
     prog_maj: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'prog_maj'); if (!r) return null; try { return JSON.parse(String(r.valeur || 'null')) } catch (_) { return null } })(),
     // Cibles de volume de TOUS les niveaux (générateur : niveau choisi dans l'assistant) — même table que volume_obti.
     volume_niveaux: Object.fromEntries(Object.keys(VOLUME_CIBLES_NIVEAU).map(k => [k, volumeCiblesRows(k).map(r => ({ muscle: r.muscle, series_min: r.series_min_semaine, series_opt: r.series_opt_semaine }))])),
-    exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
+    exo_categories: (prefsA.exo_categories && typeof prefsA.exo_categories === 'object' && !Array.isArray(prefsA.exo_categories)) ? prefsA.exo_categories : {},
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
@@ -4421,6 +4433,7 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
     sb().from('pauses').delete().eq('athlete_id', athleteId),
     sb().from('push_subscriptions').delete().eq('athlete_id', athleteId),
     sb().from('alertes_historique').delete().eq('athlete_id', athleteId),
+    sb().from('envois_recus').delete().eq('athlete_id', athleteId),
   ].map((q: any) => Promise.resolve(q).catch(() => null)))
   // Fichiers privés rangés sous le préfixe <athlete_id>/ : médias coach (photos/vidéos
   // de la conversation) ET photos de suivi corporel (face/profil/dos). On liste puis
@@ -4498,15 +4511,60 @@ async function handleSaveTest(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// ── Anti-doublon des envois de séance (10/11/2026, audit P1 étape 1) ─────────
+// Table envois_recus, contrainte UNIQUE (athlete_id, envoi_id) : le serveur RÉSERVE l'envoi
+// avant d'écrire la séance → deux requêtes simultanées avec le même envoi_id : une seule gagne.
+//   'nouveau'   : réservé par CETTE requête → on écrit la séance ;
+//   'deja_recu' : séance déjà écrite (statut ok) → réponse « déjà reçu », rien de réécrit ;
+//   'en_cours'  : une autre requête l'écrit en ce moment → erreur temporaire : l'app garde la
+//                 séance en file et réessaie (rien n'est perdu, rien n'est doublé) ;
+//   'ancien'    : table absente (migration pas appliquée) → ancien mécanisme (indicateurs).
+// Réservation restée 'en_cours' plus de 3 min (serveur interrompu) → reprise atomique.
+// Règle de priorité : la nouvelle table fait foi ; l'ancien marqueur d'indicateurs n'est lu
+// que si rien n'existe dans la nouvelle (et il est encore écrit pendant la transition).
+const ENVOI_EN_COURS_MAX_MS = 3 * 60 * 1000
+async function _reserverEnvoi(aid: string, envoi: string, seanceId: string | null, date: string | null): Promise<'nouveau' | 'deja_recu' | 'en_cours' | 'ancien'> {
+  const ins = await sb().from('envois_recus').insert({ athlete_id: aid, envoi_id: envoi, seance_id: seanceId, date, statut: 'en_cours' })
+  if (!ins.error) return 'nouveau'
+  if (String((ins.error as any).code || '') !== '23505') return 'ancien'
+  const { data: ex } = await sb().from('envois_recus').select('statut,updated_at').eq('athlete_id', aid).eq('envoi_id', envoi).maybeSingle()
+  if (ex && (ex as any).statut === 'ok') return 'deja_recu'
+  if (ex && new Date((ex as any).updated_at).getTime() < Date.now() - ENVOI_EN_COURS_MAX_MS) {
+    const limite = new Date(Date.now() - ENVOI_EN_COURS_MAX_MS).toISOString()
+    const { data: rep } = await sb().from('envois_recus').update({ updated_at: new Date().toISOString() })
+      .eq('athlete_id', aid).eq('envoi_id', envoi).eq('statut', 'en_cours').lt('updated_at', limite).select('athlete_id')
+    if (rep && (rep as any[]).length) return 'nouveau'
+  }
+  return 'en_cours'
+}
+async function _ancienMarqueurEnvoi(aid: string, envoi: string): Promise<boolean> {
+  const { data: deja } = await sb().from('indicateurs').select('seance_id').eq('athlete_id', aid).eq('cle', 'envoi_id').eq('valeur', envoi).limit(1)
+  return !!(deja && deja.length)
+}
+async function _finEnvoi(aid: string, envoi: string, ok: boolean): Promise<void> {
+  try {
+    if (ok) await sb().from('envois_recus').update({ statut: 'ok', updated_at: new Date().toISOString() }).eq('athlete_id', aid).eq('envoi_id', envoi)
+    else await sb().from('envois_recus').delete().eq('athlete_id', aid).eq('envoi_id', envoi).eq('statut', 'en_cours')
+  } catch (_) { /* best-effort : en cas d'échec, la réservation expire après 3 min */ }
+}
+
 async function handleSaveSeance(data: any[], saisiParCoach?: any, envoiId?: any): Promise<Response> {
   if (!data?.length) return jsonResp({ erreur: 'Données manquantes' })
   // Envoi déjà reçu (même identifiant) → on ne réécrit pas : protège d'un double enregistrement
-  // quand le réseau coupe après l'écriture et que l'app renvoie depuis sa file d'attente (01/11).
-  const _envoi = String(envoiId || '').trim()
+  // quand le réseau coupe après l'écriture et que l'app renvoie depuis sa file d'attente (01/11),
+  // ou quand deux envois partent en même temps (10/11 : réservation atomique, voir _reserverEnvoi).
+  const _envoi = String(envoiId || '').trim().slice(0, 100)
   const _aid0 = String((data[0] || [])[4] || '')
+  let _reserve = false
   if (_envoi && _aid0) {
-    const { data: deja } = await sb().from('indicateurs').select('seance_id').eq('athlete_id', _aid0).eq('cle', 'envoi_id').eq('valeur', _envoi).limit(1)
-    if (deja && deja.length) return jsonResp({ success: true, deja_recu: true })
+    const etat = await _reserverEnvoi(_aid0, _envoi, String((data[0] || [])[2] || '') || null, normDate((data[0] || [])[0]) || null)
+    if (etat === 'deja_recu') return jsonResp({ success: true, deja_recu: true })
+    if (etat === 'en_cours') return jsonResp({ erreur: 'Envoi déjà en cours de traitement, nouvel essai automatique.', en_cours: true })
+    if (await _ancienMarqueurEnvoi(_aid0, _envoi)) {          // reçu avant la migration (ancien marqueur)
+      if (etat === 'nouveau') await _finEnvoi(_aid0, _envoi, true)
+      return jsonResp({ success: true, deja_recu: true })
+    }
+    _reserve = etat === 'nouveau'
   }
 
   // data = array of arrays: [date, semaine, seance_id, nom, athlete_id, exercice, muscle, exercice_id, serie, charge, reps, rpe, repos, volume]
@@ -4534,7 +4592,8 @@ async function handleSaveSeance(data: any[], saisiParCoach?: any, envoiId?: any)
   }
 
   const { error: perfError } = await sb().from('performances').insert(rows)
-  if (perfError) return jsonResp({ erreur: perfError.message })
+  if (perfError) { if (_reserve) await _finEnvoi(_aid0, _envoi, false); return jsonResp({ erreur: perfError.message }) }
+  if (_reserve) await _finEnvoi(_aid0, _envoi, true)   // séance écrite → envoi confirmé (avant les agrégats)
 
   // Double-write to indicateurs: aggregate per seance
   const seanceMap: Record<string, any> = {}
@@ -4744,6 +4803,23 @@ async function notifyAthlete(athlete_id: string, payload: Record<string, unknown
 // que les athlètes, sous un identifiant namespacé `coach:<coach_id>` (athlete_id
 // est un simple text sans FK) → on réutilise toute la plomberie sans schéma dédié.
 const COACH_PUSH_PREFIX = 'coach:'
+// 09/11/2026 — Comptes de DÉMO / TEST (colonne is_demo sur athletes et coachs, voir
+// supabase/migrations/20261109170000_is_demo.sql) : exclus des envois AUTOMATIQUES (alertes
+// push du matin, résumés e-mail) et des futures statistiques. Les actions faites à la main dans
+// l'app (message du coach, etc.) restent normales. Si la colonne n'existe pas encore (migration
+// pas appliquée), rien n'est exclu et rien ne casse.
+async function _comptesDemo(): Promise<{ ath: Set<string>; coach: Set<string> }> {
+  const ath = new Set<string>(), coach = new Set<string>()
+  try {
+    const [{ data: a, error: ea }, { data: c, error: ec }] = await Promise.all([
+      sb().from('athletes').select('id').eq('is_demo', true),
+      sb().from('coachs').select('coach_id').eq('is_demo', true),
+    ])
+    if (!ea) for (const r of (a || []) as any[]) ath.add(String(r.id))
+    if (!ec) for (const r of (c || []) as any[]) coach.add(String(r.coach_id))
+  } catch (_) { /* colonne absente : aucune exclusion */ }
+  return { ath, coach }
+}
 async function notifyCoach(coach_id: string, payload: Record<string, unknown>): Promise<number> {
   if (!coach_id) return 0
   return await notifyAthlete(COACH_PUSH_PREFIX + coach_id, payload)
@@ -4811,17 +4887,73 @@ async function handleSaveCoachPref(body: any): Promise<Response> {
   const err = await _coachPrefsEcrire(coachId, { [cle]: val })
   return err ? jsonResp({ success: false, error: err }) : jsonResp({ success: true, valeur: val })
 }
-// Défauts du coach appliqués quand un athlète accepte son suivi (P7).
-async function _prefAthleteUpsert(aid: string, cle: string, valeur: string): Promise<void> {
-  const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle).limit(1)
-  if (ex && ex.length) await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle)
-  else await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur, unite: '', source: 'coach' })
+// ══════════ Préférences ATHLÈTE (10/11/2026, audit P1 étape 2) ══════════
+// Source principale : athletes.prefs (jsonb, valeurs TYPÉES), comme coachs.prefs.
+// Avant : une ligne indicateurs par préférence (seance_id 'pref', valeur texte).
+// Lecture (règle de priorité) : la clé PRÉSENTE dans athletes.prefs fait foi ; l'ancienne ligne
+// indicateurs n'est lue que si la clé est absente de prefs (secours de transition).
+// Écriture : fusion ATOMIQUE dans athletes.prefs (fonction SQL athlete_prefs_merge) ; plus aucune
+// écriture dans indicateurs, sauf si la migration n'est pas encore appliquée (fonction absente) :
+// on écrit alors dans l'ancien stockage, pour que rien ne casse.
+// Hors périmètre (pas des préférences, restent dans indicateurs) : prog_maj, coach_demande.
+const PREFS_ATHLETE_CLES = ['semaine_type', 'onboarding_vu', 'prog_auto_off', 'novalyz_athlete', 'zones_prio', 'exo_categories', 'muscles_exclus']
+// Ancienne valeur texte (indicateurs) → valeur typée (athletes.prefs). undefined = illisible.
+function _prefDepuisAncien(cle: string, valeur: unknown): unknown {
+  const t = String(valeur ?? '')
+  if (cle === 'semaine_type') return t === 'glissant' ? 'glissant' : 'calendaire'
+  if (cle === 'onboarding_vu' || cle === 'prog_auto_off' || cle === 'novalyz_athlete') return t === '1'
+  try {
+    const o = JSON.parse(t)
+    if (cle === 'zones_prio' || cle === 'muscles_exclus') return Array.isArray(o) ? o : undefined
+    if (cle === 'exo_categories') return (o && typeof o === 'object' && !Array.isArray(o)) ? o : undefined
+  } catch (_) { return undefined }
+  return undefined
 }
+// Valeur typée → ancien texte (utilisé seulement si la migration n'est pas appliquée).
+function _prefVersAncien(cle: string, v: unknown): string {
+  if (cle === 'onboarding_vu' || cle === 'prog_auto_off' || cle === 'novalyz_athlete') return v === true ? '1' : '0'
+  if (cle === 'semaine_type') return v === 'glissant' ? 'glissant' : 'calendaire'
+  return JSON.stringify(v)
+}
+// Préférences lues : { clé: valeur typée } pour les clés connues (absente = jamais réglée).
+// prefRows = lignes indicateurs 'pref' triées de la plus récente à la plus ancienne.
+function _prefsAthleteLues(prefsNeuf: unknown, prefRows: any[] | null | undefined): Record<string, unknown> {
+  const neuf: Record<string, unknown> = (prefsNeuf && typeof prefsNeuf === 'object' && !Array.isArray(prefsNeuf)) ? prefsNeuf as Record<string, unknown> : {}
+  const out: Record<string, unknown> = {}
+  for (const cle of PREFS_ATHLETE_CLES) {
+    if (Object.prototype.hasOwnProperty.call(neuf, cle)) { out[cle] = neuf[cle]; continue }
+    const r = (prefRows || []).find((x: any) => x.cle === cle)
+    if (r) { const v = _prefDepuisAncien(cle, r.valeur); if (v !== undefined) out[cle] = v }
+  }
+  return out
+}
+async function _prefAncienEcrire(aid: string, cle: string, valeur: string, source: string): Promise<string | null> {
+  const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle).limit(1)
+  const { error } = (ex && ex.length)
+    ? await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', cle)
+    : await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur, unite: '', source })
+  return error ? error.message : null
+}
+// Écrit des préférences (patch partiel, valeurs typées). Renvoie un message d'erreur ou null.
+async function _prefsAthleteEcrire(aid: string, patch: Record<string, unknown>, source = 'app'): Promise<string | null> {
+  const { error } = await sb().rpc('athlete_prefs_merge', { p_athlete_id: aid, p_patch: patch })
+  if (!error) return null
+  const code = String((error as any).code || '')
+  // Migration pas encore appliquée (fonction ou colonne inconnue) → ancien stockage.
+  if (['PGRST202', '42883', '42703', 'PGRST204'].includes(code)) {
+    for (const [cle, v] of Object.entries(patch)) { const e = await _prefAncienEcrire(aid, cle, _prefVersAncien(cle, v), source); if (e) return e }
+    return null
+  }
+  return error.message
+}
+// Défauts du coach appliqués quand un athlète accepte son suivi (P7).
 async function _appliquerDefautsCoach(coachId: string, aid: string): Promise<void> {
   try {
     const pr = await _coachPrefs(coachId)
-    if (pr.defauts.novalyz_athlete) await _prefAthleteUpsert(aid, 'novalyz_athlete', '1')
-    if (pr.defauts.semaine_type === 'glissant') await _prefAthleteUpsert(aid, 'semaine_type', 'glissant')
+    const patch: Record<string, unknown> = {}
+    if (pr.defauts.novalyz_athlete) patch.novalyz_athlete = true
+    if (pr.defauts.semaine_type === 'glissant') patch.semaine_type = 'glissant'
+    if (Object.keys(patch).length) await _prefsAthleteEcrire(aid, patch, 'coach')
   } catch (_) { /* best-effort */ }
 }
 // Notification immédiate au coach (douleur forte), selon ses réglages + heures calmes. 1 par athlète et par jour.
@@ -4934,10 +5066,11 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
   const tok = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
   // P2/P3 (05/11) : les alertes du COACH ne dépendent plus des notifications de l'athlète → on parcourt aussi
   // les athlètes des coachs qui ont un téléphone enregistré. L'athlète n'est notifié que s'il a lui-même un jeton.
-  const tokAth = new Set(tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) !== 0))
-  const coachsTel = tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) === 0).map((x) => x.slice(COACH_PUSH_PREFIX.length))
+  const demo = await _comptesDemo()   // 09/11 : comptes démo/test exclus des alertes automatiques
+  const tokAth = new Set(tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) !== 0 && !demo.ath.has(x)))
+  const coachsTel = tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) === 0).map((x) => x.slice(COACH_PUSH_PREFIX.length)).filter((c) => !demo.coach.has(c))
   let athCoachs: string[] = []
-  if (coachsTel.length) { const { data: ac } = await sb().from('athletes').select('id').in('coach_id', coachsTel); athCoachs = (ac || []).map((r: any) => String(r.id)) }
+  if (coachsTel.length) { const { data: ac } = await sb().from('athletes').select('id').in('coach_id', coachsTel); athCoachs = (ac || []).map((r: any) => String(r.id)).filter((x: string) => !demo.ath.has(x)) }
   const ids = [...new Set([...tokAth, ...athCoachs])]
   const resume: Record<string, { surv: string[]; retard: number }> = {}
   // Rappel QUOTIDIEN : tant qu'une alerte « haute » reste active, on re-notifie
@@ -5755,10 +5888,12 @@ async function handleCronResumes(body: any): Promise<Response> {
 
   let coachsOk = 0, coachsSkip = 0, athletesOk = 0, athletesSkip = 0
 
+  const demo = await _comptesDemo()   // 09/11 : comptes démo/test exclus des résumés automatiques
   // 1) Coachs — un résumé d'équipe par coach ayant un e-mail.
   try {
     const { data: coachs } = await sb().from('coachs').select('coach_id,nom,email,recap_freq')
     for (const c of coachs || []) {
+      if (demo.coach.has(String((c as any).coach_id))) { coachsSkip++; continue }
       const email = String((c as any).email || '').trim()
       const per = periodeFor((c as any).recap_freq)
       if (!email || !per) { coachsSkip++; continue }
@@ -5777,6 +5912,7 @@ async function handleCronResumes(body: any): Promise<Response> {
   try {
     const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq,created_at')
     for (const a of aths || []) {
+      if (demo.ath.has(String((a as any).id))) { athletesSkip++; continue }
       const email = String((a as any).email || '').trim()
       const per = periodeFor((a as any).recap_freq)
       if (!email || !per) { athletesSkip++; continue }
@@ -6703,24 +6839,17 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   return jsonResp({ success: true, reward_id, cout: item.cout, type: item.type, solde: solde - item.cout })
 }
 
-// Stockée dans indicateurs (seance_id='pref', cle='semaine_type'). Idempotente.
-// Préférences d'onboarding (drapeaux 0/1) stockées dans indicateurs (seance_id='pref').
-// cle ∈ {onboarding_vu, prog_auto_off}. Idempotent.
+// Préférences drapeaux (onboarding_vu, prog_auto_off, novalyz_athlete) → athletes.prefs (booléens, 10/11).
+// Idempotent.
 async function handleSavePref(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const cle = String(body.cle || '')
   if (!athlete_id || !['onboarding_vu', 'prog_auto_off', 'novalyz_athlete'].includes(cle)) return jsonResp({ success: false, error: 'Paramètres invalides' })
   // « novalyz_athlete » (écran 6, 04/11) : réglé par le COACH (« laisser Novalyz proposer à l'athlète ») — pas par l'athlète.
   if (cle === 'novalyz_athlete' && body._sessRole && body._sessRole !== 'c') return jsonResp({ success: false, error: 'Réservé au coach' })
-  const v = (body.valeur === 0 || body.valeur === '0' || body.valeur === false) ? '0' : '1'
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle).limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle)
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur: v, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const v = !(body.valeur === 0 || body.valeur === '0' || body.valeur === false)
+  const err = await _prefsAthleteEcrire(athlete_id, { [cle]: v })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true })
 }
 
@@ -6745,27 +6874,33 @@ async function _progMajTrace(action: string, body: any, run: () => Promise<Respo
   return res
 }
 
-// Zones à développer en priorité (2 max), choisies par l'athlète ou son coach. JSON dans UNE ligne pref.
+// Zones à développer en priorité (2 max), choisies par l'athlète ou son coach → athletes.prefs.zones_prio (10/11).
 async function handleSaveZonesPrio(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   if (!athlete_id || !Array.isArray(body.zones)) return jsonResp({ success: false, error: 'Paramètres invalides' })
   const zones = [...new Set(body.zones.map((z: any) => String(z)))].filter((z: any) => ZONES_PRIO[z as string]).slice(0, 2)
-  const valeur = JSON.stringify(zones)
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'zones_prio').limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'zones_prio')
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'zones_prio', valeur, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const err = await _prefsAthleteEcrire(athlete_id, { zones_prio: zones })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true, zones })
+}
+
+// Muscles retirés par choix (porteur 09/11) : durée de séance trop courte pour tout couvrir → l'athlète (ou
+// son coach) retire des muscles plutôt que d'allonger la séance. Liste remplacée à chaque enregistrement.
+async function handleSaveMusclesExclus(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id || !Array.isArray(body.muscles)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  const { data: a } = await sb().from('athletes').select('prefs').eq('id', athlete_id).maybeSingle()
+  const zones = (a as any)?.prefs?.zones_prio
+  const muscles = musclesExclusValides(body.muscles, Array.isArray(body.zones) ? body.zones : zones)
+  const err = await _prefsAthleteEcrire(athlete_id, { muscles_exclus: muscles })
+  if (err) return jsonResp({ success: false, error: err })
+  return jsonResp({ success: true, muscles })
 }
 
 // Catégorie de chaque exercice choisie par l'athlète (ou son coach) : gros (6-8 reps),
 // moyen (8-12), petit (12-25). Sert aux fourchettes de reps de la lecture et des
-// cibles de saisie. Stockée en JSON dans UNE ligne pref (seance_id='pref',
-// cle='exo_categories'), remplacée à chaque enregistrement. Idempotent.
+// cibles de saisie. Stockée dans athletes.prefs.exo_categories (objet, 10/11 ; avant : ligne
+// indicateurs 'pref'), remplacée à chaque enregistrement. Idempotent.
 const EXO_CATS = ['gros', 'moyen', 'petit']
 async function handleSaveExoCategories(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
@@ -6776,15 +6911,8 @@ async function handleSaveExoCategories(body: any): Promise<Response> {
     const nom = String(k).trim().slice(0, 120), v = String(src[k] || '')
     if (nom && EXO_CATS.includes(v)) out[nom] = v
   }
-  const valeur = JSON.stringify(out)
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'exo_categories').limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'exo_categories')
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'exo_categories', valeur, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const err = await _prefsAthleteEcrire(athlete_id, { exo_categories: out })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true, categories: out })
 }
 
@@ -7250,14 +7378,8 @@ async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   const v = (body.valeur === 'glissant') ? 'glissant' : 'calendaire'
-  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type').limit(1)
-  if (existing?.length) {
-    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type')
-    if (error) return jsonResp({ success: false, error: error.message })
-  } else {
-    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'semaine_type', valeur: v, unite: '', source: 'app' })
-    if (error) return jsonResp({ success: false, error: error.message })
-  }
+  const err = await _prefsAthleteEcrire(String(athlete_id), { semaine_type: v })   // 10/11 : athletes.prefs
+  if (err) return jsonResp({ success: false, error: err })
   return jsonResp({ success: true })
 }
 
@@ -7553,6 +7675,9 @@ async function handleDeleteSeance(body: any): Promise<Response> {
     await sb().from('indicateurs').delete().eq('athlete_id', athleteId).eq('seance_id', seanceId).eq('date', d)
     await sb().from('bien_etre').delete().eq('athlete_id', athleteId).eq('seance_id', seanceId).eq('date', d)
   }
+  // Comme l'ancien marqueur (effacé avec les indicateurs de la séance) : la séance supprimée
+  // libère son envoi_id. Sans effet si la table n'existe pas encore.
+  try { await sb().from('envois_recus').delete().eq('athlete_id', athleteId).eq('seance_id', seanceId).eq('date', iso) } catch (_) {}
   return jsonResp({ success: true })
 }
 
@@ -7879,6 +8004,7 @@ Deno.serve(async (req: Request) => {
         case 'savePref':                 return handleSavePref(body)
         case 'saveExoCategories':        return handleSaveExoCategories(body)
         case 'saveZonesPrio':            return handleSaveZonesPrio(body)
+        case 'saveMusclesExclus':        return handleSaveMusclesExclus(body)
         case 'claimRecompense':          return handleClaimRecompense(body)
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)

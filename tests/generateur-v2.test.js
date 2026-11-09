@@ -91,18 +91,26 @@ const budget = function (L) { const s = seances(L); return Object.keys(s).every(
 check('P3: la durée choisie est respectée (≤ 6 exos × 3 séries par séance à 60 min)', budget(p1));
 check('P3: 4 séries max par exercice (interméd.)', p1.every(function (l) { return l.series_prevues >= 3 && l.series_prevues <= 4; }));
 
-// Volume par niveau (03/11, décision porteur) : débutant 6-12 pour tous les muscles + option A
-// (fessiers, mollets, abdos complétés jusqu'à 6) → les 5 programmes débutant atteignent le minimum partout.
+// Débutant (porteur 09/11) : la durée choisie est demandée et RESPECTÉE (remplace l'option A du 03/11 qui
+// ajoutait des exercices au-delà) ; si tout ne rentre pas, l'aperçu propose d'allonger ou de RETIRER des muscles.
 { const Td = {}; Object.values(MUSB).forEach(function (m) { Td[m] = { min: 6, opt: 12 }; });
+  const CAPS = { 45: 5, 60: 6, 75: 8, 90: 9 };
   [['fb', 2], ['fb', 3], ['ppl', 3], ['ul', 4], ['split', 5]].forEach(function (c) {
-    const L = gen('masse', c[0], c[1], 75, 'debutant', { targets: Td, cat: CAT }), V = sandbox._g2VolLignes(L, CAT);
-    const manque = Object.values(MUSB).filter(function (m) { return (V[m] || 0) < 6; });
-    check('Volume débutant ' + c[0] + ' ' + c[1] + ' j : chaque muscle ≥ 6 séries/sem (manque : ' + manque.join(', ') + ')', manque.length === 0);
-    check('Volume débutant ' + c[0] + ' ' + c[1] + ' j : au plus 6 séries par exercice', L.every(function (l) { return l.series_prevues <= 6; }));
+    [45, 60, 75, 90].forEach(function (t) {
+      const L = gen('masse', c[0], c[1], t, 'debutant', { targets: Td, cat: CAT }), S = seances(L);
+      check('Débutant ' + c[0] + ' ' + c[1] + ' j × ' + t + ' min : durée respectée (≤ ' + CAPS[t] + ' exercices × 3 séries par séance)', Object.keys(S).every(function (k) { return S[k].length <= CAPS[t] && S[k].reduce(function (a, l) { return a + l.series_prevues; }, 0) <= CAPS[t] * 3; }));
+      check('Débutant ' + c[0] + ' ' + c[1] + ' j × ' + t + ' min : au plus 6 séries par exercice', L.every(function (l) { return l.series_prevues <= 6; }));
+      check('Débutant ' + c[0] + ' ' + c[1] + ' j × ' + t + ' min : pas de traction ni de dips (en variante)', !L.some(function (l) { return l.exercice === 'Traction' || l.exercice === 'Dips triceps'; }));
+    });
+    // Muscles retirés par choix : plus aucun exercice dont c'est le muscle principal.
+    const Tx = JSON.parse(JSON.stringify(Td)); delete Tx.Triceps; delete Tx.Mollets;
+    const Lx = gen('masse', c[0], c[1], 60, 'debutant', { targets: Tx, cat: CAT, exclus: ['Triceps', 'Mollets'] });
+    const prin = function (e) { return (CAT.filter(function (x) { return x.exercice === e; })[0] || {}).muscle; };
+    check('Débutant ' + c[0] + ' ' + c[1] + ' j : triceps et mollets retirés → aucun exercice triceps / mollets', !Lx.some(function (l) { return prin(l.exercice) === 'Triceps' || prin(l.exercice) === 'Mollets'; }));
   });
-  // L'option A ne touche pas les autres niveaux (intermédiaire : pas d'exercice ajouté hors blocs).
+  // L'ancienne option A (exercice ajouté hors blocs) ne touche pas l'intermédiaire.
   const Li = gen('masse', 'fb', 3, 60, 'intermediaire', { targets: Td, cat: CAT });
-  check('Option A réservée au débutant (intermédiaire FB 3 j 60 min : pas de Hip thrust ajouté)', !Li.some(function (l) { return /Hip thrust/i.test(l.exercice); }));
+  check('Intermédiaire FB 3 j 60 min : pas de Hip thrust ajouté hors blocs', !Li.some(function (l) { return /Hip thrust/i.test(l.exercice); }));
 }
 
 // Zones prioritaires (03/11) : minimum relevé au milieu de la fourchette ; la zone atteint sa nouvelle cible.
