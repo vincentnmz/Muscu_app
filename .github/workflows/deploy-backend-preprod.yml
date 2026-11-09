@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Secret absent → rien à faire
         if: env.SUPABASE_ACCESS_TOKEN == ''
-        run: echo "SUPABASE_ACCESS_TOKEN non configuré : déploiement préprod sauté."
+        run: echo "SUPABASE_ACCESS_TOKEN non configuré, déploiement préprod sauté."
 
       - name: Récupérer le code
         if: env.SUPABASE_ACCESS_TOKEN != ''
