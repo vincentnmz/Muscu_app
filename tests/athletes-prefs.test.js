@@ -126,6 +126,21 @@ let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.
     eq(st.athletes[1].prefs.novalyz_athlete === true && st.athletes[1].prefs.semaine_type === 'glissant', 'défauts du coach appliqués → athletes.prefs', st.athletes[1].prefs);
     eq(nbPrefAncien(st, 'A2') === 0, 'défauts du coach : plus rien dans indicateurs', nbPrefAncien(st, 'A2')); }
 
+  // ── MUSCLES RETIRÉS (09/11) : séance trop courte → l'athlète retire des muscles ──
+  { const st = base(); st.athletes[0].prefs = { zones_prio: ['fessiers'] }; const { handler } = load(st);
+    const r = await post(handler, { action: 'saveMusclesExclus', athlete_id: 'A1', muscles: ['Triceps', 'Mollets', 'Fessier', 'Inconnu', 'Triceps'] });
+    eq(r.j.success && JSON.stringify(r.j.muscles) === '["Triceps","Mollets"]' && JSON.stringify(st.athletes[0].prefs.muscles_exclus) === '["Triceps","Mollets"]', 'saveMusclesExclus : dédoublonné, muscle inconnu et zone prioritaire refusés', r.j);
+    const d = await getApp(handler, 'A1');
+    const mus = (d.volume_obti || []).map((o) => o.muscle);
+    eq(JSON.stringify(d.muscles_exclus) === '["Triceps","Mollets"]', 'getAppData renvoie muscles_exclus', d.muscles_exclus);
+    eq(mus.length > 0 && !mus.includes('Triceps') && !mus.includes('Mollets') && mus.includes('Biceps') && mus.includes('Fessier'), 'volume_obti : muscles retirés absents (jamais « sous le minimum »), les autres présents', mus);
+    eq(st.athletes[0].prefs.zones_prio[0] === 'fessiers', 'saveMusclesExclus ne touche pas aux autres préférences', st.athletes[0].prefs);
+    await post(handler, { action: 'saveMusclesExclus', athlete_id: 'A1', muscles: [] });
+    const d2 = await getApp(handler, 'A1');
+    eq((d2.volume_obti || []).some((o) => o.muscle === 'Triceps') && JSON.stringify(d2.muscles_exclus) === '[]', 'remettre les muscles : cibles revenues', d2.muscles_exclus);
+    st.athletes[0].prefs.muscles_exclus = ['Fessier']; const d3 = await getApp(handler, 'A1');
+    eq((d3.volume_obti || []).some((o) => o.muscle === 'Fessier') && JSON.stringify(d3.muscles_exclus) === '[]', 'une zone prioritaire ne peut pas être retirée (même si stockée)', d3.muscles_exclus); }
+
   // ── COMPATIBILITÉ (migration pas encore appliquée) ──
   { const st = base(); const { handler } = load(st, {}, { sansFonction: true });
     const r = await post(handler, { action: 'savePref', athlete_id: 'A1', cle: 'onboarding_vu', valeur: 1 });
@@ -146,6 +161,10 @@ let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.
     eq(r4.j.success === true && st.athletes[1].prefs.novalyz_athlete === true, 'novalyz_athlete : le coach lié peut', r4.j);
     const r5 = await post(handler, { action: 'savePref', athlete_id: 'A1', cle: 'onboarding_vu', valeur: 1 }, tA1);
     eq(r5.j.success === true && st.athletes[0].prefs.onboarding_vu === true, 'l\'athlète écrit SES préférences', r5.j);
+    const r7 = await post(handler, { action: 'saveMusclesExclus', athlete_id: 'A2', muscles: ['Triceps'] }, tA1);
+    eq(r7.status === 401 && st.athletes[1].prefs.muscles_exclus === undefined, 'saveMusclesExclus : athlète A1 → A2 refusé (401)', r7);
+    const r8 = await post(handler, { action: 'saveMusclesExclus', athlete_id: 'A2', muscles: ['Triceps'] }, tC1);
+    eq(r8.j.success === true && JSON.stringify(st.athletes[1].prefs.muscles_exclus) === '["Triceps"]', 'saveMusclesExclus : le coach lié peut', r8.j);
     const r6 = await post(handler, { action: 'savePref', athlete_id: 'A1', cle: 'cle_inconnue', valeur: 1 }, tA1);
     eq(r6.j.success === false && !('cle_inconnue' in st.athletes[0].prefs), 'clé non autorisée refusée', r6.j); }
 

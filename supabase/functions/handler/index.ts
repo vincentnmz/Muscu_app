@@ -73,11 +73,19 @@ function zonesPrioMuscles(zones: any): Record<string, boolean> {
   ;(Array.isArray(zones) ? zones : []).forEach((z: any) => (ZONES_PRIO[String(z)] || []).forEach(m => { out[m] = true }))
   return out
 }
-// Lignes au format de l'ancienne table (muscle, series_min_semaine, series_opt_semaine) pour un niveau.
-function volumeCiblesRows(niveau: string, zones?: any): any[] {
-  const T = VOLUME_CIBLES_NIVEAU[niveau] || VOLUME_CIBLES_NIVEAU.intermediaire
+// Muscles que l'athlète a choisi de ne pas travailler en direct (porteur 09/11 : séance trop courte pour tout
+// couvrir → « retirer des muscles »). Exclus des cibles de volume : jamais signalés « sous le minimum ».
+// Une zone prioritaire ne peut pas être exclue.
+const MUSCLES_EXCLUABLES = ['Pectoraux', 'Dos', 'Quadriceps', 'Fessier', 'Ischio', 'Epaule', 'Biceps', 'Triceps', 'Mollets', 'Abdominaux']
+function musclesExclusValides(exclus: any, zones?: any): string[] {
   const P = zonesPrioMuscles(zones)
-  return Object.keys(T).map(m => {
+  return [...new Set((Array.isArray(exclus) ? exclus : []).map((m: any) => String(m)))].filter(m => MUSCLES_EXCLUABLES.includes(m) && !P[m])
+}
+// Lignes au format de l'ancienne table (muscle, series_min_semaine, series_opt_semaine) pour un niveau.
+function volumeCiblesRows(niveau: string, zones?: any, exclus?: any): any[] {
+  const T = VOLUME_CIBLES_NIVEAU[niveau] || VOLUME_CIBLES_NIVEAU.intermediaire
+  const P = zonesPrioMuscles(zones), X = musclesExclusValides(exclus, zones)
+  return Object.keys(T).filter(m => !X.includes(m)).map(m => {
     const mn = P[m] ? Math.round((T[m][0] + T[m][1]) / 2) : T[m][0]
     return { muscle: m, series_min_semaine: mn, series_opt_semaine: T[m][1], series_max_semaine: Math.round(T[m][1] * 1.5), prio: !!P[m] }
   })
@@ -2460,7 +2468,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // Préférences : athletes.prefs d'abord, ancienne ligne indicateurs en secours (10/11, voir _prefsAthleteLues).
   const prefsA = _prefsAthleteLues((athData as any)?.prefs, prefRows)
   const zonesPrio: string[] = Array.isArray(prefsA.zones_prio) ? (prefsA.zones_prio as unknown[]).filter((z: any) => ZONES_PRIO[String(z)]).map(String).slice(0, 2) : []
-  const volObtiRows = volumeCiblesRows(niveauAth, zonesPrio)
+  const musclesExclus = musclesExclusValides(prefsA.muscles_exclus, zonesPrio)   // 09/11
+  const volObtiRows = volumeCiblesRows(niveauAth, zonesPrio, musclesExclus)
   void _volObtiDb
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
@@ -2973,6 +2982,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Lecture v3 (03/11) : niveau d'expérience de l'athlète (ancienneté effective) → mêmes règles athlète / coach.
     niveau_experience: niveauAth,
     zones_prio: zonesPrio,   // zones à développer en priorité (2 max) — cibles relevées dans volume_obti
+    muscles_exclus: musclesExclus,   // 09/11 : muscles retirés par choix (séance trop courte) — absents de volume_obti
     // Écran 6 (04/11, décision porteur) : propositions Novalyz à l'athlète seulement s'il n'a PAS de coach,
     // ou si son coach l'a autorisé (pref novalyz_athlete = '1'). Avec coach : Novalyz propose au coach.
     novalyz_athlete_ok: prefsA.novalyz_athlete === true,
@@ -4886,7 +4896,7 @@ async function handleSaveCoachPref(body: any): Promise<Response> {
 // écriture dans indicateurs, sauf si la migration n'est pas encore appliquée (fonction absente) :
 // on écrit alors dans l'ancien stockage, pour que rien ne casse.
 // Hors périmètre (pas des préférences, restent dans indicateurs) : prog_maj, coach_demande.
-const PREFS_ATHLETE_CLES = ['semaine_type', 'onboarding_vu', 'prog_auto_off', 'novalyz_athlete', 'zones_prio', 'exo_categories']
+const PREFS_ATHLETE_CLES = ['semaine_type', 'onboarding_vu', 'prog_auto_off', 'novalyz_athlete', 'zones_prio', 'exo_categories', 'muscles_exclus']
 // Ancienne valeur texte (indicateurs) → valeur typée (athletes.prefs). undefined = illisible.
 function _prefDepuisAncien(cle: string, valeur: unknown): unknown {
   const t = String(valeur ?? '')
@@ -4894,7 +4904,7 @@ function _prefDepuisAncien(cle: string, valeur: unknown): unknown {
   if (cle === 'onboarding_vu' || cle === 'prog_auto_off' || cle === 'novalyz_athlete') return t === '1'
   try {
     const o = JSON.parse(t)
-    if (cle === 'zones_prio') return Array.isArray(o) ? o : undefined
+    if (cle === 'zones_prio' || cle === 'muscles_exclus') return Array.isArray(o) ? o : undefined
     if (cle === 'exo_categories') return (o && typeof o === 'object' && !Array.isArray(o)) ? o : undefined
   } catch (_) { return undefined }
   return undefined
@@ -6874,6 +6884,19 @@ async function handleSaveZonesPrio(body: any): Promise<Response> {
   return jsonResp({ success: true, zones })
 }
 
+// Muscles retirés par choix (porteur 09/11) : durée de séance trop courte pour tout couvrir → l'athlète (ou
+// son coach) retire des muscles plutôt que d'allonger la séance. Liste remplacée à chaque enregistrement.
+async function handleSaveMusclesExclus(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id || !Array.isArray(body.muscles)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  const { data: a } = await sb().from('athletes').select('prefs').eq('id', athlete_id).maybeSingle()
+  const zones = (a as any)?.prefs?.zones_prio
+  const muscles = musclesExclusValides(body.muscles, Array.isArray(body.zones) ? body.zones : zones)
+  const err = await _prefsAthleteEcrire(athlete_id, { muscles_exclus: muscles })
+  if (err) return jsonResp({ success: false, error: err })
+  return jsonResp({ success: true, muscles })
+}
+
 // Catégorie de chaque exercice choisie par l'athlète (ou son coach) : gros (6-8 reps),
 // moyen (8-12), petit (12-25). Sert aux fourchettes de reps de la lecture et des
 // cibles de saisie. Stockée dans athletes.prefs.exo_categories (objet, 10/11 ; avant : ligne
@@ -7981,6 +8004,7 @@ Deno.serve(async (req: Request) => {
         case 'savePref':                 return handleSavePref(body)
         case 'saveExoCategories':        return handleSaveExoCategories(body)
         case 'saveZonesPrio':            return handleSaveZonesPrio(body)
+        case 'saveMusclesExclus':        return handleSaveMusclesExclus(body)
         case 'claimRecompense':          return handleClaimRecompense(body)
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)
