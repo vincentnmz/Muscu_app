@@ -21665,7 +21665,7 @@ function _onbContent(step) {
     + pt('3', 'Comment progresser', '3 actions par semaine, adaptées à ta forme')
     + '</div></div>' };
   if (step === 'routine') return { primary: 'Suivant', html: '<div style="margin:auto 0">' + h1('Ta routine, en 4 gestes')
-    + pt('☀', 'Chaque jour : 1 min de questionnaire', 'sommeil, fatigue, douleur → ton état du jour')
+    + pt('☀', 'Chaque jour : 15 secondes de questionnaire', 'sommeil, fatigue, douleur → ton état du jour')
     + pt('⏱', 'À chaque séance : tes séries', 'charge, reps, effort ; Novalyz te donne la cible')
     + pt('📈', 'Quand tu veux : tes analyses', 'le verdict en clair, puis les chiffres')
     + pt('⌚', 'Ta montre (facultatif)', 'pas, sommeil, FC au repos, sans rien saisir')
@@ -22356,7 +22356,7 @@ function _guideAthleteCards() {
   var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
   return [
     { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Tous les jours : tu reviens toujours ici.', go: aGo('accueil'),
-      feats: ['Ton <b>état du jour</b> (prêt / vigilance) et pourquoi', 'Le <b>questionnaire</b> (1 min) et « ta normale »', 'Ta <b>séance du jour</b> à lancer', 'Depuis ta dernière séance : <b>records</b>, <b>progrès</b>, exercices <b>bloqués</b>',
+      feats: ['Ton <b>état du jour</b> (prêt / vigilance) et pourquoi', 'Le <b>questionnaire</b> (15 secondes) et « ta normale »', 'Ta <b>séance du jour</b> à lancer', 'Depuis ta dernière séance : <b>records</b>, <b>progrès</b>, exercices <b>bloqués</b>',
         '<b>Plan de la semaine</b> : 3 actions qui se cochent seules', '<b>Ma semaine</b> : séances prévues, faites, en séance libre, en plus', 'Régularité · montre · récompenses'] },
     { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Tes séances.', go: aGo('seance'),
       feats: [hasCoach ? 'Ton programme, construit par <b>ton coach</b>' : 'Ton programme : <b>Novalyz</b> te le construit, ou <b>tu le fais toi-même</b>',
@@ -22373,8 +22373,8 @@ function _guideAthleteCards() {
         .concat([_iaBadge(ia) + '<b>Novalyz IA</b>, branchée sur tes données (jamais de chiffre inventé)', _iaBadge(ia) + '<b>Analyse morpho</b> : 3 photos + tes mesures → muscles à prioriser et <b>exercices adaptés à tes leviers</b>, pour un programme sur mesure']) },
     { ic: 'gear', scr: 'Réglages', t: 'Réglages', lead: 'Ton compte.', go: aGo('reglages'),
       feats: ['Profil (sexe, années, zones prioritaires) et <b>photo</b>', 'Coach lié · e-mail · <b>rapport par e-mail</b>', '<b>Connecter / changer ma montre</b> (guidé par marque), import de fichiers', 'Export / suppression des données · revoir la visite'] },
-    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
-      feats: ['Suivi · forme · montre · analyses + <b>export de tes données</b> : gratuit', 'Novalyz IA : <b>3 questions / jour</b> gratuites, illimité en Premium', 'Analyse morpho, programme avancé, <b>rapports automatiques</b> : <b>Premium</b>'] }
+    { ic: 'gift', scr: '', t: 'Gratuit pendant la bêta', lead: 'Tout est gratuit pendant la bêta.', go: aGo('accueil'),
+      feats: ['Suivi · forme · montre · analyses + <b>export de tes données</b>', 'Novalyz IA : <b>2 questions / jour</b>, dès qu’elle est activée', 'Une offre <b>Premium</b> est prévue pour des fonctions avancées : elle sera annoncée avant'] }
   ];
 }
 // Deck COACH (inventaire complet, 9 cartes).
@@ -22399,8 +22399,8 @@ function _guideCoachCards() {
       feats: ['Récupération, sommeil, FC, pas, nutrition', 'Montre : fraîcheur des données (« ancien » si plus de 2 jours)', _iaBadge(ia) + '<b>Novalyz IA</b> et <b>analyse morpho</b> sur la fiche'] },
     { ic: 'chat', scr: 'Analyses · Messages', t: 'Analyses équipe · Messages', lead: 'Toute l’équipe.', go: function () { _guideCoachGo('analyses'); _demoEquipe(true); },
       feats: ['Assiduité, douleurs, progression, volume par muscle, charge', 'Messages : filtres, <b>message à plusieurs</b>, photos et vidéos'] },
-    { ic: 'gift', scr: 'Profil', t: 'Profil · Gratuit / Premium', lead: 'Ton espace coach.', go: G('profil'),
-      feats: ['Notifications, groupes, export, <b>photo</b> · revoir la visite', 'Cockpit · suivi d’équipe · fiches : gratuit', 'Novalyz IA : <b>3 questions / jour</b>, illimité en Premium · plus d’athlètes, rapports : <b>Premium</b>'] }
+    { ic: 'gift', scr: 'Profil', t: 'Profil · gratuit pendant la bêta', lead: 'Ton espace coach.', go: G('profil'),
+      feats: ['Notifications, groupes, export, <b>photo</b> · revoir la visite', 'Cockpit · suivi d’équipe · fiches : gratuit', 'Novalyz IA : <b>2 questions / jour</b> · une offre <b>Premium</b> est prévue, annoncée avant'] }
   ];
 }
 function _stepsAthlete() {
@@ -22416,7 +22416,7 @@ function _stepsAthlete() {
   var A = "Aujourd’hui", E = 'Entraînement', AN = 'Analyses', F = 'Forme', C = 'Coach';
   // ─── AUJOURD'HUI ───
   S.push({ scr: A, sel: '#tab-accueil .tj-greet', before: go('accueil'), t: 'Ton tableau du jour', x: 'Ton « Aujourd’hui » : état de forme, séance, alertes. Tu reviens toujours ici pour l’essentiel.' });
-  S.push({ scr: A, sel: '#tj-banner', before: go('accueil'), t: 'Ton état du jour', x: 'Complète ton questionnaire bien-être (1 min) : il nourrit toutes les analyses et la reco du jour.' });
+  S.push({ scr: A, sel: '#tj-banner', before: go('accueil'), t: 'Ton état du jour', x: 'Complète ton questionnaire bien-être (15 secondes) : il nourrit toutes les analyses et la reco du jour.' });
   S.push({ scr: A, sel: '#tj-nova', before: go('accueil'), t: 'La Lecture Novalyz', x: 'Ce qu’il faut retenir aujourd’hui, expliqué en clair — pas juste des graphiques.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
   // Mobile : l'entrée est le FAB (position:fixed) ; desktop : le bloc .nvz-ask. On
@@ -22444,7 +22444,7 @@ function _stepsAthlete() {
       : 'Lance une analyse morpho par IA à partir de tes photos (groupes en avance / en retard) et pose tes questions à l’assistant Novalyz. Tu pourras lier un coach plus tard pour échanger messages, photos et vidéos.'
   });
   // ─── FIN : gratuit vs Premium (sensibilisation, sans paywall) ───
-  S.push({ sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Tout ton suivi et tes analyses de base sont <b>gratuits</b>. Les fonctions avancées (surtout l’IA) seront <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Suivi · forme · montre · analyses de base</td><td></td><td></td></tr><tr><td>Export de tes données</td><td></td><td></td></tr><tr><td>Assistant Novalyz IA</td><td>3 / jour</td><td>illimité</td></tr><tr><td>Programme &amp; analyse morpho par IA</td><td>—</td><td></td></tr><tr><td>Analyses avancées · rapports auto</td><td>—</td><td></td></tr></table><span style="color:var(--text-muted)">À débloquer quand tu veux. Bonne route</span>' });
+  S.push({ sel: '#__nvt_none__', big: true, t: 'Gratuit pendant la bêta', html: 'Pendant la bêta, <b>tout est gratuit</b>. Novalyz IA : <b>2 questions par jour</b>, dès qu’elle est activée. Une offre <b>Premium</b> est prévue pour des fonctions avancées ; elle sera annoncée avant. <span style="color:var(--text-muted)">Bonne route</span>' });
   return S;
 }
 function _stepsCoach() {
@@ -22466,7 +22466,7 @@ function _stepsCoach() {
     { scr: FI, sel: '#cd-ia-card', spotMaxH: 230, before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
     { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
     { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
-    { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td></td><td></td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td></td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
+    { sel: '#__nvt_none__', big: true, t: 'Gratuit pendant la bêta', html: 'Ton espace coach est <b>gratuit pendant la bêta</b>. Novalyz IA : <b>2 questions par jour</b>, dès qu’elle est activée. Une offre <b>Premium</b> est prévue ; elle sera annoncée avant.' }
   ];
 }
 // Visite viewport-aware : DESKTOP = ancienne visite à surbrillance sur les blocs
