@@ -16,7 +16,7 @@ const start = SRC.indexOf('var _G2_BLOCKS'), end = SRC.indexOf('// ── Modal 
 if (start < 0 || end <= start) throw new Error('bloc moteur v2 introuvable');
 const sb = { showToast: function () {} };
 vm.createContext(sb);
-vm.runInContext(SRC.slice(start, end) + '\nthis.G=_genProgramme2;this.B=_G2_BLOCKS;this.Z=_zpAppliquer;this.J=_G2_JLOGIC;', sb);
+vm.runInContext(SRC.slice(start, end) + '\nthis.G=_genProgramme2;this.B=_G2_BLOCKS;this.Z=_zpAppliquer;this.J=_G2_JLOGIC;this.V=_g2VolLignes;', sb);
 
 let ok = 0, ko = 0, fails = [];
 function check(label, cond) { if (cond) ok++; else { ko++; if (fails.length < 15) fails.push(label); } }
@@ -32,7 +32,7 @@ const REG = { quad: 'bas', ischios: 'bas', fessiers: 'bas', pecs: 'haut', dos: '
 function cibles(niv) {
   const g = { debutant: [6, 12], intermediaire: [10, 16], avance: [12, 20] }[niv], p = { debutant: [6, 12], intermediaire: [8, 14], avance: [10, 18] }[niv], o = {};
   ['Pectoraux', 'Dos', 'Quadriceps', 'Ischio', 'Fessier'].forEach(function (m) { o[m] = { min: g[0], opt: g[1] }; });
-  ['Epaule', 'Biceps', 'Triceps', 'Mollets', 'Trapèze'].forEach(function (m) { o[m] = { min: p[0], opt: p[1] }; });
+  ['Epaule', 'Biceps', 'Triceps', 'Mollets'].forEach(function (m) { o[m] = { min: p[0], opt: p[1] }; });
   o.Abdominaux = { min: 6, opt: 12 }; return o;
 }
 function seances(L) { const s = {}; L.forEach(function (l) { (s[l.seance_id] = s[l.seance_id] || []).push(l); }); return s; }
@@ -49,6 +49,16 @@ check('Full Body : quadriceps différent à chaque séance', new Set(['Full Body
 check('Full Body : fessiers différents à chaque séance', new Set(['Full Body A', 'Full Body B', 'Full Body C'].map(function (nm) { return C[nm].filter(function (l) { return info[l.exercice].bk === 'fessiers'; }).map(function (l) { return l.exercice; }).join(); })).size === 3);
 check('Full Body : les 3 séances ne sont pas identiques', exA !== exB && exB !== exC);
 check('Full Body A commence par le Squat', C['Full Body A'][0].exercice === 'Squat');
+
+// 1 bis) (porteur 09/11) Les zones prioritaires passent AVANT les autres muscles : minimum atteint, et plus de
+// volume que n'importe quel muscle non prioritaire (débutant Full Body 3 j et intermédiaire Full Body 3 j 60 min).
+[['debutant', 75], ['intermediaire', 60]].forEach(function (cfg) {
+  const T = sb.Z(cibles(cfg[0]), ['fessiers', 'jambes']), V = sb.V(sb.G('masse', 'fb', 3, cfg[1], cfg[0], { targets: T, cat: cat }), cat);
+  const prio = ['Quadriceps', 'Ischio', 'Fessier'], autres = ['Pectoraux', 'Dos', 'Epaule', 'Biceps', 'Triceps', 'Mollets', 'Abdominaux'];
+  prio.forEach(function (m) { check(cfg[0] + ' : ' + m + ' (prioritaire) atteint son minimum (' + (V[m] || 0) + ' ≥ ' + T[m].min + ')', (V[m] || 0) >= T[m].min); });
+  const minPrio = Math.min.apply(null, prio.map(function (m) { return V[m] || 0; })), maxAutre = Math.max.apply(null, autres.map(function (m) { return V[m] || 0; }));
+  check(cfg[0] + ' : chaque zone prioritaire a au moins autant de volume que chaque autre muscle (' + minPrio + ' ≥ ' + maxAutre + ')', minPrio >= maxAutre);
+});
 
 // 2) Toutes les combinaisons.
 const ZS = [[], ['fessiers'], ['jambes'], ['pectoraux'], ['dos'], ['epaules'], ['bras'], ['abdos'], ['fessiers', 'jambes'], ['pectoraux', 'bras'], ['dos', 'epaules']];
