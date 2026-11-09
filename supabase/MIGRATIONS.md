@@ -22,7 +22,7 @@
 | `20261109120000_schema_initial.sql` | Schéma de référence : 28 tables, clés, index, RLS fermé, buckets privés | ✅ appliquée 09/11/2026 | ✅ **référence** — décrit la prod telle qu'elle est au 09/11 (lu sur la prod, empreintes identiques) : rien à appliquer |
 | `20261109150000_rls_auto_enable.sql` | Déclencheur `ensure_rls` : toute nouvelle table naît avec RLS | ✅ appliquée 09/11/2026 | ✅ **déjà présent** (créé hors dépôt avant le 09/11 ; fonction identique, empreinte vérifiée) : rien à appliquer |
 | `20261109170000_is_demo.sql` | Colonne `is_demo` (athletes, coachs) : comptes démo/test exclus des envois automatiques | ✅ appliquée 09/11/2026 (+ tous les comptes marqués démo) | ✅ appliquée 09/11/2026 (accord porteur) |
-| `20261110090000_envois_recus.sql` | Table `envois_recus` (anti-doublon des envois de séance, UNIQUE athlete_id+envoi_id) + reprise des marqueurs `indicateurs.envoi_id` | ✅ appliquée 10/11/2026 | ⏳ à appliquer (après validation préprod) |
+| `20261110090000_envois_recus.sql` | Table `envois_recus` (anti-doublon des envois de séance, UNIQUE athlete_id+envoi_id) + reprise des marqueurs `indicateurs.envoi_id` | ✅ appliquée 10/11/2026 | ✅ appliquée 09/11/2026 (accord porteur ; 4 marqueurs repris, empreintes du reste du schéma inchangées ; anciens marqueurs conservés) |
 
 ## 3. Historique avant le 09/11/2026 (prod)
 
