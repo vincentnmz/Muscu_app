@@ -1012,6 +1012,13 @@ insert into public.poids_historique (date, athlete_id, poids) values
 (('2026-11-01'::date + (select j from _seed_off)), 'demo_4_lucas', 75.1);
 insert into public.objectif (athlete_id, nom, poids_kg, date_poids, objectif, seances_semaine) values ('3',null,null,null,'Prise de masse',4);
 
+-- Préprod = 100 % démo : tous les comptes marqués is_demo (si la colonne existe)
+do $demo$ begin
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='athletes' and column_name='is_demo') then
+    update public.athletes set is_demo = true; update public.coachs set is_demo = true;
+  end if;
+end $demo$;
+
 -- Contrôle final
 do $chk$
 declare np int; nb int; ni int;

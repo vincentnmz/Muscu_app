@@ -175,6 +175,13 @@ W("insert into public.poids_historique (date, athlete_id, poids) values\n" + ',\
 for o in d['objectif']:
     W("insert into public.objectif (athlete_id, nom, poids_kg, date_poids, objectif, seances_semaine) values (%s,%s,%s,%s,%s,%s);" % tuple(q(o.get(k)) for k in ['athlete_id', 'nom', 'poids_kg', 'date_poids', 'objectif', 'seances_semaine']))
 
+W("""
+-- Préprod = 100 % démo : tous les comptes marqués is_demo (si la colonne existe)
+do $demo$ begin
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='athletes' and column_name='is_demo') then
+    update public.athletes set is_demo = true; update public.coachs set is_demo = true;
+  end if;
+end $demo$;""")
 W("\n-- Contrôle final")
 W("""do $chk$
 declare np int; nb int; ni int;

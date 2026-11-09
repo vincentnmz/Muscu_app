@@ -4744,6 +4744,23 @@ async function notifyAthlete(athlete_id: string, payload: Record<string, unknown
 // que les athlètes, sous un identifiant namespacé `coach:<coach_id>` (athlete_id
 // est un simple text sans FK) → on réutilise toute la plomberie sans schéma dédié.
 const COACH_PUSH_PREFIX = 'coach:'
+// 09/11/2026 — Comptes de DÉMO / TEST (colonne is_demo sur athletes et coachs, voir
+// supabase/migrations/20261109170000_is_demo.sql) : exclus des envois AUTOMATIQUES (alertes
+// push du matin, résumés e-mail) et des futures statistiques. Les actions faites à la main dans
+// l'app (message du coach, etc.) restent normales. Si la colonne n'existe pas encore (migration
+// pas appliquée), rien n'est exclu et rien ne casse.
+async function _comptesDemo(): Promise<{ ath: Set<string>; coach: Set<string> }> {
+  const ath = new Set<string>(), coach = new Set<string>()
+  try {
+    const [{ data: a, error: ea }, { data: c, error: ec }] = await Promise.all([
+      sb().from('athletes').select('id').eq('is_demo', true),
+      sb().from('coachs').select('coach_id').eq('is_demo', true),
+    ])
+    if (!ea) for (const r of (a || []) as any[]) ath.add(String(r.id))
+    if (!ec) for (const r of (c || []) as any[]) coach.add(String(r.coach_id))
+  } catch (_) { /* colonne absente : aucune exclusion */ }
+  return { ath, coach }
+}
 async function notifyCoach(coach_id: string, payload: Record<string, unknown>): Promise<number> {
   if (!coach_id) return 0
   return await notifyAthlete(COACH_PUSH_PREFIX + coach_id, payload)
@@ -4934,10 +4951,11 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
   const tok = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
   // P2/P3 (05/11) : les alertes du COACH ne dépendent plus des notifications de l'athlète → on parcourt aussi
   // les athlètes des coachs qui ont un téléphone enregistré. L'athlète n'est notifié que s'il a lui-même un jeton.
-  const tokAth = new Set(tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) !== 0))
-  const coachsTel = tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) === 0).map((x) => x.slice(COACH_PUSH_PREFIX.length))
+  const demo = await _comptesDemo()   // 09/11 : comptes démo/test exclus des alertes automatiques
+  const tokAth = new Set(tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) !== 0 && !demo.ath.has(x)))
+  const coachsTel = tok.filter((x) => x.indexOf(COACH_PUSH_PREFIX) === 0).map((x) => x.slice(COACH_PUSH_PREFIX.length)).filter((c) => !demo.coach.has(c))
   let athCoachs: string[] = []
-  if (coachsTel.length) { const { data: ac } = await sb().from('athletes').select('id').in('coach_id', coachsTel); athCoachs = (ac || []).map((r: any) => String(r.id)) }
+  if (coachsTel.length) { const { data: ac } = await sb().from('athletes').select('id').in('coach_id', coachsTel); athCoachs = (ac || []).map((r: any) => String(r.id)).filter((x: string) => !demo.ath.has(x)) }
   const ids = [...new Set([...tokAth, ...athCoachs])]
   const resume: Record<string, { surv: string[]; retard: number }> = {}
   // Rappel QUOTIDIEN : tant qu'une alerte « haute » reste active, on re-notifie
@@ -5755,10 +5773,12 @@ async function handleCronResumes(body: any): Promise<Response> {
 
   let coachsOk = 0, coachsSkip = 0, athletesOk = 0, athletesSkip = 0
 
+  const demo = await _comptesDemo()   // 09/11 : comptes démo/test exclus des résumés automatiques
   // 1) Coachs — un résumé d'équipe par coach ayant un e-mail.
   try {
     const { data: coachs } = await sb().from('coachs').select('coach_id,nom,email,recap_freq')
     for (const c of coachs || []) {
+      if (demo.coach.has(String((c as any).coach_id))) { coachsSkip++; continue }
       const email = String((c as any).email || '').trim()
       const per = periodeFor((c as any).recap_freq)
       if (!email || !per) { coachsSkip++; continue }
@@ -5777,6 +5797,7 @@ async function handleCronResumes(body: any): Promise<Response> {
   try {
     const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq,created_at')
     for (const a of aths || []) {
+      if (demo.ath.has(String((a as any).id))) { athletesSkip++; continue }
       const email = String((a as any).email || '').trim()
       const per = periodeFor((a as any).recap_freq)
       if (!email || !per) { athletesSkip++; continue }

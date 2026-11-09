@@ -21,6 +21,7 @@
 |---|---|---|---|
 | `20261109120000_schema_initial.sql` | Schéma de référence : 28 tables, clés, index, RLS fermé, buckets privés | ✅ appliquée 09/11/2026 | ✅ **référence** — décrit la prod telle qu'elle est au 09/11 (lu sur la prod, empreintes identiques) : rien à appliquer |
 | `20261109150000_rls_auto_enable.sql` | Déclencheur `ensure_rls` : toute nouvelle table naît avec RLS | ✅ appliquée 09/11/2026 | ✅ **déjà présent** (créé hors dépôt avant le 09/11 ; fonction identique, empreinte vérifiée) : rien à appliquer |
+| `20261109170000_is_demo.sql` | Colonne `is_demo` (athletes, coachs) : comptes démo/test exclus des envois automatiques | ✅ appliquée 09/11/2026 (+ tous les comptes marqués démo) | ✅ appliquée 09/11/2026 (accord porteur) |
 
 ## 3. Historique avant le 09/11/2026 (prod)
 
@@ -62,8 +63,15 @@ Jamais en préprod (ils enverraient des e-mails / notifications). Définition r�
 
 Lire l'état : `select jobname, schedule, active from cron.job;`
 
+## 4bis. Opérations de données notables
+
+| Date | Base | Opération | Accord |
+|---|---|---|---|
+| 09/11/2026 | PROD | `is_demo = true` : athlètes `3` (John), `demo_4_lucas`, `4` (Yann), `5` (zinedine), `6`–`11`, `demo_3_*`, `demo_4_*` (38) ; coachs `2` (ju), `3` (demofoot), `4` (jim), `5` (Test Coach). Restent réels : athlètes 1, 2, 12–17 ; coach 1. | « Garder + marquer démo », comptes de test confirmés par le porteur |
+| 09/11/2026 | PRÉPROD | `is_demo = true` sur tous les comptes (préprod = 100 % démo) | — |
+
 ## 5. Écarts connus / à traiter plus tard
 
 - `cron-resumes.sql` décrit d'anciens jobs (hebdo/mensuel) qui n'existent plus en prod → archive, ne pas relancer.
-- Données de démo présentes en prod (comptes `demo_*`, John, Lucas…) → décision à prendre (colonne `is_demo` ou nettoyage) — audit P1.
+- Données de démo en prod : **marquées `is_demo`** (09/11) et gardées pour les démonstrations ; exclues des alertes push et résumés e-mail automatiques.
 - Table `indicateurs` fourre-tout → sortie progressive de `pref` / `alerte_*` — audit P1.
