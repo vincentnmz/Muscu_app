@@ -4421,6 +4421,7 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
     sb().from('pauses').delete().eq('athlete_id', athleteId),
     sb().from('push_subscriptions').delete().eq('athlete_id', athleteId),
     sb().from('alertes_historique').delete().eq('athlete_id', athleteId),
+    sb().from('envois_recus').delete().eq('athlete_id', athleteId),
   ].map((q: any) => Promise.resolve(q).catch(() => null)))
   // Fichiers privés rangés sous le préfixe <athlete_id>/ : médias coach (photos/vidéos
   // de la conversation) ET photos de suivi corporel (face/profil/dos). On liste puis
@@ -4498,15 +4499,60 @@ async function handleSaveTest(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// ── Anti-doublon des envois de séance (10/11/2026, audit P1 étape 1) ─────────
+// Table envois_recus, contrainte UNIQUE (athlete_id, envoi_id) : le serveur RÉSERVE l'envoi
+// avant d'écrire la séance → deux requêtes simultanées avec le même envoi_id : une seule gagne.
+//   'nouveau'   : réservé par CETTE requête → on écrit la séance ;
+//   'deja_recu' : séance déjà écrite (statut ok) → réponse « déjà reçu », rien de réécrit ;
+//   'en_cours'  : une autre requête l'écrit en ce moment → erreur temporaire : l'app garde la
+//                 séance en file et réessaie (rien n'est perdu, rien n'est doublé) ;
+//   'ancien'    : table absente (migration pas appliquée) → ancien mécanisme (indicateurs).
+// Réservation restée 'en_cours' plus de 3 min (serveur interrompu) → reprise atomique.
+// Règle de priorité : la nouvelle table fait foi ; l'ancien marqueur d'indicateurs n'est lu
+// que si rien n'existe dans la nouvelle (et il est encore écrit pendant la transition).
+const ENVOI_EN_COURS_MAX_MS = 3 * 60 * 1000
+async function _reserverEnvoi(aid: string, envoi: string, seanceId: string | null, date: string | null): Promise<'nouveau' | 'deja_recu' | 'en_cours' | 'ancien'> {
+  const ins = await sb().from('envois_recus').insert({ athlete_id: aid, envoi_id: envoi, seance_id: seanceId, date, statut: 'en_cours' })
+  if (!ins.error) return 'nouveau'
+  if (String((ins.error as any).code || '') !== '23505') return 'ancien'
+  const { data: ex } = await sb().from('envois_recus').select('statut,updated_at').eq('athlete_id', aid).eq('envoi_id', envoi).maybeSingle()
+  if (ex && (ex as any).statut === 'ok') return 'deja_recu'
+  if (ex && new Date((ex as any).updated_at).getTime() < Date.now() - ENVOI_EN_COURS_MAX_MS) {
+    const limite = new Date(Date.now() - ENVOI_EN_COURS_MAX_MS).toISOString()
+    const { data: rep } = await sb().from('envois_recus').update({ updated_at: new Date().toISOString() })
+      .eq('athlete_id', aid).eq('envoi_id', envoi).eq('statut', 'en_cours').lt('updated_at', limite).select('athlete_id')
+    if (rep && (rep as any[]).length) return 'nouveau'
+  }
+  return 'en_cours'
+}
+async function _ancienMarqueurEnvoi(aid: string, envoi: string): Promise<boolean> {
+  const { data: deja } = await sb().from('indicateurs').select('seance_id').eq('athlete_id', aid).eq('cle', 'envoi_id').eq('valeur', envoi).limit(1)
+  return !!(deja && deja.length)
+}
+async function _finEnvoi(aid: string, envoi: string, ok: boolean): Promise<void> {
+  try {
+    if (ok) await sb().from('envois_recus').update({ statut: 'ok', updated_at: new Date().toISOString() }).eq('athlete_id', aid).eq('envoi_id', envoi)
+    else await sb().from('envois_recus').delete().eq('athlete_id', aid).eq('envoi_id', envoi).eq('statut', 'en_cours')
+  } catch (_) { /* best-effort : en cas d'échec, la réservation expire après 3 min */ }
+}
+
 async function handleSaveSeance(data: any[], saisiParCoach?: any, envoiId?: any): Promise<Response> {
   if (!data?.length) return jsonResp({ erreur: 'Données manquantes' })
   // Envoi déjà reçu (même identifiant) → on ne réécrit pas : protège d'un double enregistrement
-  // quand le réseau coupe après l'écriture et que l'app renvoie depuis sa file d'attente (01/11).
-  const _envoi = String(envoiId || '').trim()
+  // quand le réseau coupe après l'écriture et que l'app renvoie depuis sa file d'attente (01/11),
+  // ou quand deux envois partent en même temps (10/11 : réservation atomique, voir _reserverEnvoi).
+  const _envoi = String(envoiId || '').trim().slice(0, 100)
   const _aid0 = String((data[0] || [])[4] || '')
+  let _reserve = false
   if (_envoi && _aid0) {
-    const { data: deja } = await sb().from('indicateurs').select('seance_id').eq('athlete_id', _aid0).eq('cle', 'envoi_id').eq('valeur', _envoi).limit(1)
-    if (deja && deja.length) return jsonResp({ success: true, deja_recu: true })
+    const etat = await _reserverEnvoi(_aid0, _envoi, String((data[0] || [])[2] || '') || null, normDate((data[0] || [])[0]) || null)
+    if (etat === 'deja_recu') return jsonResp({ success: true, deja_recu: true })
+    if (etat === 'en_cours') return jsonResp({ erreur: 'Envoi déjà en cours de traitement, nouvel essai automatique.', en_cours: true })
+    if (await _ancienMarqueurEnvoi(_aid0, _envoi)) {          // reçu avant la migration (ancien marqueur)
+      if (etat === 'nouveau') await _finEnvoi(_aid0, _envoi, true)
+      return jsonResp({ success: true, deja_recu: true })
+    }
+    _reserve = etat === 'nouveau'
   }
 
   // data = array of arrays: [date, semaine, seance_id, nom, athlete_id, exercice, muscle, exercice_id, serie, charge, reps, rpe, repos, volume]
@@ -4534,7 +4580,8 @@ async function handleSaveSeance(data: any[], saisiParCoach?: any, envoiId?: any)
   }
 
   const { error: perfError } = await sb().from('performances').insert(rows)
-  if (perfError) return jsonResp({ erreur: perfError.message })
+  if (perfError) { if (_reserve) await _finEnvoi(_aid0, _envoi, false); return jsonResp({ erreur: perfError.message }) }
+  if (_reserve) await _finEnvoi(_aid0, _envoi, true)   // séance écrite → envoi confirmé (avant les agrégats)
 
   // Double-write to indicateurs: aggregate per seance
   const seanceMap: Record<string, any> = {}
@@ -7574,6 +7621,9 @@ async function handleDeleteSeance(body: any): Promise<Response> {
     await sb().from('indicateurs').delete().eq('athlete_id', athleteId).eq('seance_id', seanceId).eq('date', d)
     await sb().from('bien_etre').delete().eq('athlete_id', athleteId).eq('seance_id', seanceId).eq('date', d)
   }
+  // Comme l'ancien marqueur (effacé avec les indicateurs de la séance) : la séance supprimée
+  // libère son envoi_id. Sans effet si la table n'existe pas encore.
+  try { await sb().from('envois_recus').delete().eq('athlete_id', athleteId).eq('seance_id', seanceId).eq('date', iso) } catch (_) {}
   return jsonResp({ success: true })
 }
 
