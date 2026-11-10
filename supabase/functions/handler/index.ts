@@ -6742,14 +6742,59 @@ const COLLECTION_PALIERS: { id: string; seuil: number }[] = [
 ]
 // Achat répétable : stocké sous « <id>_<horodatage> » → id du catalogue.
 function _rewBase(id: string): string { return String(id || '').replace(/_\d{10,}$/, '') }
-// Crédits de questions IA achetés (5 par achat) − déjà utilisés (1 ligne 'ia_bonus' par question).
+// ── Quotas atomiques (10/11, audit P1 étape 3 : table quotas_jour) ──
+// Avant : compteur lu AVANT l'appel IA puis réécrit APRÈS → deux questions simultanées passaient et ne
+// comptaient que pour une. Maintenant : une unité est RÉSERVÉE avant l'appel (quota_reserver, une seule
+// requête SQL : plafond jamais dépassé) et RENDUE si l'appel échoue. Si la migration n'est pas encore
+// appliquée (fonction absente), on retombe sur l'ancien stockage indicateurs (même comportement qu'avant).
+const QUOTA_CUMUL = '1970-01-01'   // crédits IA achetés : compteur unique (pas par jour)
+const _QUOTA_ANCIEN: Record<string, string> = { ia: 'ia_quota', morpho: 'morpho_quota', ia_bonus: 'ia_bonus' }
+const _ABSENT = ['PGRST202', '42883', '42P01', 'PGRST205']
+async function _quotaAncienUtilise(sujet: string, type: string, jour: string): Promise<number> {
+  if (type === 'ia_bonus') { const { data } = await sb().from('indicateurs').select('cle').eq('athlete_id', sujet).eq('seance_id', 'ia_bonus'); return (data || []).length }
+  const { data } = await sb().from('indicateurs').select('valeur').eq('athlete_id', sujet).eq('seance_id', _QUOTA_ANCIEN[type]).eq('cle', jour).limit(1)
+  return data?.length ? (Number((data[0] as any).valeur) || 0) : 0
+}
+// { ok, n (compteur après réservation), ancien (stockage indicateurs), erreur }
+async function _quotaReserver(sujet: string, type: string, jour: string, max: number): Promise<{ ok: boolean; n: number; ancien?: boolean; erreur?: boolean }> {
+  const ancien = async () => {
+    try { const used = await _quotaAncienUtilise(sujet, type, jour); return used < max ? { ok: true, n: used + 1, ancien: true } : { ok: false, n: used, ancien: true } }
+    catch (_) { return { ok: false, n: 0, erreur: true } }
+  }
+  try {
+    const { data, error } = await sb().rpc('quota_reserver', { p_sujet: sujet, p_type: type, p_jour: jour, p_max: max })
+    if (!error) { const v = Array.isArray(data) ? data[0] : data; const n = Number(v); return (v == null || !n) ? { ok: false, n: max } : { ok: true, n } }
+    if (!_ABSENT.includes(String((error as any).code || ''))) return { ok: false, n: 0, erreur: true }
+    return await ancien()
+  } catch (_) { return await ancien() }   // fonction indisponible côté client → ancien stockage
+}
+// Appel IA échoué : on rend l'unité réservée (rien à faire en ancien stockage : il n'écrit qu'après succès).
+async function _quotaRendre(sujet: string, type: string, jour: string, r: { ok: boolean; ancien?: boolean }): Promise<void> {
+  if (!r.ok || r.ancien) return
+  try { await sb().rpc('quota_rendre', { p_sujet: sujet, p_type: type, p_jour: jour }) } catch (_) {}
+}
+// Ancien stockage seulement (migration pas appliquée) : écrit APRÈS succès, comme avant.
+async function _quotaAncienEcrire(sujet: string, type: string, jour: string, r: { ok: boolean; n: number; ancien?: boolean }): Promise<void> {
+  if (!r.ok || !r.ancien) return
+  try {
+    if (type === 'ia_bonus') { await sb().from('indicateurs').insert({ athlete_id: sujet, date: jour, seance_id: 'ia_bonus', cle: String(Date.now()), valeur: '1', unite: '', source: 'ia' }); return }
+    if (r.n > 1) await sb().from('indicateurs').update({ valeur: String(r.n) }).eq('athlete_id', sujet).eq('seance_id', _QUOTA_ANCIEN[type]).eq('cle', jour)
+    else await sb().from('indicateurs').insert({ athlete_id: sujet, date: jour, seance_id: _QUOTA_ANCIEN[type], cle: jour, valeur: '1', unite: '', source: 'ia' })
+  } catch (_) {}
+}
+// Crédits de questions IA : achats (5 par achat) − déjà consommés (quotas_jour 'ia_bonus' ; sinon ancien stockage).
+async function _iaCreditsAchetes(athlete_id: string): Promise<number> {
+  const { data: cl } = await sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'recompense')
+  return (cl || []).filter((r: any) => _rewBase(String(r.cle)) === 'ia_plus5').length * 5
+}
+async function _iaCreditsUtilises(athlete_id: string): Promise<number> {
+  const { data, error } = await sb().from('quotas_jour').select('n').eq('sujet', athlete_id).eq('type', 'ia_bonus').eq('jour', QUOTA_CUMUL).limit(1)
+  if (!error) return data?.length ? (Number((data[0] as any).n) || 0) : 0
+  return _quotaAncienUtilise(athlete_id, 'ia_bonus', QUOTA_CUMUL)
+}
 async function _iaCreditsRestants(athlete_id: string): Promise<number> {
-  const [{ data: cl }, { data: us }] = await Promise.all([
-    sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'recompense'),
-    sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'ia_bonus'),
-  ])
-  const achats = (cl || []).filter((r: any) => _rewBase(String(r.cle)) === 'ia_plus5').length
-  return Math.max(0, achats * 5 - (us || []).length)
+  const [achetes, utilises] = await Promise.all([_iaCreditsAchetes(athlete_id), _iaCreditsUtilises(athlete_id)])
+  return Math.max(0, achetes - utilises)
 }
 function _lundiYMD(ymd: string): string {
   const d = new Date(ymd + 'T00:00:00Z'); const dow = (d.getUTCDay() + 6) % 7
@@ -7085,19 +7130,20 @@ async function handleChatIA(body: any): Promise<Response> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, reply: "L'assistant IA n'est pas encore activé côté serveur (clé manquante). Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
 
-  // Quota jour (base gratuite) — 1 ligne indicateurs 'ia_quota' par jour.
+  // Quota jour (base gratuite) — RÉSERVÉ avant l'appel (quotas_jour, 10/11), rendu si l'appel échoue.
   const jour = fmtYMD(new Date())
-  let used = 0
-  try {
-    const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', quotaId).eq('seance_id', 'ia_quota').eq('cle', jour).limit(1)
-    used = q?.length ? (Number(q[0].valeur) || 0) : 0
-  } catch (_) {}
-  // Au-delà du quota du jour : questions achetées avec les points (Mes points ▸ boutique).
+  if (!Array.isArray(msgs) || !msgs.some((m: any) => m && m.role === 'user' && m.content)) return jsonResp({ success: false, error: 'message vide' })
+  let resa = await _quotaReserver(quotaId, 'ia', jour, IA_QUOTA_JOUR), resaType = 'ia', resaSujet = quotaId, resaJour = jour
+  if (resa.erreur) return jsonResp({ success: false, error: 'quota_indisponible', reply: "Désolé, l'assistant est indisponible pour le moment. Réessaie dans un instant." })
+  const used = resa.ok ? resa.n - 1 : IA_QUOTA_JOUR
+  // Au-delà du quota du jour : questions achetées avec les points (Mes points ▸ boutique), réservées pareil.
   let bonus = false
-  if (used >= IA_QUOTA_JOUR) {
-    const credits = coachMode ? 0 : await _iaCreditsRestants(athlete_id)
-    if (credits <= 0 && coachMode) return jsonResp({ success: true, limited: true, reply: `Limite du jour atteinte (${IA_QUOTA_JOUR} questions à Novalyz IA). Reviens demain.` })
-    if (credits <= 0) return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec Novalyz IA). Tu peux échanger 150 points contre 5 questions de plus (Aujourd'hui ▸ Mes points), ou revenir demain. En attendant, jette un œil à l'onglet Analyses.` })
+  if (!resa.ok) {
+    if (coachMode) return jsonResp({ success: true, limited: true, reply: `Limite du jour atteinte (${IA_QUOTA_JOUR} questions à Novalyz IA). Reviens demain.` })
+    const achetes = await _iaCreditsAchetes(athlete_id)
+    resa = await _quotaReserver(athlete_id, 'ia_bonus', QUOTA_CUMUL, achetes); resaType = 'ia_bonus'; resaSujet = athlete_id; resaJour = QUOTA_CUMUL
+    if (resa.erreur) return jsonResp({ success: false, error: 'quota_indisponible', reply: "Désolé, l'assistant est indisponible pour le moment. Réessaie dans un instant." })
+    if (!resa.ok) return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec Novalyz IA). Tu peux échanger 150 points contre 5 questions de plus (Aujourd'hui ▸ Mes points), ou revenir demain. En attendant, jette un œil à l'onglet Analyses.` })
     bonus = true
   }
 
@@ -7126,7 +7172,7 @@ ${ctxTxt}`
     .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
     .slice(-12)
     .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) }))
-  if (!history.length || history[history.length - 1].role !== 'user') return jsonResp({ success: false, error: 'message vide' })
+  if (!history.length || history[history.length - 1].role !== 'user') { await _quotaRendre(resaSujet, resaType, resaJour, resa); return jsonResp({ success: false, error: 'message vide' }) }
 
   const appel = async (msgs: any[]): Promise<string | null> => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -7141,7 +7187,7 @@ ${ctxTxt}`
   let reply = ''
   try {
     const r1 = await appel(history)
-    if (r1 == null) return jsonResp({ success: false, error: 'ia_http', reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." })
+    if (r1 == null) { await _quotaRendre(resaSujet, resaType, resaJour, resa); return jsonResp({ success: false, error: 'ia_http', reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." }) }
     reply = r1
     // Garde-fou chiffres (I3, 01/11) : tout nombre doit venir des données ou de la question.
     const sources = ctxTxt + '\n' + history.filter((m: any) => m.role === 'user').map((m: any) => m.content).join('\n')
@@ -7152,15 +7198,13 @@ ${ctxTxt}`
       if (inconnus.length) reply = _iaRetirerPhrases(reply, inconnus)
     }
   } catch (_) {
+    await _quotaRendre(resaSujet, resaType, resaJour, resa)
     return jsonResp({ success: false, error: 'ia_reseau', reply: "Désolé, l'assistant est injoignable pour le moment." })
   }
   if (!reply) reply = "Je n'ai pas cette information dans tes données — regarde les onglets Aujourd'hui et Analyses, ou reformule ta question."
 
-  try {
-    if (bonus) await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_bonus', cle: String(Date.now()), valeur: '1', unite: '', source: 'ia' })
-    if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', quotaId).eq('seance_id', 'ia_quota').eq('cle', jour)
-    else await sb().from('indicateurs').insert({ athlete_id: quotaId, date: jour, seance_id: 'ia_quota', cle: jour, valeur: '1', unite: '', source: 'ia' })
-  } catch (_) {}
+  await _quotaAncienEcrire(resaSujet, resaType, resaJour, resa)   // seulement si la migration n'est pas appliquée
+  void bonus
 
   return jsonResp({ success: true, reply, remaining: Math.max(0, IA_QUOTA_JOUR - (used + 1)) })
 }
@@ -7267,9 +7311,10 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   if (!apiKey) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho n'est pas encore activée côté serveur (clé manquante)." })
 
   const jour = fmtYMD(new Date())
-  let used = 0
-  try { const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour).limit(1); used = q?.length ? (Number(q[0].valeur) || 0) : 0 } catch (_) {}
-  if (used >= MORPHO_QUOTA_JOUR) return jsonResp({ success: true, limited: true, analyse: `Tu as atteint ta limite du jour (${MORPHO_QUOTA_JOUR} analyse morpho). La version premium (bientôt) en débloquera plus.` })
+  // Quota RÉSERVÉ avant l'analyse (quotas_jour, 10/11), rendu si elle échoue.
+  const resaM = await _quotaReserver(athlete_id, 'morpho', jour, MORPHO_QUOTA_JOUR)
+  if (resaM.erreur) return jsonResp({ success: false, error: 'quota_indisponible', analyse: "Service indisponible pour le moment. Réessaie dans un instant." })
+  if (!resaM.ok) return jsonResp({ success: true, limited: true, analyse: `Tu as atteint ta limite du jour (${MORPHO_QUOTA_JOUR} analyse morpho). La version premium (bientôt) en débloquera plus.` })
 
   let objTxt = ''
   try { const { data: o } = await sb().from('objectif').select('objectif').eq('athlete_id', athlete_id).limit(1); if (o?.length && o[0].objectif) objTxt = String(o[0].objectif) } catch (_) {}
@@ -7311,7 +7356,7 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
       content.push({ type: 'image', source: { type: 'base64', media_type: String(im.media_type), data: String(im.data) } })
     }
   })
-  if (!content.length) return jsonResp({ success: false, error: 'images invalides' })
+  if (!content.length) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'images invalides' }) }
   content.push({
     type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${sexeTxt ? ` La personne est ${sexeTxt}.` : ''}${objTxt ? ` Objectif : ${objTxt}.` : ''}${segTxt ? ` Longueurs de segments fournies (cm) : ${segTxt} — tu PEUX donc affirmer les proportions correspondantes (confiance "mesure").` : (mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mesure de segment fournie (les proportions restent à confirmer, confiance "mesure").')}${antTxt ? ` Antécédents/état signalés : ${antTxt} — tiens-en compte avec prudence (jamais d'avis médical).` : ''}
 
@@ -7348,11 +7393,13 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
       body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1800, system, messages: [{ role: 'user', content }] }),
     })
     const j = await r.json()
-    if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." })
+    if (!r.ok) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." }) }
     raw = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
   } catch (_) {
+    await _quotaRendre(athlete_id, 'morpho', jour, resaM)
     return jsonResp({ success: false, error: 'ia_reseau', analyse: "Service injoignable pour le moment." })
   }
+  if (!raw) await _quotaRendre(athlete_id, 'morpho', jour, resaM)
   if (!raw) return jsonResp({ success: true, analyse: "Je n'ai pas pu produire d'analyse — réessaie avec des photos plus nettes (face, profil, dos, bonne lumière, tenue ajustée)." })
 
   // Parse JSON structuré (tolérant : retire d'éventuelles balises ``` et texte autour).
@@ -7368,7 +7415,7 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
   // Source de vérité = les règles ci-dessus, pas l'IA.
   if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }
 
-  try { if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour); else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'morpho_quota', cle: jour, valeur: '1', unite: '', source: 'ia' }) } catch (_) {}
+  await _quotaAncienEcrire(athlete_id, 'morpho', jour, resaM)   // seulement si la migration n'est pas appliquée
 
   // Photos NON stockées : rien gardé côté serveur. `resultat` = structuré (ou null → front retombe sur `analyse`).
   return jsonResp({ success: true, resultat, analyse: (resultat && resultat.reco) ? String(resultat.reco) : raw })
