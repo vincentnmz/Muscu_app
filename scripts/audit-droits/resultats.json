@@ -757,11 +757,9 @@
     "succes": false
    },
    "ressourceSeule": {
-    "extrait": "{\"commentaires\":[{\"id\":\"CM_A3\",\"athlete_id\":\"A3\",\"coach_id\":null,\"message\":\"message SECRET_A3\",\"date\":\"2026-11-10\",\"lu\":false,\"auteur\":\"coach\",\"media_type\":null,\"media_url\":null},{\"id\":\"CM_A2\",\"athlete_id\":\"A2\",\"coach_id",
+    "extrait": "{\"commentaires\":[{\"id\":\"CM_A1\",\"athlete_id\":\"A1\",\"coach_id\":\"C1\",\"message\":\"message MINE_A1\",\"date\":\"2026-11-10\",\"lu\":false,\"auteur\":\"coach\",\"media_type\":null,\"media_url\":null}]}",
     "status": 200,
-    "fuites": [
-     "réponse (SECRET_A3,SECRET_A2)"
-    ],
+    "fuites": [],
     "modifs": [],
     "erreurApp": null,
     "succes": false
@@ -1689,7 +1687,7 @@
   "public": true,
   "sc": {
    "sansJeton": {
-    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"3143\",\"code_requis\":false}",
+    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"1759\",\"code_requis\":false}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -1697,7 +1695,7 @@
     "succes": true
    },
    "athAversB": {
-    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"7192\",\"code_requis\":false}",
+    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"8184\",\"code_requis\":false}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -1705,7 +1703,7 @@
     "succes": true
    },
    "coachHorsPerimetre": {
-    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"2090\",\"code_requis\":false}",
+    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"7951\",\"code_requis\":false}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -1713,7 +1711,7 @@
     "succes": true
    },
    "idManipule": {
-    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"2834\",\"code_requis\":false}",
+    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"2773\",\"code_requis\":false}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -1721,7 +1719,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"8463\",\"code_requis\":false}",
+    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"9059\",\"code_requis\":false}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -1729,7 +1727,7 @@
     "succes": true
    },
    "idInexistant": {
-    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"5327\",\"code_requis\":false}",
+    "extrait": "{\"ok\":true,\"valide\":false,\"dispo\":false,\"propose\":\"8833\",\"code_requis\":false}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -2052,7 +2050,7 @@
     "succes": false
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"joueurs\":14,\"charges\":3534,\"bienetre\":42,\"blessures\":8,\"tests\":140,\"objectifs\":20,\"logins\":[\"9001\",\"9002\",\"9003\",\"9004\",\"9005\",\"9006\",\"9007\",\"9008\",\"9009\",\"9010\",\"9011\",\"9012\",\"9013\",\"9014\"],\"password\":\"",
+    "extrait": "{\"success\":true,\"joueurs\":14,\"charges\":3534,\"bienetre\":42,\"blessures\":7,\"tests\":140,\"objectifs\":25,\"logins\":[\"9001\",\"9002\",\"9003\",\"9004\",\"9005\",\"9006\",\"9007\",\"9008\",\"9009\",\"9010\",\"9011\",\"9012\",\"9013\",\"9014\"],\"password\":\"",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -2068,7 +2066,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"joueurs\":14,\"charges\":3534,\"bienetre\":42,\"blessures\":9,\"tests\":140,\"objectifs\":23,\"logins\":[\"9001\",\"9002\",\"9003\",\"9004\",\"9005\",\"9006\",\"9007\",\"9008\",\"9009\",\"9010\",\"9011\",\"9012\",\"9013\",\"9014\"],\"password\":\"",
+    "extrait": "{\"success\":true,\"joueurs\":14,\"charges\":3534,\"bienetre\":42,\"blessures\":6,\"tests\":140,\"objectifs\":23,\"logins\":[\"9001\",\"9002\",\"9003\",\"9004\",\"9005\",\"9006\",\"9007\",\"9008\",\"9009\",\"9010\",\"9011\",\"9012\",\"9013\",\"9014\"],\"password\":\"",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -3082,7 +3080,7 @@
     "succes": false
    },
    "idManipule": {
-    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T09:20:43.543Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
+    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T13:17:42.889Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -3090,7 +3088,7 @@
     "succes": true
    },
    "coachSurRouteAthlete": {
-    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T09:20:43.544Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
+    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T13:17:42.890Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -3098,7 +3096,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T09:20:43.544Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
+    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T13:17:42.890Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -3114,7 +3112,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T09:20:43.545Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
+    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"athlete\",\"date\":\"2026-11-10T13:17:42.891Z\",\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"muscu\",\"email\":\"a1@test.fr\",",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -3250,7 +3248,7 @@
     "succes": false
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"equipe\",\"date\":\"2026-11-10T09:20:43.556Z\",\"coach_id\":\"C1\",\"athletes\":[{\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"",
+    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"equipe\",\"date\":\"2026-11-10T13:17:42.903Z\",\"coach_id\":\"C1\",\"athletes\":[{\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -3266,7 +3264,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"equipe\",\"date\":\"2026-11-10T09:20:43.557Z\",\"coach_id\":\"C1\",\"athletes\":[{\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"",
+    "extrait": "{\"success\":true,\"data\":{\"export\":\"novalyz\",\"type\":\"equipe\",\"date\":\"2026-11-10T13:17:42.904Z\",\"coach_id\":\"C1\",\"athletes\":[{\"athlete_id\":\"A1\",\"profil\":{\"id\":\"A1\",\"login\":\"1001\",\"nom\":\"Ana MINE_A1\",\"coach_id\":\"C1\",\"sport\":\"",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -4579,7 +4577,7 @@
     "succes": false
    },
    "coachSurRouteAthlete": {
-    "extrait": "{\"success\":true,\"id\":1794302443631,\"media_type\":\"image\",\"media_url\":\"https://st/A1/media.jpg\"}",
+    "extrait": "{\"success\":true,\"id\":1794316662978,\"media_type\":\"image\",\"media_url\":\"https://st/A1/media.jpg\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -4587,7 +4585,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"id\":1794302443632,\"media_type\":\"image\",\"media_url\":\"https://st/A1/media.jpg\"}",
+    "extrait": "{\"success\":true,\"id\":1794316662979,\"media_type\":\"image\",\"media_url\":\"https://st/A1/media.jpg\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8482,7 +8480,7 @@
     "succes": false
    },
    "idManipule": {
-    "extrait": "{\"success\":true,\"seance_id\":\"m1794302443842_58\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"m1794316663176_731\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8490,7 +8488,7 @@
     "succes": true
    },
    "coachSurRouteAthlete": {
-    "extrait": "{\"success\":true,\"seance_id\":\"m1794302443842_571\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"m1794316663176_834\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8498,7 +8496,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"seance_id\":\"m1794302443843_461\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"m1794316663177_668\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8514,7 +8512,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"seance_id\":\"m1794302443844_258\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"m1794316663178_790\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8561,7 +8559,7 @@
     "succes": false
    },
    "idManipule": {
-    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794302443845\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794316663179\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8569,7 +8567,7 @@
     "succes": true
    },
    "coachSurRouteAthlete": {
-    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794302443846\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794316663180\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8577,7 +8575,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794302443846\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794316663180\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8593,7 +8591,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794302443847\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"bilan_1794316663181\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8644,7 +8642,7 @@
     "succes": false
    },
    "idManipule": {
-    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794302443849\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
+    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794316663183\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8652,7 +8650,7 @@
     "succes": true
    },
    "coachSurRouteAthlete": {
-    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794302443850\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
+    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794316663184\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8660,7 +8658,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794302443850\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
+    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794316663184\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8676,7 +8674,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794302443851\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
+    "extrait": "{\"success\":true,\"actif\":{\"id\":\"ctx_1794316663185\",\"etat\":\"x\",\"description\":\"x\",\"note\":\"x\",\"date_debut\":\"10/11/2026\",\"date_fin\":\"x\",\"source\":\"x\",\"jours_restants\":null}}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8799,7 +8797,7 @@
     "succes": false
    },
    "idManipule": {
-    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794302443856_673\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794316663190_901\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8807,7 +8805,7 @@
     "succes": true
    },
    "coachSurRouteAthlete": {
-    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794302443857_558\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794316663191_596\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8815,7 +8813,7 @@
     "succes": true
    },
    "proprietaire": {
-    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794302443857_329\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794316663192_747\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
@@ -8831,7 +8829,7 @@
     "succes": false
    },
    "idInexistant": {
-    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794302443858_200\"}",
+    "extrait": "{\"success\":true,\"seance_id\":\"cardio_1794316663193_928\"}",
     "status": 200,
     "fuites": [],
     "modifs": [],
