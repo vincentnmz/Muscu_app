@@ -3313,6 +3313,8 @@ async function handleGetCommentaires(params: URLSearchParams): Promise<Response>
     const { data: a } = await sb().from('athletes').select('coach_id').eq('id', athleteId).single()
     coachId = String((a as any)?.coach_id || '') || '__aucun__'
   }
+  // Défense en profondeur (10/11) : jamais de lecture globale sans filtre.
+  if (!coachId && !athleteId) return jsonResp({ commentaires: [] })
   const { data } = await _toutLire(() => {
     let q = sb().from('commentaires').select('*')
     if (coachId) q = q.eq('coach_id', coachId)
@@ -7953,6 +7955,9 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   if (body && typeof body === 'object') { body._sessRole = sess.role; body._sessId = sess.id }
   params.set('_sess_role', sess.role)
   if (action === 'getCommentaires' && sess.role === 'c') params.set('coach_id', sess.id)
+  // Sécurité (audit P2.1, 10/11) : un athlète sans athlete_id lisait TOUTE la table commentaires.
+  // athlete_id absent ou vide → celui de la session ; un autre athlete_id reste refusé plus bas (401).
+  if (action === 'getCommentaires' && sess.role === 'a' && !String(params.get('athlete_id') || '').trim()) params.set('athlete_id', sess.id)
   const aid = String(params.get('athlete_id') || (body && (body.athlete_id || (body.data && body.data.athlete_id))) || '')
   const cid = String(params.get('coach_id') || (body && body.coach_id) || '')
   // saveSeance : data = lignes [date, semaine, seance_id, nom, athlete_id, …] → athlete_id en [4].
