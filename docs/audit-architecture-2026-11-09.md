@@ -10,7 +10,7 @@
 |---|---|---|---|
 | P0 | Vérifier `AUTH_ENFORCE=1` | ✅ fait 09/11 (vérifié actif en prod) | `docs/etat-en-cours.md` |
 | P0 | CI = `npm test` complet, Node 22 | ✅ fait 09/11 | `.github/workflows/tests.yml` |
-| P0 | Retirer à `anon` / `authenticated` l'exécution de `rls_auto_enable()` | ❌ **PAS FAIT** — vérifié en prod le 10/11 : `SECURITY DEFINER`, exécutable par `anon` et `authenticated` | à faire (1 migration, accord porteur) |
+| P0 | Retirer à `anon` / `authenticated` l'exécution de `rls_auto_enable()` | 🟡 préprod faite 10/11 (`20261110190000_rls_auto_enable_droits.sql`) · prod en attente d'accord. Recensement : c'est la **seule** fonction SECURITY DEFINER exposée à `anon` / `authenticated` (prod et préprod) | `supabase/MIGRATIONS.md` |
 | P1 | Préprod séparée | ✅ fait 09/11 | projet `vqxkeqjaqkkmtzxvqvhi`, `js/env.js`, `deploy-backend-preprod.yml` |
 | P1 | Migrations versionnées + journal | ✅ fait 09/11 | `supabase/migrations/`, `supabase/MIGRATIONS.md`, `supabase/empreinte-schema.sql` |
 | P1 | Données de démo (`is_demo`) | ✅ fait 09/11 | migration `20261109170000`, `_comptesDemo()` |
