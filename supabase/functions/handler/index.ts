@@ -6040,11 +6040,36 @@ async function handleEnvoyerRetour(body: any): Promise<Response> {
     if (role === 'c') { const { data } = await sb().from('coachs').select('nom,email').eq('coach_id', id).single(); qui = 'Coach ' + String((data as any)?.nom || id) + ' (id ' + id + ')'; mail = String((data as any)?.email || '') }
     else if (role === 'a') { const { data } = await sb().from('athletes').select('nom,email').eq('id', id).single(); qui = 'Athlète ' + String((data as any)?.nom || id) + ' (id ' + id + ')'; mail = String((data as any)?.email || '') }
   } catch (_) {}
+  // 11/11 — Bouton « Signaler un problème / une idée » (athlète ET coach) : le retour est ENREGISTRÉ
+  // (table retours, migration 20261111150000) avec l'écran, la version et la plateforme, puis envoyé par
+  // e-mail comme avant. Table absente (migration pas encore appliquée) → e-mail seul, comme avant.
+  const type = RETOUR_TYPES.includes(String(body.type)) ? String(body.type) : 'autre'
+  const court = (v: any, n: number) => { const s = String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n); return s || null }
+  const ecran = court(body.ecran, 60), version = court(body.version, 60)
+  const plateforme = ['web', 'android', 'ios'].includes(String(body.plateforme)) ? String(body.plateforme) : null
+  const compte = role === 'c' ? COACH_PUSH_PREFIX + id : id
+  let enregistre = false
+  if (role && id) {
+    try {
+      // Anti-abus : RETOURS_MAX_JOUR retours par compte sur 24 h glissantes.
+      const depuis = new Date(Date.now() - 86_400_000).toISOString()
+      const { data: recents, error: eLire } = await sb().from('retours').select('id').eq('compte_id', compte).gte('created_at', depuis).limit(RETOURS_MAX_JOUR)
+      if (!eLire && (recents || []).length >= RETOURS_MAX_JOUR) return jsonResp({ success: false, error: 'Tu as déjà envoyé beaucoup de retours aujourd\'hui. Réessaie demain.' })
+      if (!eLire) {
+        const { error: eIns } = await sb().from('retours').insert({ role, compte_id: compte, type, message: msg, ecran, version, plateforme })
+        enregistre = !eIns
+      }
+    } catch (_) { /* table absente : e-mail seul */ }
+  }
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Retour depuis l'app</b> — ${esc(qui)}${mail ? ' · ' + esc(mail) : ''}</p><p style="white-space:pre-wrap">${esc(msg)}</p></div>`
-  const ok = await _envoyerEmail(CONTACT_NOVALYZ, 'Retour Novalyz — ' + qui, html)
-  return jsonResp(ok ? { success: true } : { success: false, error: 'Envoi impossible pour le moment' })
+  const contexte = [RETOUR_LIBELLES[type], ecran ? 'écran : ' + ecran : '', version ? 'version : ' + version : '', plateforme || ''].filter(Boolean).join(' · ')
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Retour depuis l'app</b> — ${esc(qui)}${mail ? ' · ' + esc(mail) : ''}</p><p style="color:#555">${esc(contexte)}</p><p style="white-space:pre-wrap">${esc(msg)}</p></div>`
+  const ok = await _envoyerEmail(CONTACT_NOVALYZ, 'Retour Novalyz [' + RETOUR_LIBELLES[type] + '] — ' + qui, html)
+  return jsonResp(ok || enregistre ? { success: true, enregistre } : { success: false, error: 'Envoi impossible pour le moment' })
 }
+const RETOUR_TYPES = ['bug', 'idee', 'autre']
+const RETOUR_LIBELLES: Record<string, string> = { bug: 'Problème', idee: 'Idée', autre: 'Autre' }
+const RETOURS_MAX_JOUR = 20
 
 // Site vitrine (lot 4, 07/11) : formulaire « Rejoindre la bêta » (www.novalyz.com/beta). Action PUBLIQUE.
 // Anti-spam : champ piège (site_web, invisible pour un humain) + 5 envois / heure / IP (mémoire de l'instance).

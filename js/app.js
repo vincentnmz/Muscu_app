@@ -2174,6 +2174,7 @@ function seDeconnecter() {
   _tjRingLast = null;   // réinitialise l'anim de l'anneau pour la prochaine connexion
   { var _fb = document.getElementById('fab-novalyz'); if (_fb) _fb.style.display = 'none'; }
   { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
+  { var _bq = document.getElementById('btn-retour-hdr'); if (_bq) _bq.style.display = 'none'; }
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'none'; }
   document.getElementById('inp-login').value = '';
   document.getElementById('inp-password').value = '';
@@ -2394,15 +2395,91 @@ async function coachExporterCSV() {
     if (msg) msg.textContent = (rows.length - 1) + ' lignes exportées (' + L.length + ' athlète' + (L.length > 1 ? 's' : '') + ').';
   } catch (e) { if (msg) msg.textContent = 'Export impossible sur cet appareil : essaie depuis un ordinateur.'; }
 }
-// ── Retour (P9) ──
-async function envoyerRetourNovalyz(elId) {
-  var t = document.getElementById(elId || 'crgx-retour'); var m = t ? t.value.trim() : '';
-  if (m.length < 3) { showToast('Écris ton message', '#ff4444'); return; }
+// ── Retour (P9 → 11/11 : bouton « Signaler un problème / une idée », athlète ET coach) ──
+// Le serveur (envoyerRetour) ENREGISTRE le retour (table retours) avec l'écran d'où il vient, la version
+// et la plateforme, puis l'envoie par e-mail à hello@novalyz.fr.
+var _nvEcranRetour = '';   // dernier écran visité (hors Réglages), mis à jour par switchTab
+var _retourType = 'bug';
+function _ecranRetour() {
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', message: m }) });
+    if (typeof coach !== 'undefined' && coach && coach.coach_id) {
+      var det = document.getElementById('view-coach-detail');
+      return (det && det.classList.contains('active')) ? 'Coach · fiche athlète' : 'Coach · tableau de bord';
+    }
+  } catch (e) {}
+  return _nvEcranRetour || 'Aujourd’hui';
+}
+function _versionRetour() { try { return 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche(); } catch (e) { return ''; } }
+function _plateformeRetour() { try { return _estAppNative() ? 'android' : 'web'; } catch (e) { return 'web'; } }
+function _retourChoisir(t) {
+  _retourType = t;
+  document.querySelectorAll('#retour-overlay [data-rt]').forEach(function (b) {
+    var on = b.getAttribute('data-rt') === t;
+    b.style.background = on ? 'var(--accent)' : 'var(--surface2)'; b.style.color = on ? 'var(--on-accent)' : 'var(--text)';
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  var ta = document.getElementById('retour-msg');
+  if (ta) ta.placeholder = t === 'bug' ? 'Qu’est-ce qui ne marche pas ? Qu’est-ce que tu faisais juste avant ?' : t === 'idee' ? 'Ton idée pour améliorer Novalyz…' : 'Ton message…';
+}
+function ouvrirRetour(type) {
+  var ov = document.getElementById('retour-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'retour-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+    ov.onclick = function (e) { if (e.target === ov) fermerRetour(); };
+    var chip = function (k, l) { return '<button type="button" data-rt="' + k + '" onclick="_retourChoisir(\'' + k + '\')" style="flex:1;border:1px solid var(--border);border-radius:10px;padding:10px 6px;font-size:13px;font-weight:700;cursor:pointer;">' + l + '</button>'; };
+    ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="retour-titre" style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(7,11,20,.25);box-sizing:border-box">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div id="retour-titre" style="font-size:16px;font-weight:800">Un problème ? Une idée ?</div>'
+      + '<button onclick="fermerRetour()" aria-label="Fermer" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:10px">' + chip('bug', 'Problème') + chip('idee', 'Idée') + chip('autre', 'Autre') + '</div>'
+      + '<textarea id="retour-msg" rows="5" maxlength="3000" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font:inherit;font-size:14px;padding:10px;resize:vertical"></textarea>'
+      + '<div id="retour-contexte" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4"></div>'
+      + '<button id="retour-envoyer" onclick="envoyerRetourNovalyz()" style="width:100%;margin-top:12px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Envoyer</button>'
+      + '</div>';
+    document.body.appendChild(ov);
+  }
+  _retourChoisir(type || 'bug');
+  var ctx = document.getElementById('retour-contexte');
+  if (ctx) ctx.textContent = 'Envoyé avec : écran « ' + _ecranRetour() + ' » · ' + _versionRetour() + ' · ' + (_plateformeRetour() === 'android' ? 'app Android' : 'navigateur') + '. Rien d’autre n’est joint.';
+  ov.style.display = 'flex';
+  setTimeout(function () { var ta = document.getElementById('retour-msg'); if (ta) ta.focus(); }, 50);
+}
+// Annonce unique (11/11) : à la 1re ouverture après la mise à jour, on présente le bouton et où il se trouve.
+// Une fois par appareil (localStorage). Jamais par-dessus l'onboarding ou la visite guidée : on réessaie plus tard.
+var _NV_ANNONCE_RETOUR = 'nv_annonce_retour_v1';
+function _annonceRetour(role, essai) {
+  try { if (localStorage.getItem(_NV_ANNONCE_RETOUR)) return; } catch (e) { return; }
+  essai = essai || 0;
+  var occupe = ['onb-overlay', 'nvt-ov', 'nvg-ov', 'retour-overlay'].some(function (id) { var el = document.getElementById(id); return el && el.style.display !== 'none' && el.offsetParent !== null; });
+  if (occupe || essai === 0) { if (essai < 40) setTimeout(function () { _annonceRetour(role, essai + 1); }, essai === 0 ? 2500 : 8000); return; }
+  var ou = role === 'c' ? 'Réglages ▸ À propos' : 'Réglages ▸ Infos';
+  var ico = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5v4.5M12 15.5v.01"/></svg>';
+  var ov = document.createElement('div'); ov.id = 'annonce-retour';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="annonce-retour-t" style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:0 -8px 30px rgba(7,11,20,.25)">'
+    + '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">Nouveau</div>'
+    + '<div id="annonce-retour-t" style="font-size:17px;font-weight:800;margin-bottom:8px">Un bug ? Une idée ? Dis-le nous</div>'
+    + '<div style="font-size:13.5px;line-height:1.55;color:var(--text-muted)">Un écran qui ne marche pas, un chiffre bizarre, une idée d’amélioration : touche l’icône ' + ico + ' <b style="color:var(--text)">en haut de l’écran</b> (ou ' + ou + '). Ton message arrive directement à l’équipe Novalyz, avec l’écran où tu étais.</div>'
+    + '<button onclick="_fermerAnnonceRetour(true)" style="width:100%;margin-top:16px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Signaler maintenant</button>'
+    + '<button onclick="_fermerAnnonceRetour(false)" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;">Compris</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  try { localStorage.setItem(_NV_ANNONCE_RETOUR, '1'); } catch (e) {}
+}
+function _fermerAnnonceRetour(ouvrir) { var ov = document.getElementById('annonce-retour'); if (ov) ov.remove(); if (ouvrir) ouvrirRetour(); }
+function fermerRetour() { var ov = document.getElementById('retour-overlay'); if (ov) ov.style.display = 'none'; }
+async function envoyerRetourNovalyz() {
+  var t = document.getElementById('retour-msg'); var m = t ? t.value.trim() : '';
+  if (m.length < 3) { showToast('Écris ton message', '#ff4444'); return; }
+  var btn = document.getElementById('retour-envoyer'); if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', type: _retourType, message: m, ecran: _ecranRetour(), version: _versionRetour(), plateforme: _plateformeRetour() }) });
     var j = await r.json();
-    if (j && j.success) { t.value = ''; showToast('Merci ! Ton retour est envoyé à hello@novalyz.fr'); } else showToast('Envoi impossible : ' + ((j && j.error) || 'réessaie'), '#ff4444');
-  } catch (e) { showToast('Erreur réseau', '#ff4444'); }
+    if (j && j.success) { t.value = ''; fermerRetour(); showToast('Merci ! Ton retour est bien envoyé.'); }
+    else showToast('Envoi impossible : ' + ((j && (j.error || j.erreur)) || 'réessaie'), '#ff4444');
+  } catch (e) { showToast('Erreur réseau : réessaie plus tard', '#ff4444'); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Envoyer'; }
 }
 function renderCoachReglagesV2() { renderCoachNotifs(); renderCoachAthletesRg(); renderCoachExport(); }
 function ouvrirReglagesCoach() {
@@ -2543,6 +2620,7 @@ async function ouvrirEspaceCoach() {
   document.getElementById('view-coach').classList.add('active');
   try { _majBandeauEmail(); } catch (e) {}
   document.body.classList.remove('has-bottom-nav');
+  try { _annonceRetour('c'); } catch (e) {}
   document.getElementById('tabs-bar').style.display = 'none';
   // Thème clair/sombre disponible aussi côté coach (bouton dans le header coach)
   const coachLight = localStorage.getItem('muscu_theme') === 'light';
@@ -12041,6 +12119,8 @@ async function ouvrirApp() {
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-reglages-hdr').style.display = 'block';
+  { var _bq = document.getElementById('btn-retour-hdr'); if (_bq) _bq.style.display = 'block'; }
+  try { _annonceRetour('a'); } catch (e) {}
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'block'; }
   try { _majFabNovalyz(); } catch (e) {}
   // Restore saved theme
@@ -12263,6 +12343,7 @@ async function supprimerDemoFoot() {
 const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'Forme', nutrition: 'Nutrition', conseils: 'Coach', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
+  if (tab !== 'reglages') _nvEcranRetour = TAB_LABELS[tab] || tab;   // écran joint aux retours (11/11)
   // Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
   // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
