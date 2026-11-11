@@ -138,15 +138,94 @@ async function nextAthleteId(): Promise<string> {
   return String(maxId + 1)
 }
 
-async function verifyPwd(pwd: string, stored: string, salt: string): Promise<{ ok: boolean; upgrade: string | null }> {
+// ── Hachage lent « w1 » (10/11, audit P1 — docs/note-hachage-mdp-2026-11-10.md, option C) ──
+// w1$<tours>$<sel b64>$<hash b64> = PBKDF2-SHA256(clé = hash s2 existant, sel aléatoire 16 octets, tours).
+// On ENVELOPPE le s2 (login + PEPPER + mot de passe) : tous les comptes peuvent être convertis sans connaître
+// les mots de passe, et une fuite de la base + PEPPER ne permet plus de tester des milliards de mots de passe
+// par seconde. Le nombre de tours est stocké (on pourra l'augmenter sans casser les anciens).
+// L'ancien s2 est gardé dans password_hash_s2 (retour arrière) pendant l'observation, puis la colonne sera supprimée.
+const W1_TOURS = 600000
+function _b64(u: Uint8Array): string { let x = ''; for (const c of u) x += String.fromCharCode(c); return btoa(x) }
+function _deb64(t: string): Uint8Array { const x = atob(t); const u = new Uint8Array(x.length); for (let i = 0; i < x.length; i++) u[i] = x.charCodeAt(i); return u }
+async function _pbkdf2(materiel: string, sel: Uint8Array, tours: number): Promise<Uint8Array> {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(materiel), 'PBKDF2', false, ['deriveBits'])
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sel, iterations: tours }, k, 256))
+}
+async function envelopperS2(s2: string): Promise<string> {
+  const sel = crypto.getRandomValues(new Uint8Array(16))
+  return 'w1$' + W1_TOURS + '$' + _b64(sel) + '$' + _b64(await _pbkdf2(s2, sel, W1_TOURS))
+}
+// Conversion des comptes existants s2 → w1 (10/11), par lots (limite de calcul de la fonction Edge).
+// Déclenchée par un jeton à usage limité créé en base par le porteur / l'assistant (table jetons_admin,
+// service_role seul) : aucun secret dans l'app ni dans les messages. Ne renvoie JAMAIS de hash.
+const W1_LOT = 3
+async function handleEnvelopperHachages(body: any): Promise<Response> {
+  const jeton = String(body.jeton || '')
+  if (!/^[0-9a-f-]{36}$/i.test(jeton)) return jsonResp({ success: false, error: 'non autorisé' }, 401)
+  const { data: j } = await sb().from('jetons_admin').select('jeton').eq('jeton', jeton).eq('action', 'envelopperHachages').gt('expire', new Date().toISOString()).limit(1)
+  if (!j || !j.length) return jsonResp({ success: false, error: 'non autorisé' }, 401)
+  let traites = 0, echecs = 0
+  for (const [table, col] of [['athletes', 'id'], ['coachs', 'coach_id']] as const) {
+    if (traites >= W1_LOT) break
+    const { data: rows, error } = await sb().from(table).select(col + ',password_hash').like('password_hash', 's2$%').limit(W1_LOT - traites)
+    if (error) return jsonResp({ success: false, error: 'lecture : ' + error.message })
+    for (const r of rows || []) {
+      const s2 = String((r as any).password_hash)
+      const { error: e } = await sb().from(table).update({ password_hash: await envelopperS2(s2), password_hash_s2: s2 }).eq(col, String((r as any)[col])).eq('password_hash', s2)
+      if (e) echecs++; else traites++
+    }
+  }
+  const [{ data: ra }, { data: rc }] = await Promise.all([
+    sb().from('athletes').select('id').like('password_hash', 's2$%').limit(5000),
+    sb().from('coachs').select('coach_id').like('password_hash', 's2$%').limit(5000),
+  ])
+  return jsonResp({ success: echecs === 0, traites, echecs, restants: (ra || []).length + (rc || []).length })
+}
+// Comparaison en temps constant (pas d'arrêt au premier caractère différent).
+function _egal(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return d === 0
+}
+async function _verifW1(s2: string, stored: string): Promise<boolean> {
+  const p = stored.split('$'); if (p.length !== 4) return false
+  const tours = Number(p[1]); if (!(tours >= 1000 && tours <= 5000000)) return false
+  try { return _egal(_b64(await _pbkdf2(s2, _deb64(p[2]), tours)), p[3]) } catch (_) { return false }
+}
+// upgrade = { s2 } quand le compte est encore dans un ancien format (connexion réussie) : seule la
+// CONNEXION le convertit en w1 (_passerEnW1) — pas de calcul lent inutile ailleurs (suppression de compte…).
+async function verifyPwd(pwd: string, stored: string, salt: string): Promise<{ ok: boolean; upgrade: { s2: string } | null }> {
   if (!stored) return { ok: false, upgrade: null }
+  if (stored.startsWith('w1$')) return { ok: await _verifW1(await hashSalted(pwd, salt), stored), upgrade: null }
   if (stored.startsWith('s2$')) {
-    return { ok: stored === await hashSalted(pwd, salt), upgrade: null }
+    const s2 = await hashSalted(pwd, salt)
+    return _egal(stored, s2) ? { ok: true, upgrade: { s2 } } : { ok: false, upgrade: null }
   }
-  if (stored === await sha256hex(pwd)) {
-    return { ok: true, upgrade: await hashSalted(pwd, salt) }
-  }
+  if (_egal(stored, await sha256hex(pwd))) return { ok: true, upgrade: { s2: await hashSalted(pwd, salt) } }
   return { ok: false, upgrade: null }
+}
+async function _passerEnW1(table: 'athletes' | 'coachs', col: string, id: string, up: { s2: string }, ancien: string): Promise<void> {
+  try { await _majMotDePasse(table, col, id, { password_hash: await envelopperS2(up.s2), password_hash_s2: up.s2 }, ancien) } catch (_) {}
+}
+// Champs à stocker pour un mot de passe (inscription, changement, réinitialisation) : w1 + s2 de secours.
+async function hashPourStockage(pwd: string, salt: string): Promise<{ password_hash: string; password_hash_s2: string }> {
+  const s2 = await hashSalted(pwd, salt)
+  return { password_hash: await envelopperS2(s2), password_hash_s2: s2 }
+}
+// Écrit les champs mot de passe. Si la colonne password_hash_s2 n'existe pas (migration pas appliquée) :
+// comportement d'AVANT, on écrit le s2 seul (jamais un w1 sans secours tant que la migration manque).
+const _COL_ABSENTE = ['42703', 'PGRST204']
+async function _majMotDePasse(table: 'athletes' | 'coachs', col: string, id: string, champs: { password_hash: string; password_hash_s2: string }, si?: string): Promise<{ error: any }> {
+  let q: any = sb().from(table).update(champs).eq(col, id); if (si) q = q.eq('password_hash', si)
+  const { error } = await q
+  if (!error || !_COL_ABSENTE.includes(String((error as any).code || ''))) return { error }
+  let q2: any = sb().from(table).update({ password_hash: champs.password_hash_s2 }).eq(col, id); if (si) q2 = q2.eq('password_hash', si)
+  return await q2
+}
+async function _insererAvecMotDePasse(table: 'athletes' | 'coachs', row: any, champs: { password_hash: string; password_hash_s2: string }): Promise<{ data: any; error: any }> {
+  const r1 = await sb().from(table).insert({ ...row, ...champs }).select().single()
+  if (!r1.error || !_COL_ABSENTE.includes(String((r1.error as any).code || ''))) return r1
+  return await sb().from(table).insert({ ...row, password_hash: champs.password_hash_s2 }).select().single()
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -1426,7 +1505,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
   const { ok, upgrade } = await verifyPwd(pwd, ath.password_hash || '', ath.login)
   if (!ok) { await _loginEchec(cleL); return jsonResp({ erreur: 'Identifiants incorrects', error: 'Identifiants incorrects' }) }
   await _loginReussi(cleL)
-  if (upgrade) await sb().from('athletes').update({ password_hash: upgrade }).eq('id', ath.id)
+  if (upgrade) await _passerEnW1('athletes', 'id', String(ath.id), upgrade, ath.password_hash)   // 10/11 : passage en w1
 
   // objectif (chaîne) + poids courant depuis la table objectif (comme Code.gs athleteFromRow)
   const { data: objRow } = await sb().from('objectif').select('*').eq('athlete_id', ath.id).limit(1)
@@ -1505,9 +1584,9 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
   if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Ce login est déjà pris : choisis-en un autre.', login_pris: true })
 
-  const hash = await hashSalted(pwd, login)
+  const hash = await hashPourStockage(pwd, login)
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null, sexe }).select().single()
+  const { data, error } = await _insererAvecMotDePasse('athletes', { id: newId, login, nom, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null, sexe }, hash)
   if (error) return jsonResp({ erreur: error.message, message: error.message })
   // C9 : mail de bienvenue (login + confirmer l'adresse). Un échec d'envoi ne bloque pas l'inscription.
   if (email) { try { await _envoyerMailCompte('a', String(data.id), email, String(data.login), String(data.nom || ''), true) } catch (_) {} }
@@ -1541,8 +1620,8 @@ async function handleChangePassword(body: any): Promise<Response> {
   if (!ath) return jsonResp({ success: false, error: 'Accès refusé' })
   const { ok } = await verifyPwd(ancien, ath.password_hash || '', ath.login)
   if (!ok) return jsonResp({ success: false, error: 'Mot de passe actuel incorrect' })
-  const hash = await hashSalted(nouveau, ath.login)
-  const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
+  const hash = await hashPourStockage(nouveau, ath.login)
+  const { error } = await _majMotDePasse('athletes', 'id', String(ath.id), hash)
   if (error) return jsonResp({ success: false, error: error.message })
   await _invaliderTokensReset(String(ath.id))   // sécurité : plus aucun lien de reset actif
   const token = await _revoquerSessions('a', String(ath.id))   // C8 : autres appareils déconnectés, celui-ci reste connecté
@@ -1631,8 +1710,8 @@ async function handleChangePasswordCoach(body: any): Promise<Response> {
   if (!coach) return jsonResp({ success: false, error: 'Accès refusé' })
   const { ok } = await verifyPwd(ancien, coach.password_hash || '', coach.login)
   if (!ok) return jsonResp({ success: false, error: 'Mot de passe actuel incorrect' })
-  const hash = await hashSalted(nouveau, coach.login)
-  const { error } = await sb().from('coachs').update({ password_hash: hash }).eq('coach_id', coach_id)
+  const hash = await hashPourStockage(nouveau, coach.login)
+  const { error } = await _majMotDePasse('coachs', 'coach_id', String(coach_id), hash)
   if (error) return jsonResp({ success: false, error: error.message })
   await _invaliderTokensReset('coach:' + coach_id)
   const token = await _revoquerSessions('c', coach_id)   // C8
@@ -1979,8 +2058,8 @@ async function handleResetPassword(body: any): Promise<Response> {
     const cid = cle.slice(6)
     const { data: co } = await sb().from('coachs').select('coach_id,login').eq('coach_id', cid).single()
     if (!co) return jsonResp({ success: false, error: RESET_TOKEN_MSG })
-    const hashC = await hashSalted(nouveau, co.login)
-    const { error: eC } = await sb().from('coachs').update({ password_hash: hashC }).eq('coach_id', cid)
+    const hashC = await hashPourStockage(nouveau, co.login)
+    const { error: eC } = await _majMotDePasse('coachs', 'coach_id', String(cid), hashC)
     if (eC) return jsonResp({ success: false, error: eC.message })
     await _invaliderTokensReset(cle)
     await _revoquerSessions('c', cid)   // C8 : les autres appareils sont déconnectés
@@ -1989,8 +2068,8 @@ async function handleResetPassword(body: any): Promise<Response> {
   const { data: ath } = await sb().from('athletes').select('id,login').eq('id', cle).single()
   if (!ath) return jsonResp({ success: false, error: RESET_TOKEN_MSG })
 
-  const hash = await hashSalted(nouveau, ath.login)
-  const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
+  const hash = await hashPourStockage(nouveau, ath.login)
+  const { error } = await _majMotDePasse('athletes', 'id', String(ath.id), hash)
   if (error) return jsonResp({ success: false, error: error.message })
   // Succès : invalider TOUS les tokens de reset actifs de l'athlète (dont celui-ci).
   await _invaliderTokensReset(String(ath.id))
@@ -3153,7 +3232,7 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
   const { ok, upgrade } = await verifyPwd(pwd, coach.password_hash || '', coach.login)
   if (!ok) { await _loginEchec(cleC); return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' }) }
   await _loginReussi(cleC)
-  if (upgrade) await sb().from('coachs').update({ password_hash: upgrade }).eq('coach_id', coach.coach_id)
+  if (upgrade) await _passerEnW1('coachs', 'coach_id', String(coach.coach_id), upgrade, coach.password_hash)   // 10/11 : passage en w1
 
   return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', email_verifie: !!coach.email_verifie, club: coach.club || '', categorie_defaut: coach.categorie_defaut || '', recap_freq: coach.recap_freq || 'off' } })
 }
@@ -3234,6 +3313,8 @@ async function handleGetCommentaires(params: URLSearchParams): Promise<Response>
     const { data: a } = await sb().from('athletes').select('coach_id').eq('id', athleteId).single()
     coachId = String((a as any)?.coach_id || '') || '__aucun__'
   }
+  // Défense en profondeur (10/11) : jamais de lecture globale sans filtre.
+  if (!coachId && !athleteId) return jsonResp({ commentaires: [] })
   const { data } = await _toutLire(() => {
     let q = sb().from('commentaires').select('*')
     if (coachId) q = q.eq('coach_id', coachId)
@@ -4215,6 +4296,8 @@ async function handleSeedDemoFoot(body: any): Promise<Response> {
     const p = PROF[n]
     const login = String(loginBase + n)   // bloc de 4 chiffres consécutifs libres (ex. 9005 → 9018)
     logins.push(login)
+    // Comptes de démo : s2 (mot de passe de démo public ; 14 hachages lents d'un coup dépasseraient la limite de calcul).
+    // Ils passent en w1 à leur première connexion (verifyPwd).
     const pwdHash = await hashSalted(DEMO_PWD, login)
     // Qualité du joueur (fait varier radar/stats/tests). Les blessés jouent moins bien.
     const q = (p.injury ? 0.7 : 0.85) + rnd() * 0.35
@@ -4387,12 +4470,12 @@ async function handleRegisterCoach(body: any): Promise<Response> {
   if (!body.sport) return jsonResp({ success: false, error: 'Choisis ton sport.' })
   const { data: existing } = await sb().from('coachs').select('coach_id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Cet identifiant coach est déjà utilisé.' })
-  const hash = await hashSalted(pwd, login)
+  const hash = await hashPourStockage(pwd, login)
   const { data: allCoachs } = await sb().from('coachs').select('coach_id')
   let maxCoach = 0
   for (const r of allCoachs || []) { const n = Number(r.coach_id); if (!isNaN(n) && n > maxCoach) maxCoach = n }
   const newId = String(maxCoach + 1)
-  const { data, error } = await sb().from('coachs').insert({ coach_id: newId, login, nom, email, password_hash: hash, sport, role }).select().single()
+  const { data, error } = await _insererAvecMotDePasse('coachs', { coach_id: newId, login, nom, email, sport, role }, hash)
   if (error) return jsonResp({ success: false, error: error.message })
   if (email) { try { await _envoyerMailCompte('c', String(data.coach_id), email, String(data.login), String(data.nom || ''), true) } catch (_) {} }   // C9
   return jsonResp({ success: true, coach: { coach_id: data.coach_id, nom: data.nom, email: data.email || '', email_verifie: false, sport: String(sport || '').trim() || 'muscu', role } })
@@ -4461,10 +4544,10 @@ async function handleCoachCreerAthlete(body: any): Promise<Response> {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonResp({ success: false, error: 'E-mail invalide.' })
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Ce login est déjà utilisé.' })
-  const hash = await hashSalted(password, login)
+  const hash = await hashPourStockage(password, login)
   const { data: coach } = await sb().from('coachs').select('sport').eq('coach_id', coach_id).single()
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, coach_id, sport: coach?.sport || 'muscu', annees: annees || 0, strategie: strategie || '', ddn: ddn || null, taille: taille || null, sexe: sexe || null, email: email || null }).select().single()
+  const { data, error } = await _insererAvecMotDePasse('athletes', { id: newId, login, nom, coach_id, sport: coach?.sport || 'muscu', annees: annees || 0, strategie: strategie || '', ddn: ddn || null, taille: taille || null, sexe: sexe || null, email: email || null }, hash)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true, id: data.id, nom: data.nom })
 }
@@ -4487,8 +4570,8 @@ async function handleCoachResetAthlete(body: any): Promise<Response> {
   const { data: ath } = await sb().from('athletes').select('id,login,coach_id').eq('id', athlete_id).single()
   if (!ath || String(ath.coach_id) !== String(coach_id)) return jsonResp({ success: false, error: 'Accès refusé' })
 
-  const hash = await hashSalted(nouveau_mdp, ath.login)
-  const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
+  const hash = await hashPourStockage(nouveau_mdp, ath.login)
+  const { error } = await _majMotDePasse('athletes', 'id', String(ath.id), hash)
   if (error) return jsonResp({ success: false, error: error.message })
   await _invaliderTokensReset(String(ath.id))   // le reset coach annule les liens email actifs de l'athlète
   await _revoquerSessions('a', String(ath.id))   // C8 : l'athlète est déconnecté de ses appareils
@@ -4697,7 +4780,11 @@ async function handleSavePushSub(body: any): Promise<Response> {
 async function handleDeletePushSub(body: any): Promise<Response> {
   const endpoint = String(body.endpoint || '')
   if (!endpoint) return jsonResp({ success: false, error: 'endpoint manquant' })
-  const { error } = await sb().from('push_subscriptions').delete().eq('endpoint', endpoint)
+  // Sécurité (audit P2.1, 11/11) : on ne supprime que l'abonnement de la personne connectée
+  // (athlète : son id ; coach : « coach:<id> », COACH_PUSH_PREFIX). Sans session : rien.
+  const proprio = body._sessRole === 'c' ? COACH_PUSH_PREFIX + String(body._sessId || '') : String(body._sessId || '')
+  if (!body._sessId) return jsonResp({ success: true })
+  const { error } = await sb().from('push_subscriptions').delete().eq('endpoint', endpoint).eq('athlete_id', proprio)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
 }
@@ -5953,11 +6040,36 @@ async function handleEnvoyerRetour(body: any): Promise<Response> {
     if (role === 'c') { const { data } = await sb().from('coachs').select('nom,email').eq('coach_id', id).single(); qui = 'Coach ' + String((data as any)?.nom || id) + ' (id ' + id + ')'; mail = String((data as any)?.email || '') }
     else if (role === 'a') { const { data } = await sb().from('athletes').select('nom,email').eq('id', id).single(); qui = 'Athlète ' + String((data as any)?.nom || id) + ' (id ' + id + ')'; mail = String((data as any)?.email || '') }
   } catch (_) {}
+  // 11/11 — Bouton « Signaler un problème / une idée » (athlète ET coach) : le retour est ENREGISTRÉ
+  // (table retours, migration 20261111150000) avec l'écran, la version et la plateforme, puis envoyé par
+  // e-mail comme avant. Table absente (migration pas encore appliquée) → e-mail seul, comme avant.
+  const type = RETOUR_TYPES.includes(String(body.type)) ? String(body.type) : 'autre'
+  const court = (v: any, n: number) => { const s = String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n); return s || null }
+  const ecran = court(body.ecran, 60), version = court(body.version, 60)
+  const plateforme = ['web', 'android', 'ios'].includes(String(body.plateforme)) ? String(body.plateforme) : null
+  const compte = role === 'c' ? COACH_PUSH_PREFIX + id : id
+  let enregistre = false
+  if (role && id) {
+    try {
+      // Anti-abus : RETOURS_MAX_JOUR retours par compte sur 24 h glissantes.
+      const depuis = new Date(Date.now() - 86_400_000).toISOString()
+      const { data: recents, error: eLire } = await sb().from('retours').select('id').eq('compte_id', compte).gte('created_at', depuis).limit(RETOURS_MAX_JOUR)
+      if (!eLire && (recents || []).length >= RETOURS_MAX_JOUR) return jsonResp({ success: false, error: 'Tu as déjà envoyé beaucoup de retours aujourd\'hui. Réessaie demain.' })
+      if (!eLire) {
+        const { error: eIns } = await sb().from('retours').insert({ role, compte_id: compte, type, message: msg, ecran, version, plateforme })
+        enregistre = !eIns
+      }
+    } catch (_) { /* table absente : e-mail seul */ }
+  }
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Retour depuis l'app</b> — ${esc(qui)}${mail ? ' · ' + esc(mail) : ''}</p><p style="white-space:pre-wrap">${esc(msg)}</p></div>`
-  const ok = await _envoyerEmail(CONTACT_NOVALYZ, 'Retour Novalyz — ' + qui, html)
-  return jsonResp(ok ? { success: true } : { success: false, error: 'Envoi impossible pour le moment' })
+  const contexte = [RETOUR_LIBELLES[type], ecran ? 'écran : ' + ecran : '', version ? 'version : ' + version : '', plateforme || ''].filter(Boolean).join(' · ')
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Retour depuis l'app</b> — ${esc(qui)}${mail ? ' · ' + esc(mail) : ''}</p><p style="color:#555">${esc(contexte)}</p><p style="white-space:pre-wrap">${esc(msg)}</p></div>`
+  const ok = await _envoyerEmail(CONTACT_NOVALYZ, 'Retour Novalyz [' + RETOUR_LIBELLES[type] + '] — ' + qui, html)
+  return jsonResp(ok || enregistre ? { success: true, enregistre } : { success: false, error: 'Envoi impossible pour le moment' })
 }
+const RETOUR_TYPES = ['bug', 'idee', 'autre']
+const RETOUR_LIBELLES: Record<string, string> = { bug: 'Problème', idee: 'Idée', autre: 'Autre' }
+const RETOURS_MAX_JOUR = 20
 
 // Site vitrine (lot 4, 07/11) : formulaire « Rejoindre la bêta » (www.novalyz.com/beta). Action PUBLIQUE.
 // Anti-spam : champ piège (site_web, invisible pour un humain) + 5 envois / heure / IP (mémoire de l'instance).
@@ -6742,14 +6854,59 @@ const COLLECTION_PALIERS: { id: string; seuil: number }[] = [
 ]
 // Achat répétable : stocké sous « <id>_<horodatage> » → id du catalogue.
 function _rewBase(id: string): string { return String(id || '').replace(/_\d{10,}$/, '') }
-// Crédits de questions IA achetés (5 par achat) − déjà utilisés (1 ligne 'ia_bonus' par question).
+// ── Quotas atomiques (10/11, audit P1 étape 3 : table quotas_jour) ──
+// Avant : compteur lu AVANT l'appel IA puis réécrit APRÈS → deux questions simultanées passaient et ne
+// comptaient que pour une. Maintenant : une unité est RÉSERVÉE avant l'appel (quota_reserver, une seule
+// requête SQL : plafond jamais dépassé) et RENDUE si l'appel échoue. Si la migration n'est pas encore
+// appliquée (fonction absente), on retombe sur l'ancien stockage indicateurs (même comportement qu'avant).
+const QUOTA_CUMUL = '1970-01-01'   // crédits IA achetés : compteur unique (pas par jour)
+const _QUOTA_ANCIEN: Record<string, string> = { ia: 'ia_quota', morpho: 'morpho_quota', ia_bonus: 'ia_bonus' }
+const _ABSENT = ['PGRST202', '42883', '42P01', 'PGRST205']
+async function _quotaAncienUtilise(sujet: string, type: string, jour: string): Promise<number> {
+  if (type === 'ia_bonus') { const { data } = await sb().from('indicateurs').select('cle').eq('athlete_id', sujet).eq('seance_id', 'ia_bonus'); return (data || []).length }
+  const { data } = await sb().from('indicateurs').select('valeur').eq('athlete_id', sujet).eq('seance_id', _QUOTA_ANCIEN[type]).eq('cle', jour).limit(1)
+  return data?.length ? (Number((data[0] as any).valeur) || 0) : 0
+}
+// { ok, n (compteur après réservation), ancien (stockage indicateurs), erreur }
+async function _quotaReserver(sujet: string, type: string, jour: string, max: number): Promise<{ ok: boolean; n: number; ancien?: boolean; erreur?: boolean }> {
+  const ancien = async () => {
+    try { const used = await _quotaAncienUtilise(sujet, type, jour); return used < max ? { ok: true, n: used + 1, ancien: true } : { ok: false, n: used, ancien: true } }
+    catch (_) { return { ok: false, n: 0, erreur: true } }
+  }
+  try {
+    const { data, error } = await sb().rpc('quota_reserver', { p_sujet: sujet, p_type: type, p_jour: jour, p_max: max })
+    if (!error) { const v = Array.isArray(data) ? data[0] : data; const n = Number(v); return (v == null || !n) ? { ok: false, n: max } : { ok: true, n } }
+    if (!_ABSENT.includes(String((error as any).code || ''))) return { ok: false, n: 0, erreur: true }
+    return await ancien()
+  } catch (_) { return await ancien() }   // fonction indisponible côté client → ancien stockage
+}
+// Appel IA échoué : on rend l'unité réservée (rien à faire en ancien stockage : il n'écrit qu'après succès).
+async function _quotaRendre(sujet: string, type: string, jour: string, r: { ok: boolean; ancien?: boolean }): Promise<void> {
+  if (!r.ok || r.ancien) return
+  try { await sb().rpc('quota_rendre', { p_sujet: sujet, p_type: type, p_jour: jour }) } catch (_) {}
+}
+// Ancien stockage seulement (migration pas appliquée) : écrit APRÈS succès, comme avant.
+async function _quotaAncienEcrire(sujet: string, type: string, jour: string, r: { ok: boolean; n: number; ancien?: boolean }): Promise<void> {
+  if (!r.ok || !r.ancien) return
+  try {
+    if (type === 'ia_bonus') { await sb().from('indicateurs').insert({ athlete_id: sujet, date: jour, seance_id: 'ia_bonus', cle: String(Date.now()), valeur: '1', unite: '', source: 'ia' }); return }
+    if (r.n > 1) await sb().from('indicateurs').update({ valeur: String(r.n) }).eq('athlete_id', sujet).eq('seance_id', _QUOTA_ANCIEN[type]).eq('cle', jour)
+    else await sb().from('indicateurs').insert({ athlete_id: sujet, date: jour, seance_id: _QUOTA_ANCIEN[type], cle: jour, valeur: '1', unite: '', source: 'ia' })
+  } catch (_) {}
+}
+// Crédits de questions IA : achats (5 par achat) − déjà consommés (quotas_jour 'ia_bonus' ; sinon ancien stockage).
+async function _iaCreditsAchetes(athlete_id: string): Promise<number> {
+  const { data: cl } = await sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'recompense')
+  return (cl || []).filter((r: any) => _rewBase(String(r.cle)) === 'ia_plus5').length * 5
+}
+async function _iaCreditsUtilises(athlete_id: string): Promise<number> {
+  const { data, error } = await sb().from('quotas_jour').select('n').eq('sujet', athlete_id).eq('type', 'ia_bonus').eq('jour', QUOTA_CUMUL).limit(1)
+  if (!error) return data?.length ? (Number((data[0] as any).n) || 0) : 0
+  return _quotaAncienUtilise(athlete_id, 'ia_bonus', QUOTA_CUMUL)
+}
 async function _iaCreditsRestants(athlete_id: string): Promise<number> {
-  const [{ data: cl }, { data: us }] = await Promise.all([
-    sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'recompense'),
-    sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'ia_bonus'),
-  ])
-  const achats = (cl || []).filter((r: any) => _rewBase(String(r.cle)) === 'ia_plus5').length
-  return Math.max(0, achats * 5 - (us || []).length)
+  const [achetes, utilises] = await Promise.all([_iaCreditsAchetes(athlete_id), _iaCreditsUtilises(athlete_id)])
+  return Math.max(0, achetes - utilises)
 }
 function _lundiYMD(ymd: string): string {
   const d = new Date(ymd + 'T00:00:00Z'); const dow = (d.getUTCDay() + 6) % 7
@@ -7085,19 +7242,20 @@ async function handleChatIA(body: any): Promise<Response> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, reply: "L'assistant IA n'est pas encore activé côté serveur (clé manquante). Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
 
-  // Quota jour (base gratuite) — 1 ligne indicateurs 'ia_quota' par jour.
+  // Quota jour (base gratuite) — RÉSERVÉ avant l'appel (quotas_jour, 10/11), rendu si l'appel échoue.
   const jour = fmtYMD(new Date())
-  let used = 0
-  try {
-    const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', quotaId).eq('seance_id', 'ia_quota').eq('cle', jour).limit(1)
-    used = q?.length ? (Number(q[0].valeur) || 0) : 0
-  } catch (_) {}
-  // Au-delà du quota du jour : questions achetées avec les points (Mes points ▸ boutique).
+  if (!Array.isArray(msgs) || !msgs.some((m: any) => m && m.role === 'user' && m.content)) return jsonResp({ success: false, error: 'message vide' })
+  let resa = await _quotaReserver(quotaId, 'ia', jour, IA_QUOTA_JOUR), resaType = 'ia', resaSujet = quotaId, resaJour = jour
+  if (resa.erreur) return jsonResp({ success: false, error: 'quota_indisponible', reply: "Désolé, l'assistant est indisponible pour le moment. Réessaie dans un instant." })
+  const used = resa.ok ? resa.n - 1 : IA_QUOTA_JOUR
+  // Au-delà du quota du jour : questions achetées avec les points (Mes points ▸ boutique), réservées pareil.
   let bonus = false
-  if (used >= IA_QUOTA_JOUR) {
-    const credits = coachMode ? 0 : await _iaCreditsRestants(athlete_id)
-    if (credits <= 0 && coachMode) return jsonResp({ success: true, limited: true, reply: `Limite du jour atteinte (${IA_QUOTA_JOUR} questions à Novalyz IA). Reviens demain.` })
-    if (credits <= 0) return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec Novalyz IA). Tu peux échanger 150 points contre 5 questions de plus (Aujourd'hui ▸ Mes points), ou revenir demain. En attendant, jette un œil à l'onglet Analyses.` })
+  if (!resa.ok) {
+    if (coachMode) return jsonResp({ success: true, limited: true, reply: `Limite du jour atteinte (${IA_QUOTA_JOUR} questions à Novalyz IA). Reviens demain.` })
+    const achetes = await _iaCreditsAchetes(athlete_id)
+    resa = await _quotaReserver(athlete_id, 'ia_bonus', QUOTA_CUMUL, achetes); resaType = 'ia_bonus'; resaSujet = athlete_id; resaJour = QUOTA_CUMUL
+    if (resa.erreur) return jsonResp({ success: false, error: 'quota_indisponible', reply: "Désolé, l'assistant est indisponible pour le moment. Réessaie dans un instant." })
+    if (!resa.ok) return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec Novalyz IA). Tu peux échanger 150 points contre 5 questions de plus (Aujourd'hui ▸ Mes points), ou revenir demain. En attendant, jette un œil à l'onglet Analyses.` })
     bonus = true
   }
 
@@ -7126,7 +7284,7 @@ ${ctxTxt}`
     .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
     .slice(-12)
     .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) }))
-  if (!history.length || history[history.length - 1].role !== 'user') return jsonResp({ success: false, error: 'message vide' })
+  if (!history.length || history[history.length - 1].role !== 'user') { await _quotaRendre(resaSujet, resaType, resaJour, resa); return jsonResp({ success: false, error: 'message vide' }) }
 
   const appel = async (msgs: any[]): Promise<string | null> => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -7141,7 +7299,7 @@ ${ctxTxt}`
   let reply = ''
   try {
     const r1 = await appel(history)
-    if (r1 == null) return jsonResp({ success: false, error: 'ia_http', reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." })
+    if (r1 == null) { await _quotaRendre(resaSujet, resaType, resaJour, resa); return jsonResp({ success: false, error: 'ia_http', reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." }) }
     reply = r1
     // Garde-fou chiffres (I3, 01/11) : tout nombre doit venir des données ou de la question.
     const sources = ctxTxt + '\n' + history.filter((m: any) => m.role === 'user').map((m: any) => m.content).join('\n')
@@ -7152,15 +7310,13 @@ ${ctxTxt}`
       if (inconnus.length) reply = _iaRetirerPhrases(reply, inconnus)
     }
   } catch (_) {
+    await _quotaRendre(resaSujet, resaType, resaJour, resa)
     return jsonResp({ success: false, error: 'ia_reseau', reply: "Désolé, l'assistant est injoignable pour le moment." })
   }
   if (!reply) reply = "Je n'ai pas cette information dans tes données — regarde les onglets Aujourd'hui et Analyses, ou reformule ta question."
 
-  try {
-    if (bonus) await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_bonus', cle: String(Date.now()), valeur: '1', unite: '', source: 'ia' })
-    if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', quotaId).eq('seance_id', 'ia_quota').eq('cle', jour)
-    else await sb().from('indicateurs').insert({ athlete_id: quotaId, date: jour, seance_id: 'ia_quota', cle: jour, valeur: '1', unite: '', source: 'ia' })
-  } catch (_) {}
+  await _quotaAncienEcrire(resaSujet, resaType, resaJour, resa)   // seulement si la migration n'est pas appliquée
+  void bonus
 
   return jsonResp({ success: true, reply, remaining: Math.max(0, IA_QUOTA_JOUR - (used + 1)) })
 }
@@ -7267,9 +7423,10 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   if (!apiKey) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho n'est pas encore activée côté serveur (clé manquante)." })
 
   const jour = fmtYMD(new Date())
-  let used = 0
-  try { const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour).limit(1); used = q?.length ? (Number(q[0].valeur) || 0) : 0 } catch (_) {}
-  if (used >= MORPHO_QUOTA_JOUR) return jsonResp({ success: true, limited: true, analyse: `Tu as atteint ta limite du jour (${MORPHO_QUOTA_JOUR} analyse morpho). La version premium (bientôt) en débloquera plus.` })
+  // Quota RÉSERVÉ avant l'analyse (quotas_jour, 10/11), rendu si elle échoue.
+  const resaM = await _quotaReserver(athlete_id, 'morpho', jour, MORPHO_QUOTA_JOUR)
+  if (resaM.erreur) return jsonResp({ success: false, error: 'quota_indisponible', analyse: "Service indisponible pour le moment. Réessaie dans un instant." })
+  if (!resaM.ok) return jsonResp({ success: true, limited: true, analyse: `Tu as atteint ta limite du jour (${MORPHO_QUOTA_JOUR} analyse morpho). La version premium (bientôt) en débloquera plus.` })
 
   let objTxt = ''
   try { const { data: o } = await sb().from('objectif').select('objectif').eq('athlete_id', athlete_id).limit(1); if (o?.length && o[0].objectif) objTxt = String(o[0].objectif) } catch (_) {}
@@ -7311,7 +7468,7 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
       content.push({ type: 'image', source: { type: 'base64', media_type: String(im.media_type), data: String(im.data) } })
     }
   })
-  if (!content.length) return jsonResp({ success: false, error: 'images invalides' })
+  if (!content.length) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'images invalides' }) }
   content.push({
     type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${sexeTxt ? ` La personne est ${sexeTxt}.` : ''}${objTxt ? ` Objectif : ${objTxt}.` : ''}${segTxt ? ` Longueurs de segments fournies (cm) : ${segTxt} — tu PEUX donc affirmer les proportions correspondantes (confiance "mesure").` : (mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mesure de segment fournie (les proportions restent à confirmer, confiance "mesure").')}${antTxt ? ` Antécédents/état signalés : ${antTxt} — tiens-en compte avec prudence (jamais d'avis médical).` : ''}
 
@@ -7348,11 +7505,13 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
       body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1800, system, messages: [{ role: 'user', content }] }),
     })
     const j = await r.json()
-    if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." })
+    if (!r.ok) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." }) }
     raw = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
   } catch (_) {
+    await _quotaRendre(athlete_id, 'morpho', jour, resaM)
     return jsonResp({ success: false, error: 'ia_reseau', analyse: "Service injoignable pour le moment." })
   }
+  if (!raw) await _quotaRendre(athlete_id, 'morpho', jour, resaM)
   if (!raw) return jsonResp({ success: true, analyse: "Je n'ai pas pu produire d'analyse — réessaie avec des photos plus nettes (face, profil, dos, bonne lumière, tenue ajustée)." })
 
   // Parse JSON structuré (tolérant : retire d'éventuelles balises ``` et texte autour).
@@ -7368,7 +7527,7 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
   // Source de vérité = les règles ci-dessus, pas l'IA.
   if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }
 
-  try { if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour); else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'morpho_quota', cle: jour, valeur: '1', unite: '', source: 'ia' }) } catch (_) {}
+  await _quotaAncienEcrire(athlete_id, 'morpho', jour, resaM)   // seulement si la migration n'est pas appliquée
 
   // Photos NON stockées : rien gardé côté serveur. `resultat` = structuré (ou null → front retombe sur `analyse`).
   return jsonResp({ success: true, resultat, analyse: (resultat && resultat.reco) ? String(resultat.reco) : raw })
@@ -7738,7 +7897,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -7825,6 +7984,9 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   if (body && typeof body === 'object') { body._sessRole = sess.role; body._sessId = sess.id }
   params.set('_sess_role', sess.role)
   if (action === 'getCommentaires' && sess.role === 'c') params.set('coach_id', sess.id)
+  // Sécurité (audit P2.1, 10/11) : un athlète sans athlete_id lisait TOUTE la table commentaires.
+  // athlete_id absent ou vide → celui de la session ; un autre athlete_id reste refusé plus bas (401).
+  if (action === 'getCommentaires' && sess.role === 'a' && !String(params.get('athlete_id') || '').trim()) params.set('athlete_id', sess.id)
   const aid = String(params.get('athlete_id') || (body && (body.athlete_id || (body.data && body.data.athlete_id))) || '')
   const cid = String(params.get('coach_id') || (body && body.coach_id) || '')
   // saveSeance : data = lignes [date, semaine, seance_id, nom, athlete_id, …] → athlete_id en [4].
@@ -7972,6 +8134,7 @@ Deno.serve(async (req: Request) => {
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
         case 'cronPushAlertes':          return handleCronPushAlertes(body)
+        case 'envelopperHachages':       return handleEnvelopperHachages(body)   // jeton jetons_admin (10/11)
         case 'cronResumes':              return handleCronResumes(body)
         case 'cronResumesAuto':          return handleCronResumes({ ...body, auto: true })
         case 'saveNativePushToken':      return handleSaveNativePushToken(body)

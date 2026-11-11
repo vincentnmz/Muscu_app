@@ -129,3 +129,22 @@ Décisions retenues : **photos JAMAIS stockées** (envoyées à l'IA vision puis
 5. ✅ **Partie coach** (section B) — reskin complet livré en prod (5 oct. 2026).
 6. ⏳ **Route bêta** (voir [`roadmap-beta.md`](./roadmap-beta.md)) : **P0-1 emails de reset** (domaine Resend) + **P0-3 Play Store** (fiche + déclaration Health Connect) → **P1** (erreurs réseau, accès testeur, **onboarding**).
 7. ⏳ **IA morpho** (C4) + **Coach IA** (A5, attend `ANTHROPIC_API_KEY`) + **paiement premium** (C5) — après la base bêta stable.
+
+## D. Idées pour l'évolution de l'app (revue externe, 11/11/2026)
+
+> Revue de la doc de fonctionnement par une IA externe, croisée avec le code le 11/11. Ce qui existe déjà
+> n'est pas repris : Aujourd'hui décisionnel, explication des décisions (Lecture Novalyz, « Pourquoi ? »),
+> niveau de confiance affiché, « Depuis ta dernière séance » / « Ce qui bouge », boucle de progression,
+> « pourquoi je stagne » (prescription anti-stagnation), actions recommandées et centre de pilotage coach.
+
+| Idée | État au 11/11 | Décision / note |
+|---|---|---|
+| **Bouton « Un souci ? Une idée ? »** (retour + signalement de bug), athlète ET coach, enregistré en base avec écran et version de l'app, + e-mail au porteur | Absent : formulaire coach → e-mail seulement ; athlète = lien mailto ; rien en base | **Validé par le porteur (11/11)** — à faire après le point 🟠 en cours de l'audit des droits |
+| Objectif → trajectoire (« à ce rythme, X à telle date ») | Absent (objectif + objectif de séances / semaine seulement) | Plus tard. À cadrer prudemment : projection vite fausse avec peu de données (règle 6bis) |
+| Journal / timeline unique (séances, records, blessures, contextes) | Partiel (historique, records, mini-frise du ressenti) | Plus tard |
+| Analyse physique (photos, mensurations → morpho) | Saisie faite ; analyse « Prochainement » | Lié à Novalyz Morphology (audit + conception avant code) |
+| IA davantage intégrée au moteur | Chat groundé construit ; dépend de la clé API (non activée en prod au 09/11, à confirmer) | Après activation de l'IA |
+| Personnalisation plus poussée | Partiel (zones prioritaires, muscles retirés, durée, semaine, thème) | À préciser |
+| iPhone natif | Web installable seulement | Plus tard |
+| Paiement / Premium | Découpage décidé (`docs/premium.md`), rien de construit | Plus tard |
+| Novalyz Pro multisport, clubs, centres de formation, fédérations | Moteur sport-agnostique + vue joueur foot | Long terme (`docs/roadmap-produit.md`) |

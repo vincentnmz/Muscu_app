@@ -1,0 +1,1584 @@
+[
+ {
+  "action": "ping",
+  "methode": "GET",
+  "handler": null,
+  "appel": "jsonResp({ ok: true })",
+  "cles": [],
+  "sessRole": false,
+  "lignes": 1
+ },
+ {
+  "action": "login",
+  "methode": "GET",
+  "handler": "handleLogin",
+  "appel": "withSession(await handleLogin(params), 'a')",
+  "cles": [
+   "login",
+   "password"
+  ],
+  "sessRole": false,
+  "lignes": 49
+ },
+ {
+  "action": "register",
+  "methode": "GET",
+  "handler": "handleRegister",
+  "appel": "withSession(await handleRegister(params), 'a')",
+  "cles": [
+   "login",
+   "password",
+   "prenom",
+   "nom",
+   "ddn",
+   "taille",
+   "poids",
+   "annees",
+   "sport",
+   "email",
+   "sexe",
+   "code"
+  ],
+  "sessRole": false,
+  "lignes": 58
+ },
+ {
+  "action": "getAppData",
+  "methode": "GET",
+  "handler": "handleGetAppData",
+  "appel": "handleGetAppData(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 620
+ },
+ {
+  "action": "getLastPerf",
+  "methode": "GET",
+  "handler": "handleGetLastPerf",
+  "appel": "handleGetLastPerf(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 47
+ },
+ {
+  "action": "getPoids",
+  "methode": "GET",
+  "handler": "handleGetPoids",
+  "appel": "handleGetPoids(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 5
+ },
+ {
+  "action": "getActivites",
+  "methode": "GET",
+  "handler": "handleGetActivites",
+  "appel": "handleGetActivites(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 20
+ },
+ {
+  "action": "exercices",
+  "methode": "GET",
+  "handler": "handleGetExercices",
+  "appel": "handleGetExercices()",
+  "cles": [],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "loginCoach",
+  "methode": "GET",
+  "handler": "handleLoginCoach",
+  "appel": "withSession(await handleLoginCoach(params), 'c')",
+  "cles": [
+   "login",
+   "password"
+  ],
+  "sessRole": false,
+  "lignes": 18
+ },
+ {
+  "action": "getCoachAthletes",
+  "methode": "GET",
+  "handler": "handleGetCoachAthletes",
+  "appel": "handleGetCoachAthletes(params)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 55
+ },
+ {
+  "action": "getCommentaires",
+  "methode": "GET",
+  "handler": "handleGetCommentaires",
+  "appel": "handleGetCommentaires(params)",
+  "cles": [
+   "coach_id",
+   "athlete_id",
+   "_sess_role"
+  ],
+  "sessRole": true,
+  "lignes": 27
+ },
+ {
+  "action": "getCoachPrefs",
+  "methode": "GET",
+  "handler": "handleGetCoachPrefs",
+  "appel": "handleGetCoachPrefs(params)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 14
+ },
+ {
+  "action": "getCoachProgramme",
+  "methode": "GET",
+  "handler": "handleGetCoachProgramme",
+  "appel": "handleGetCoachProgramme(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "getSeancesDetail",
+  "methode": "GET",
+  "handler": "handleGetSeancesDetail",
+  "appel": "handleGetSeancesDetail(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 27
+ },
+ {
+  "action": "getAlertesTraitees",
+  "methode": "GET",
+  "handler": "handleGetAlertesTraitees",
+  "appel": "handleGetAlertesTraitees(params)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 8
+ },
+ {
+  "action": "getBilanPDF",
+  "methode": "GET",
+  "handler": "handleGetBilanPDF",
+  "appel": "handleGetBilanPDF(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 12
+ },
+ {
+  "action": "lierAthlete",
+  "methode": "GET",
+  "handler": "handleLierAthlete",
+  "appel": "handleLierAthlete(params)",
+  "cles": [
+   "coach_id",
+   "athlete_id",
+   "login_athlete",
+   "cle"
+  ],
+  "sessRole": false,
+  "lignes": 45
+ },
+ {
+  "action": "getSuiviEquipe",
+  "methode": "GET",
+  "handler": "handleGetSuiviEquipe",
+  "appel": "handleGetSuiviEquipe(params)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 163
+ },
+ {
+  "action": "getSuiviJoueur",
+  "methode": "GET",
+  "handler": "handleGetSuiviJoueur",
+  "appel": "handleGetSuiviJoueur(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 203
+ },
+ {
+  "action": "getTests",
+  "methode": "GET",
+  "handler": "handleGetTests",
+  "appel": "handleGetTests(params)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 18
+ },
+ {
+  "action": "inscriptionBeta",
+  "methode": "POST",
+  "handler": "handleInscriptionBeta",
+  "appel": "handleInscriptionBeta(body, ip)",
+  "cles": [
+   "site_web",
+   "prenom",
+   "email",
+   "profil",
+   "appareil",
+   "message",
+   "source"
+  ],
+  "sessRole": false,
+  "lignes": 28
+ },
+ {
+  "action": "login",
+  "methode": "POST",
+  "handler": "handleLogin",
+  "appel": "withSession(await handleLogin(new URLSearchParams({ login: body.login, password: body.password })), 'a')",
+  "cles": [
+   "login",
+   "password"
+  ],
+  "sessRole": false,
+  "lignes": 49
+ },
+ {
+  "action": "register",
+  "methode": "POST",
+  "handler": "handleRegister",
+  "appel": "withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: body.annees == null ? '' : String(body.annees), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '', sexe: body.sexe || '' })), 'a')",
+  "cles": [
+   "login",
+   "password",
+   "prenom",
+   "nom",
+   "ddn",
+   "taille",
+   "poids",
+   "annees",
+   "sport",
+   "email",
+   "sexe",
+   "code"
+  ],
+  "sessRole": false,
+  "lignes": 58
+ },
+ {
+  "action": "loginDispo",
+  "methode": "POST",
+  "handler": "handleLoginDispo",
+  "appel": "handleLoginDispo(body)",
+  "cles": [
+   "login",
+   "type"
+  ],
+  "sessRole": false,
+  "lignes": 14
+ },
+ {
+  "action": "photoProfilUploadUrl",
+  "methode": "POST",
+  "handler": "handlePhotoProfilUploadUrl",
+  "appel": "handlePhotoProfilUploadUrl(body)",
+  "cles": [],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "photoProfil",
+  "methode": "POST",
+  "handler": "handlePhotoProfil",
+  "appel": "handlePhotoProfil(body)",
+  "cles": [],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "supprimerPhotoProfil",
+  "methode": "POST",
+  "handler": "handleSupprimerPhotoProfil",
+  "appel": "handleSupprimerPhotoProfil(body)",
+  "cles": [],
+  "sessRole": false,
+  "lignes": 5
+ },
+ {
+  "action": "registerCoach",
+  "methode": "POST",
+  "handler": "handleRegisterCoach",
+  "appel": "withSession(await handleRegisterCoach(body), 'c')",
+  "cles": [
+   "login",
+   "password",
+   "nom",
+   "sport",
+   "role",
+   "email"
+  ],
+  "sessRole": false,
+  "lignes": 21
+ },
+ {
+  "action": "seedDemoFoot",
+  "methode": "POST",
+  "handler": "handleSeedDemoFoot",
+  "appel": "handleSeedDemoFoot(body)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 217
+ },
+ {
+  "action": "clearDemoFoot",
+  "methode": "POST",
+  "handler": "handleClearDemoFoot",
+  "appel": "handleClearDemoFoot(body)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 21
+ },
+ {
+  "action": "supprimerCompte",
+  "methode": "POST",
+  "handler": "handleSupprimerCompte",
+  "appel": "handleSupprimerCompte(body)",
+  "cles": [
+   "athlete_id",
+   "mdp"
+  ],
+  "sessRole": false,
+  "lignes": 52
+ },
+ {
+  "action": "coachCreerAthlete",
+  "methode": "POST",
+  "handler": "handleCoachCreerAthlete",
+  "appel": "handleCoachCreerAthlete(body)",
+  "cles": [
+   "prenom",
+   "nom",
+   "email",
+   "coach_id",
+   "login",
+   "password",
+   "annees",
+   "strategie",
+   "ddn",
+   "taille",
+   "sexe"
+  ],
+  "sessRole": false,
+  "lignes": 15
+ },
+ {
+  "action": "detacherCoach",
+  "methode": "POST",
+  "handler": "handleDetacherCoach",
+  "appel": "handleDetacherCoach(body)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "repondreDemandeCoach",
+  "methode": "POST",
+  "handler": "handleRepondreDemandeCoach",
+  "appel": "handleRepondreDemandeCoach(body)",
+  "cles": [
+   "athlete_id",
+   "coach_id_vu",
+   "accepter"
+  ],
+  "sessRole": false,
+  "lignes": 18
+ },
+ {
+  "action": "coachResetAthlete",
+  "methode": "POST",
+  "handler": "handleCoachResetAthlete",
+  "appel": "handleCoachResetAthlete(body)",
+  "cles": [
+   "coach_id",
+   "athlete_id",
+   "nouveau_mdp"
+  ],
+  "sessRole": false,
+  "lignes": 19
+ },
+ {
+  "action": "saveEmail",
+  "methode": "POST",
+  "handler": "handleSaveEmail",
+  "appel": "handleSaveEmail(body)",
+  "cles": [
+   "athlete_id",
+   "email"
+  ],
+  "sessRole": false,
+  "lignes": 15
+ },
+ {
+  "action": "changePassword",
+  "methode": "POST",
+  "handler": "handleChangePassword",
+  "appel": "handleChangePassword(body)",
+  "cles": [
+   "athlete_id",
+   "ancien_mdp",
+   "nouveau_mdp"
+  ],
+  "sessRole": false,
+  "lignes": 16
+ },
+ {
+  "action": "saveProfil",
+  "methode": "POST",
+  "handler": "handleSaveProfil",
+  "appel": "handleSaveProfil(body)",
+  "cles": [
+   "athlete_id",
+   "nom",
+   "taille",
+   "poids",
+   "ddn",
+   "sexe",
+   "annees"
+  ],
+  "sessRole": false,
+  "lignes": 23
+ },
+ {
+  "action": "saveCoachProfil",
+  "methode": "POST",
+  "handler": "handleSaveCoachProfil",
+  "appel": "handleSaveCoachProfil(body)",
+  "cles": [
+   "coach_id",
+   "nom",
+   "email"
+  ],
+  "sessRole": false,
+  "lignes": 20
+ },
+ {
+  "action": "changePasswordCoach",
+  "methode": "POST",
+  "handler": "handleChangePasswordCoach",
+  "appel": "handleChangePasswordCoach(body)",
+  "cles": [
+   "coach_id",
+   "ancien_mdp",
+   "nouveau_mdp"
+  ],
+  "sessRole": false,
+  "lignes": 16
+ },
+ {
+  "action": "saveClubCoach",
+  "methode": "POST",
+  "handler": "handleSaveClubCoach",
+  "appel": "handleSaveClubCoach(body)",
+  "cles": [
+   "coach_id",
+   "club",
+   "categorie_defaut"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "exportAthlete",
+  "methode": "POST",
+  "handler": "handleExportAthlete",
+  "appel": "handleExportAthlete(body)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 8
+ },
+ {
+  "action": "exportAthleteEmail",
+  "methode": "POST",
+  "handler": "handleExportAthleteEmail",
+  "appel": "handleExportAthleteEmail(body)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 18
+ },
+ {
+  "action": "exportEquipe",
+  "methode": "POST",
+  "handler": "handleExportEquipe",
+  "appel": "handleExportEquipe(body)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 11
+ },
+ {
+  "action": "bilanClient",
+  "methode": "POST",
+  "handler": "handleBilanClient",
+  "appel": "handleBilanClient(body)",
+  "cles": [
+   "coach_id",
+   "athlete_id",
+   "periode"
+  ],
+  "sessRole": false,
+  "lignes": 19
+ },
+ {
+  "action": "envoyerBilanMail",
+  "methode": "POST",
+  "handler": "handleEnvoyerBilanMail",
+  "appel": "handleEnvoyerBilanMail(body)",
+  "cles": [
+   "coach_id",
+   "athlete_id",
+   "periode"
+  ],
+  "sessRole": false,
+  "lignes": 23
+ },
+ {
+  "action": "saveRecapFreq",
+  "methode": "POST",
+  "handler": "handleSaveRecapFreq",
+  "appel": "handleSaveRecapFreq(body)",
+  "cles": [
+   "freq",
+   "athlete_id",
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 17
+ },
+ {
+  "action": "saveCoachPref",
+  "methode": "POST",
+  "handler": "handleSaveCoachPref",
+  "appel": "handleSaveCoachPref(body)",
+  "cles": [
+   "coach_id",
+   "cle",
+   "valeur"
+  ],
+  "sessRole": true,
+  "lignes": 17
+ },
+ {
+  "action": "envoyerRetour",
+  "methode": "POST",
+  "handler": "handleEnvoyerRetour",
+  "appel": "handleEnvoyerRetour(body)",
+  "cles": [
+   "message"
+  ],
+  "sessRole": true,
+  "lignes": 13
+ },
+ {
+  "action": "requestPasswordReset",
+  "methode": "POST",
+  "handler": "handleRequestPasswordReset",
+  "appel": "handleRequestPasswordReset(body)",
+  "cles": [
+   "email"
+  ],
+  "sessRole": false,
+  "lignes": 50
+ },
+ {
+  "action": "resetPassword",
+  "methode": "POST",
+  "handler": "handleResetPassword",
+  "appel": "handleResetPassword(body)",
+  "cles": [
+   "token",
+   "nouveau_mdp"
+  ],
+  "sessRole": false,
+  "lignes": 39
+ },
+ {
+  "action": "confirmerEmail",
+  "methode": "POST",
+  "handler": "handleConfirmerEmail",
+  "appel": "handleConfirmerEmail(body)",
+  "cles": [
+   "token"
+  ],
+  "sessRole": false,
+  "lignes": 13
+ },
+ {
+  "action": "renvoyerConfirmationEmail",
+  "methode": "POST",
+  "handler": "handleRenvoyerConfirmationEmail",
+  "appel": "handleRenvoyerConfirmationEmail(body)",
+  "cles": [],
+  "sessRole": true,
+  "lignes": 11
+ },
+ {
+  "action": "saveSportCoach",
+  "methode": "POST",
+  "handler": "handleSaveSportCoach",
+  "appel": "handleSaveSportCoach(body)",
+  "cles": [
+   "coach_id",
+   "sport"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "saveTest",
+  "methode": "POST",
+  "handler": "handleSaveTest",
+  "appel": "handleSaveTest(body)",
+  "cles": [
+   "athlete_id",
+   "cle",
+   "valeur",
+   "unite",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "loginCoach",
+  "methode": "POST",
+  "handler": "handleLoginCoach",
+  "appel": "withSession(await handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password })), 'c')",
+  "cles": [
+   "login",
+   "password"
+  ],
+  "sessRole": false,
+  "lignes": 18
+ },
+ {
+  "action": "saveSeance",
+  "methode": "POST",
+  "handler": "handleSaveSeance",
+  "appel": "handleSaveSeance(body.data, body.saisi_par_coach, body.envoi_id)",
+  "cles": [],
+  "sessRole": false,
+  "lignes": 98
+ },
+ {
+  "action": "deleteSeance",
+  "methode": "POST",
+  "handler": "handleDeleteSeance",
+  "appel": "handleDeleteSeance(body)",
+  "cles": [
+   "athlete_id",
+   "seance_id",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 19
+ },
+ {
+  "action": "updateSeance",
+  "methode": "POST",
+  "handler": "handleUpdateSeance",
+  "appel": "handleUpdateSeance(body)",
+  "cles": [
+   "athlete_id",
+   "seance_id",
+   "date",
+   "data"
+  ],
+  "sessRole": false,
+  "lignes": 16
+ },
+ {
+  "action": "saveCommentaire",
+  "methode": "POST",
+  "handler": "handleSaveCommentaire",
+  "appel": "handleSaveCommentaire(body)",
+  "cles": [
+   "auteur",
+   "coach_id",
+   "athlete_id",
+   "texte",
+   "message"
+  ],
+  "sessRole": true,
+  "lignes": 41
+ },
+ {
+  "action": "mediaUploadUrl",
+  "methode": "POST",
+  "handler": "handleMediaUploadUrl",
+  "appel": "handleMediaUploadUrl(body)",
+  "cles": [
+   "athlete_id",
+   "ext"
+  ],
+  "sessRole": false,
+  "lignes": 10
+ },
+ {
+  "action": "envoyerMediaCoach",
+  "methode": "POST",
+  "handler": "handleEnvoyerMediaCoach",
+  "appel": "handleEnvoyerMediaCoach(body)",
+  "cles": [
+   "athlete_id",
+   "media_path",
+   "media_type",
+   "consent",
+   "message"
+  ],
+  "sessRole": false,
+  "lignes": 20
+ },
+ {
+  "action": "saveMensuration",
+  "methode": "POST",
+  "handler": "handleSaveMensuration",
+  "appel": "handleSaveMensuration(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "mesures"
+  ],
+  "sessRole": false,
+  "lignes": 20
+ },
+ {
+  "action": "suiviPhotoUploadUrl",
+  "methode": "POST",
+  "handler": "handleSuiviPhotoUploadUrl",
+  "appel": "handleSuiviPhotoUploadUrl(body)",
+  "cles": [
+   "athlete_id",
+   "ext"
+  ],
+  "sessRole": false,
+  "lignes": 9
+ },
+ {
+  "action": "saveSuiviPhoto",
+  "methode": "POST",
+  "handler": "handleSaveSuiviPhoto",
+  "appel": "handleSaveSuiviPhoto(body)",
+  "cles": [
+   "athlete_id",
+   "path",
+   "angle",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 14
+ },
+ {
+  "action": "supprimerSuiviPhoto",
+  "methode": "POST",
+  "handler": "handleSupprimerSuiviPhoto",
+  "appel": "handleSupprimerSuiviPhoto(body)",
+  "cles": [
+   "athlete_id",
+   "path"
+  ],
+  "sessRole": false,
+  "lignes": 8
+ },
+ {
+  "action": "savePushSub",
+  "methode": "POST",
+  "handler": "handleSavePushSub",
+  "appel": "handleSavePushSub(body)",
+  "cles": [
+   "athlete_id",
+   "endpoint",
+   "p256dh",
+   "auth",
+   "user_agent"
+  ],
+  "sessRole": false,
+  "lignes": 10
+ },
+ {
+  "action": "deletePushSub",
+  "methode": "POST",
+  "handler": "handleDeletePushSub",
+  "appel": "handleDeletePushSub(body)",
+  "cles": [
+   "endpoint"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "cronPushAlertes",
+  "methode": "POST",
+  "handler": "handleCronPushAlertes",
+  "appel": "handleCronPushAlertes(body)",
+  "cles": [
+   "secret"
+  ],
+  "sessRole": false,
+  "lignes": 108
+ },
+ {
+  "action": "envelopperHachages",
+  "methode": "POST",
+  "handler": "handleEnvelopperHachages",
+  "appel": "handleEnvelopperHachages(body)   // jeton jetons_admin (10/11)",
+  "cles": [
+   "jeton"
+  ],
+  "sessRole": false,
+  "lignes": 21
+ },
+ {
+  "action": "cronResumes",
+  "methode": "POST",
+  "handler": "handleCronResumes",
+  "appel": "handleCronResumes(body)",
+  "cles": [
+   "secret",
+   "auto",
+   "periode"
+  ],
+  "sessRole": false,
+  "lignes": 70
+ },
+ {
+  "action": "cronResumesAuto",
+  "methode": "POST",
+  "handler": "handleCronResumes",
+  "appel": "handleCronResumes({ ...body, auto: true })",
+  "cles": [
+   "secret",
+   "auto",
+   "periode"
+  ],
+  "sessRole": false,
+  "lignes": 70
+ },
+ {
+  "action": "saveNativePushToken",
+  "methode": "POST",
+  "handler": "handleSaveNativePushToken",
+  "appel": "handleSaveNativePushToken(body)",
+  "cles": [
+   "athlete_id",
+   "token",
+   "platform"
+  ],
+  "sessRole": false,
+  "lignes": 12
+ },
+ {
+  "action": "deleteNativePushToken",
+  "methode": "POST",
+  "handler": "handleDeleteNativePushToken",
+  "appel": "handleDeleteNativePushToken(body)",
+  "cles": [
+   "token",
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 9
+ },
+ {
+  "action": "testPush",
+  "methode": "POST",
+  "handler": "handleTestPush",
+  "appel": "handleTestPush(body)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 29
+ },
+ {
+  "action": "marquerCommentairesLus",
+  "methode": "POST",
+  "handler": "handleMarquerCommentairesLus",
+  "appel": "handleMarquerCommentairesLus(body)",
+  "cles": [
+   "ids"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "supprimerCommentaire",
+  "methode": "POST",
+  "handler": "handleSupprimerCommentaire",
+  "appel": "handleSupprimerCommentaire(body)",
+  "cles": [
+   "id"
+  ],
+  "sessRole": true,
+  "lignes": 18
+ },
+ {
+  "action": "saveObjectif",
+  "methode": "POST",
+  "handler": "handleSaveObjectif",
+  "appel": "handleSaveObjectif(body)",
+  "cles": [
+   "athlete_id",
+   "objectif",
+   "strategie",
+   "seances_semaine"
+  ],
+  "sessRole": false,
+  "lignes": 22
+ },
+ {
+  "action": "rebuildActivites",
+  "methode": "POST",
+  "handler": "handleRebuildActivites",
+  "appel": "handleRebuildActivites(body)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "savePoids",
+  "methode": "POST",
+  "handler": "handleSavePoids",
+  "appel": "handleSavePoids(body)",
+  "cles": [
+   "athlete_nom",
+   "athlete",
+   "athlete_id",
+   "poids",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "saveNote",
+  "methode": "POST",
+  "handler": "handleSaveNote",
+  "appel": "handleSaveNote(body)",
+  "cles": [
+   "athlete",
+   "athlete_nom",
+   "date",
+   "athlete_id",
+   "note",
+   "seance_id"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "saveProgrammeLigne",
+  "methode": "POST",
+  "handler": "handleSaveProgrammeLigne",
+  "appel": "_progMajTrace(action, body, () => handleSaveProgrammeLigne(body))",
+  "cles": [
+   "jour",
+   "charge_pct_1rm",
+   "rpe_cible",
+   "type",
+   "cardio_cible",
+   "cardio_unite",
+   "schema",
+   "backoff_pct",
+   "series_json",
+   "athlete_id",
+   "athlete_nom",
+   "seance_id",
+   "exercice",
+   "series_prevues",
+   "reps_mini",
+   "reps_max",
+   "repos_sec",
+   "groupe_id",
+   "row_index"
+  ],
+  "sessRole": false,
+  "lignes": 42
+ },
+ {
+  "action": "saveProgrammeJour",
+  "methode": "POST",
+  "handler": "handleSaveProgrammeJour",
+  "appel": "handleSaveProgrammeJour(body)",
+  "cles": [
+   "athlete_id",
+   "seance_id",
+   "jour"
+  ],
+  "sessRole": false,
+  "lignes": 9
+ },
+ {
+  "action": "getPlanning",
+  "methode": "POST",
+  "handler": "handleGetPlanning",
+  "appel": "handleGetPlanning(body)",
+  "cles": [
+   "athlete_id",
+   "from",
+   "to"
+  ],
+  "sessRole": false,
+  "lignes": 11
+ },
+ {
+  "action": "planSeance",
+  "methode": "POST",
+  "handler": "handlePlanSeance",
+  "appel": "handlePlanSeance(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "seance_id",
+   "source",
+   "statut"
+  ],
+  "sessRole": false,
+  "lignes": 13
+ },
+ {
+  "action": "setRattachement",
+  "methode": "POST",
+  "handler": "handleSetRattachement",
+  "appel": "handleSetRattachement(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "seance_id",
+   "cible"
+  ],
+  "sessRole": true,
+  "lignes": 14
+ },
+ {
+  "action": "creerExercice",
+  "methode": "POST",
+  "handler": "handleCreerExercice",
+  "appel": "handleCreerExercice(body)",
+  "cles": [
+   "exercice",
+   "muscle",
+   "muscle_secondaire",
+   "materiel"
+  ],
+  "sessRole": true,
+  "lignes": 28
+ },
+ {
+  "action": "exercicesPrives",
+  "methode": "POST",
+  "handler": "handleExercicesPrives",
+  "appel": "handleExercicesPrives(body)",
+  "cles": [
+   "athlete_id"
+  ],
+  "sessRole": true,
+  "lignes": 10
+ },
+ {
+  "action": "movePlanning",
+  "methode": "POST",
+  "handler": "handleMovePlanning",
+  "appel": "handleMovePlanning(body)",
+  "cles": [
+   "id",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "unplanPlanning",
+  "methode": "POST",
+  "handler": "handleUnplanPlanning",
+  "appel": "handleUnplanPlanning(body)",
+  "cles": [
+   "id"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "genererProgramme",
+  "methode": "POST",
+  "handler": "handleGenererProgramme",
+  "appel": "_progMajTrace(action, body, () => handleGenererProgramme(body))",
+  "cles": [
+   "athlete_id",
+   "lignes",
+   "athlete_nom",
+   "remplacer"
+  ],
+  "sessRole": false,
+  "lignes": 31
+ },
+ {
+  "action": "supprimerProgrammeLigne",
+  "methode": "POST",
+  "handler": "handleSupprimerProgrammeLigne",
+  "appel": "_progMajTrace(action, body, () => handleSupprimerProgrammeLigne(body))",
+  "cles": [
+   "row_index"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "deleteCoach",
+  "methode": "POST",
+  "handler": "handleDeleteCoach",
+  "appel": "handleDeleteCoach(body)",
+  "cles": [
+   "coach_id"
+  ],
+  "sessRole": false,
+  "lignes": 17
+ },
+ {
+  "action": "saveBienEtre",
+  "methode": "POST",
+  "handler": "handleSaveBienEtre",
+  "appel": "handleSaveBienEtre(body)",
+  "cles": [
+   "athlete_id",
+   "seance_id",
+   "date",
+   "sommeil",
+   "energie",
+   "fatigue",
+   "motivation",
+   "stress",
+   "courbatures",
+   "douleur",
+   "zone",
+   "ressenti",
+   "note"
+  ],
+  "sessRole": false,
+  "lignes": 38
+ },
+ {
+  "action": "saveBilanSeance",
+  "methode": "POST",
+  "handler": "handleSaveBilanSeance",
+  "appel": "handleSaveBilanSeance(body)",
+  "cles": [
+   "athlete_id",
+   "type",
+   "date",
+   "seance_id",
+   "rpe",
+   "duree",
+   "ressenti",
+   "douleur",
+   "zone",
+   "note"
+  ],
+  "sessRole": false,
+  "lignes": 59
+ },
+ {
+  "action": "setPauseAthlete",
+  "methode": "POST",
+  "handler": "handleSetPauseAthlete",
+  "appel": "handleSetPauseAthlete(body)",
+  "cles": [
+   "athlete_id",
+   "debut",
+   "fin"
+  ],
+  "sessRole": false,
+  "lignes": 8
+ },
+ {
+  "action": "marquerAlerteTraitee",
+  "methode": "POST",
+  "handler": "handleMarquerAlerteTraitee",
+  "appel": "handleMarquerAlerteTraitee(body)",
+  "cles": [
+   "coach_id",
+   "cle",
+   "semaine"
+  ],
+  "sessRole": false,
+  "lignes": 14
+ },
+ {
+  "action": "marquerAlerteLue",
+  "methode": "POST",
+  "handler": "handleMarquerAlerteLue",
+  "appel": "handleMarquerAlerteLue(body)",
+  "cles": [
+   "athlete_id",
+   "id"
+  ],
+  "sessRole": false,
+  "lignes": 9
+ },
+ {
+  "action": "saveSemaineType",
+  "methode": "POST",
+  "handler": "handleSaveSemaineType",
+  "appel": "handleSaveSemaineType(body)",
+  "cles": [
+   "valeur",
+   "athlete_id"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "savePref",
+  "methode": "POST",
+  "handler": "handleSavePref",
+  "appel": "handleSavePref(body)",
+  "cles": [
+   "athlete_id",
+   "cle",
+   "valeur"
+  ],
+  "sessRole": true,
+  "lignes": 10
+ },
+ {
+  "action": "saveExoCategories",
+  "methode": "POST",
+  "handler": "handleSaveExoCategories",
+  "appel": "handleSaveExoCategories(body)",
+  "cles": [
+   "athlete_id",
+   "categories"
+  ],
+  "sessRole": false,
+  "lignes": 12
+ },
+ {
+  "action": "saveZonesPrio",
+  "methode": "POST",
+  "handler": "handleSaveZonesPrio",
+  "appel": "handleSaveZonesPrio(body)",
+  "cles": [
+   "athlete_id",
+   "zones"
+  ],
+  "sessRole": false,
+  "lignes": 7
+ },
+ {
+  "action": "saveMusclesExclus",
+  "methode": "POST",
+  "handler": "handleSaveMusclesExclus",
+  "appel": "handleSaveMusclesExclus(body)",
+  "cles": [
+   "athlete_id",
+   "muscles",
+   "zones"
+  ],
+  "sessRole": false,
+  "lignes": 9
+ },
+ {
+  "action": "claimRecompense",
+  "methode": "POST",
+  "handler": "handleClaimRecompense",
+  "appel": "handleClaimRecompense(body)",
+  "cles": [
+   "athlete_id",
+   "reward_id"
+  ],
+  "sessRole": false,
+  "lignes": 21
+ },
+ {
+  "action": "saveSante",
+  "methode": "POST",
+  "handler": "handleSaveSante",
+  "appel": "handleSaveSante(body)",
+  "cles": [
+   "athlete_id",
+   "entries",
+   "source",
+   "marque"
+  ],
+  "sessRole": false,
+  "lignes": 39
+ },
+ {
+  "action": "saveNutrition",
+  "methode": "POST",
+  "handler": "handleSaveNutrition",
+  "appel": "handleSaveNutrition(body)",
+  "cles": [
+   "athlete_id",
+   "entries",
+   "source"
+  ],
+  "sessRole": false,
+  "lignes": 27
+ },
+ {
+  "action": "chatIA",
+  "methode": "POST",
+  "handler": "handleChatIA",
+  "appel": "handleChatIA(body)",
+  "cles": [
+   "athlete_id",
+   "mode",
+   "coach_id",
+   "messages"
+  ],
+  "sessRole": false,
+  "lignes": 88
+ },
+ {
+  "action": "analyseMorpho",
+  "methode": "POST",
+  "handler": "handleAnalyseMorpho",
+  "appel": "handleAnalyseMorpho(body)",
+  "cles": [
+   "athlete_id",
+   "images",
+   "consent",
+   "questionnaire",
+   "segments",
+   "views"
+  ],
+  "sessRole": false,
+  "lignes": 68
+ },
+ {
+  "action": "envoyerMorphoMail",
+  "methode": "POST",
+  "handler": "handleEnvoyerMorphoMail",
+  "appel": "handleEnvoyerMorphoMail(body)",
+  "cles": [
+   "athlete_id",
+   "to",
+   "nom",
+   "resultat",
+   "segments"
+  ],
+  "sessRole": false,
+  "lignes": 9
+ },
+ {
+  "action": "saveObjectifJoueur",
+  "methode": "POST",
+  "handler": "handleSaveObjectifJoueur",
+  "appel": "handleSaveObjectifJoueur(body)",
+  "cles": [
+   "athlete_id",
+   "categorie",
+   "description",
+   "statut",
+   "date",
+   "id"
+  ],
+  "sessRole": false,
+  "lignes": 11
+ },
+ {
+  "action": "deleteObjectifJoueur",
+  "methode": "POST",
+  "handler": "handleDeleteObjectifJoueur",
+  "appel": "handleDeleteObjectifJoueur(body)",
+  "cles": [
+   "id"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "saveBlessure",
+  "methode": "POST",
+  "handler": "handleSaveBlessure",
+  "appel": "handleSaveBlessure(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "type",
+   "localisation",
+   "gravite",
+   "duree",
+   "retour_terrain",
+   "retour_competition",
+   "statut",
+   "id"
+  ],
+  "sessRole": false,
+  "lignes": 11
+ },
+ {
+  "action": "deleteBlessure",
+  "methode": "POST",
+  "handler": "handleDeleteBlessure",
+  "appel": "handleDeleteBlessure(body)",
+  "cles": [
+   "id"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "saveMatch",
+  "methode": "POST",
+  "handler": "handleSaveMatch",
+  "appel": "handleSaveMatch(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "duree",
+   "rpe",
+   "minutes_jouees",
+   "note",
+   "heure",
+   "intensite_prevue",
+   "intensite_realisee",
+   "titulaire",
+   "stats"
+  ],
+  "sessRole": false,
+  "lignes": 26
+ },
+ {
+  "action": "saveBilanAthlete",
+  "methode": "POST",
+  "handler": "handleSaveBilanAthlete",
+  "appel": "handleSaveBilanAthlete(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "vals",
+   "commentaire"
+  ],
+  "sessRole": false,
+  "lignes": 19
+ },
+ {
+  "action": "saveContexte",
+  "methode": "POST",
+  "handler": "handleSaveContexte",
+  "appel": "handleSaveContexte(body)",
+  "cles": [
+   "athlete_id",
+   "etat",
+   "cle",
+   "date_debut",
+   "date_fin",
+   "source",
+   "note",
+   "description"
+  ],
+  "sessRole": false,
+  "lignes": 31
+ },
+ {
+  "action": "cloreContexte",
+  "methode": "POST",
+  "handler": "handleCloreContexte",
+  "appel": "handleCloreContexte(body)",
+  "cles": [
+   "id",
+   "athlete_id",
+   "date_fin"
+  ],
+  "sessRole": false,
+  "lignes": 25
+ },
+ {
+  "action": "saveCardio",
+  "methode": "POST",
+  "handler": "handleSaveCardio",
+  "appel": "handleSaveCardio(body)",
+  "cles": [
+   "athlete_id",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 14
+ },
+ {
+  "action": "saveHyrox",
+  "methode": "POST",
+  "handler": "handleSaveHyrox",
+  "appel": "handleSaveHyrox(body)",
+  "cles": [
+   "athlete_id",
+   "date",
+   "mode",
+   "division",
+   "segments",
+   "poids",
+   "total_sec",
+   "rpe"
+  ],
+  "sessRole": false,
+  "lignes": 30
+ },
+ {
+  "action": "deleteCardio",
+  "methode": "POST",
+  "handler": "handleDeleteCardio",
+  "appel": "handleDeleteCardio(body)",
+  "cles": [
+   "athlete_id",
+   "seance_id"
+  ],
+  "sessRole": false,
+  "lignes": 6
+ },
+ {
+  "action": "updateCardio",
+  "methode": "POST",
+  "handler": "handleUpdateCardio",
+  "appel": "handleUpdateCardio(body)",
+  "cles": [
+   "athlete_id",
+   "seance_id",
+   "date"
+  ],
+  "sessRole": false,
+  "lignes": 12
+ }
+]
