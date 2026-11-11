@@ -3451,11 +3451,21 @@ const COACH_DEMANDE_CLE = 'coach_demande'
 async function handleRepondreDemandeCoach(body: any): Promise<Response> {
   const athleteId = String(body.athlete_id || '')
   if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  // Règle métier (porteur, 11/11 — audit P2.1) : la demande appartient à l'athlète. Seul l'athlète de la
+  // SESSION l'accepte ou la refuse ; aucun coach (même son coach actuel) ne peut y répondre.
+  if (body._sessRole !== 'a' || String(body._sessId || '') !== athleteId) return jsonResp({ success: false, error: 'Seul l\'athlète peut répondre à cette demande.' })
   const { data: dem } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE).limit(1)
   const coachId = dem && dem.length ? String(dem[0].valeur || '') : ''
   if (!coachId) return jsonResp({ success: false, error: 'Aucune demande en attente.' })
-  // Le coach qui a fait la demande doit être celui que l'athlète a vu (anti-remplacement entre-temps).
-  if (body.coach_id_vu != null && String(body.coach_id_vu) !== coachId) return jsonResp({ success: false, error: 'La demande a changé : rouvre l\'app.' })
+  // Le coach qui a fait la demande doit être celui que l'athlète a vu (anti-remplacement entre-temps) : obligatoire.
+  if (body.coach_id_vu == null || String(body.coach_id_vu) !== coachId) return jsonResp({ success: false, error: 'La demande a changé : rouvre l\'app.' })
+  // Un athlète déjà rattaché à un (autre) coach le quitte d'abord (même règle que lierAthlete et l'app).
+  // Refuser reste toujours possible. Rien n'est supprimé en cas de refus métier.
+  if (body.accepter) {
+    const { data: aCur } = await sb().from('athletes').select('coach_id').eq('id', athleteId).single()
+    const cur = String((aCur as any)?.coach_id ?? '').trim()
+    if (cur && cur !== 'null' && cur !== '0' && cur !== coachId) return jsonResp({ success: false, error: 'Quitte d\'abord ton coach actuel (Réglages ▸ Mon coach) avant d\'accepter un nouveau coach.' })
+  }
   await sb().from('indicateurs').delete().eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE)
   if (!body.accepter) return jsonResp({ success: true, accepte: false })
   const { data: cRow } = await sb().from('coachs').select('coach_id,nom').eq('coach_id', coachId).single()
