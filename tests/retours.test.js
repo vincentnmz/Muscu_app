@@ -84,7 +84,8 @@ let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.
   eq((html.match(/onclick="ouvrirRetour\(\)"/g) || []).length === 4, 'index.html : icône d\'en-tête + Réglages, athlète ET coach (4 entrées)');
   eq(/id="btn-retour-hdr" onclick="ouvrirRetour\(\)"/.test(html), 'index.html : icône dans l\'en-tête athlète');
   eq(/_annonceRetour\('a'\)/.test(app) && /_annonceRetour\('c'\)/.test(app) && /nv_annonce_retour_v1/.test(app), 'app.js : annonce unique à l\'ouverture (athlète et coach)');
-  eq(/\['onb-overlay', 'nvt-ov', 'nvg-ov', 'retour-overlay'\]/.test(app), 'app.js : annonce jamais par-dessus l\'onboarding / la visite');
+  eq(/\['onb-overlay', 'nvt-ov', 'nvg-ov', 'retour-overlay', 'wellness-modal', 'wellness-overlay'\]/.test(app), 'app.js : annonce jamais par-dessus l\'onboarding, la visite ou le questionnaire du jour');
+  eq(/role === 'a' && !\(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData\.onboarding_vu\)\) occupe = true/.test(app) && /role === 'c' && !_tourSeen\('onb_coach_vu'\)\) occupe = true/.test(app), 'app.js : annonce seulement après l\'onboarding terminé (athlète et coach)');
   eq(/action: 'envoyerRetour', type: _retourType, message: m, ecran: _ecranRetour\(\), version: _versionRetour\(\), plateforme: _plateformeRetour\(\)/.test(app), 'app.js : écran, version et plateforme envoyés');
   eq(/if \(tab !== 'reglages'\) _nvEcranRetour = TAB_LABELS\[tab\]/.test(app), 'app.js : dernier écran visité mémorisé (hors Réglages)');
 

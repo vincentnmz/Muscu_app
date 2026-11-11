@@ -2426,7 +2426,7 @@ function ouvrirRetour(type) {
   if (!ov) {
     ov = document.createElement('div');
     ov.id = 'retour-overlay';
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
     ov.onclick = function (e) { if (e.target === ov) fermerRetour(); };
     var chip = function (k, l) { return '<button type="button" data-rt="' + k + '" onclick="_retourChoisir(\'' + k + '\')" style="flex:1;border:1px solid var(--border);border-radius:10px;padding:10px 6px;font-size:13px;font-weight:700;cursor:pointer;">' + l + '</button>'; };
     ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="retour-titre" style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(7,11,20,.25);box-sizing:border-box">'
@@ -2451,12 +2451,22 @@ var _NV_ANNONCE_RETOUR = 'nv_annonce_retour_v1';
 function _annonceRetour(role, essai) {
   try { if (localStorage.getItem(_NV_ANNONCE_RETOUR)) return; } catch (e) { return; }
   essai = essai || 0;
-  var occupe = ['onb-overlay', 'nvt-ov', 'nvg-ov', 'retour-overlay'].some(function (id) { var el = document.getElementById(id); return el && el.style.display !== 'none' && el.offsetParent !== null; });
+  // Une fenêtre est déjà ouverte (onboarding, visite, questionnaire du jour…) : on attend qu'elle soit fermée.
+  var occupe = ['onb-overlay', 'nvt-ov', 'nvg-ov', 'retour-overlay', 'wellness-modal', 'wellness-overlay'].some(function (id) {
+    var el = document.getElementById(id); if (!el) return false;
+    var cs = window.getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden';
+  });
+  // Compte qui n'a pas encore fini son onboarding (nouvel inscrit) : on attend, rien n'est marqué « vu ».
+  // Les drapeaux d'onboarding ne sont NI lus autrement NI modifiés ici.
+  try {
+    if (role === 'a' && !(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.onboarding_vu)) occupe = true;
+    if (role === 'c' && !_tourSeen('onb_coach_vu')) occupe = true;
+  } catch (e) { occupe = true; }
   if (occupe || essai === 0) { if (essai < 40) setTimeout(function () { _annonceRetour(role, essai + 1); }, essai === 0 ? 2500 : 8000); return; }
   var ou = role === 'c' ? 'Réglages ▸ À propos' : 'Réglages ▸ Infos';
   var ico = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5v4.5M12 15.5v.01"/></svg>';
   var ov = document.createElement('div'); ov.id = 'annonce-retour';
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
   ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="annonce-retour-t" style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:0 -8px 30px rgba(7,11,20,.25)">'
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">Nouveau</div>'
     + '<div id="annonce-retour-t" style="font-size:17px;font-weight:800;margin-bottom:8px">Un bug ? Une idée ? Dis-le nous</div>'
