@@ -4771,9 +4771,22 @@ async function handleSavePushSub(body: any): Promise<Response> {
   const p256dh = String(body.p256dh || '')
   const auth = String(body.auth || '')
   if (!athlete_id || !endpoint || !p256dh || !auth) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const row = { athlete_id, endpoint, p256dh, auth, user_agent: String(body.user_agent || ''), created_at: new Date().toISOString() }
-  const { error } = await sb().from('push_subscriptions').upsert(row, { onConflict: 'endpoint' })
-  if (error) return jsonResp({ success: false, error: error.message })
+  // Sécurité (audit P2.1, 11/11) : le propriétaire vient de la SESSION (athlète : son id ; coach :
+  // « coach:<id> », COACH_PUSH_PREFIX), jamais de l'app. Avant : upsert sur l'endpoint → n'importe quel
+  // compte réattribuait à son nom l'abonnement d'un autre, et un coach pouvait s'abonner sous l'id de son athlète.
+  const sid = String(body._sessId || '')
+  if (!sid) return jsonResp({ success: false, error: 'Session requise' })
+  const proprio = body._sessRole === 'c' ? COACH_PUSH_PREFIX + sid : sid
+  if (athlete_id !== proprio) return jsonResp({ success: false, error: 'Abonnement non autorisé pour ce compte.' })
+  const user_agent = String(body.user_agent || ''), created_at = new Date().toISOString()
+  // 1) Adresse nouvelle → insertion. 2) Adresse déjà connue → mise à jour SEULEMENT si elle est à ce compte
+  // (filtre sur le propriétaire dans la même requête : pas de lecture puis écriture). 3) Sinon : refus, rien ne change.
+  const { error: eIns } = await sb().from('push_subscriptions').insert({ athlete_id: proprio, endpoint, p256dh, auth, user_agent, created_at })
+  if (!eIns) return jsonResp({ success: true })
+  if (String((eIns as any).code || '') !== '23505' && !/duplicate|unique/i.test(String(eIns.message || ''))) return jsonResp({ success: false, error: eIns.message })
+  const { data: maj, error: eMaj } = await sb().from('push_subscriptions').update({ p256dh, auth, user_agent, created_at }).eq('endpoint', endpoint).eq('athlete_id', proprio).select('id')
+  if (eMaj) return jsonResp({ success: false, error: eMaj.message })
+  if (!maj || !maj.length) return jsonResp({ success: false, error: 'Cet appareil reçoit déjà les notifications d’un autre compte. Désactive-les d’abord sur cet autre compte.' })
   return jsonResp({ success: true })
 }
 
