@@ -6156,10 +6156,14 @@ async function handleSaveNativePushToken(body: any): Promise<Response> {
 async function handleDeleteNativePushToken(body: any): Promise<Response> {
   const token = String(body.token || '')
   if (!token) return jsonResp({ success: false, error: 'token manquant' })
-  // Désactiver pour UN rôle ne coupe pas l'autre rôle du même téléphone (N1).
-  let q = sb().from('native_push_tokens').delete().eq('token', token)
-  if (body.athlete_id) q = q.eq('athlete_id', String(body.athlete_id))
-  const { error } = await q
+  // Sécurité (audit P2.1, 11/11) : on ne supprime que la ligne de la personne connectée (athlète : son id ;
+  // coach : « coach:<id> », COACH_PUSH_PREFIX), jamais selon l'athlete_id envoyé par l'app. Avant : sans
+  // athlete_id, n'importe quel compte effaçait le jeton d'un autre ; un coach effaçait celui de son athlète.
+  // Désactiver pour UN rôle ne coupe toujours pas l'autre rôle du même téléphone (N1, clé token + athlete_id).
+  const sid = String(body._sessId || '')
+  if (!sid) return jsonResp({ success: true })
+  const proprio = body._sessRole === 'c' ? COACH_PUSH_PREFIX + sid : sid
+  const { error } = await sb().from('native_push_tokens').delete().eq('token', token).eq('athlete_id', proprio)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
 }
