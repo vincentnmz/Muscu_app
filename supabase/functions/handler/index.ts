@@ -4780,7 +4780,11 @@ async function handleSavePushSub(body: any): Promise<Response> {
 async function handleDeletePushSub(body: any): Promise<Response> {
   const endpoint = String(body.endpoint || '')
   if (!endpoint) return jsonResp({ success: false, error: 'endpoint manquant' })
-  const { error } = await sb().from('push_subscriptions').delete().eq('endpoint', endpoint)
+  // Sécurité (audit P2.1, 11/11) : on ne supprime que l'abonnement de la personne connectée
+  // (athlète : son id ; coach : « coach:<id> », COACH_PUSH_PREFIX). Sans session : rien.
+  const proprio = body._sessRole === 'c' ? COACH_PUSH_PREFIX + String(body._sessId || '') : String(body._sessId || '')
+  if (!body._sessId) return jsonResp({ success: true })
+  const { error } = await sb().from('push_subscriptions').delete().eq('endpoint', endpoint).eq('athlete_id', proprio)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
 }
