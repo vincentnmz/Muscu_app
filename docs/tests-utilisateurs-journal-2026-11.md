@@ -6,7 +6,10 @@
 
 ## Quand et comment
 
-- **Quand** : après au moins **2 semaines** de journal pour le testeur (sinon « Tes décisions » est vide).
+- **Quand** : après **3 à 4 semaines** d'utilisation par le testeur. Avant 1 semaine, « Tes décisions » est vide ; le
+  « résultat observé ensuite » demande 1 à 2 semaines après chaque décision et au moins 2 séances (seuils du code, 13/11).
+- **Ne pas confondre** avec le guide destiné aux testeurs (« Novalyz — Guide testeurs », https://claude.ai/artifact/6h52yctoFoJYgNmezAsxc5) : ce guide-là peut être
+  envoyé ; **cette grille, jamais** (elle contient les questions et ce qu'on cherche).
 - **Où** : sur son téléphone, dans sa vraie situation (avant ou après une séance), 15-20 min.
 - **Comment** : il manipule, tu regardes. Tu notes ce qu'il **fait** avant ce qu'il **dit**.
 - **Relances neutres seulement** : « C'est-à-dire ? » · « Montre-moi. » · « Qu'est-ce qui te fait dire ça ? » ·
