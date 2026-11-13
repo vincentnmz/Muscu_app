@@ -1,0 +1,116 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journal des décisions — maquette</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F7FF;--card:#fff;--b:#DCE4F5;--t:#0E1A33;--m:#55627E;--s:#8A96B0;--a:#1A5FFF;--g:#00A854;--o:#E07800;--r:#DC3545;--s2:#EEF2FB}
+*{box-sizing:border-box}body{margin:0;background:#E9EEF8;font-family:Quicksand,Arial,sans-serif;color:var(--t)}
+.legend{max-width:1240px;margin:0 auto;padding:18px 16px 0;font-size:13px;color:var(--m);line-height:1.5}
+.legend h1{font-family:Michroma;font-size:18px;color:var(--t);margin:0 0 6px}
+.wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding:20px 12px}
+.phone{width:390px;max-width:100%;background:var(--bg);border-radius:28px;box-shadow:0 10px 40px rgba(14,26,51,.15);overflow:hidden;padding-bottom:18px}
+.top{background:#fff;padding:16px 18px;border-bottom:1px solid var(--b);font-family:Michroma;font-size:16px}
+.top small{display:block;font-family:Quicksand;font-size:11px;color:var(--s);margin-top:3px;font-weight:700}
+.lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--s);font-weight:700;margin:16px 18px 0}
+.card{background:var(--card);border:1px solid var(--b);border-radius:18px;padding:14px 15px;margin:10px 14px}
+.new{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.06em;color:#fff;background:var(--a);border-radius:5px;padding:2px 5px;margin-left:6px;vertical-align:2px}
+.act{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--b)}
+.act:first-of-type{border-top:0}
+.chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--b);flex:none;display:grid;place-items:center;font-size:12px;color:#fff;font-weight:900}
+.chk.on{background:var(--g);border-color:var(--g)}
+.act .t{font-size:13.5px;font-weight:700}.act .p{font-size:11.5px;color:var(--m);margin-top:2px;line-height:1.4}
+.res{margin-top:12px;padding:10px 11px;background:var(--s2);border:1px solid var(--b);border-radius:12px;font-size:12px;line-height:1.5}
+.res b{color:var(--t)}
+.tag{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 7px;margin-right:6px;vertical-align:1px}
+.ok{background:#E3F7EC;color:#00813F}.ko{background:#FFF1E0;color:#B35F00}.nt{background:#EEF1F7;color:#55627E}.ne{background:#F2F2F2;color:#777}
+.wk{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:13px}
+.wk span{font-size:11px;color:var(--s);font-weight:700}
+.line{font-size:12.5px;padding:8px 0;border-top:1px solid var(--b);line-height:1.45}
+.line:first-of-type{border-top:0}
+.line .o{font-size:11.5px;color:var(--m);margin-top:3px}
+.cap{font-size:10.5px;color:var(--s);line-height:1.45;margin-top:9px}
+.btn{display:inline-block;font-size:11.5px;font-weight:800;border-radius:9px;padding:7px 10px;margin:8px 6px 0 0;border:1px solid var(--b);background:#fff;color:var(--t)}
+.btn.p{background:var(--a);border-color:var(--a);color:#fff}
+.store{max-width:1240px;margin:0 auto 30px;padding:0 16px}
+.store .card{margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}td,th{border-top:1px solid var(--b);padding:7px 6px;text-align:left;vertical-align:top}th{font-size:11px;color:var(--s);text-transform:uppercase;letter-spacing:.05em}
+</style></head><body>
+<div class="legend">
+  <h1>Journal des décisions (P1-1) — maquette</h1>
+  Ce qui change : Novalyz <b>garde une trace</b> de ce qu'il a proposé chaque semaine, puis montre <b>ce qui s'est passé ensuite</b>
+  (« résultat observé après la recommandation », jamais « grâce à »). Le calcul du plan ne change pas : on <b>mémorise</b> ce qu'il produit.
+  Données fictives. Statuts : <span class="tag ok">Objectif atteint</span><span class="tag ko">Pas atteint</span><span class="tag nt">Pas tenté</span><span class="tag ne">Non évaluable</span>
+</div>
+
+<div class="wrap">
+  <!-- 1. Aujourd'hui : plan de la semaine + bilan de la semaine dernière -->
+  <div class="phone">
+    <div class="top">Aujourd'hui<small>Jeudi 20 novembre</small></div>
+    <div class="lbl">Plan de la semaine</div>
+    <div class="card">
+      <div class="act"><div class="chk on">✓</div><div><div class="t">Développé incliné : proposé 75 kg (ou 70 kg)</div><div class="p">Pour revenir dans ta fourchette 6-10. Fait lundi : 75 kg × 6.</div></div></div>
+      <div class="act"><div class="chk"></div><div><div class="t">Quadriceps : 8 séries cette semaine</div><div class="p">5 / 8 pour l'instant — tous tes exercices de quadriceps comptent.</div></div></div>
+      <div class="act"><div class="chk"></div><div><div class="t">Leg curl : garde 40 kg, vise RPE 8</div><div class="p">RPE 8 → 9,5 à charge égale : signe de fatigue sur ce mouvement.</div></div></div>
+      <div class="res"><b>Semaine dernière</b> <span class="new">NOUVEAU</span><br>
+        3 actions proposées · 2 réalisées · <b>1 objectif atteint</b>.<br>
+        <span style="color:var(--m)">Voir le détail dans Analyses ▸ Tes décisions ›</span></div>
+    </div>
+  </div>
+
+  <!-- 2. Analyses : historique des décisions -->
+  <div class="phone">
+    <div class="top">Analyses<small>Tes décisions <span class="new">NOUVEAU</span></small></div>
+    <div class="lbl">Ce que Novalyz t'a proposé · et ce qui s'est passé</div>
+    <div class="card">
+      <div class="wk">Semaine du 10/11 <span>2 / 3 réalisées</span></div>
+      <div class="line"><span class="tag ok">Objectif atteint</span><b>Développé incliné : 75 kg (ou 70 kg)</b>
+        <div class="o">Proposé car 80 kg × 4 à RPE 10 (fourchette 6-10). Réalisé le 12/11 : 75 kg × 6.<br>Résultat observé ensuite : 75 kg × 8 le 17/11 — revenu dans ta fourchette.</div></div>
+      <div class="line"><span class="tag ko">Pas atteint</span><b>Quadriceps : 8 séries</b>
+        <div class="o">Proposé car 5,5 séries/sem sur 4 semaines (ton minimum 8). Réalisé : 6 séries.</div></div>
+      <div class="line"><span class="tag nt">Pas tenté</span><b>Élévation latérale : série à 5 kg ≈ 16 reps, sans aller au bout</b>
+        <div class="o">Proposé car la série à 5 kg passait de 16 à 19 reps pendant que 7,5 kg restait à 10. Exercice pas refait cette semaine.</div></div>
+      <div class="cap">Fiabilité : chaque résultat dit sur combien de séances il repose. « Non évaluable » quand il n'y a pas encore assez de séances après la proposition.</div>
+    </div>
+    <div class="card">
+      <div class="wk">Semaine du 03/11 <span>3 / 3 réalisées</span></div>
+      <div class="line"><span class="tag ok">Objectif atteint</span><b>Ischios : 6 séries</b><div class="o">Réalisé : 6,5 séries. Tenu la semaine suivante (6).</div></div>
+      <div class="line"><span class="tag ne">Non évaluable</span><b>Rowing : vise 62,5 kg × 8</b><div class="o">Réalisé le 05/11. Une seule séance depuis : trop tôt pour conclure.</div></div>
+      <div class="line"><span class="tag ko">Pas atteint</span><b>Leg curl : garde 40 kg, vise RPE 8</b><div class="o">Proposé car RPE 8 → 9 à 40 kg. Réalisé (40 kg gardés), mais RPE 9 puis 9,5 : l'effort n'est pas redescendu.</div></div>
+    </div>
+  </div>
+
+  <!-- 3. Coach : fiche athlète -->
+  <div class="phone">
+    <div class="top">Fiche · John<small>Coach — À décider</small></div>
+    <div class="lbl">Leg curl : RPE en hausse à charge égale</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--m);line-height:1.5">13/11 : <b style="color:var(--t)">40 kg × 10 à RPE 9,5</b> (fourchette 8-12) · RPE 8 → 9,5 à 40 kg</div>
+      <div class="res" style="background:#F2F6FF"><b>Déjà proposé</b> <span class="new">NOUVEAU</span><br>
+        Semaine du 03/11 : « garde 40 kg, vise RPE 8 » → <span class="tag ko">Pas atteint</span> (RPE 9 puis 9,5).<br>
+        <span style="color:var(--m)">Proposé cette semaine : la même action. Tu peux l'ajuster.</span></div>
+      <span class="btn p">✎ Modifier dans le programme</span><span class="btn">✉ Écrire à John</span><span class="btn">Marquer traité</span>
+    </div>
+    <div class="lbl">Historique des propositions</div>
+    <div class="card">
+      <div class="line"><b>Sur 4 semaines</b> : 11 actions proposées · 8 réalisées · <b>5 objectifs atteints</b> · 2 pas atteints · 1 non évaluable</div>
+      <div class="cap">Association observée, pas une preuve de cause : d'autres facteurs (sommeil, programme, contexte) peuvent jouer.</div>
+    </div>
+  </div>
+</div>
+
+<div class="store">
+  <div class="card">
+    <div class="wk" style="margin-bottom:6px">Ce qui serait enregistré (1 ligne par action proposée, une seule fois par semaine)</div>
+    <table>
+      <tr><th>Champ</th><th>Exemple</th><th>Pourquoi</th></tr>
+      <tr><td>athlète · semaine (lundi)</td><td>John · 10/11</td><td>Une seule version du plan par semaine (la première calculée).</td></tr>
+      <tr><td>type d'action · exercice / muscle</td><td>charge · Développé incliné</td><td>Les 5 types existants du plan : charge, séries, RPE, cible, reprise.</td></tr>
+      <tr><td>texte proposé + raison</td><td>« proposé 75 kg (ou 70 kg) » · « 80 kg × 4 à RPE 10 »</td><td>Ce que l'athlète a vu, tel quel.</td></tr>
+      <tr><td>critère de réussite</td><td>série 70-75 kg × ≥ 6</td><td>Fixé à l'avance (c'est celui qui coche « fait » aujourd'hui).</td></tr>
+      <tr><td>données d'entrée (résumé)</td><td>80 kg × 4 · RPE 10 · 3 séances / 4 sem.</td><td>Expliquer plus tard pourquoi c'était proposé.</td></tr>
+      <tr><td>version de la règle</td><td>plan-2026-11-13</td><td>Un changement de règle ne réécrit pas le passé.</td></tr>
+      <tr><td>réalisé · résultat observé</td><td>fait le 12/11 · objectif atteint (S+1)</td><td>Rempli ensuite, d'après les séances réelles (P1-2).</td></tr>
+    </table>
+    <div class="cap">Rien de nouveau n'est demandé à l'athlète. Une nouvelle table en base (migration préprod puis prod avec accord), lisible uniquement par l'athlète et son coach — couverte d'office par le test permanent des droits.</div>
+  </div>
+</div>
+</body></html>
