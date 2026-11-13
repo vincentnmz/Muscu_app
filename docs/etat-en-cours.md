@@ -6,8 +6,8 @@
 
 ## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
 
-**État prod (13/11 soir)** : serveur `index.ts` **v255** (= commit `dfc59ed`, vérifié caractère pour caractère) · app web `main` = **`d9c3a04`** (= `dev`, GitHub Pages OK) · SW **v584** · 109 suites de tests vertes · migration `20261113160000_decisions.sql` appliquée préprod + prod. ⚠️ L'**AAB Android** date de midi (`57be93c`) : il n'a **pas** le journal des décisions → nouvel AAB à construire depuis `main` seulement si le porteur le demande.
-**Préprod (`dev`, 13/11 soir, pas en prod)** : Résumé ▸ Fiabilité des données — le critère « Questionnaire du jour (N/28 j) » compte vraiment le questionnaire du jour (audit F1, option a), + **sommeil → performance** : couche séparée `js/sommeil-perf.js`, méthode validée par simulation (`docs/sommeil-performance-methode.md`), SW v586. Prod = fusion `dev`→`main` sur demande du porteur (front seul, pas d'index.ts).
+**État prod (13/11 soir)** : serveur `index.ts` **v255** (= commit `dfc59ed`, vérifié caractère pour caractère) · app web `main` = **`76f4a0b`** (13/11 soir, = `dev`, GitHub Pages OK : questionnaire du jour + sommeil → performance) · SW **v586** · 111 suites de tests vertes · migration `20261113160000_decisions.sql` appliquée préprod + prod. ⚠️ L'**AAB Android** date de midi (`57be93c`) : il n'a **pas** le journal des décisions → nouvel AAB à construire depuis `main` seulement si le porteur le demande.
+**En prod depuis le 13/11 soir (`76f4a0b`)** : Résumé ▸ Fiabilité des données — le critère « Questionnaire du jour (N/28 j) » compte vraiment le questionnaire du jour (audit F1, option a), + **sommeil → performance** : couche séparée `js/sommeil-perf.js`, méthode validée par simulation (`docs/sommeil-performance-methode.md`), SW v586. Limite connue à traiter : 30 dernières dates/exercice envoyées par le serveur (voir § 11 de la méthode).
 
 **Fait aujourd'hui (dans l'ordre)**
 - **Retours clients** (prod) : fourchettes de reps lourd / moyen / léger qui remplissent vraiment les cases + bouton Force 1-5 ; « + Push / Pull / Jambes » créent la séance et ouvrent le choix des exercices ; **pause / mode vacances** (pause à venir renvoyée par le serveur, tri stable, échec affiché, fiche coach, agendas colorés) ; 5 exercices au catalogue (dont Développé militaire à la barre). Point 2 (chrono / montre) abandonné par le porteur.
@@ -55,7 +55,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Où en est le travail (flux + déploiement)
 - Branche de travail : `claude/pensive-ritchie-5p62gt`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`. Promotion `dev → main` (prod) quand l'utilisateur valide.
-- **SW = `novalyz-shell-v586`** (13/11 préprod ; prod = v584 ; bumper `sw.js` à CHAQUE modif de `js/app.js` / `js/lecture-v3.js` / `index.html` / `css`).
+- **SW = `novalyz-shell-v586`** (13/11, prod et préprod ; bumper `sw.js` à CHAQUE modif de `js/app.js` / `js/lecture-v3.js` / `index.html` / `css`).
 - Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**111 suites vertes** au 13/11, à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
 - **`index.ts` = déploiement MANUEL** (coller tout le fichier dans la fonction Supabase `smooth-service` → Deploy). Supabase `project_id = jhbrvgguybynzeceeceu`.
 
