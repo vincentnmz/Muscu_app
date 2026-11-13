@@ -871,7 +871,7 @@ const SCRIPT_URL = (typeof window !== 'undefined' && window.NVZ_SCRIPT_URL) || "
 var _NVZ_TOK_KEY = 'nvz_tok';
 function _nvzTok() { try { return localStorage.getItem(_NVZ_TOK_KEY); } catch (e) { return null; } }
 function _nvzTokClear() { try { localStorage.removeItem(_NVZ_TOK_KEY); } catch (e) {} }
-var _NVZ_401_SANS_DECO = { saveNativePushToken: 1, removeNativePushToken: 1, deleteNativePushToken: 1 };
+var _NVZ_401_SANS_DECO = { saveNativePushToken: 1, removeNativePushToken: 1, deleteNativePushToken: 1, enregistrerPlan: 1, getDecisions: 1 };   // 13/11 : journal des décisions = annexe, un refus ne déconnecte pas
 var _nvzExpireDone = false;
 function _nvzSessionExpiree() {
   if (_nvzExpireDone) return; _nvzExpireDone = true;
@@ -6644,6 +6644,9 @@ function renderCoachDecider(data) {
   var prog = (data && data.historique && data.historique.progression_par_exo) || {};
   var D = []; try { D = (typeof _lv3Diags === 'function') ? (_lv3Diags(data) || []) : []; } catch (e) {}
   var KIND = { sous: 'sous la fourchette', recule: 'recule', bloque: 'bloqué', effort: 'RPE en hausse à charge égale' };
+  // P1-1 (13/11) : journal des décisions de l'athlète (lecture seule pour le coach) → « Déjà proposé » + bilan.
+  var _jc = (typeof _lv3JournalCache !== 'undefined') ? _lv3JournalCache[a.athlete_id] : null;
+  if (!_jc && typeof _lv3JournalCharger === 'function') _lv3JournalCharger(a.athlete_id, function () { try { if (coachAthleteCourant && String(coachAthleteCourant.athlete_id) === String(a.athlete_id)) renderCoachDecider(coachAthleteData); } catch (e) {} });
   var cards = D.filter(function (g) { return !alerteEstTraitee(a.athlete_id, { type: 'diag-' + g.exo }); }).map(function (g) {
     var p0 = (prog[g.exo] || [])[0], rmx = 0;
     if (p0) (p0.series || []).forEach(function (x) { var r = Number(x && x.rpe); if (r > rmx) rmx = r; });
@@ -6659,13 +6662,14 @@ function renderCoachDecider(data) {
       + '<div style="font-size:13.5px;font-weight:800;margin-top:5px">' + esc(g.exo) + ' : ' + KIND[g.kind] + '</div>'
       + (faits.length ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">' + faits.join(' · ') + ' <span style="color:var(--text-subtle)">(' + g.n + ' séance' + (g.n > 1 ? 's' : '') + ' en ' + (g.sem || 1) + ' sem.)</span></div>' : '')
       + '<div style="margin-top:7px;background:var(--accent-a08,rgba(26,95,255,.08));border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45">' + (prop ? 'Proposé à l\'athlète : <b style="color:var(--accent)">' + esc(prop) + '</b>' : (g.cause && g.levier ? 'Piste trouvée dans ses données, à lui proposer : « ' + esc(String(g.levier).replace(/<[^>]+>/g, '')) + ' »' : 'Aucune cause visible dans ses données : rien de proposé automatiquement.')) + '</div>'
+      + (_jc && typeof _lv3JournalDejaPropose === 'function' ? _lv3JournalDejaPropose(_jc.rows, data, g.exo) : '')
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'
       + '<button class="cda-btn cda-primary" onclick="switchCoachDetailTab(\'programme\')">✎ Modifier dans le programme</button>'
       + '<button class="cda-btn cda-ghost" onclick="coachEcrireA(\'Au sujet de « ' + ex.trim() + ' » : \')">✉ Écrire à ' + esc(prenom) + '</button>'
       + '<button class="cda-btn cda-ok" onclick="coachDiagTraite(\'' + ex + '\')">Marquer traité</button></div></div>';
   });
   var al = document.getElementById('cd-alertes-card');
-  host.innerHTML = '<div class="cdcp-lab"><span class="cd-num">① </span>À décider <span class="cdcp-tag">faits · ce qui est proposé à l\'athlète · actions</span></div><div id="cd-decider-diags">' + cards.join('') + '</div>';
+  host.innerHTML = '<div class="cdcp-lab"><span class="cd-num">① </span>À décider <span class="cdcp-tag">faits · ce qui est proposé à l\'athlète · actions</span></div><div id="cd-decider-diags">' + cards.join('') + '</div>' + (_jc && typeof _lv3JournalBilanCoachHtml === 'function' ? _lv3JournalBilanCoachHtml(_jc.rows, data) : '');
   if (al) { host.appendChild(al); al.style.display = ''; }
 }
 
@@ -7961,32 +7965,8 @@ function _rpeOptions(cur) {
   });
   return o.join('');
 }
-// Prescription anti-stagnation (P2) : à partir de l'historique de l'exo + sa
-// fourchette de reps programmée → piste d'action concrète. null si pas d'historique.
-// Déterministe : reps au plafond → +charge · marge en reps → +reps · sinon générique.
-function _prescriptionStag(exoNom) {
-  if (!exoNom) return null;
-  var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
-  if (!d) return null;
-  var pts = (d.historique && d.historique.progression_par_exo && d.historique.progression_par_exo[exoNom]) || [];
-  if (!pts.length) return null;
-  var r = Number(pts[0].reps) || 0;   // pts[0] = séance la plus récente (tri desc backend)
-  var prog = (d.programme || []).filter(function (l) { return l && l.exercice === exoNom; })[0];
-  var rmax = (prog && prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
-  var rmin = (prog && prog.reps_mini != null && prog.reps_mini !== '') ? Number(prog.reps_mini) : null;
-  var act, why;
-  if (rmax && r >= rmax) {
-    act = 'Monte la charge d\'un petit cran (+2,5 kg) et redescends vers ' + (rmin ? rmin + ' reps' : 'le bas de ta fourchette') + ', puis remonte les reps séance après séance.';
-    why = 'Tu plafonnes en haut de ta fourchette de reps → c\'est le moment d\'ajouter de la charge (double progression).';
-  } else if (rmax && r < rmax) {
-    act = 'Garde la charge et ajoute des reps : vise ' + rmax + ' reps avant de remonter la charge.';
-    why = 'Il te reste de la marge en répétitions : progresse en volume avant d\'alourdir.';
-  } else {
-    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes. Pousse l\'intensité (séries proches de l\'échec), garde 2-3 min de repos entre séries, et soigne ton sommeil. Si tu es à ton max, persévère.';
-    why = 'La progression vient de l\'intensité, du temps de repos et de la récupération — pas du changement d\'exercice.';
-  }
-  return { act: act, why: why };
-}
+// 13/11 (audit moteur P0-2) : _prescriptionStag (conseil générique « +2,5 kg » codé en dur) supprimée ; le levier d'un
+// exercice vient uniquement du diagnostic _lv3Diag (js/lecture-v3.js), le même partout.
 // Prescription de charge (P4) : charge à viser (1RM estimé × % programmé) + règle de
 // progression PILOTÉE PAR LE PROGRAMME (fourchette de reps de l'exo) et adaptée au
 // niveau/stratégie. null si aucune cible exploitable.
@@ -8639,11 +8619,15 @@ function renderCoachAthleteGrid(athletes) {
     const niv = getNiveauExperience(a.annees_pratique);
     const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv] || '';
     const types = alertes.map(al => al.type || '');
-    const dotProg = types.some(t => t === 'stagnation' || t === 'regression') ? '#e5484d' : '#00c96e';
+    // 13/11 (audit moteur P0-2) : même classement que la fiche (serveur : a.lecture) — rouge si un exercice recule ou est
+    // sous sa fourchette, orange s'il est bloqué. Avant : alerte « stagnation » (supprimée, elle mesurait une baisse de charge).
+    const _lx = a.lecture || {};
+    const dotProg = ((_lx.recule || 0) + (_lx.sous || 0) > 0 || types.includes('regression')) ? '#e5484d' : ((_lx.bloque || 0) > 0 ? '#f59f00' : '#00c96e');
+    const titreProg = a.lecture ? ('Progression : ' + (_lx.bloque || 0) + ' bloqué(s), ' + (_lx.recule || 0) + ' en recul, ' + (_lx.sous || 0) + ' sous la fourchette') : 'Progression';
     const dotRecup = types.some(t => t === 'fatigue' || t === 'surcharge') ? (types.some(t => t === 'surcharge') ? '#e5484d' : '#f59f00') : '#00c96e';
     const dotReg = types.some(t => t === 'irregularite') ? '#f59f00' : '#00c96e';
     const dotsHtml = `<div style="display:flex;gap:5px;align-items:center;margin-top:8px;">
-      <div title="Progression" style="width:9px;height:9px;border-radius:50%;background:${dotProg};box-shadow:0 0 4px ${dotProg}66;flex-shrink:0;"></div>
+      <div title="${titreProg}" style="width:9px;height:9px;border-radius:50%;background:${dotProg};box-shadow:0 0 4px ${dotProg}66;flex-shrink:0;"></div>
       <div title="Récupération" style="width:9px;height:9px;border-radius:50%;background:${dotRecup};box-shadow:0 0 4px ${dotRecup}66;flex-shrink:0;"></div>
       <div title="Régularité" style="width:9px;height:9px;border-radius:50%;background:${dotReg};box-shadow:0 0 4px ${dotReg}66;flex-shrink:0;"></div>
     </div>`;
@@ -10980,8 +10964,6 @@ function renderAlertesCoach(data) {
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
-    const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
-    const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">${fait ? 'Autre conseil' : "Répondre à l'athlète"}</button>`
       + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
       + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">Marquer traité</button>`
@@ -10994,7 +10976,7 @@ function renderAlertesCoach(data) {
     items.push({
       sev: _sevGroupe(_sevA), cat: _catAlerte(al.type), msg: _msgA,
       rec: (al.recurrence_semaines > 1) ? ('🔁 ' + al.recurrence_semaines + ' sem') : '',
-      presc: presc ? presc.act : '',
+      presc: '',
       explic: `<div id="${explicationId}" class="cda-explic" style="display:none">${explicationAlerte(al)}</div>`,
       actions
     });
@@ -16245,6 +16227,8 @@ function _maLectureNovalyzBloc(data) {
   var forceHtml = ''; try { forceHtml = (typeof _lv3ForcesHtml === 'function') ? _lv3ForcesHtml(data) : ''; } catch (e) {}
   var recoHtml = planHtml ? planHtml : recos.length ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:5px">Reco entraînement · par priorité</div><ol style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.5;color:var(--text)">' + recos.map(function (r) { return '<li style="margin-bottom:4px">' + r + '</li>'; }).join('') + '</ol></div>')
     : reco ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco entraînement</div><div style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(reco) + '</div></div>') : '';
+  // P1-1 (13/11) : « Tes décisions » — ce que Novalyz a proposé les semaines passées et ce qui s'est passé (athlète).
+  try { if (typeof _lv3JournalSlot === 'function' && _lv3SessionAthlete() && _nvPropsAthlete(data) && !(typeof _maCoach !== 'undefined' && _maCoach)) { recoHtml += '<div style="margin-top:4px"><div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin:4px 0 8px">Tes décisions · ce que Novalyz t\'a proposé et ce qui s\'est passé</div>' + _lv3JournalSlot('historique') + '</div>'; setTimeout(function () { try { _lv3JournalAfficher(data); } catch (e) {} }, 0); } } catch (e) {}
 
   return '<div class="ma-card" style="display:flex;flex-direction:column;gap:12px;padding:14px 15px;margin:6px 0 16px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center">'
@@ -16581,19 +16565,6 @@ function _maProgExo(data) {
     srv: '<b>Par série</b> : l\'évolution de la charge de <b>chaque série</b> (S1, S2, S3…) dans le temps. Tu vois si ta surcharge touche toutes tes séries ou seulement la première — pour progresser sur l\'ensemble de ton travail, pas juste ton top set.'
   };
   var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
-  // Prescription anti-stagnation (P2) : affichée si le moteur a flaggé CET exo en
-  // stagnation (source unique : alertes_centre), sous le graphe.
-  var stagBox = '';
-  try {
-    var _isStag = (data.alertes_centre || []).some(function (a) { return a && a.type === 'stagnation' && String(a.evidence || '').indexOf(sel) >= 0; });
-    if (_isStag) {
-      var _pr = _prescriptionStag(sel);
-      if (_pr) stagBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:12px;padding:12px 14px;margin-top:10px">'
-        + '<div style="font-size:13px;font-weight:800;color:var(--warn)">Stagnation sur cet exercice</div>'
-        + '<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-top:7px;line-height:1.45">' + _maE(_pr.act) + '</div>'
-        + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">' + _maE(_pr.why) + '</div></div>';
-    }
-  } catch (e) {}
   // Charge à viser (P4) — athlète uniquement (1RM estimé = le sien) : cible du
   // programme + progression adaptée au niveau. Masqué en vue coach.
   var aimBox = '';
@@ -16634,7 +16605,7 @@ function _maProgExo(data) {
   } catch (e) {}
   var diagBox = '';
   try { var _dg = (typeof _lv3Diags === 'function') ? _lv3Diags(data).filter(function (x) { return x.exo === sel; })[0] : null; if (_dg) diagBox = '<div class="ma-diagbox">' + _lv3DiagCardHtml(_dg) + '</div>'; } catch (e) {}
-  return pick + statBox + chart + explBox + stagBox + aimBox + diagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
+  return pick + statBox + chart + explBox + aimBox + diagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
@@ -18942,13 +18913,17 @@ function _beNormale(data, nowT) {
     var base = rows.filter(function (x) { return recT.indexOf(x.t) < 0 && val(x) != null; });
     var moy = function (a) { return a.reduce(function (s, x) { return s + val(x); }, 0) / a.length; };
     var r = { key: k, label: d[1], inv: d[2], n: rec.length, rec: moy(rec), nBase: base.length, base: base.length >= 7 ? moy(base) : null };
-    r.etat = r.base == null ? 'nd' : (d[2] ? (r.rec - r.base >= 1 ? 'haut' : 'ok') : (r.base - r.rec >= 1 ? 'bas' : 'ok'));
+    // 13/11 (audit moteur P0-3) : comparaison seulement avec 3 saisies récentes, EXACTEMENT comme le moteur
+    // (ressentiConcordant, règle charge + ressenti). Avant : dès 1 saisie → un « au-dessus de ta normale » que le verdict ignorait.
+    r.ndRaison = r.base == null ? 'base' : (rec.length < 3 ? 'recentes' : null);
+    r.etat = r.ndRaison ? 'nd' : (d[2] ? (r.rec - r.base >= 1 ? 'haut' : 'ok') : (r.base - r.rec >= 1 ? 'bas' : 'ok'));
     return r;
   }).filter(Boolean);
 }
 // Texte d'une ligne « normale » (athlète : « ta », coach : « sa »).
 function _beNormaleTxt(r, poss) {
   poss = poss || 'ta';
+  if (r.etat === 'nd' && r.ndRaison === 'recentes') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + (r.n > 1 ? r.n + ' saisies' : '1 saisie') + ' cette semaine (' + _fmt1(r.rec) + ') · comparaison à ' + poss + ' normale dès 3 saisies sur 7 jours</span>';
   if (r.etat === 'nd') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + poss + ' normale arrive après 7 saisies (' + r.nBase + ' pour l\'instant)</span>';
   var lib = r.etat === 'ok' ? 'dans ' + poss + ' normale' : (r.etat === 'bas' ? 'sous ' + poss + ' normale' : 'au-dessus de ' + poss + ' normale');
   var col = r.etat === 'ok' ? '#00A854' : '#E07800';
@@ -19260,7 +19235,8 @@ function renderChargeFatigueJour(data) {
   try { normaleHtml = _normaleBloc(data, 'ta'); } catch (e) {}
   var depuisHtml = '';
   try { depuisHtml = _tjDepuisDerniere(data, _lectureExos(data)); } catch (e) {}
-  try { if (typeof _lv3PlanHtml === 'function' && _nvPropsAthlete(data)) depuisHtml += _lv3PlanHtml(data, true); } catch (e) {}   // D1 : pas de plan Novalyz si le coach a la main   // Lecture v3 : plan de la semaine
+  try { if (typeof _lv3PlanHtml === 'function' && _nvPropsAthlete(data)) depuisHtml += _lv3PlanHtml(data, true); } catch (e) {}
+  try { if (typeof _lv3JournalSlot === 'function' && _lv3SessionAthlete() && _nvPropsAthlete(data)) { depuisHtml += _lv3JournalSlot('resume'); setTimeout(function () { try { _lv3JournalAfficher(data); } catch (e) {} }, 0); } } catch (e) {}   // P1-1 : semaine dernière   // D1 : pas de plan Novalyz si le coach a la main   // Lecture v3 : plan de la semaine
   var fraicheurWidget = (hasCf && !niv0) ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
     +   '<div style="text-align:center;flex:none;min-width:56px;max-width:96px"><div style="font-size:' + (fr.length > 10 ? '14px' : '18px') + ';font-weight:800;color:' + frc + ';line-height:1.1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
     +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> : on compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b>. Plus de charge récente ne veut pas dire fatigue : c\'est ton <b>ressenti</b> (sommeil, fatigue, RPE) qui le confirme. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
@@ -23857,6 +23833,8 @@ async function chargerAppData() {
     // générique "Erreur de connexion" qui laisse croire à un problème réseau.
     try {
       _appliquerAppData(data);
+      // P1-1 (13/11) : journal des décisions — seulement ici (réponse réseau complète, jamais le cache ni hors ligne).
+      try { if (typeof _lv3JournalEnvoyer === 'function') { _lv3JournalEnvoyer(data); _lv3JournalAfficher(data); } } catch (eJ) {}
     } catch (errAff) {
       console.error("Erreur d'affichage des données:", errAff);
       showToast("Erreur d'affichage : " + (errAff && errAff.message ? errAff.message : errAff), 'var(--danger)');
@@ -25905,11 +25883,6 @@ function renderAlertes(data) {
       + '<div style="font-size:13px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
       + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
       + (function () {
-          // Stagnation : remplace l'action générique par une prescription concrète
-          // (reps plafond → +charge · marge → +reps), calculée depuis l'historique de l'exo.
-          var ex = (a.type === 'stagnation' && a.evidence && a.evidence.indexOf(' : aucun progrès') >= 0) ? a.evidence.split(' : aucun progrès')[0].trim() : null;
-          var pr = ex ? _prescriptionStag(ex) : null;
-          if (pr) return '<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:4px;">' + escapeHtml(pr.act) + '</div>';
           return a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '';
         })()
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')

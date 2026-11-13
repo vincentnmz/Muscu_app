@@ -267,6 +267,25 @@ function _lv3SeanceDe(data, exo) {
   var l = ((data && data.programme) || []).filter(function (x) { return x && String(x.exercice || '').trim() === String(exo).trim() && x.type !== 'cardio'; })[0];
   return l ? (l.seance_id || '') : '';
 }
+// Réalisation d'une action du plan sur une fenêtre [isoL, isoFin[ (isoFin null = jusqu'à aujourd'hui) — SOURCE UNIQUE :
+// coche le plan de la semaine ET donne le statut des décisions passées du journal (P1-1). Critères inchangés (06/11).
+// → { fait, tente (au moins une séance concernée), tot (séries du muscle), sets (séries de l'exercice) }.
+function _lv3Realise(a, data, isoL, isoFin) {
+  var h = (data && data.historique) || {}, prog = h.progression_par_exo || {}, dm = h.daily_muscu || {};
+  var dans = function (iso) { return iso >= isoL && (!isoFin || iso < isoFin); };
+  if (a.type === 'reprise') { var j = Object.keys(dm).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d) && dans(d); }); return { fait: j.length > 0, tente: j.length > 0, tot: 0, sets: [] }; }
+  if (a.type === 'series') {
+    var k = _musKey(a.muscle), tot = 0;
+    Object.keys(dm).forEach(function (d) { if (dans(d)) { var spm = (dm[d] && dm[d].spm) || {}; Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) tot += _lv3Num(spm[mm]); }); } });
+    return { fait: tot >= a.min, tente: tot > 0, tot: tot, sets: [] };
+  }
+  var sets = []; (prog[a.exo] || []).filter(function (p) { return dans(_lv3Iso(p.date)); }).forEach(function (p) { (p.series || []).forEach(function (x) { sets.push(x); }); });
+  var fait = false;
+  if (a.type === 'charge') fait = sets.some(function (x) { var c = _lv3Num(x.charge); return c <= a.charge + 0.01 && c >= (a.alt != null ? a.alt : a.charge) - 2.5 && _lv3Num(x.reps) >= a.reps; });
+  else if (a.type === 'cible') fait = sets.some(function (x) { return _lv3Num(x.charge) >= a.charge && _lv3Num(x.reps) >= a.reps; });
+  else if (a.type === 'rpe') fait = sets.some(function (x) { return _lv3Num(x.charge) >= a.charge && _lv3Num(x.rpe) > 0 && _lv3Num(x.rpe) <= 8; });
+  return { fait: fait, tente: sets.length > 0, tot: 0, sets: sets };
+}
 function _lv3Plan(data, nowT) {
   nowT = nowT || Date.now();
   if (!data || !data.historique) return null;
@@ -326,15 +345,11 @@ function _lv3Plan(data, nowT) {
       var V = _lv3Volume(D, m, lundi.getTime()); if (V.recul >= 2 && V.min && V.parSem >= V.min && (!V.opt || V.parSem <= V.opt * 1.5)) ok.push(m.toLowerCase() + ' ' + _lv3Fmt(V.parSem));
     });
   } catch (_) {}
-  // Fait cette semaine ? (séances depuis lundi, données réelles)
-  var prog = (data.historique.progression_par_exo) || {}, dm = data.historique.daily_muscu || {};
+  // Fait cette semaine ? (séances depuis lundi, données réelles) — même règle que le journal des décisions (_lv3Realise).
   acts.forEach(function (a) {
-    var pts = (prog[a.exo] || []).filter(function (p) { return _lv3Iso(p.date) >= isoL; });
-    var sets = []; pts.forEach(function (p) { (p.series || []).forEach(function (s) { sets.push(s); }); });
-    if (a.type === 'charge') a.fait = sets.some(function (s) { var c = _lv3Num(s.charge); return c <= a.charge + 0.01 && c >= (a.alt != null ? a.alt : a.charge) - 2.5 && _lv3Num(s.reps) >= a.reps; });
-    else if (a.type === 'cible') a.fait = sets.some(function (s) { return _lv3Num(s.charge) >= a.charge && _lv3Num(s.reps) >= a.reps; });
-    else if (a.type === 'rpe') a.fait = sets.some(function (s) { return _lv3Num(s.charge) >= a.charge && _lv3Num(s.rpe) > 0 && _lv3Num(s.rpe) <= 8; });
-    else if (a.type === 'series') { var k = _musKey(a.muscle), tot = 0; Object.keys(dm).forEach(function (d) { if (d >= isoL) { var spm = (dm[d] && dm[d].spm) || {}; Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) tot += _lv3Num(spm[mm]); }); } }); a.fait = tot >= a.min; a.cetteSem = tot;
+    var R = _lv3Realise(a, data, isoL, null);
+    a.fait = R.fait;
+    if (a.type === 'series') { var tot = R.tot; a.cetteSem = tot;
       // 06/11 : l'action dit ce qui est réellement compté — le TOTAL du muscle sur la semaine (tous ses exercices),
       // pas « +N séries de tel exercice » (retour porteur : 4 séries de Belt squat ne semblaient pas comptées).
       var _mu = String(a.muscle || '');
@@ -529,4 +544,208 @@ function _maEffortBloc(data, w, rsArr) {
     + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;font-family:inherit" role="img" aria-label="Effort des séances">' + g + b + '</svg>'
     + '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-muted);margin-top:4px"><span><i style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#E07800;margin-right:5px;vertical-align:-1px"></i>Note de ta séance (bilan)</span><span><i style="display:inline-block;width:11px;height:11px;border-radius:999px;border:2px solid #1A5FFF;margin-right:5px;vertical-align:-2px;box-sizing:border-box"></i>RPE moyen de tes séries</span></div>'
     + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-top:8px">' + phrase + '</div>' + cap + '</div>';
+}
+
+// ── E. Journal des décisions (P1-1, 13/11 — maquette mockups/journal-decisions.html validée) ──────────────
+// Règle fondamentale (porteur) : le moteur reste UNIQUE côté app (_lv3Plan). Le journal ne calcule rien : il FIGE ce
+// que le moteur a réellement produit (première version VALIDE de la semaine), puis on lit ce qui s'est passé ensuite.
+// Statuts d'une décision passée (même critère que la coche du plan, _lv3Realise, sur la semaine de la décision) :
+// objectif atteint · pas atteint (tenté) · pas tenté · non évaluable (données absentes). « Résultat observé après la
+// recommandation », jamais « grâce à » ; « association observée, pas une preuve de cause » côté coach.
+var LV3_REGLE_VERSION = 'plan-2026-11-13';
+var _lv3JournalCache = {};      // athlete_id → { rows, t }
+var _lv3JournalEnCours = {};
+var LV3_STATUTS = { atteint: ['Objectif atteint', '#E3F7EC', '#00813F'], pas_atteint: ['Pas atteint', '#FFF1E0', '#B35F00'], pas_tente: ['Pas tenté', 'var(--surface2,#EEF1F7)', 'var(--text-muted,#55627E)'], non_evaluable: ['Non évaluable', 'var(--surface2,#F2F2F2)', 'var(--text-subtle,#777)'] };
+
+// Session ATHLÈTE (jeton « v1.a.… ») : seul cas où le plan peut être enregistré (garde-fou 1 ; le serveur refuse aussi).
+function _lv3SessionAthlete() { try { var t = (typeof _nvzTok === 'function') ? _nvzTok() : localStorage.getItem('nvz_tok'); return !!t && String(t).split('.')[1] === 'a'; } catch (_) { return false; } }
+// Plan calculé → charge utile du journal (forme seule, aucun recalcul). Critère = celui de la coche du plan.
+function _lv3PlanPourJournal(P, data) {
+  if (!P || !P.actions || !P.actions.length) return null;
+  var avant = _lv3DataAvant(data, P.lundi), prog = (avant.historique && avant.historique.progression_par_exo) || {};
+  var actions = P.actions.slice(0, 3).map(function (a) {
+    var crit = {}, de = {};
+    var put = function (o, k, v) { if (v != null && v !== '' && isFinite(Number(v))) o[k] = Math.round(Number(v) * 100) / 100; };
+    if (a.type === 'charge') { put(crit, 'charge', a.charge); put(crit, 'alt', a.alt); put(crit, 'reps', a.reps); }
+    else if (a.type === 'cible') { put(crit, 'charge', a.charge); put(crit, 'reps', a.reps); }
+    else if (a.type === 'rpe') put(crit, 'charge', a.charge);
+    else if (a.type === 'series') { put(crit, 'min', a.min); put(crit, 'add', a.add); put(crit, 'parSem', a.parSem); put(de, 'recul', a.recul); }
+    else if (a.type === 'reprise') { crit.seances = 1; if (a.derniere) de.derniere = String(a.derniere).slice(0, 10); }
+    if (a.exo && a.type !== 'series' && a.type !== 'reprise') {   // dernière séance de l'exercice AVANT la semaine (ce qui a conduit à la décision)
+      var p0 = (prog[a.exo] || [])[0];
+      if (p0) { var rp = (p0.series || []).map(function (x) { return _lv3Num(x.rpe); }).filter(function (x) { return x > 0; }); de.date = _lv3Iso(p0.date); put(de, 'c', p0.charge); put(de, 'r', p0.reps); if (rp.length) de.rpe = Math.max.apply(null, rp); de.n = (prog[a.exo] || []).length; }
+    }
+    return { type: a.type, exo: a.exo || null, muscle: a.muscle || null, titre: String(a.titre || '').replace(/^★\s*/, '').slice(0, 200), raison: a.raison ? String(a.raison).slice(0, 600) : null, critere: crit, donnees_entree: de };
+  });
+  return { semaine: P.lundi, actions: actions };
+}
+// Envoi du plan (garde-fous 1 à 4) : appelé UNIQUEMENT après un getAppData réseau complet (chargerAppData), jamais
+// depuis le cache ni hors ligne, jamais en session coach. Une fois par semaine et par appareil ; le serveur garde la
+// première version valide (renvoi = sans effet).
+function _lv3JournalEnvoyer(data) {
+  try {
+    if (!data || !data.historique || !Array.isArray(data.programme)) return false;                    // données incomplètes
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;                 // hors ligne
+    if (!_lv3SessionAthlete()) return false;                                                          // coach / sans session
+    if (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete(data)) return false;                // plan NON montré à l'athlète (le coach a la main) → rien à figer
+    if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) return false;
+    var P = _lv3Plan(data); var pl = _lv3PlanPourJournal(P, data); if (!pl) return false;
+    var cle = 'nv_journal_' + athlete.athlete_id + '_' + pl.semaine;
+    try { if (localStorage.getItem(cle) === '1') return false; } catch (_) {}
+    var body = { action: 'enregistrerPlan', athlete_id: athlete.athlete_id, semaine: pl.semaine, regle_version: LV3_REGLE_VERSION, donnees_completes: true, actions: pl.actions };
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j && j.success === true) { try { localStorage.setItem(cle, '1'); } catch (_) {} delete _lv3JournalCache[athlete.athlete_id]; } }).catch(function () {});
+    return true;
+  } catch (_) { return false; }
+}
+// Lecture du journal (athlète : le sien ; coach : son athlète). cb() après chargement → remplit les emplacements.
+function _lv3JournalCharger(athleteId, cb) {
+  if (!athleteId) return;
+  var c = _lv3JournalCache[athleteId];
+  if (c && Date.now() - c.t < 5 * 60000) { if (cb) cb(c.rows); return; }
+  if (_lv3JournalEnCours[athleteId]) return; _lv3JournalEnCours[athleteId] = true;
+  fetch(SCRIPT_URL + '?action=getDecisions&athlete_id=' + encodeURIComponent(athleteId) + '&semaines=12')
+    .then(function (r) { return r.json(); }).then(function (j) { if (j && j.success && Array.isArray(j.decisions)) { _lv3JournalCache[athleteId] = { rows: j.decisions, t: Date.now() }; if (cb) cb(j.decisions); } })
+    .catch(function () {}).then(function () { delete _lv3JournalEnCours[athleteId]; });
+}
+// Statut d'une décision PASSÉE, d'après les séances réelles de sa semaine (même critère que la coche du plan).
+function _lv3JournalEvaluer(d, data) {
+  if (!data || !data.historique) return { statut: 'non_evaluable', detail: 'Données de séances indisponibles.' };
+  var isoL = String(d.semaine).slice(0, 10), t = new Date(isoL + 'T12:00:00'); t.setDate(t.getDate() + 7);
+  var isoFin = _lv3Ymd(t), c = d.critere || {};
+  var a = { type: d.type_action, exo: d.exercice, muscle: d.muscle || d.cle, charge: c.charge, alt: c.alt, reps: c.reps, min: c.min };
+  if ((a.type === 'charge' || a.type === 'cible' || a.type === 'rpe') && !(a.charge > 0)) return { statut: 'non_evaluable', detail: 'Critère incomplet.' };
+  var R = _lv3Realise(a, data, isoL, isoFin), detail = '';
+  var kg = function (x) { return (typeof _cdFmtKg === 'function') ? _cdFmtKg(x) : String(x); };
+  if (a.type === 'series') detail = R.tente ? 'Réalisé : ' + _lv3Fmt(R.tot) + ' série' + (R.tot > 1 ? 's' : '') + ' (objectif ' + a.min + ').' : 'Aucune série de ce muscle cette semaine-là.';
+  else if (a.type === 'reprise') detail = R.tente ? 'Séance faite cette semaine-là.' : 'Pas de séance cette semaine-là.';
+  else if (R.tente) {
+    var b = R.sets.slice().sort(function (x, y) { return _lv3Num(y.charge) - _lv3Num(x.charge) || _lv3Num(y.reps) - _lv3Num(x.reps); })[0];
+    detail = 'Réalisé : ' + kg(b.charge) + ' kg × ' + _lv3Num(b.reps) + (_lv3Num(b.rpe) > 0 ? ' (RPE ' + _lv3Num(b.rpe) + ')' : '') + '.';
+  } else detail = 'Exercice pas refait cette semaine-là.';
+  return { statut: R.fait ? 'atteint' : (R.tente ? 'pas_atteint' : 'pas_tente'), detail: detail };
+}
+// P1-2 (13/11) — « Résultat observé ensuite » : ce qui s'est passé APRÈS la semaine de la décision (1 à 2 semaines),
+// avec le critère enregistré. Déterministe, recalculé sur les séances réelles, rien de stocké. On ne conclut qu'avec assez
+// de séances (« trop tôt pour conclure » sinon) et on ne parle jamais de cause (« observé », pas « grâce à »).
+// → { etat: 'confirme' | 'non_confirme' | 'trop_tot' | 'pas_refait', texte, n (séances prises en compte) } ou null.
+function _lv3JournalSuite(d, data, nowT) {
+  if (!data || !data.historique) return null;
+  nowT = nowT || Date.now();
+  var h = data.historique, prog = h.progression_par_exo || {}, dm = h.daily_muscu || {}, c = d.critere || {};
+  var plus = function (iso, n) { var t = new Date(String(iso).slice(0, 10) + 'T12:00:00'); t.setDate(t.getDate() + n); return _lv3Ymd(t); };
+  var auj = _lv3Ymd(new Date(nowT)), s1 = plus(d.semaine, 7), s2 = plus(d.semaine, 14), fin = plus(d.semaine, 21);
+  if (auj < s1) return null;                                                     // la semaine de la décision n'est pas finie
+  var kg = function (x) { return (typeof _cdFmtKg === 'function') ? _cdFmtKg(x) : String(x); };
+  var T = function (t) { return 'Résultat observé ensuite : ' + t; };
+  var type = d.type_action;
+  // Critère incomplet → aucune conclusion (on n'invente pas de seuil).
+  if ((type === 'series' && !(c.min > 0)) || ((type === 'charge' || type === 'cible') && !(c.charge > 0 && c.reps > 0)) || (type === 'rpe' && !(c.charge > 0))) return null;
+  if (type === 'series' || type === 'reprise') {                                  // la semaine suivante, complète
+    var k = _musKey(d.muscle || d.cle), tot = 0, jours = 0;
+    Object.keys(dm).forEach(function (j) { if (j >= s1 && j < s2) { jours++; var spm = (dm[j] && dm[j].spm) || {}; Object.keys(spm).forEach(function (mm) { if (_musKey(mm) === k) tot += _lv3Num(spm[mm]); }); } });
+    if (auj < s2) return { etat: 'trop_tot', n: 0, texte: T('semaine suivante en cours, trop tôt pour conclure.') };
+    if (type === 'reprise') return jours ? { etat: 'confirme', n: jours, texte: T('régularité reprise la semaine suivante (' + jours + ' séance' + (jours > 1 ? 's' : '') + ').') } : { etat: 'non_confirme', n: 0, texte: T('pas de séance la semaine suivante.') };
+    return tot >= c.min ? { etat: 'confirme', n: 1, texte: T('minimum tenu la semaine suivante (' + _lv3Fmt(tot) + ' séries).') }
+      : { etat: 'non_confirme', n: 1, texte: T('semaine suivante : ' + _lv3Fmt(tot) + ' série' + (tot > 1 ? 's' : '') + ' (minimum ' + c.min + ').') };
+  }
+  // Exercice : les séances des 2 semaines suivantes.
+  var pts = (prog[d.exercice] || []).filter(function (p) { var i = _lv3Iso(p.date); return i >= s1 && i < fin && i <= auj; })
+    .sort(function (a, b) { return _lv3Iso(a.date) < _lv3Iso(b.date) ? -1 : 1; });
+  var n = pts.length, finie = auj >= fin;
+  if (!n) return finie ? { etat: 'pas_refait', n: 0, texte: T('exercice pas refait dans les 2 semaines suivantes.') } : { etat: 'trop_tot', n: 0, texte: T('pas encore refait depuis, trop tôt pour conclure.') };
+  var serie = function (p, ok) { return (p.series || []).filter(ok); };
+  var dd = function (p) { var i = _lv3Iso(p.date).split('-'); return i[2] + '/' + i[1]; };
+  var trouve = null;
+  if (type === 'charge') {
+    var bas = (c.alt != null ? c.alt : c.charge) - 2.5;
+    for (var i = 0; i < n && !trouve; i++) { var ok = serie(pts[i], function (x) { return _lv3Num(x.charge) >= bas && _lv3Num(x.reps) >= c.reps; }); if (ok.length) trouve = { p: pts[i], x: ok.sort(function (a, b) { return _lv3Num(b.charge) - _lv3Num(a.charge) || _lv3Num(b.reps) - _lv3Num(a.reps); })[0] }; }
+    if (trouve) return { etat: 'confirme', n: n, texte: T(kg(trouve.x.charge) + ' kg × ' + _lv3Num(trouve.x.reps) + ' le ' + dd(trouve.p) + ' — revenu dans ta fourchette.') };
+    return n >= 2 ? { etat: 'non_confirme', n: n, texte: T('toujours sous ' + c.reps + ' reps sur ' + n + ' séances.') } : { etat: 'trop_tot', n: n, texte: T('une seule séance depuis, trop tôt pour conclure.') };
+  }
+  if (type === 'cible') {
+    for (var j = 0; j < n && !trouve; j++) { var ok2 = serie(pts[j], function (x) { return _lv3Num(x.charge) >= c.charge && _lv3Num(x.reps) >= c.reps; }); if (ok2.length) trouve = { p: pts[j], x: ok2[0] }; }
+    if (trouve) return { etat: 'confirme', n: n, texte: T('cible tenue ou dépassée : ' + kg(trouve.x.charge) + ' kg × ' + _lv3Num(trouve.x.reps) + ' le ' + dd(trouve.p) + '.') };
+    return n >= 2 ? { etat: 'non_confirme', n: n, texte: T('cible pas atteinte sur ' + n + ' séances.') } : { etat: 'trop_tot', n: n, texte: T('une seule séance depuis, trop tôt pour conclure.') };
+  }
+  if (type === 'rpe') {
+    var aCharge = pts.map(function (p) { var ss = serie(p, function (x) { return _lv3Num(x.charge) >= c.charge && _lv3Num(x.rpe) > 0; }); return ss.length ? { p: p, rpe: Math.max.apply(null, ss.map(function (x) { return _lv3Num(x.rpe); })) } : null; }).filter(Boolean);
+    var bon = aCharge.filter(function (x) { return x.rpe <= 8; })[0];
+    if (bon) return { etat: 'confirme', n: aCharge.length, texte: T('RPE revenu à ' + _lv3Fmt(bon.rpe) + ' à ' + kg(c.charge) + ' kg le ' + dd(bon.p) + '.') };
+    if (aCharge.length >= 2) return { etat: 'non_confirme', n: aCharge.length, texte: T('RPE toujours au-dessus de 8 à ' + kg(c.charge) + ' kg (' + aCharge.length + ' séances).') };
+    return { etat: 'trop_tot', n: aCharge.length, texte: T(aCharge.length ? 'une seule séance à cette charge depuis, trop tôt pour conclure.' : 'pas refait à cette charge depuis, trop tôt pour conclure.') };
+  }
+  return null;
+}
+var LV3_SUITE_COL = { confirme: '#00813F', non_confirme: '#B35F00', trop_tot: 'var(--text-subtle,#8A96B0)', pas_refait: 'var(--text-subtle,#8A96B0)' };
+function _lv3JournalSuiteHtml(d, data) {
+  var r = null; try { r = _lv3JournalSuite(d, data); } catch (_) {}
+  if (!r) return '';
+  var esc = (typeof _maE === 'function') ? _maE : function (x) { return String(x); };
+  return '<div style="font-size:11.5px;margin-top:3px;color:' + (LV3_SUITE_COL[r.etat] || 'inherit') + '">' + esc(r.texte) + (r.n >= 2 ? ' <span style="color:var(--text-subtle)">(sur ' + r.n + ' séances)</span>' : '') + '</div>';
+}
+function _lv3JournalTag(st) { var s = LV3_STATUTS[st] || LV3_STATUTS.non_evaluable; return '<span style="display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 7px;margin-right:6px;vertical-align:1px;background:' + s[1] + ';color:' + s[2] + '">' + s[0] + '</span>'; }
+// Semaines PASSÉES du journal (la semaine en cours = le plan affiché, avec ses coches).
+function _lv3JournalSemaines(rows, data) {
+  var lundi = _lv3Ymd(_lv3Lundi(Date.now())), par = {};
+  (rows || []).forEach(function (d) { var s = String(d.semaine).slice(0, 10); if (s >= lundi) return; (par[s] = par[s] || []).push(d); });
+  return Object.keys(par).sort().reverse().map(function (s) {
+    var L = par[s].map(function (d) { return { d: d, ev: _lv3JournalEvaluer(d, data) }; });
+    return { semaine: s, lignes: L, tentes: L.filter(function (x) { return x.ev.statut === 'atteint' || x.ev.statut === 'pas_atteint'; }).length, atteints: L.filter(function (x) { return x.ev.statut === 'atteint'; }).length };
+  });
+}
+function _lv3TitrePasse(t) { return String(t || '').replace(/ cette semaine$/, ''); }   // affichage d'une semaine passée
+function _lv3Ddmm(iso) { var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1]; }
+// « Semaine dernière » (sous le plan, athlète).
+function _lv3JournalResumeHtml(rows, data) {
+  var S = _lv3JournalSemaines(rows, data)[0]; if (!S) return '';
+  var dern = _lv3Ymd(new Date(_lv3Lundi(Date.now()).getTime() - 7 * 864e5)); if (S.semaine !== dern) return '';
+  var n = S.lignes.length;
+  return '<div style="margin-top:10px;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;font-size:12px;line-height:1.5">'
+    + '<b>Semaine dernière</b><br>' + n + ' action' + (n > 1 ? 's' : '') + ' proposée' + (n > 1 ? 's' : '') + ' · ' + S.tentes + ' réalisée' + (S.tentes > 1 ? 's' : '') + ' · <b>' + S.atteints + ' objectif' + (S.atteints > 1 ? 's' : '') + ' atteint' + (S.atteints > 1 ? 's' : '') + '</b>.<br>'
+    + '<span onclick="ouvrirJournalDecisions()" style="color:var(--accent);font-weight:700;cursor:pointer">Voir le détail · Tes décisions ›</span></div>';
+}
+// Historique complet (Analyses ▸ Tes décisions ; fenêtre « Tes décisions »).
+function _lv3JournalHtml(rows, data, opts) {
+  opts = opts || {}; var sem = _lv3JournalSemaines(rows, data).slice(0, opts.max || 4), esc = (typeof _maE === 'function') ? _maE : function (x) { return String(x); };
+  if (!sem.length) return '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5">Pas encore de décision passée : ton premier plan enregistré apparaîtra ici la semaine prochaine, avec ce qui s\'est passé ensuite.</div>';
+  return sem.map(function (S) {
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;margin-bottom:10px">'
+      + '<div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px">Semaine du ' + _lv3Ddmm(S.semaine) + '<span style="font-size:11px;color:var(--text-subtle)">' + S.tentes + ' / ' + S.lignes.length + ' réalisée' + (S.tentes > 1 ? 's' : '') + '</span></div>'
+      + S.lignes.map(function (x, i) {
+        return '<div style="font-size:12.5px;padding:8px 0;line-height:1.45;' + (i ? 'border-top:1px solid var(--border)' : '') + '">' + _lv3JournalTag(x.ev.statut) + '<b>' + esc(_lv3TitrePasse(x.d.titre)) + '</b>'
+          + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:3px">' + (x.d.raison ? 'Proposé car : ' + esc(x.d.raison) + ' ' : '') + esc(x.ev.detail) + '</div>' + (x.ev.statut === 'atteint' || x.ev.statut === 'pas_atteint' ? _lv3JournalSuiteHtml(x.d, data) : '') + '</div>';
+      }).join('') + '</div>';
+  }).join('') + '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.45">Statut : d\'après tes séances de la semaine concernée (même critère que la coche du plan). « Résultat observé ensuite » : les 1 à 2 semaines suivantes, conclu seulement avec assez de séances. Résultat observé après la recommandation. Association observée, pas une preuve de cause.</div>';
+}
+// Emplacements à remplir quand le journal arrive (évite de redessiner l'écran).
+function _lv3JournalSlot(mode) { return '<div class="lv3-journal-slot" data-mode="' + mode + '"></div>'; }
+function _lv3JournalRemplir(athleteId, data) {
+  var c = _lv3JournalCache[athleteId]; if (!c) return;
+  try { document.querySelectorAll('.lv3-journal-slot').forEach(function (el) { el.innerHTML = el.getAttribute('data-mode') === 'resume' ? _lv3JournalResumeHtml(c.rows, data) : _lv3JournalHtml(c.rows, data); }); } catch (_) {}
+}
+function _lv3JournalAfficher(data) {
+  if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) return;
+  var id = athlete.athlete_id;
+  _lv3JournalCharger(id, function () { _lv3JournalRemplir(id, data); });
+}
+function ouvrirJournalDecisions() {
+  var d = (typeof dernierAppData !== 'undefined') ? dernierAppData : null, id = (typeof athlete !== 'undefined' && athlete) ? athlete.athlete_id : null;
+  var c = id ? _lv3JournalCache[id] : null;
+  ouvrirInfoGenerique('Tes décisions', '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.45">Ce que Novalyz t\'a proposé · et ce qui s\'est passé.</div>' + _lv3JournalHtml(c ? c.rows : [], d, { max: 12 }), true);
+}
+// Coach : « Déjà proposé » sur un exercice (dernière décision passée qui le concerne) + bilan 4 semaines.
+function _lv3JournalDejaPropose(rows, data, exo) {
+  var S = _lv3JournalSemaines(rows, data), esc = (typeof _maE === 'function') ? _maE : function (x) { return String(x); };
+  for (var i = 0; i < S.length; i++) for (var j = 0; j < S[i].lignes.length; j++) { var x = S[i].lignes[j]; if (String(x.d.exercice || '').trim() === String(exo).trim() || String(x.d.cle || '').trim() === String(exo).trim()) {
+    return '<div style="margin-top:7px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45"><b>Déjà proposé</b> · semaine du ' + _lv3Ddmm(S[i].semaine) + ' : « ' + esc(_lv3TitrePasse(x.d.titre)) + ' » → ' + _lv3JournalTag(x.ev.statut) + '<span style="color:var(--text-muted)">' + esc(x.ev.detail) + '</span>' + (x.ev.statut === 'atteint' || x.ev.statut === 'pas_atteint' ? _lv3JournalSuiteHtml(x.d, data) : '') + '</div>';
+  } }
+  return '';
+}
+function _lv3JournalBilanCoachHtml(rows, data) {
+  var S = _lv3JournalSemaines(rows, data).slice(0, 4); if (!S.length) return '';
+  var n = 0, t = 0, a = 0, p = 0, ne = 0; S.forEach(function (s) { s.lignes.forEach(function (x) { n++; if (x.ev.statut === 'atteint') { a++; t++; } else if (x.ev.statut === 'pas_atteint') { p++; t++; } else if (x.ev.statut === 'non_evaluable') ne++; }); });
+  return '<div class="dash-card" style="padding:12px 14px;margin-bottom:10px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:800;margin-bottom:5px">Historique des propositions</div>'
+    + '<div style="font-size:12.5px;line-height:1.5"><b>Sur ' + S.length + ' semaine' + (S.length > 1 ? 's' : '') + '</b> : ' + n + ' action' + (n > 1 ? 's' : '') + ' proposée' + (n > 1 ? 's' : '') + ' · ' + t + ' réalisée' + (t > 1 ? 's' : '') + ' · <b>' + a + ' objectif' + (a > 1 ? 's' : '') + ' atteint' + (a > 1 ? 's' : '') + '</b> · ' + p + ' pas atteint' + (p > 1 ? 's' : '') + (ne ? ' · ' + ne + ' non évaluable' + (ne > 1 ? 's' : '') : '') + '</div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px;line-height:1.45">Résultat observé après la recommandation. Association observée, pas une preuve de cause : d\'autres facteurs (sommeil, programme, contexte) peuvent jouer.</div></div>';
 }

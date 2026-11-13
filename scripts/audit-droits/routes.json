@@ -51,7 +51,7 @@
    "athlete_id"
   ],
   "sessRole": false,
-  "lignes": 620
+  "lignes": 622
  },
  {
   "action": "getLastPerf",
@@ -129,7 +129,7 @@
    "_sess_role"
   ],
   "sessRole": true,
-  "lignes": 27
+  "lignes": 29
  },
  {
   "action": "getCoachPrefs",
@@ -415,8 +415,8 @@
    "coach_id_vu",
    "accepter"
   ],
-  "sessRole": false,
-  "lignes": 18
+  "sessRole": true,
+  "lignes": 28
  },
  {
   "action": "coachResetAthlete",
@@ -603,10 +603,14 @@
   "handler": "handleEnvoyerRetour",
   "appel": "handleEnvoyerRetour(body)",
   "cles": [
-   "message"
+   "message",
+   "type",
+   "ecran",
+   "version",
+   "plateforme"
   ],
   "sessRole": true,
-  "lignes": 13
+  "lignes": 35
  },
  {
   "action": "requestPasswordReset",
@@ -831,8 +835,8 @@
    "auth",
    "user_agent"
   ],
-  "sessRole": false,
-  "lignes": 10
+  "sessRole": true,
+  "lignes": 23
  },
  {
   "action": "deletePushSub",
@@ -842,8 +846,8 @@
   "cles": [
    "endpoint"
   ],
-  "sessRole": false,
-  "lignes": 6
+  "sessRole": true,
+  "lignes": 10
  },
  {
   "action": "cronPushAlertes",
@@ -912,11 +916,10 @@
   "handler": "handleDeleteNativePushToken",
   "appel": "handleDeleteNativePushToken(body)",
   "cles": [
-   "token",
-   "athlete_id"
+   "token"
   ],
-  "sessRole": false,
-  "lignes": 9
+  "sessRole": true,
+  "lignes": 13
  },
  {
   "action": "testPush",

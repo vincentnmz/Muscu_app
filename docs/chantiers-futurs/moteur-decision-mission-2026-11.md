@@ -1,6 +1,8 @@
 # Chantier futur — Moteur d'analyse et de décision (mission du porteur, 12/11/2026)
 
-> **Statut : EN ATTENTE.** Décision du porteur (12/11) : finir d'abord l'audit du code (fiabilisation,
+> **Statut (13/11) : LANCÉ — audit livré** → [`docs/audit-moteur-decision-2026-11-13.md`](../audit-moteur-decision-2026-11-13.md) (A→H, P0→P3). Aucun code avant validation du porteur.
+>
+> ~~**Statut : EN ATTENTE.**~~ (historique) Décision du porteur (12/11) : finir d'abord l'audit du code (fiabilisation,
 > `docs/audit-architecture-2026-11-09.md` + `docs/audit-droits-routes-2026-11-10.md`), puis lancer ce chantier
 > quand l'app est en meilleure santé. **Aucun code tant que l'audit décrit ci-dessous n'a pas été présenté et validé.**
 

@@ -20,7 +20,6 @@ const SEUILS = {
   RPE_FATIGUE: 7.5,
   RPE_FATIGUE_SEANCES: 3,
   CHARGE_PROGRESSION: 0.05,
-  STAGNATION_SESSIONS: { debutant: 3, intermediaire: 4, avance: 6, expert: 8 } as Record<string, number>,
 }
 
 // Niveau & stratégie dérivés des années de pratique — MÊMES seuils que Code.gs
@@ -887,22 +886,9 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
     }
   }
 
-  const niveau = getNiveauExperience(anneesPratique)
-  const seuil = SEUILS.STAGNATION_SESSIONS[niveau]
-  for (const exo of Object.keys(progressionParExo)) {
-    const entries = (Object.values(progressionParExo[exo]) as any[]).sort((a, b) => a.date.localeCompare(b.date))
-    if (entries.length < seuil) continue
-    const derniersN = entries.slice(-seuil)
-    // Audit #7 : stagnation seulement sur des séances RÉCENTES (dernière ≤ 21 j, fenêtre ≤ 90 j).
-    if (derniersN[derniersN.length - 1].date < fmtYMD(minus(now, 21)) || derniersN[0].date < fmtYMD(minus(now, 90))) continue
-    let meilleurAvant: any = null, progresse = false
-    for (const en of derniersN) {
-      if (meilleurAvant && (en.charge > meilleurAvant.charge || (en.charge === meilleurAvant.charge && en.reps > meilleurAvant.reps))) progresse = true
-      if (!meilleurAvant || en.charge > meilleurAvant.charge || (en.charge === meilleurAvant.charge && en.reps > meilleurAvant.reps)) meilleurAvant = en
-    }
-    if (!progresse)
-      alertes.push({ type: 'stagnation', severite: 'moyenne', message: `${exo} : aucun progrès depuis ${seuil} séances (niveau ${niveau})` })
-  }
+  // 13/11 (audit moteur P0-2, décision porteur : option b) : plus d'alerte « stagnation » ici. C'était une 3e définition
+  // de « bloqué » (3 / 4 / 6 / 8 séances) ; la seule règle est désormais le classement des exercices (bloqué / recule /
+  // sous la fourchette, seuil par niveau), identique dans l'app, le mail et l'IA.
 
   for (const exo of Object.keys(rpeParExo)) {
     const sessions = (Object.values(rpeParExo[exo]) as any[]).sort((a, b) => a.date.localeCompare(b.date))
@@ -2427,14 +2413,14 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
 }
 
 // P0 #6 — Centre d'alertes (athlète) : UNE liste typée au schéma unifié, à partir
-// des alertes DÉJÀ produites par le moteur (pas de 2e moteur) + stagnation depuis
-// comparison. Classée par sévérité. L'état « lu » est appliqué ensuite (getAppData).
+// des alertes DÉJÀ produites par le moteur (pas de 2e moteur). Classée par sévérité
+// (plus de « stagnation » depuis le 13/11 : voir plus bas). L'état « lu » est appliqué ensuite (getAppData).
 function buildAlertesCentre(moteur: any, comparison: any): any[] {
   const SEV: Record<string, number> = { haute: 3, moyenne: 2, basse: 1 }
   const TITRES: Record<string, string> = {
     absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge récente élevée',
     sous_charge: 'Sous-charge', douleur: 'Douleur signalée', fatigue: 'Fatigue élevée',
-    sommeil: 'Sommeil dégradé', stagnation: 'Stagnation',
+    sommeil: 'Sommeil dégradé',
   }
   const ACTIONS: Record<string, string> = {
     absence: 'Reprends une séance cette semaine pour relancer la régularité.',
@@ -2444,7 +2430,6 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     douleur: "Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.",
     fatigue: "Priorise le sommeil et la récupération ; évite d'intensifier.",
     sommeil: "Améliore ton sommeil ; séance normale mais pas d'intensification.",
-    stagnation: "Mets plus d'intensité (séries proches de l'échec) et progresse en charge/reps. Pense aussi au temps de repos : trop court entre séries, tu ne peux pas pousser — vise 2-3 min sur les gros exercices. Si tu es déjà à ton max, persévère et soigne ta récupération (sommeil).",
   }
   const reliability = (moteur && moteur.confiance) || 'moyenne'
   const context = (moteur && moteur.contexte_tag) || null
@@ -2460,22 +2445,9 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     if (x.severity === 'basse') x.action = 'Rien d\'alarmant : surveille-la, et note-la si elle revient ou augmente.'
     else if (x.severity === 'haute') x.action = 'Évite de charger la zone et fais-la évaluer (médecin / kiné) avant de reprendre fort.'
   })
-  // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
-  // FIABILITÉ (anti-fausse-alerte) : on NE crie PAS « stagnation » quand le contexte
-  // EXPLIQUE la baisse (deload / retour de vacances / retour de blessure — la baisse
-  // est voulue ou attendue), ni quand les données sont trop maigres pour l'affirmer
-  // (confiance faible ou non interprétable). Sinon on accuse à tort une régression.
-  const ctxAmnistieStag = context === 'deload' || context === 'retour_vacances' || context === 'retour_blessure'
-  const fiabInsuffisanteStag = reliability === 'faible' || reliability === 'non_interpretable'
-  const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
-  const baisseAll = det.filter((d: any) => d && d.down)
-  const baisseExos = baisseAll.map((d: any) => d.exercice).filter(Boolean)
-  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation') && !ctxAmnistieStag && !fiabInsuffisanteStag) {
-    // On NOMME les exercices concernés (sinon « 3 exercices en baisse » sans détail).
-    const liste = baisseExos.slice(0, 6).join(', ')
-    const ev = baisseExos.length ? `${baisseAll.length} exercices en baisse cette semaine : ${liste}.` : `${baisseAll.length} exercices en baisse cette semaine.`
-    push('stagnation', 'moyenne', ev, 'progression')
-  }
+  // 13/11 (audit moteur P0-2, option b) : l'ancienne alerte « Stagnation » (≥ 3 exercices dont la charge MAX baissait de
+  // > 3 % d'une semaine à l'autre, reps ignorées) est supprimée : elle mesurait une baisse, pas un plateau, et doublonnait
+  // le classement des exercices (bloqué / recule / sous la fourchette), qui reste la seule source.
   out.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0))
   return out
 }
@@ -3282,6 +3254,9 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
   // Audit #8 : le coach voit les MÊMES alertes que l'athlète (moteur central → alertes_centre),
   // pas celles de l'ancien calculerAlertes. Repli sur l'ancien calcul si l'appel échoue (foot inclus).
   const centreByAth: Record<string, any[] | null> = {}
+  // 13/11 (audit moteur P0-2) : pastille « Progression » de la liste d'équipe = MÊME classement des exercices que la
+  // fiche (bloqué / recule / sous la fourchette, seuil par niveau) — avant : l'alerte « stagnation » supprimée.
+  const lectureByAth: Record<string, any> = {}
   await Promise.all(athletes.map(async (ath: any) => {
     if ((ath.sport || 'muscu') !== 'muscu') return
     try {
@@ -3290,6 +3265,10 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
       if (Array.isArray(d && d.alertes_centre)) centreByAth[String(ath.id)] = d.alertes_centre.map((x: any) => ({
         type: x.type, severite: x.severity, message: (x.evidence && x.evidence !== x.title) ? (x.title + ' — ' + x.evidence) : x.title,
       }))
+      try {
+        const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat, d.niveau_experience)
+        lectureByAth[String(ath.id)] = { bloque: Lx.bloque.length, recule: Lx.recule.length, sous: Lx.sous.length }
+      } catch (_) { /* sans lecture : pastille neutre */ }
     } catch (_) { /* repli ancien calcul */ }
   }))
 
@@ -3312,6 +3291,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
       niveau: getNiveauExperience(anneesA),
       strategie_progression: strategieA,
       alertes,
+      lecture: lectureByAth[String(ath.id)] || null,   // { bloque, recule, sous } — pastille « Progression »
       bien_etre: lastBE ? { date: fmtFR(lastBE.date), fatigue: lastBE.fatigue_musculaire, energie: lastBE.energie, sommeil: lastBE.sommeil } : null,
     }
   })
@@ -4541,6 +4521,7 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
     sb().from('pauses').delete().eq('athlete_id', athleteId),
     sb().from('push_subscriptions').delete().eq('athlete_id', athleteId),
     sb().from('alertes_historique').delete().eq('athlete_id', athleteId),
+    sb().from('decisions').delete().eq('athlete_id', athleteId),   // journal des décisions (P1-1)
     sb().from('envois_recus').delete().eq('athlete_id', athleteId),
   ].map((q: any) => Promise.resolve(q).catch(() => null)))
   // Fichiers privés rangés sous le préfixe <athlete_id>/ : médias coach (photos/vidéos
@@ -5747,7 +5728,11 @@ function _rcProgSecondaire(pA: any, pB: any): string | null {
   if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',')
   return null
 }
-function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null): any {
+// Séances identiques avant « bloqué », selon le niveau : MÊME table que l'app (js/lecture-v3.js LV3_BLOQUE_N, décision
+// porteur 03/11 ; parité vérifiée par tests/bloque-regle-unique.test.js). Avant le 13/11, le mail récap et l'IA disaient
+// « bloqué » après 3 séances quel que soit le niveau → contradiction avec l'app (audit moteur C1 / P0-1).
+const BLOQUE_N_NIVEAU: Record<string, number> = { debutant: 2, intermediaire: 3, avance: 4, expert: 4 }
+function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null, niveau?: string | null): any {
   // Audit Contexte X1 (01/11) — même règle que l'app : en déload / reprise, « recule » et « bloqué » sont attendus.
   const ctxA = ctxEtat === 'deload' ? 'déload' : (ctxEtat === 'retour_vacances' || ctxEtat === 'retour_blessure') ? 'reprise' : null
   const pd = (x: any) => { const d = parseFR(x); return d ? d.getTime() : 0 }
@@ -5780,13 +5765,16 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     const p2 = (dj <= 14) ? _rcProgSecondaire(pts[0], pts[1]) : null
     if (p2) { R.progresse.push({ exo, why: p2 }); continue }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
-    if (pts.length >= 3) {
-      const c2 = num(pts[2].charge), r2 = num(pts[2].reps)
-      if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
-        if (_rcProgSecondaire(pts[1], pts[2])) continue
-        let n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
-        if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
-      }
+    // Même algorithme que l'app (_lectureExos) : NB séances identiques selon le niveau, jamais sur un exercice neuf (≥ 3 séances).
+    const NB = BLOQUE_N_NIVEAU[String(niveau || '')] || 3
+    let memes = pts.length >= Math.max(NB, 3)
+    for (let q = 1; memes && q < NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) memes = false }
+    if (memes && c0 === c1 && r0 <= r1) {
+      let secondaire = false
+      for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }
+      if (secondaire) continue
+      let n = NB; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
+      if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
     }
   }
   return R
@@ -5834,7 +5822,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const prog = (ad.historique && ad.historique.progression_par_exo) || {}
   const progAvant: Record<string, any[]> = {}
   for (const k of Object.keys(prog)) { const pts = (prog[k] || []).filter((p: any) => normDate(p.date) < d1); if (pts.length) progAvant[k] = pts }
-  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3, ad.contexte && ad.contexte.etat)
+  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3, ad.contexte && ad.contexte.etat, ad.niveau_experience)
   // Volume par muscle (séries / semaine ; secondaire = 0,5) vs cibles volume_obti.
   const vm: Record<string, number> = {}
   for (const r of inP) {
@@ -6069,6 +6057,95 @@ async function handleCronResumes(body: any): Promise<Response> {
 // 'off' | 'semaine' | 'mois' | '3mois'. Le front envoie athlete_id OU coach_id.
 // P9 (05/11) : formulaire « Envoyer un retour » → hello@novalyz.fr (l'adresse perso n'apparaît plus dans l'app).
 const CONTACT_NOVALYZ = 'hello@novalyz.fr'
+// ── Journal des décisions (P1-1, 13/11 — migration 20261113160000_decisions.sql) ─────────────────────────────
+// Le plan de la semaine est calculé par l'APP (js/lecture-v3.js _lv3Plan, moteur unique). Ici on le FIGE, on ne le
+// recalcule pas. Garde-fous validés par le porteur : athlète = session (coach : jamais d'écriture) ; semaine COURANTE
+// seulement ; une seule version par athlète et par semaine (la première VALIDE), aucune ligne en double ; rien si l'app
+// n'a pas des données complètes ; contrôle de FORME uniquement. Journal en ajout seul (aucune route de modification).
+const DECISION_TYPES = ['charge', 'series', 'rpe', 'cible', 'reprise']
+const DECISION_CRITERE_BORNES: Record<string, [number, number]> = { charge: [0, 1000], alt: [0, 1000], reps: [0, 100], min: [0, 100], add: [0, 20], parSem: [0, 200], seances: [0, 14] }
+// Lundi de la semaine courante (aaaa-mm-jj) à l'heure de Paris, et en UTC (tolérance autour de minuit).
+function _lundisCourants(now: Date): string[] {
+  const out = new Set<string>([fmtYMD(getLundi(now))])
+  try {
+    const p: Record<string, string> = {}
+    for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)) p[x.type] = x.value
+    out.add(fmtYMD(getLundi(new Date(Date.UTC(+p.year, +p.month - 1, +p.day)))))
+  } catch (_) { /* Intl indisponible : lundi UTC seul */ }
+  return [...out]
+}
+// Contrôle de forme d'une action du plan → ligne prête à insérer, ou message d'erreur. Ne juge pas le contenu.
+function _decisionLigne(a: any, athleteId: string, semaine: string, version: string): { ligne?: any; err?: string } {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return { err: 'action invalide' }
+  const type = String(a.type || '')
+  if (!DECISION_TYPES.includes(type)) return { err: 'type d\'action inconnu' }
+  const str = (v: any, max: number) => (v == null || v === '') ? null : (typeof v === 'string' && v.trim().length <= max ? v.trim() : undefined)
+  const titre = str(a.titre, 200), raison = str(a.raison, 600), exercice = str(a.exo, 120), muscle = str(a.muscle, 60)
+  if (!titre) return { err: 'titre manquant ou trop long' }
+  if (raison === undefined || exercice === undefined || muscle === undefined) return { err: 'champ trop long' }
+  const cle = type === 'reprise' ? 'reprise' : type === 'series' ? (muscle || exercice) : exercice
+  if (!cle) return { err: 'exercice / muscle manquant' }
+  const critere: Record<string, number> = {}
+  const c = a.critere == null ? {} : a.critere
+  if (typeof c !== 'object' || Array.isArray(c)) return { err: 'critère invalide' }
+  for (const k of Object.keys(c)) {
+    const b = DECISION_CRITERE_BORNES[k], v = c[k]
+    if (!b) return { err: 'critère : champ inconnu (' + k + ')' }
+    if (v == null) continue
+    if (typeof v !== 'number' || !isFinite(v) || v < b[0] || v > b[1]) return { err: 'critère : valeur hors bornes (' + k + ')' }
+    critere[k] = v
+  }
+  const de = a.donnees_entree == null ? {} : a.donnees_entree
+  if (typeof de !== 'object' || Array.isArray(de)) return { err: 'données d\'entrée invalides' }
+  if (JSON.stringify(de).length > 2000) return { err: 'données d\'entrée trop longues' }
+  return { ligne: { athlete_id: athleteId, semaine, type_action: type, cle, exercice, muscle, titre, raison, critere, donnees_entree: de, regle_version: version } }
+}
+async function handleEnregistrerPlan(body: any): Promise<Response> {
+  // 1. Identité = session ATHLÈTE (authCheck refuse déjà le coach et un athlete_id d'un autre ; double contrôle ici).
+  if (body._sessRole !== 'a' || !body._sessId) return jsonResp({ success: false, error: 'Réservé à l\'athlète' })
+  const athleteId = String(body._sessId)
+  if (body.athlete_id != null && body.athlete_id !== '' && String(body.athlete_id) !== athleteId) return jsonResp({ success: false, error: 'Athlète incohérent avec la session' })
+  // 4. L'app déclare avoir calculé le plan sur des données complètes (en ligne, getAppData chargé) ; sinon rien.
+  if (body.donnees_completes !== true) return jsonResp({ success: false, error: 'Plan non enregistré : données incomplètes' })
+  // 2. Semaine courante seulement.
+  const semaine = String(body.semaine || '')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(semaine) || !_lundisCourants(new Date()).includes(semaine)) return jsonResp({ success: false, error: 'Seul le plan de la semaine en cours peut être enregistré' })
+  const version = String(body.regle_version || '')
+  if (!/^[a-z0-9._-]{3,40}$/.test(version)) return jsonResp({ success: false, error: 'Version de règle manquante ou invalide' })
+  const actions = body.actions
+  if (!Array.isArray(actions) || actions.length < 1 || actions.length > 3) return jsonResp({ success: false, error: 'Le plan doit contenir 1 à 3 actions' })
+  // 5. Contrôle de forme (pas de recalcul du moteur).
+  const lignes: any[] = [], vus = new Set<string>()
+  for (const a of actions) {
+    const r = _decisionLigne(a, athleteId, semaine, version)
+    if (r.err) return jsonResp({ success: false, error: 'Plan refusé : ' + r.err })
+    const k = r.ligne.type_action + '|' + r.ligne.cle
+    if (vus.has(k)) return jsonResp({ success: false, error: 'Plan refusé : action en double' })
+    vus.add(k); lignes.push(r.ligne)
+  }
+  // 3. Une seule version par semaine : si un plan existe déjà pour cette semaine, on n'écrit rien (première version valide).
+  const { data: deja, error: eLire } = await sb().from('decisions').select('id').eq('athlete_id', athleteId).eq('semaine', semaine).limit(1)
+  if (eLire) return jsonResp({ success: false, error: 'Lecture du journal impossible' })
+  if (deja && deja.length) return jsonResp({ success: true, deja: true, enregistrees: 0 })
+  const { error } = await sb().from('decisions').insert(lignes)
+  if (error) {
+    if (String((error as any).code) === '23505') return jsonResp({ success: true, deja: true, enregistrees: 0 })   // envoi simultané : la contrainte UNIQUE tranche
+    return jsonResp({ success: false, error: 'Enregistrement impossible' })
+  }
+  return jsonResp({ success: true, deja: false, enregistrees: lignes.length })
+}
+// Lecture du journal : l'athlète (le sien) ou son coach (authCheck vérifie athlete_id). Lecture seule.
+async function handleGetDecisions(params: URLSearchParams): Promise<Response> {
+  const athleteId = String(params.get('athlete_id') || '').trim()
+  if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
+  const n = Math.max(1, Math.min(52, Number(params.get('semaines')) || 12))
+  const depuis = fmtYMD(minus(getLundi(new Date()), 7 * n))
+  const { data, error } = await sb().from('decisions').select('semaine,type_action,cle,exercice,muscle,titre,raison,critere,donnees_entree,regle_version,created_at')
+    .eq('athlete_id', athleteId).gte('semaine', depuis).order('semaine', { ascending: false }).order('id', { ascending: true })
+  if (error) return jsonResp({ success: false, error: 'Lecture du journal impossible' })
+  return jsonResp({ success: true, decisions: data || [] })
+}
+
 async function handleEnvoyerRetour(body: any): Promise<Response> {
   const msg = String(body.message || '').trim().slice(0, 3000)
   if (msg.length < 3) return jsonResp({ success: false, error: 'Message vide' })
@@ -7236,7 +7313,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   else if ((d.programme || []).length) L.push('- Semaine du programme terminée (toutes les séances faites).')
   // Lecture des exercices (même calcul que l'app et le mail récap).
   try {
-    const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat)
+    const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat, d.niveau_experience)
     const kg = (x: any) => String(x).replace('.', ',')
     if (Lx.records.length) L.push(`- Records récents : ${Lx.records.slice(0, 4).map((x: any) => x.exo.trim() + ' ' + kg(x.c) + ' kg × ' + x.r).join(' ; ')}.`)
     if (Lx.progresse.length) L.push(`- En progrès : ${Lx.progresse.slice(0, 4).map((x: any) => x.exo.trim()).join(', ')}.`)
@@ -8040,6 +8117,11 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   }
   // Supprimer un compte athlète : uniquement l'athlète lui-même (jamais son coach) — R2, 01/11.
   if (action === 'supprimerCompte' && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → suppression du compte de ' + aid }
+  // Audit P2.1 🟡 (décision porteur 13/11) : réservés à l'athlète lui-même. claimRecompense : les points sont les siens ;
+  // saveEmail : l'e-mail sert à « mot de passe oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte,
+  // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
+  // P1-1 (13/11) : le journal des décisions n'est créé que depuis le parcours de l'athlète (jamais par le coach).
+  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -8118,6 +8200,7 @@ Deno.serve(async (req: Request) => {
         case 'getSuiviEquipe':        return handleGetSuiviEquipe(params)
         case 'getSuiviJoueur':        return handleGetSuiviJoueur(params)
         case 'getTests':              return handleGetTests(params)
+        case 'getDecisions':          return handleGetDecisions(params)
         default:                      return jsonResp({ erreur: `Action inconnue: ${action}` }, 404)
       }
     }
@@ -8156,6 +8239,7 @@ Deno.serve(async (req: Request) => {
         case 'saveRecapFreq':            return handleSaveRecapFreq(body)
         case 'saveCoachPref':            return handleSaveCoachPref(body)
         case 'envoyerRetour':            return handleEnvoyerRetour(body)
+        case 'enregistrerPlan':          return handleEnregistrerPlan(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
         case 'confirmerEmail':           return handleConfirmerEmail(body)

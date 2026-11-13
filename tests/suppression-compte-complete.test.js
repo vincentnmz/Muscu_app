@@ -15,7 +15,7 @@ const ROOT = path.join(__dirname, '..');
 const T = fs.readFileSync(path.join(__dirname, 'e2e-parcours.test.js'), 'utf8');
 eval(T.slice(T.indexOf('function makeEngine'), T.indexOf('// ── Chargement du VRAI backend')));
 
-const TABLES = ['activites', 'alertes_historique', 'bien_etre', 'blessures', 'commentaires', 'contexte_athlete', 'google_health_tokens',
+const TABLES = ['activites', 'alertes_historique', 'bien_etre', 'decisions', 'blessures', 'commentaires', 'contexte_athlete', 'google_health_tokens',
   'indicateurs', 'native_push_tokens', 'notes', 'objectif', 'objectifs', 'password_reset_tokens', 'pauses', 'performances', 'planning',
   'poids_historique', 'programme', 'push_subscriptions', 'tests'];
 
