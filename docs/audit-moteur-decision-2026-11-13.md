@@ -277,3 +277,18 @@ après sur un jeu de données réel (copie), préprod, validation du porteur, pu
   plan envoyé une fois, historique et fiche coach affichés, aucune erreur JS) ; envoi identique rejoué sur le **vrai serveur
   préprod** (accepté, relu par le coach). Captures relues (Aujourd'hui, Analyses, coach).
 - **Pas encore fait** : « résultat observé ensuite » sur la ou les semaines suivantes (P1-2) ; échelle de confiance commune (P1-3).
+
+## Réalisé — P1-2 résultat observé ensuite (13/11) + test de la boucle complète en préprod
+
+- `js/lecture-v3.js` `_lv3JournalSuite` : pour chaque décision **tentée**, « Résultat observé ensuite » sur les 1 à 2 semaines
+  suivantes, avec le critère enregistré — charge : revenu dans la fourchette (série et date) ; cible : tenue ou dépassée ;
+  RPE : redescendu ≤ 8 à la charge ; séries : minimum tenu la semaine suivante ; reprise : séance la semaine suivante.
+  États : confirmé · non confirmé · trop tôt pour conclure · pas refait ; conclusion seulement avec assez de séances
+  (« sur N séances ») ; critère incomplet → aucune conclusion ; rien de stocké, aucun recalcul du moteur. Affiché dans
+  « Tes décisions » et dans « Déjà proposé » (coach). Le statut de la semaine (P1-1) est inchangé.
+- Tests `journal-front` (46, dont 11 P1-2) ; 109 suites vertes ; SW v584.
+- **Boucle complète en préprod** (Lucas, démo) : plans des semaines du 26/10 et du 02/11 reconstitués par le moteur sur ses
+  vraies données, insérés comme données de test marquées, relus par le **vrai serveur** (athlète et coach : 4 décisions),
+  puis affichés par l'app : 26/10 « 6 séries de mollets » → réalisé 3 (pas atteint) → semaine suivante 3 séries (non
+  confirmé) ; 02/11 → « trop tôt pour conclure » (aucune séance depuis le 09/11). Chiffres recoupés en base (3 séries de
+  mollets chaque semaine, dernier développé couché le 02/11). Lignes de test supprimées ; reste le plan réel de Lucas du 09/11.

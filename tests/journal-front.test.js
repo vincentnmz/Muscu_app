@@ -72,6 +72,36 @@ eq(S._lv3TitrePasse('Dos : 10 séries cette semaine') === 'Dos : 10 séries', 's
 eq(/Déjà proposé/.test(S._lv3JournalDejaPropose(rows, data, 'Dev')) && S._lv3JournalDejaPropose(rows, data, 'Squat') === '', 'coach : « Déjà proposé » seulement sur l\'exercice concerné');
 eq(!/grâce à/i.test(LV3.slice(LV3.indexOf('// ── E. Journal')).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), 'aucun « grâce à » dans les textes du journal (hors commentaires)');
 
+// P1-2 — « Résultat observé ensuite » (1 à 2 semaines après la décision), recalculé sur les séances réelles.
+{ const D2 = jour(lundi, -21), D3 = jour(lundi, -14);   // décisions de semaines plus anciennes : leur suite est connue
+  const prog = { 'Smith': [ { date: jour(D2, 1), series: [{ charge: 80, reps: 4, rpe: 10 }] }, { date: jour(D3, 1), series: [{ charge: 75, reps: 5, rpe: 9 }] }, { date: jour(D3, 4), series: [{ charge: 75, reps: 8, rpe: 8 }] } ],
+    'Curl': [ { date: jour(D2, 2), series: [{ charge: 20, reps: 10, rpe: 9 }] }, { date: jour(D3, 2), series: [{ charge: 20, reps: 10, rpe: 9.5 }] }, { date: jour(L1, 2), series: [{ charge: 20, reps: 10, rpe: 9 }] } ],
+    'Rowing': [ { date: jour(D2, 3), series: [{ charge: 60, reps: 8, rpe: 8 }] }, { date: jour(D3, 3), series: [{ charge: 62.5, reps: 8, rpe: 8 }] } ],
+    'Tirage': [ { date: jour(D3, 1), series: [{ charge: 50, reps: 10, rpe: 9 }] } ] };
+  const dm = { [jour(D3, 1)]: { spm: { Dos: 5 } }, [jour(D3, 3)]: { spm: { Dos: 6 } }, [jour(L1, 2)]: { spm: { Dos: 3 } } };
+  const DD = { historique: { progression_par_exo: prog, daily_muscu: dm } };
+  const su = (o) => S._lv3JournalSuite(Object.assign({ semaine: D2 }, o), DD);
+  let r = su({ type_action: 'charge', exercice: 'Smith', critere: { charge: 75, alt: 70, reps: 6 } });
+  eq(r && r.etat === 'confirme' && /75 kg × 8 le .* revenu dans ta fourchette/.test(r.texte) && /^Résultat observé ensuite : /.test(r.texte), 'charge : revenu dans la fourchette ensuite → confirmé (date + série)', r);
+  r = su({ type_action: 'rpe', exercice: 'Curl', critere: { charge: 20 } });
+  eq(r && r.etat === 'non_confirme' && /RPE toujours au-dessus de 8/.test(r.texte) && r.n === 2, 'RPE : toujours > 8 sur 2 séances → non confirmé', r);
+  r = su({ type_action: 'cible', exercice: 'Rowing', critere: { charge: 62.5, reps: 8 } });
+  eq(r && r.etat === 'confirme' && /cible tenue ou dépassée : 62,5 kg × 8/.test(r.texte), 'cible : tenue la semaine suivante → confirmé', r);
+  r = su({ type_action: 'series', muscle: 'Dos', cle: 'Dos', critere: { min: 10 } });
+  eq(r && r.etat === 'confirme' && /minimum tenu la semaine suivante \(11 séries\)/.test(r.texte), 'séries : minimum tenu la semaine suivante → confirmé', r);
+  r = su({ semaine: D3, type_action: 'series', muscle: 'Dos', cle: 'Dos', critere: { min: 10 } });
+  eq(r && r.etat === 'non_confirme' && /3 séries \(minimum 10\)/.test(r.texte), 'séries : semaine suivante sous le minimum → non confirmé', r);
+  r = su({ semaine: D3, type_action: 'cible', exercice: 'Tirage', critere: { charge: 50, reps: 12 } });
+  eq(r && r.etat === 'trop_tot' && /pas encore refait depuis, trop tôt pour conclure/.test(r.texte), 'exercice pas refait, fenêtre pas finie → trop tôt', r);
+  r = su({ semaine: L1, type_action: 'series', muscle: 'Dos', cle: 'Dos', critere: { min: 10 } });
+  eq(r && r.etat === 'trop_tot' && /semaine suivante en cours/.test(r.texte), 'décision de la semaine dernière : semaine suivante en cours → trop tôt', r);
+  eq(S._lv3JournalSuite({ semaine: lundi, type_action: 'cible', exercice: 'Rowing', critere: { charge: 60, reps: 8 } }, DD) === null, 'semaine de la décision pas finie → aucune suite');
+  eq(su({ type_action: 'cible', exercice: 'Rowing', critere: {} }) === null, 'critère incomplet → aucune conclusion');
+  eq(su({ type_action: 'rpe', exercice: 'Rowing', critere: { charge: 60 } }).etat === 'confirme', 'RPE : ≤ 8 à la charge ensuite → confirmé');
+  const h = S._lv3JournalSuiteHtml({ semaine: D2, type_action: 'rpe', exercice: 'Curl', critere: { charge: 20 } }, DD);
+  eq(/\(sur 2 séances\)/.test(h), 'fiabilité affichée : « sur N séances »', h);
+}
+
 // Charge utile → acceptée par le contrôle de forme du serveur
 const P = { lundi, actions: [
   { type: 'charge', exo: 'Dev', titre: 'Dev : proposé 75 kg (ou 70 kg)', raison: 'Pour revenir dans ta fourchette.', charge: 75, alt: 70, reps: 6 },
