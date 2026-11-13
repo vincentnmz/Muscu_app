@@ -43,12 +43,14 @@ Le contrôle d'accès est **effectif sur toutes les routes qui reçoivent un ide
 | `deleteNativePushToken` | **sans** `athlete_id`, supprime le jeton FCM quel que soit son propriétaire | jeton FCM d'un autre requis (non devinable) | imposer `athlete_id` = session (ou `coach:<id>` du coach) |
 | `repondreDemandeCoach` | action de l'**athlète** (accepter / refuser une demande de suivi) **aussi possible pour son coach actuel** | le coach peut accepter à la place de l'athlète la demande d'un autre coach (l'athlète change de coach) ou la refuser | réserver à une session athlète (comme `supprimerCompte`) |
 
-## 🟡 Comportements à confirmer (pas une faille démontrée) — ✅ traités le 13/11/2026
+## 🟡 Comportements à confirmer (pas une faille démontrée) — ✅ traités et en prod le 13/11/2026 (v254)
+
+> Vérifs : préprod réelle (coach jim → John : `saveEmail` 401 sans changement d'e-mail, `claimRecompense` 401, témoin `getAppData` 200) ; prod v254 identique au commit `5751a92`, smoke test John : connexion 200, `saveEmail` / `claimRecompense` passent le contrôle d'accès (refus métier avant toute écriture : e-mail invalide, récompense inconnue), `getAppData` 200, aucune écriture (empreintes avant / après identiques).
 
 Décisions du porteur (13/11) et état :
 
 - `claimRecompense` — le coach pouvait appeler la boutique pour son athlète (dépenser ses points). **Décision : réservé à l'athlète.**
-  ✅ `authCheck` refuse (401) toute session non athlète (préprod d'abord, prod avec accord). L'app ne l'appelle que côté athlète **[V]**.
+  ✅ `authCheck` refuse (401) toute session non athlète — **prod v254 (13/11)**, smoke test prod OK. L'app ne l'appelle que côté athlète **[V]**.
 - `saveEmail` — le coach pouvait changer l'e-mail de son athlète. **Risque précisé [V]** : l'e-mail sert à « mot de passe
   oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte, **même après que l'athlète l'a quitté**
   (au-delà de `coachResetAthlete`, qui exige le lien actif). **Décision : réservé à l'athlète.** ✅ même correction ;

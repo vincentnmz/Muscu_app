@@ -16,7 +16,7 @@
 | P1 | Données de démo (`is_demo`) | ✅ fait 09/11 | migration `20261109170000`, `_comptesDemo()` |
 | P1 | Sortie d'`indicateurs` | 🟡 en cours | ✅ `envoi_id` → `envois_recus` · ✅ `pref` → `athletes.prefs` · ✅ quotas IA/morpho → `quotas_jour` · ⏳ récompenses (préprod, après observation ; preuve du verrou PostgreSQL demandée) · ⏳ `alerte_*` · ⏳ suppression des anciennes lignes après observation |
 | P1 | Décision hachage (S4) | ✅ fait 10/11 — option C (`w1` = PBKDF2 600 000 tours sur le s2), 53 comptes convertis | `docs/note-hachage-mdp-2026-11-10.md` ; ⏳ supprimer `password_hash_s2` après observation |
-| P2 | Test « chaque route est couverte par les droits » | ✅ audit 10/11 (121 routes, 919 appels) ; 🔴 et 4 🟠 corrigés en prod ; 🟡 traités 13/11 : **test permanent `tests/securite-droits-routes.test.js`** (toutes les routes, 2 473 vérifications) + `claimRecompense` / `saveEmail` réservés à l'athlète (préprod ; prod avec accord) | `docs/audit-droits-routes-2026-11-10.md`, `scripts/audit-droits/` |
+| P2 | Test « chaque route est couverte par les droits » | ✅ audit 10/11 (121 routes, 919 appels) ; 🔴 et 4 🟠 corrigés en prod ; 🟡 traités 13/11 : **test permanent `tests/securite-droits-routes.test.js`** (toutes les routes, 2 473 vérifications) + `claimRecompense` / `saveEmail` réservés à l'athlète (**prod v254**) | `docs/audit-droits-routes-2026-11-10.md`, `scripts/audit-droits/` |
 | P2 | Test Playwright de bout en bout en CI | ⏳ | |
 | P2 | README + carte d'`app.js` + dictionnaire d'`indicateurs` + CLAUDE.md à jour | ⏳ | |
 | P2 | Nouveau code en fichiers séparés (modèle `lecture-v3.js`) | ⏳ (règle à écrire dans CLAUDE.md) | |
