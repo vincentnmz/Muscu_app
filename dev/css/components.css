@@ -379,6 +379,9 @@ body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
 .jg-chip { font:inherit; font-size:12.5px; font-weight:700; border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:11px; padding:9px 13px; cursor:pointer; }
 .jg-chip.on { background:var(--accent-a08); border-color:var(--accent); color:var(--accent); }
 .jg-chip.add { border-style:dashed; color:var(--accent); }
+/* 13/11 (retour client) : boutons « + Push / + Pull… » = vraies actions (créent la séance et ouvrent le choix des exercices). */
+.jg-chip.cta { color:var(--accent); border-color:var(--accent); background:var(--accent-a08); font-size:13.5px; padding:11px 15px; }
+.jg-chip.cta:active { transform:scale(.97); }
 .jg-autre { display:inline-flex; gap:6px; }
 .jg-autre input { font:inherit; font-size:13px; border:1px solid var(--accent); border-radius:999px; padding:7px 12px; background:var(--surface); color:var(--text); width:170px; margin:0; }
 .jg-autre button { font:inherit; font-weight:800; font-size:12.5px; border:none; border-radius:999px; background:var(--accent); color:#fff; padding:7px 13px; cursor:pointer; }

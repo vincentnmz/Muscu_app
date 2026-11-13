@@ -10684,6 +10684,9 @@ function _jgAddSeance(nom) {
   nom = String(nom || '').trim(); if (!nom) return;
   var base = nom, k = 2; while (_jg.seances.indexOf(nom) >= 0) { nom = base + ' ' + k; k++; }
   _jg.seances.push(nom); _jg.autre = false; _jgRender();
+  // 13/11 (retour client) : avant, la séance s'ajoutait en bas de page sans rien ouvrir (on ne s'en rendait pas
+  // compte). Maintenant le choix des exercices s'ouvre directement ; fermé sans rien choisir, la séance vide reste.
+  _jgAjouterExos(nom);
 }
 function _jgAutre() { _jg.autre = true; _jgRender(); setTimeout(function () { var i = document.getElementById('jg-autre-in'); if (i) i.focus(); }, 30); }
 function _jgRetirer(nom) { _jg.seances = _jg.seances.filter(function (s) { return s !== nom; }); _jgRender(); }
@@ -10719,7 +10722,7 @@ function _jgRender() {
       + (rows ? '<div class="jg-rows">' + rows + '</div>' : '')
       + '<button class="jg-addx" onclick="_jgAjouterExos(\'' + js(s) + '\')">+ Ajouter des exercices</button></div>';
   }).join('');
-  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip" onclick="_jgAddSeance(\'' + js(n) + '\')">' + esc(n) + '</button>'; }).join('')
+  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip cta" onclick="_jgAddSeance(\'' + js(n) + '\')">+ ' + esc(n) + '</button>'; }).join('')
     + (_jg.autre ? '<span class="jg-autre"><input id="jg-autre-in" type="text" placeholder="Nom de la séance" onkeydown="if(event.key===\'Enter\')_jgAddSeance(this.value)"><button onclick="_jgAddSeance(document.getElementById(\'jg-autre-in\').value)">OK</button></span>'
                  : '<button class="jg-chip add" onclick="_jgAutre()">+ Autre nom…</button>');
   ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="fermerConstruireProgramme()" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Construis ton programme</div><div class="b">Crée tes séances puis ajoute tes exercices</div></div></div>'
@@ -10737,7 +10740,7 @@ async function cdAjouterSeance() {
   // fenêtre au style de l'app au lieu de la boîte système prompt().
   var p = document.getElementById('cd-newseance');
   if (!p) { p = document.createElement('div'); p.id = 'cd-newseance'; p.className = 'jg-panel-ov'; document.body.appendChild(p); p.addEventListener('click', function (e) { if (e.target === p) p.style.display = 'none'; }); }
-  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip" onclick="document.getElementById(\'cd-ns-in\').value=\'' + n + '\'">' + n + '</button>'; }).join('');
+  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip cta" onclick="document.getElementById(\'cd-ns-in\').value=\'' + n + '\';_cdNouvelleSeanceOk()">+ ' + n + '</button>'; }).join('');
   p.innerHTML = '<div class="jg-panel jg-panel-sm">'
     + '<div class="xp-hd"><button class="xp-back" onclick="document.getElementById(\'cd-newseance\').style.display=\'none\'" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Nouvelle séance</div><div class="b">Nomme-la, puis choisis ses exercices</div></div></div>'
     + '<div class="jg-pbody"><div class="jg-chips">' + chips + '</div>'
