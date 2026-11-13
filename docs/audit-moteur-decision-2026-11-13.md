@@ -237,3 +237,25 @@ après sur un jeu de données réel (copie), préprod, validation du porteur, pu
 - Rejeu sur données réelles des incohérences C1-C4 (vérifiées dans le code ; leur **fréquence réelle** reste à mesurer sur une
   copie des données avant correction).
 - Qualité réelle des réponses IA (IA non activée).
+
+---
+
+## Réalisé — P0 (13/11, validé porteur : P0-1, P0-2 option b, P0-3)
+
+- **P0-1 « bloqué » unique** : `index.ts` `BLOQUE_N_NIVEAU` (= `LV3_BLOQUE_N` de l'app) ; `_rcLectureExos` reprend l'algorithme de
+  l'app avec le niveau (mail récap et contexte IA reçoivent `niveau_experience`). Test `bloque-regle-unique` (4 niveaux, app =
+  serveur, mail d'un débutant) ; échoue sur l'ancien code.
+- **P0-2 « stagnation » supprimée (option b)** : plus d'alerte `stagnation` dans `alertes_centre` ni dans l'ancien
+  `calculerAlertes` (repli coach) ; `_prescriptionStag` (« +2,5 kg » en dur) supprimée avec ses 3 appels — le levier vient du
+  seul diagnostic `_lv3Diag` (carte « Pourquoi ça bloque » déjà présente dans Évolution). La pastille « Progression » de la
+  liste d'équipe du coach suit désormais le classement (`getCoachAthletes.lecture` : rouge = recule / sous la fourchette,
+  orange = bloqué, info au survol). Tests `alertes-centre` et `audit-moteur #7` mis à jour (la règle a changé sur décision du porteur).
+- **P0-3 « ta normale » unique** : l'écran compare seulement avec 3 saisies récentes, comme le moteur ; sinon « N saisie(s)
+  cette semaine · comparaison à ta normale dès 3 saisies sur 7 jours », sans orange. Test `normale-regle-unique` (écran = moteur
+  sur 1, 2, 3 saisies) ; échoue sur l'ancien code.
+- **Mesure sur 2 comptes réels** (copies locales du 06-11/11, comptes seulement) : C1 aucun écart (l'intermédiaire a la même
+  règle par construction ; le débutant n'a jamais eu d'exercice « bloqué ») ; C2 ancienne « stagnation » déclenchée 1 semaine
+  sur 12, semaine où le classement montrait déjà des exercices bloqués / en recul ; C4 14 jours de comparaison faite sur
+  < 3 saisies, sans orange affiché. → correctifs surtout **préventifs** pour les testeurs actuels (ils protègent les nouveaux
+  comptes et les niveaux débutant / avancé).
+- 107 suites vertes ; SW v582. Captures : pastilles coach (vert / orange / rouge vérifiés), texte « ta normale ».

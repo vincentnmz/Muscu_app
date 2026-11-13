@@ -44,14 +44,15 @@ const base = { acwr: null, acwrFiable: false, ffTsbPct: -23, ffRatio: 1.23, ffFi
   const g = _aggSignaux([{ date: '2026-10-25', courbatures: 4 }, { date: '2026-10-27', courbatures: 1 }], NOW, 7);
   eq(g.courbatures === 1, '#4 courbatures = dernière saisie (1, pas 4)', g.courbatures); }
 
-// #7 : stagnation sur des séances anciennes → plus d'alerte ; récentes → alerte
+// #7 → 13/11 (audit moteur P0-2, option b) : l'ancien moteur n'émet PLUS d'alerte « stagnation » (3e définition de
+// « bloqué ») ; seul le classement des exercices (seuil par niveau) dit « bloqué ».
 { const now = new Date();
   const D = (d) => fmtYMD(minus(now, d));
   const mk = (days) => days.map(d => ({ date: D(d), exercice: 'Curl barre', charge: 30, reps: 8, rpe: 8 }));
   const vieux = calculerAlertes(mk([130, 125, 40, 30]), 'x', 5, false).filter(a => a.type === 'stagnation');
   eq(vieux.length === 0, '#7 séances étalées sur 4 mois → pas de stagnation', vieux);
   const recents = calculerAlertes(mk([20, 14, 7, 2]), 'x', 5, false).filter(a => a.type === 'stagnation');
-  eq(recents.length === 1, '#7 4 séances récentes identiques → stagnation', recents); }
+  eq(recents.length === 0, '#7 4 séances récentes identiques → plus d\'alerte « stagnation » (le classement s\'en charge)', recents); }
 
 console.log('-'.repeat(70));
 console.log('audit moteur : ' + ok + ' OK / ' + ko + ' KO');

@@ -7961,32 +7961,8 @@ function _rpeOptions(cur) {
   });
   return o.join('');
 }
-// Prescription anti-stagnation (P2) : à partir de l'historique de l'exo + sa
-// fourchette de reps programmée → piste d'action concrète. null si pas d'historique.
-// Déterministe : reps au plafond → +charge · marge en reps → +reps · sinon générique.
-function _prescriptionStag(exoNom) {
-  if (!exoNom) return null;
-  var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
-  if (!d) return null;
-  var pts = (d.historique && d.historique.progression_par_exo && d.historique.progression_par_exo[exoNom]) || [];
-  if (!pts.length) return null;
-  var r = Number(pts[0].reps) || 0;   // pts[0] = séance la plus récente (tri desc backend)
-  var prog = (d.programme || []).filter(function (l) { return l && l.exercice === exoNom; })[0];
-  var rmax = (prog && prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
-  var rmin = (prog && prog.reps_mini != null && prog.reps_mini !== '') ? Number(prog.reps_mini) : null;
-  var act, why;
-  if (rmax && r >= rmax) {
-    act = 'Monte la charge d\'un petit cran (+2,5 kg) et redescends vers ' + (rmin ? rmin + ' reps' : 'le bas de ta fourchette') + ', puis remonte les reps séance après séance.';
-    why = 'Tu plafonnes en haut de ta fourchette de reps → c\'est le moment d\'ajouter de la charge (double progression).';
-  } else if (rmax && r < rmax) {
-    act = 'Garde la charge et ajoute des reps : vise ' + rmax + ' reps avant de remonter la charge.';
-    why = 'Il te reste de la marge en répétitions : progresse en volume avant d\'alourdir.';
-  } else {
-    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes. Pousse l\'intensité (séries proches de l\'échec), garde 2-3 min de repos entre séries, et soigne ton sommeil. Si tu es à ton max, persévère.';
-    why = 'La progression vient de l\'intensité, du temps de repos et de la récupération — pas du changement d\'exercice.';
-  }
-  return { act: act, why: why };
-}
+// 13/11 (audit moteur P0-2) : _prescriptionStag (conseil générique « +2,5 kg » codé en dur) supprimée ; le levier d'un
+// exercice vient uniquement du diagnostic _lv3Diag (js/lecture-v3.js), le même partout.
 // Prescription de charge (P4) : charge à viser (1RM estimé × % programmé) + règle de
 // progression PILOTÉE PAR LE PROGRAMME (fourchette de reps de l'exo) et adaptée au
 // niveau/stratégie. null si aucune cible exploitable.
@@ -8639,11 +8615,15 @@ function renderCoachAthleteGrid(athletes) {
     const niv = getNiveauExperience(a.annees_pratique);
     const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv] || '';
     const types = alertes.map(al => al.type || '');
-    const dotProg = types.some(t => t === 'stagnation' || t === 'regression') ? '#e5484d' : '#00c96e';
+    // 13/11 (audit moteur P0-2) : même classement que la fiche (serveur : a.lecture) — rouge si un exercice recule ou est
+    // sous sa fourchette, orange s'il est bloqué. Avant : alerte « stagnation » (supprimée, elle mesurait une baisse de charge).
+    const _lx = a.lecture || {};
+    const dotProg = ((_lx.recule || 0) + (_lx.sous || 0) > 0 || types.includes('regression')) ? '#e5484d' : ((_lx.bloque || 0) > 0 ? '#f59f00' : '#00c96e');
+    const titreProg = a.lecture ? ('Progression : ' + (_lx.bloque || 0) + ' bloqué(s), ' + (_lx.recule || 0) + ' en recul, ' + (_lx.sous || 0) + ' sous la fourchette') : 'Progression';
     const dotRecup = types.some(t => t === 'fatigue' || t === 'surcharge') ? (types.some(t => t === 'surcharge') ? '#e5484d' : '#f59f00') : '#00c96e';
     const dotReg = types.some(t => t === 'irregularite') ? '#f59f00' : '#00c96e';
     const dotsHtml = `<div style="display:flex;gap:5px;align-items:center;margin-top:8px;">
-      <div title="Progression" style="width:9px;height:9px;border-radius:50%;background:${dotProg};box-shadow:0 0 4px ${dotProg}66;flex-shrink:0;"></div>
+      <div title="${titreProg}" style="width:9px;height:9px;border-radius:50%;background:${dotProg};box-shadow:0 0 4px ${dotProg}66;flex-shrink:0;"></div>
       <div title="Récupération" style="width:9px;height:9px;border-radius:50%;background:${dotRecup};box-shadow:0 0 4px ${dotRecup}66;flex-shrink:0;"></div>
       <div title="Régularité" style="width:9px;height:9px;border-radius:50%;background:${dotReg};box-shadow:0 0 4px ${dotReg}66;flex-shrink:0;"></div>
     </div>`;
@@ -10980,8 +10960,6 @@ function renderAlertesCoach(data) {
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
-    const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
-    const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">${fait ? 'Autre conseil' : "Répondre à l'athlète"}</button>`
       + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
       + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">Marquer traité</button>`
@@ -10994,7 +10972,7 @@ function renderAlertesCoach(data) {
     items.push({
       sev: _sevGroupe(_sevA), cat: _catAlerte(al.type), msg: _msgA,
       rec: (al.recurrence_semaines > 1) ? ('🔁 ' + al.recurrence_semaines + ' sem') : '',
-      presc: presc ? presc.act : '',
+      presc: '',
       explic: `<div id="${explicationId}" class="cda-explic" style="display:none">${explicationAlerte(al)}</div>`,
       actions
     });
@@ -16581,19 +16559,6 @@ function _maProgExo(data) {
     srv: '<b>Par série</b> : l\'évolution de la charge de <b>chaque série</b> (S1, S2, S3…) dans le temps. Tu vois si ta surcharge touche toutes tes séries ou seulement la première — pour progresser sur l\'ensemble de ton travail, pas juste ton top set.'
   };
   var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
-  // Prescription anti-stagnation (P2) : affichée si le moteur a flaggé CET exo en
-  // stagnation (source unique : alertes_centre), sous le graphe.
-  var stagBox = '';
-  try {
-    var _isStag = (data.alertes_centre || []).some(function (a) { return a && a.type === 'stagnation' && String(a.evidence || '').indexOf(sel) >= 0; });
-    if (_isStag) {
-      var _pr = _prescriptionStag(sel);
-      if (_pr) stagBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:12px;padding:12px 14px;margin-top:10px">'
-        + '<div style="font-size:13px;font-weight:800;color:var(--warn)">Stagnation sur cet exercice</div>'
-        + '<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-top:7px;line-height:1.45">' + _maE(_pr.act) + '</div>'
-        + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">' + _maE(_pr.why) + '</div></div>';
-    }
-  } catch (e) {}
   // Charge à viser (P4) — athlète uniquement (1RM estimé = le sien) : cible du
   // programme + progression adaptée au niveau. Masqué en vue coach.
   var aimBox = '';
@@ -16634,7 +16599,7 @@ function _maProgExo(data) {
   } catch (e) {}
   var diagBox = '';
   try { var _dg = (typeof _lv3Diags === 'function') ? _lv3Diags(data).filter(function (x) { return x.exo === sel; })[0] : null; if (_dg) diagBox = '<div class="ma-diagbox">' + _lv3DiagCardHtml(_dg) + '</div>'; } catch (e) {}
-  return pick + statBox + chart + explBox + stagBox + aimBox + diagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
+  return pick + statBox + chart + explBox + aimBox + diagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
@@ -18942,13 +18907,17 @@ function _beNormale(data, nowT) {
     var base = rows.filter(function (x) { return recT.indexOf(x.t) < 0 && val(x) != null; });
     var moy = function (a) { return a.reduce(function (s, x) { return s + val(x); }, 0) / a.length; };
     var r = { key: k, label: d[1], inv: d[2], n: rec.length, rec: moy(rec), nBase: base.length, base: base.length >= 7 ? moy(base) : null };
-    r.etat = r.base == null ? 'nd' : (d[2] ? (r.rec - r.base >= 1 ? 'haut' : 'ok') : (r.base - r.rec >= 1 ? 'bas' : 'ok'));
+    // 13/11 (audit moteur P0-3) : comparaison seulement avec 3 saisies récentes, EXACTEMENT comme le moteur
+    // (ressentiConcordant, règle charge + ressenti). Avant : dès 1 saisie → un « au-dessus de ta normale » que le verdict ignorait.
+    r.ndRaison = r.base == null ? 'base' : (rec.length < 3 ? 'recentes' : null);
+    r.etat = r.ndRaison ? 'nd' : (d[2] ? (r.rec - r.base >= 1 ? 'haut' : 'ok') : (r.base - r.rec >= 1 ? 'bas' : 'ok'));
     return r;
   }).filter(Boolean);
 }
 // Texte d'une ligne « normale » (athlète : « ta », coach : « sa »).
 function _beNormaleTxt(r, poss) {
   poss = poss || 'ta';
+  if (r.etat === 'nd' && r.ndRaison === 'recentes') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + (r.n > 1 ? r.n + ' saisies' : '1 saisie') + ' cette semaine (' + _fmt1(r.rec) + ') · comparaison à ' + poss + ' normale dès 3 saisies sur 7 jours</span>';
   if (r.etat === 'nd') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + poss + ' normale arrive après 7 saisies (' + r.nBase + ' pour l\'instant)</span>';
   var lib = r.etat === 'ok' ? 'dans ' + poss + ' normale' : (r.etat === 'bas' ? 'sous ' + poss + ' normale' : 'au-dessus de ' + poss + ' normale');
   var col = r.etat === 'ok' ? '#00A854' : '#E07800';
@@ -25905,11 +25874,6 @@ function renderAlertes(data) {
       + '<div style="font-size:13px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
       + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
       + (function () {
-          // Stagnation : remplace l'action générique par une prescription concrète
-          // (reps plafond → +charge · marge → +reps), calculée depuis l'historique de l'exo.
-          var ex = (a.type === 'stagnation' && a.evidence && a.evidence.indexOf(' : aucun progrès') >= 0) ? a.evidence.split(' : aucun progrès')[0].trim() : null;
-          var pr = ex ? _prescriptionStag(ex) : null;
-          if (pr) return '<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:4px;">' + escapeHtml(pr.act) + '</div>';
           return a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '';
         })()
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')

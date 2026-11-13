@@ -39,17 +39,16 @@ check('A: schéma complet', a[0].type && a[0].severity && a[0].source && a[0].ti
 check('A: evidence = message moteur', a[1].evidence === 'Fatigue élevée (4/5)');
 check('A: title lisible', a[0].title === 'Charge récente élevée');
 
-// B — stagnation ajoutée depuis comparison (≥3 exos en baisse), avec NOMS des exos
+// B — 13/11 (audit moteur P0-2, décision porteur option b) : l'alerte « stagnation » (≥ 3 exos dont la charge max baisse)
+// est SUPPRIMÉE : elle mesurait une baisse, pas un plateau. Le classement des exercices (bloqué / recule) est la seule source.
 const cmp = { j7_vs_j7prec: { charge_details: [
   { exercice: 'Squat', down: true }, { exercice: 'Développé couché', down: true },
   { exercice: 'Rowing', down: true }, { exercice: 'Curl', down: false },
 ] } };
 const b = buildAlertesCentre({ alertes: [] }, cmp);
-check('B: stagnation détectée', b.some(x => x.type === 'stagnation'));
-check('B: action stagnation présente', (b.find(x => x.type === 'stagnation') || {}).action);
-check('B: evidence nomme les exercices en baisse', /Squat/.test((b.find(x => x.type === 'stagnation') || {}).evidence || ''));
+check('B: 3 exercices en baisse → plus d\'alerte « stagnation »', !b.some(x => x.type === 'stagnation'));
 
-// C — pas de stagnation si <3 en baisse
+// C — < 3 en baisse : toujours rien
 const c = buildAlertesCentre({ alertes: [] }, { j7_vs_j7prec: { charge_details: [{ down: true }, { down: true }] } });
 check('C: pas de stagnation (<3)', !c.some(x => x.type === 'stagnation'));
 
@@ -58,5 +57,5 @@ check('D: aucune alerte si rien', buildAlertesCentre(null, null).length === 0);
 
 console.log('-'.repeat(78));
 console.log('P0 #6 — buildAlertesCentre : ' + ok + ' vérifs OK / ' + ko + ' échec(s).');
-if (ko === 0) console.log('✅ Centre d\'alertes conforme (schéma unifié + tri + stagnation).');
+if (ko === 0) console.log('✅ Centre d\'alertes conforme (schéma unifié + tri, sans « stagnation »).');
 else { console.log('❌ Échecs : ' + fails.join(' | ')); process.exit(1); }

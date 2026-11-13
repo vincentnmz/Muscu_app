@@ -20,7 +20,6 @@ const SEUILS = {
   RPE_FATIGUE: 7.5,
   RPE_FATIGUE_SEANCES: 3,
   CHARGE_PROGRESSION: 0.05,
-  STAGNATION_SESSIONS: { debutant: 3, intermediaire: 4, avance: 6, expert: 8 } as Record<string, number>,
 }
 
 // Niveau & stratégie dérivés des années de pratique — MÊMES seuils que Code.gs
@@ -887,22 +886,9 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
     }
   }
 
-  const niveau = getNiveauExperience(anneesPratique)
-  const seuil = SEUILS.STAGNATION_SESSIONS[niveau]
-  for (const exo of Object.keys(progressionParExo)) {
-    const entries = (Object.values(progressionParExo[exo]) as any[]).sort((a, b) => a.date.localeCompare(b.date))
-    if (entries.length < seuil) continue
-    const derniersN = entries.slice(-seuil)
-    // Audit #7 : stagnation seulement sur des séances RÉCENTES (dernière ≤ 21 j, fenêtre ≤ 90 j).
-    if (derniersN[derniersN.length - 1].date < fmtYMD(minus(now, 21)) || derniersN[0].date < fmtYMD(minus(now, 90))) continue
-    let meilleurAvant: any = null, progresse = false
-    for (const en of derniersN) {
-      if (meilleurAvant && (en.charge > meilleurAvant.charge || (en.charge === meilleurAvant.charge && en.reps > meilleurAvant.reps))) progresse = true
-      if (!meilleurAvant || en.charge > meilleurAvant.charge || (en.charge === meilleurAvant.charge && en.reps > meilleurAvant.reps)) meilleurAvant = en
-    }
-    if (!progresse)
-      alertes.push({ type: 'stagnation', severite: 'moyenne', message: `${exo} : aucun progrès depuis ${seuil} séances (niveau ${niveau})` })
-  }
+  // 13/11 (audit moteur P0-2, décision porteur : option b) : plus d'alerte « stagnation » ici. C'était une 3e définition
+  // de « bloqué » (3 / 4 / 6 / 8 séances) ; la seule règle est désormais le classement des exercices (bloqué / recule /
+  // sous la fourchette, seuil par niveau), identique dans l'app, le mail et l'IA.
 
   for (const exo of Object.keys(rpeParExo)) {
     const sessions = (Object.values(rpeParExo[exo]) as any[]).sort((a, b) => a.date.localeCompare(b.date))
@@ -2427,14 +2413,14 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
 }
 
 // P0 #6 — Centre d'alertes (athlète) : UNE liste typée au schéma unifié, à partir
-// des alertes DÉJÀ produites par le moteur (pas de 2e moteur) + stagnation depuis
-// comparison. Classée par sévérité. L'état « lu » est appliqué ensuite (getAppData).
+// des alertes DÉJÀ produites par le moteur (pas de 2e moteur). Classée par sévérité
+// (plus de « stagnation » depuis le 13/11 : voir plus bas). L'état « lu » est appliqué ensuite (getAppData).
 function buildAlertesCentre(moteur: any, comparison: any): any[] {
   const SEV: Record<string, number> = { haute: 3, moyenne: 2, basse: 1 }
   const TITRES: Record<string, string> = {
     absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge récente élevée',
     sous_charge: 'Sous-charge', douleur: 'Douleur signalée', fatigue: 'Fatigue élevée',
-    sommeil: 'Sommeil dégradé', stagnation: 'Stagnation',
+    sommeil: 'Sommeil dégradé',
   }
   const ACTIONS: Record<string, string> = {
     absence: 'Reprends une séance cette semaine pour relancer la régularité.',
@@ -2444,7 +2430,6 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     douleur: "Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.",
     fatigue: "Priorise le sommeil et la récupération ; évite d'intensifier.",
     sommeil: "Améliore ton sommeil ; séance normale mais pas d'intensification.",
-    stagnation: "Mets plus d'intensité (séries proches de l'échec) et progresse en charge/reps. Pense aussi au temps de repos : trop court entre séries, tu ne peux pas pousser — vise 2-3 min sur les gros exercices. Si tu es déjà à ton max, persévère et soigne ta récupération (sommeil).",
   }
   const reliability = (moteur && moteur.confiance) || 'moyenne'
   const context = (moteur && moteur.contexte_tag) || null
@@ -2460,22 +2445,9 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     if (x.severity === 'basse') x.action = 'Rien d\'alarmant : surveille-la, et note-la si elle revient ou augmente.'
     else if (x.severity === 'haute') x.action = 'Évite de charger la zone et fais-la évaluer (médecin / kiné) avant de reprendre fort.'
   })
-  // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
-  // FIABILITÉ (anti-fausse-alerte) : on NE crie PAS « stagnation » quand le contexte
-  // EXPLIQUE la baisse (deload / retour de vacances / retour de blessure — la baisse
-  // est voulue ou attendue), ni quand les données sont trop maigres pour l'affirmer
-  // (confiance faible ou non interprétable). Sinon on accuse à tort une régression.
-  const ctxAmnistieStag = context === 'deload' || context === 'retour_vacances' || context === 'retour_blessure'
-  const fiabInsuffisanteStag = reliability === 'faible' || reliability === 'non_interpretable'
-  const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
-  const baisseAll = det.filter((d: any) => d && d.down)
-  const baisseExos = baisseAll.map((d: any) => d.exercice).filter(Boolean)
-  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation') && !ctxAmnistieStag && !fiabInsuffisanteStag) {
-    // On NOMME les exercices concernés (sinon « 3 exercices en baisse » sans détail).
-    const liste = baisseExos.slice(0, 6).join(', ')
-    const ev = baisseExos.length ? `${baisseAll.length} exercices en baisse cette semaine : ${liste}.` : `${baisseAll.length} exercices en baisse cette semaine.`
-    push('stagnation', 'moyenne', ev, 'progression')
-  }
+  // 13/11 (audit moteur P0-2, option b) : l'ancienne alerte « Stagnation » (≥ 3 exercices dont la charge MAX baissait de
+  // > 3 % d'une semaine à l'autre, reps ignorées) est supprimée : elle mesurait une baisse, pas un plateau, et doublonnait
+  // le classement des exercices (bloqué / recule / sous la fourchette), qui reste la seule source.
   out.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0))
   return out
 }
@@ -3282,6 +3254,9 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
   // Audit #8 : le coach voit les MÊMES alertes que l'athlète (moteur central → alertes_centre),
   // pas celles de l'ancien calculerAlertes. Repli sur l'ancien calcul si l'appel échoue (foot inclus).
   const centreByAth: Record<string, any[] | null> = {}
+  // 13/11 (audit moteur P0-2) : pastille « Progression » de la liste d'équipe = MÊME classement des exercices que la
+  // fiche (bloqué / recule / sous la fourchette, seuil par niveau) — avant : l'alerte « stagnation » supprimée.
+  const lectureByAth: Record<string, any> = {}
   await Promise.all(athletes.map(async (ath: any) => {
     if ((ath.sport || 'muscu') !== 'muscu') return
     try {
@@ -3290,6 +3265,10 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
       if (Array.isArray(d && d.alertes_centre)) centreByAth[String(ath.id)] = d.alertes_centre.map((x: any) => ({
         type: x.type, severite: x.severity, message: (x.evidence && x.evidence !== x.title) ? (x.title + ' — ' + x.evidence) : x.title,
       }))
+      try {
+        const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat, d.niveau_experience)
+        lectureByAth[String(ath.id)] = { bloque: Lx.bloque.length, recule: Lx.recule.length, sous: Lx.sous.length }
+      } catch (_) { /* sans lecture : pastille neutre */ }
     } catch (_) { /* repli ancien calcul */ }
   }))
 
@@ -3312,6 +3291,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
       niveau: getNiveauExperience(anneesA),
       strategie_progression: strategieA,
       alertes,
+      lecture: lectureByAth[String(ath.id)] || null,   // { bloque, recule, sous } — pastille « Progression »
       bien_etre: lastBE ? { date: fmtFR(lastBE.date), fatigue: lastBE.fatigue_musculaire, energie: lastBE.energie, sommeil: lastBE.sommeil } : null,
     }
   })
@@ -5747,7 +5727,11 @@ function _rcProgSecondaire(pA: any, pB: any): string | null {
   if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',')
   return null
 }
-function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null): any {
+// Séances identiques avant « bloqué », selon le niveau : MÊME table que l'app (js/lecture-v3.js LV3_BLOQUE_N, décision
+// porteur 03/11 ; parité vérifiée par tests/bloque-regle-unique.test.js). Avant le 13/11, le mail récap et l'IA disaient
+// « bloqué » après 3 séances quel que soit le niveau → contradiction avec l'app (audit moteur C1 / P0-1).
+const BLOQUE_N_NIVEAU: Record<string, number> = { debutant: 2, intermediaire: 3, avance: 4, expert: 4 }
+function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null, niveau?: string | null): any {
   // Audit Contexte X1 (01/11) — même règle que l'app : en déload / reprise, « recule » et « bloqué » sont attendus.
   const ctxA = ctxEtat === 'deload' ? 'déload' : (ctxEtat === 'retour_vacances' || ctxEtat === 'retour_blessure') ? 'reprise' : null
   const pd = (x: any) => { const d = parseFR(x); return d ? d.getTime() : 0 }
@@ -5780,13 +5764,16 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     const p2 = (dj <= 14) ? _rcProgSecondaire(pts[0], pts[1]) : null
     if (p2) { R.progresse.push({ exo, why: p2 }); continue }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
-    if (pts.length >= 3) {
-      const c2 = num(pts[2].charge), r2 = num(pts[2].reps)
-      if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
-        if (_rcProgSecondaire(pts[1], pts[2])) continue
-        let n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
-        if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
-      }
+    // Même algorithme que l'app (_lectureExos) : NB séances identiques selon le niveau, jamais sur un exercice neuf (≥ 3 séances).
+    const NB = BLOQUE_N_NIVEAU[String(niveau || '')] || 3
+    let memes = pts.length >= Math.max(NB, 3)
+    for (let q = 1; memes && q < NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) memes = false }
+    if (memes && c0 === c1 && r0 <= r1) {
+      let secondaire = false
+      for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }
+      if (secondaire) continue
+      let n = NB; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
+      if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
     }
   }
   return R
@@ -5834,7 +5821,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const prog = (ad.historique && ad.historique.progression_par_exo) || {}
   const progAvant: Record<string, any[]> = {}
   for (const k of Object.keys(prog)) { const pts = (prog[k] || []).filter((p: any) => normDate(p.date) < d1); if (pts.length) progAvant[k] = pts }
-  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3, ad.contexte && ad.contexte.etat)
+  out.lecture = _rcLectureExos(progAvant, ad.programme || [], ad.exo_categories || {}, B.fin.getTime() - 4 * 3600e3, ad.contexte && ad.contexte.etat, ad.niveau_experience)
   // Volume par muscle (séries / semaine ; secondaire = 0,5) vs cibles volume_obti.
   const vm: Record<string, number> = {}
   for (const r of inP) {
@@ -7236,7 +7223,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   else if ((d.programme || []).length) L.push('- Semaine du programme terminée (toutes les séances faites).')
   // Lecture des exercices (même calcul que l'app et le mail récap).
   try {
-    const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat)
+    const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat, d.niveau_experience)
     const kg = (x: any) => String(x).replace('.', ',')
     if (Lx.records.length) L.push(`- Records récents : ${Lx.records.slice(0, 4).map((x: any) => x.exo.trim() + ' ' + kg(x.c) + ' kg × ' + x.r).join(' ; ')}.`)
     if (Lx.progresse.length) L.push(`- En progrès : ${Lx.progresse.slice(0, 4).map((x: any) => x.exo.trim()).join(', ')}.`)
