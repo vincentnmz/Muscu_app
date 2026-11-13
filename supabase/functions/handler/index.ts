@@ -8040,6 +8040,10 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   }
   // Supprimer un compte athlète : uniquement l'athlète lui-même (jamais son coach) — R2, 01/11.
   if (action === 'supprimerCompte' && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → suppression du compte de ' + aid }
+  // Audit P2.1 🟡 (décision porteur 13/11) : réservés à l'athlète lui-même. claimRecompense : les points sont les siens ;
+  // saveEmail : l'e-mail sert à « mot de passe oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte,
+  // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
+  if ((action === 'claimRecompense' || action === 'saveEmail') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {

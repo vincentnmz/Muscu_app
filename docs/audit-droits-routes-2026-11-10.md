@@ -21,7 +21,7 @@ Le contrôle d'accès est **effectif sur toutes les routes qui reçoivent un ide
 |---|---|---|
 | 🔴 Critique (accès non autorisé possible) | **1** | `getCommentaires` |
 | 🟠 Important (contrôle incomplet ou ambigu) | **4** | `deletePushSub`, `savePushSub`, `deleteNativePushToken`, `repondreDemandeCoach` |
-| 🟡 Faible (couverture de test / comportement à confirmer) | **70** | `claimRecompense`, `saveEmail`, `loginDispo` (à confirmer) + 67 routes dont le contrôle est effectif mais sans test dédié |
+| 🟡 Faible (couverture de test / comportement à confirmer) | **70** | `claimRecompense`, `saveEmail`, `loginDispo` (à confirmer) + 67 routes dont le contrôle est effectif mais sans test dédié — **✅ traité 13/11 (voir § 🟡)** |
 | 🟢 OK | **46** | contrôle effectif mesuré + au moins un test existant (ou route publique volontaire) |
 
 ## 🔴 C1 — `getCommentaires` : lecture de TOUS les messages par n'importe quel athlète connecté [V]
@@ -43,12 +43,30 @@ Le contrôle d'accès est **effectif sur toutes les routes qui reçoivent un ide
 | `deleteNativePushToken` | **sans** `athlete_id`, supprime le jeton FCM quel que soit son propriétaire | jeton FCM d'un autre requis (non devinable) | imposer `athlete_id` = session (ou `coach:<id>` du coach) |
 | `repondreDemandeCoach` | action de l'**athlète** (accepter / refuser une demande de suivi) **aussi possible pour son coach actuel** | le coach peut accepter à la place de l'athlète la demande d'un autre coach (l'athlète change de coach) ou la refuser | réserver à une session athlète (comme `supprimerCompte`) |
 
-## 🟡 Comportements à confirmer (pas une faille démontrée)
+## 🟡 Comportements à confirmer (pas une faille démontrée) — ✅ traités le 13/11/2026
 
-- `claimRecompense` — le coach peut appeler la boutique pour son athlète (dépenser ses points) : le traitement ne vérifie pas le rôle. **[D]** non démontré jusqu'au débit (la récompense testée était « bientôt disponible »). À trancher : réservé à l'athlète ?
-- `saveEmail` — le coach peut changer l'e-mail de son athlète. Pas d'élévation (il peut déjà réinitialiser son mot de passe via `coachResetAthlete`, par conception), mais à confirmer comme voulu.
-- `loginDispo` — public par conception (inscription), permet de savoir si un login existe.
-- Routes protégées **sans test dédié** dans `tests/` : contrôle vérifié ici, mais aucun test permanent — voir colonne « Test existant ».
+Décisions du porteur (13/11) et état :
+
+- `claimRecompense` — le coach pouvait appeler la boutique pour son athlète (dépenser ses points). **Décision : réservé à l'athlète.**
+  ✅ `authCheck` refuse (401) toute session non athlète (préprod d'abord, prod avec accord). L'app ne l'appelle que côté athlète **[V]**.
+- `saveEmail` — le coach pouvait changer l'e-mail de son athlète. **Risque précisé [V]** : l'e-mail sert à « mot de passe
+  oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte, **même après que l'athlète l'a quitté**
+  (au-delà de `coachResetAthlete`, qui exige le lien actif). **Décision : réservé à l'athlète.** ✅ même correction ;
+  l'app ne l'appelle que depuis les Réglages de l'athlète **[V]**.
+- `loginDispo` — public par conception (inscription), permet de savoir si un login existe. **Décision : accepté tel quel**
+  (un login seul ne donne accès à rien sans mot de passe ; limite de débit 60 req/min/IP déjà en place).
+- **67 routes protégées sans test dédié** — ✅ **test permanent** `tests/securite-droits-routes.test.js` (dans `npm test`) :
+  rejoue le banc de cet audit (`scripts/audit-droits/banc.js`, module partagé avec `audit.js`) sur **toutes** les routes
+  relues dans `index.ts` (une route ajoutée est couverte d'office) : sans jeton → 401 hors liste publique fermée ;
+  aucune fuite ni modification chez un autre dans chaque scénario d'attaque ; propriétaire légitime accepté ; aucun 500 ;
+  aucune route ouverte hors liste publique ; décisions ci-dessus figées. **2 473 vérifications, 121 routes.**
+  Vérifié qu'il **échoue** quand un contrôle saute (retrait du contrôle athlète d'`authCheck` → 50 KO ; ancien code
+  `claimRecompense` / `saveEmail` → 2 KO).
+- **Artefact du banc corrigé** : la base simulée n'imposait pas l'unicité de `push_subscriptions.endpoint` (contrainte
+  `push_subscriptions_endpoint_key` de la vraie base) → `savePushSub` apparaissait à tort avec une modification.
+- Note : la colonne « Test existant » de la matrice ci-dessous (générée le 10/11) compte les mentions **par nom** de route
+  dans `tests/` ; elle ne reflète pas le test global. Ne pas régénérer la matrice avec `matrice.js` sans reporter les
+  mentions « ✅ corrigé » ajoutées à la main.
 
 ## Points vérifiés OK (sélection)
 
