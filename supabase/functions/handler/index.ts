@@ -1152,8 +1152,11 @@ function buildDailyMuscu(perfs: any[], secByExo?: Record<string, string>): Recor
     const d = normDate(r.date); if (!d) continue
     const charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
     let o = out[d]
-    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, spm: {} as Record<string, number>, vpm: {} as Record<string, number> }
+    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, spm: {} as Record<string, number>, vpm: {} as Record<string, number>, ppm: {} as Record<string, number> }
     o.series++
+    // 13/11 : séries en muscle PRINCIPAL seulement (spm ajoute ½ pour le secondaire) → « Fréquence par muscle » ne compte
+    // plus un jour de rowing comme un jour de biceps.
+    if (r.muscle && normMuscle(r.muscle) !== 'Corps entier') o.ppm[r.muscle] = (o.ppm[r.muscle] || 0) + 1
     o.reps += reps
     o.tonnage_kg += charge * reps
     if (r.rpe) { o.rpe_sum += Number(r.rpe); o.rpe_n++ }

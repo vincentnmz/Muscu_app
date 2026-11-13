@@ -15871,35 +15871,55 @@ function _maProgRegBloc(data) {
     + _maCap('1RM estimé (Epley) vs la période précédente de même durée. Exercices présents dans les deux fenêtres.');
 }
 
-// FRÉQUENCE par muscle (jours distincts / semaine) — cible ≥ 2×/sem (hypertrophie).
+// FRÉQUENCE par muscle — calcul pur (testé : tests/frequence-muscle.test.js).
+// 13/11 (correctif validé par le porteur) :
+//  · suit TOUJOURS la période choisie (avant : « 4 dernières semaines terminées » dès que < 7 jours écoulés → Semaine figée) ;
+//  · jours où le muscle est travaillé en PRINCIPAL (ppm) — avant, un jour de rowing comptait un jour de biceps ;
+//  · diviseur non arrondi (avant : 9 jours = 1 semaine → fréquence gonflée) ;
+//  · début = 1re séance si elle est dans la période (avant : Année divisée depuis le 1er janvier → fréquence diluée) ;
+//  · moins de 7 jours mesurables → on affiche le NOMBRE de séances, pas une moyenne par semaine.
+function _freqMuscleCalc(daily, startISO, endISO, todayISO) {
+  var jours = Object.keys(daily || {}).filter(function (d) {
+    var o = daily[d], m = o && (o.ppm || o.spm); return m && Object.keys(m).some(function (k) { return m[k] > 0; });
+  }).sort();
+  if (!jours.length) return null;
+  var lendemain = (function () { var t = _dateISOtoLocal(todayISO); t.setDate(t.getDate() + 1); return _ymdLocal(t); })();
+  var s0 = startISO > jours[0] ? startISO : jours[0], e0 = endISO < lendemain ? endISO : lendemain;
+  if (s0 >= e0) return null;
+  var jdays = Math.round((_dateISOtoLocal(e0) - _dateISOtoLocal(s0)) / 86400000);
+  var dayc = {};
+  jours.forEach(function (d) {
+    if (d < s0 || d >= e0) return;
+    var o = daily[d];
+    if (o.ppm) Object.keys(o.ppm).forEach(function (m) { if (o.ppm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; });
+    else Object.keys(o.spm || {}).forEach(function (m) { if (o.spm[m] >= 1) dayc[m] = (dayc[m] || 0) + 1; });   // ancien serveur : ≥ 1 série pleine
+  });
+  var parSemaine = jdays >= 7, sem = jdays / 7;
+  var rows = Object.keys(dayc).map(function (m) { return { m: m, n: dayc[m], f: parSemaine ? dayc[m] / sem : null }; })
+    .sort(function (a, b) { return b.n - a.n || a.m.localeCompare(b.m); });
+  return { rows: rows, parSemaine: parSemaine, jours: jdays, debutISO: s0, depuis1re: s0 > startISO };
+}
 function _maFreqMuscleBloc(data) {
   var w = _maWin(), daily = (data.historique && data.historique.daily_muscu) || {};
-  // G3 (03/11) : période en cours → on divise par les jours ÉCOULÉS (avant : le mois entier → « 0,3×/sem » en rouge le 3 du mois).
-  var _ecoul = w.isCurrent ? Math.max(1, Math.round((Math.min(Date.now(), w.end.getTime()) - w.start.getTime()) / 86400000)) : w.days;
-  // 06/11 : période trop courte (début de semaine) → on montre les 4 DERNIÈRES SEMAINES TERMINÉES
-  // (même fenêtre que le volume des alertes) au lieu d'un bloc vide.
-  var _sISO = w.startISO, _eISO = w.endISO, _lab = w.plabel, weeks = Math.max(1, Math.round(_ecoul / 7));
-  if (_ecoul < 7) {
-    var _l = new Date(); _l.setHours(0, 0, 0, 0); _l.setDate(_l.getDate() - ((_l.getDay() + 6) % 7));
-    var _d0 = new Date(_l.getTime()); _d0.setDate(_d0.getDate() - 28);
-    var _iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-    _sISO = _iso(_d0); _eISO = _iso(_l); _lab = '4 dernières semaines terminées'; weeks = 4;
-  }
-  var dayc = {};
-  Object.keys(daily).forEach(function (d) {
-    if (d >= _sISO && d < _eISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
-  });
-  var rows = Object.keys(dayc).map(function (m) { return { m: m, f: dayc[m] / weeks }; }).sort(function (a, b) { return b.f - a.f; });
-  if (!rows.length) return _maSec('Fréquence par muscle', null, 'frequence') + _maEmpty('Pas encore de séances sur la période.');
-  w = Object.assign({}, w, { plabel: _lab });
-  var html = rows.map(function (r) {
-    var C = r.f >= 2 ? '#00A854' : r.f >= 1 ? '#E07800' : '#DC3545';
-    var ft = (Math.round(r.f * 10) / 10).toString().replace('.', ',');
-    return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(r.m) + '</span><span class="p" style="color:' + C + '">' + ft + '×/sem</span></div>'
-      + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, r.f / 3 * 100).toFixed(0) + '%;background:' + C + '"></div></div></div>';
+  var r = _freqMuscleCalc(daily, w.startISO, w.endISO, _ymdLocal(new Date()));
+  if (!r || !r.rows.length) return _maSec('Fréquence par muscle', w.plabel, 'frequence') + _maEmpty('Pas de séance sur la période.');
+  var lab = w.plabel + (r.depuis1re ? ' · depuis le ' + _pauseFmt(r.debutISO).slice(0, 5) : '')   // 1re séance dans la période;
+  var html = r.rows.map(function (x) {
+    var C, txt, pct;
+    if (r.parSemaine) {
+      var fr = Math.round(x.f * 10) / 10;   // couleur sur la valeur AFFICHÉE (0,98 → « 1×/sem » n'est pas rouge)
+      C = fr >= 2 ? '#00A854' : fr >= 1 ? '#E07800' : '#DC3545';
+      txt = fr.toString().replace('.', ',') + '×/sem'; pct = x.f / 3 * 100;
+    } else {   // période trop courte pour une moyenne : on compte, sans juger (la semaine n'est pas finie)
+      C = x.n >= 2 ? '#00A854' : 'var(--accent)'; txt = x.n + ' séance' + (x.n > 1 ? 's' : ''); pct = x.n / 3 * 100;
+    }
+    return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(x.m) + '</span><span class="p" style="color:' + C + '">' + txt + '</span></div>'
+      + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, pct).toFixed(0) + '%;background:' + C + '"></div></div></div>';
   }).join('');
-  return _maSec('Fréquence par muscle', w.plabel, 'frequence') + '<div class="ma-card ma-vol">' + html + '</div>'
-    + _maCap('Nombre de séances distinctes où le muscle est travaillé, ramené à la semaine. Pour l\'hypertrophie, viser ≥ 2×/semaine par muscle.');
+  var cap = r.parSemaine
+    ? 'Jours où le muscle est travaillé en principal, ramenés à la semaine (' + r.jours + ' jours mesurés). Pour l\'hypertrophie, viser ≥ 2×/semaine par muscle.'
+    : 'Moins de 7 jours sur la période : nombre de séances où le muscle est travaillé en principal (pas de moyenne par semaine). Repère : ≥ 2 séances par semaine et par muscle.';
+  return _maSec('Fréquence par muscle', lab, 'frequence') + '<div class="ma-card ma-vol">' + html + '</div>' + _maCap(cap);
 }
 
 // RÉPARTITION d'intensité : séries par zone de reps (lourd <6 · moyen 6-12 · léger >12).
