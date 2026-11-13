@@ -107,3 +107,21 @@ où un résultat s'affiche** (hors « en apprentissage »).
   programme) → la méthode verra une association vraie mais non causale — d'où « association observée, pas une preuve de
   cause » ; (2) effet supposé en marche (< 7 h oui/non), pas proportionnel au manque de sommeil ; (3) semi-réel sur un seul
   athlète ; (4) 1 athlète sur 20 sans aucun effet lira un « écart net » (risque 5 % assumé).
+
+## 11. Implémentation (13/11, feu vert du porteur)
+
+- **Couche séparée** `js/sommeil-perf.js` (chargée après `js/lecture-v3.js`). Elle **appelle** `_lv3ForcePoint` (formule de
+  force inchangée) et lit `sante_historique` tel que l'import montre le date (appariement inchangé). Le moteur ne la lit pas.
+  Seuils dans `SP` (objet figé), version `sommeil-perf-2026-11-13`.
+- **Affichage** : Analyses ▸ Résumé, sous « Fiabilité des données », à la place de l'ancienne ligne « En apprentissage :
+  sommeil → performance » (l'ancienne fonction `_lv3Apprentissage` n'est plus appelée ; la promesse « Novalyz tirera une
+  conclusion » a disparu). Rien n'est affiché sans données de montre.
+- **Tests** `tests/sommeil-perf.test.js` : seuils = validés ; formule de force inchangée ; **résultats identiques** à la
+  référence de validation (`tests/fixtures/sommeil-methode-reference.js`, ne pas modifier) sur 200 jeux simulés ; jeux
+  simulés de la validation (2 000 tirages) : faux positifs ≤ 7 %, erreurs de sens ≤ 1 %, détection (8 %, ±3,3 %, 30 séances ≥ 95 % ;
+  10 %, ±5,7 %, 20 séances ≥ 80 % ; 3 %, ±3,3 %, 60 séances ≥ 70 %) ; cas réel 16/4/11 → apprentissage ; textes.
+- **Toute modification d'un seuil ou du calcul = nouveau contrôle de fiabilité** (refaire § 9-10), pas une retouche des tests.
+- **Limite connue** : le serveur ne transmet que les **30 dernières dates par exercice** (`buildProgressionParExo`,
+  `index.ts`). Sans effet aujourd'hui (max 19 dates/exercice chez le porteur, résultat identique vérifié). Pour un
+  exercice fait 3 fois par semaine, la limite est atteinte après ~10 semaines : les séances appariées les plus anciennes
+  perdent alors cet exercice dans leur score. À traiter (champ serveur dédié) avant que des testeurs dépassent ~10 semaines.

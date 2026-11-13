@@ -16203,7 +16203,7 @@ function _maLectureNovalyzBloc(data) {
     : '<div style="font-size:11px;color:#00A854;margin-top:7px">✓ Données complètes — fiabilité maximale.</div>';
   var fiabBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
     + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Fiabilité des données · ' + f.pct + '/100</div>'
-    + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + (function () { try { return (typeof _lv3ApprentissageHtml === 'function') ? _lv3ApprentissageHtml(data) : ''; } catch (e) { return ''; } })() + '</div>';
+    + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + (function () { try { return (typeof _spHtml === 'function') ? _spHtml(data) : ''   /* 13/11 : couche sommeil → performance (js/sommeil-perf.js, méthode validée) remplace l'ancienne ligne d'apprentissage */; } catch (e) { return ''; } })() + '</div>';
 
   // ── Volume par muscle · cette semaine vs cibles du moteur, au prorata ──
   var progBox = '';
