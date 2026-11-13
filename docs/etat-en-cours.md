@@ -2,7 +2,27 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **9 nov. 2026** (voir le bloc « 09/11 » juste en dessous).
+> Dernière mise à jour : **13 nov. 2026** (voir le bloc « 13/11 » juste en dessous).
+
+## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
+
+**État prod (13/11 soir)** : serveur `index.ts` **v255** (= commit `dfc59ed`, vérifié caractère pour caractère) · app web `main` = **`d9c3a04`** (= `dev`, GitHub Pages OK) · SW **v584** · 109 suites de tests vertes · migration `20261113160000_decisions.sql` appliquée préprod + prod. ⚠️ L'**AAB Android** date de midi (`57be93c`) : il n'a **pas** le journal des décisions → nouvel AAB à construire depuis `main` seulement si le porteur le demande.
+
+**Fait aujourd'hui (dans l'ordre)**
+- **Retours clients** (prod) : fourchettes de reps lourd / moyen / léger qui remplissent vraiment les cases + bouton Force 1-5 ; « + Push / Pull / Jambes » créent la séance et ouvrent le choix des exercices ; **pause / mode vacances** (pause à venir renvoyée par le serveur, tri stable, échec affiché, fiche coach, agendas colorés) ; 5 exercices au catalogue (dont Développé militaire à la barre). Point 2 (chrono / montre) abandonné par le porteur.
+- **Graphique « Fréquence par muscle »** (prod) : suit la période, muscle principal seulement (`daily_muscu.ppm`), diviseur exact, Année depuis la 1re séance.
+- **Audit des droits (P2) TERMINÉ** : 🔴 et 4 🟠 corrigés en prod ; 🟡 : **test permanent** `tests/securite-droits-routes.test.js` (toutes les routes relues dans `index.ts`, banc `scripts/audit-droits/banc.js`) ; `claimRecompense` / `saveEmail` réservés à l'athlète ; `loginDispo` accepté tel quel.
+- **Audit du moteur d'analyse / décision** : `docs/audit-moteur-decision-2026-11-13.md` (A→H, P0→P3 + sections « Réalisé »).
+- **Moteur P0** (prod) : une seule règle « bloqué » (seuil par niveau, app = mail récap = IA) ; alerte « stagnation » **supprimée** (option b) + prescription générique « +2,5 kg » retirée → pastille « Progression » coach = classement (bloqué / recule / sous la fourchette) ; « ta normale » à l'écran = règle du moteur (3 saisies récentes).
+- **P1-1 journal des décisions** (prod) : table `decisions` (ajout seul, RLS fermé). L'app **fige** le plan de la semaine qu'elle a calculé (moteur unique `_lv3Plan`, règle « fait » unique `_lv3Realise`) via `enregistrerPlan` — garde-fous : athlète = session (coach jamais en écriture), semaine courante seulement, première version valide, données complètes, contrôle de forme sans recalcul, **jamais si le plan n'est pas montré à l'athlète** (propositions coupées par le coach — bug trouvé en préprod et corrigé). Lecture `getDecisions` (athlète, son coach). Écrans : « Semaine dernière » (Aujourd'hui), « Tes décisions » (Analyses), « Déjà proposé » + « Historique des propositions » (fiche coach). Maquette : `mockups/journal-decisions.html`.
+- **P1-2 résultat observé ensuite** (prod) : 1 à 2 semaines après chaque décision tentée (confirmé / non confirmé / trop tôt pour conclure / pas refait, « sur N séances »), recalculé sur les séances réelles, rien de stocké. Wording imposé : « résultat observé après la recommandation », « association observée, pas une preuve de cause ».
+- **Validation prod** : John (propositions coupées) → aucun plan, aucune décision ; **Vincent (athlète 1)** → plan de 3 actions enregistré une seule fois (semaine du 09/11, version `plan-2026-11-13`), 0 doublon, 0 erreur 500 ; autres tables inchangées. (Plan absent au début car mode vacances 09-15/11 actif = comportement voulu ; pause annulée par le porteur.)
+
+**Où on en est / suite (décision porteur)**
+- **On ne touche plus au moteur ni au journal : on OBSERVE.** Le 23/11, la semaine du 09/11 apparaîtra dans « Tes décisions » (statuts) et côté coach (« Déjà proposé », historique) → à vérifier en vrai par le porteur (vue coach non testable depuis l'environnement Claude en prod).
+- **Tests utilisateurs** : grille interne `docs/tests-utilisateurs-journal-2026-11.md` (questions ouvertes, ne pas la montrer aux testeurs ; question finale « si cette fonction disparaissait demain, est-ce que ça te manquerait ? »). À lancer après ≥ 2 semaines de journal par testeur ; synthèse avant toute évolution.
+- **Fiabilisation restante** : seulement les points réellement importants (plan `docs/audit-architecture-2026-11-09.md`).
+- **Notes pour plus tard (sans urgence)** : l'app lit `getDecisions` même quand les propositions sont coupées (lecture inutile, sans effet) ; `getCoachAthletes` rappelle `getAppData` pour chaque athlète (coût qui grandit avec l'équipe) ; P1-3 échelle de confiance commune 🟢🟠🔴 non faite ; préprod : 1 ligne `decisions` réelle de Lucas (démo, semaine du 09/11).
 
 ## ▶ 09/11 — Audit d'architecture + préprod séparée
 - **Audit architecture/qualité** (rapport livré au porteur, non committé) : aucun problème critique ; `AUTH_ENFORCE=1` **vérifié actif** en prod ; dette 🟠 importante (monolithes `app.js`/`index.ts`, `catch {}` vides, table `indicateurs` fourre-tout, pas de migrations, démo mélangée à la prod). Plan P0→P5.
@@ -34,8 +54,8 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Où en est le travail (flux + déploiement)
 - Branche de travail : `claude/pensive-ritchie-5p62gt`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`. Promotion `dev → main` (prod) quand l'utilisateur valide.
-- **SW = `novalyz-shell-v476`** (bumper `sw.js` à CHAQUE modif de `js/app.js` / `index.html` / `css`).
-- Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**60 suites vertes** à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
+- **SW = `novalyz-shell-v584`** (13/11 ; bumper `sw.js` à CHAQUE modif de `js/app.js` / `js/lecture-v3.js` / `index.html` / `css`).
+- Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**109 suites vertes** au 13/11, à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
 - **`index.ts` = déploiement MANUEL** (coller tout le fichier dans la fonction Supabase `smooth-service` → Deploy). Supabase `project_id = jhbrvgguybynzeceeceu`.
 
 ## ⚠️ ACTIONS UTILISATEUR EN ATTENTE (bloquent des features déjà codées)
