@@ -75,3 +75,35 @@ section 5 ne sont pas re-vérifiées pour ce calcul). **Robuste** si **tous** le
 - **Critères d'acceptation fixés à l'avance** : faux positifs **≤ 5 %** en moyenne et **≤ 7 %** dans chaque scénario
   (marge d'erreur Monte-Carlo ≈ ±1 %) ; erreurs de sens **≤ 1 %** ; à effet 10 % et bruit récent, détection rapportée telle
   quelle (pas de critère : c'est ce qu'on cherche à mesurer).
+
+---
+
+## 10. Résultats des simulations (13/11, après le commit c63c01e — aucun paramètre modifié)
+
+Script hors app (graine fixe 20261113, 2 000 tirages/scénario). Détection et faux positifs comptés **parmi les tirages
+où un résultat s'affiche** (hors « en apprentissage »).
+
+**Données actuelles du porteur** : « En apprentissage : 16/20 séances · 4/5 épisodes de nuits courtes · 5/5 séances après nuit normale. »
+
+| Scénario | En apprentissage | Faux positifs (effet 0) | Détection 3 % | 5 % | 8 % | 10 % | Y médian affiché |
+|---|---|---|---|---|---|---|---|
+| A. Semi-réel (vraies forces, 47 séances, ±5,7 %) | ≈ 1 % | 4,5 % | 29 % | 72 % | 98 % | 99,8 % | 6 % |
+| B. ±3,3 %, 20 séances | ≈ 51 % | 4,8 % | 38 % | 76 % | 97 % | 99 % | 5-6 % |
+| B. ±3,3 %, 30 séances | ≈ 12 % | 4,9 % | 53 % | 89 % | 99 % | 99,9 % | 5 % |
+| B. ±3,3 %, 40 séances | ≈ 2 % | 4,9 % | 63 % | 95 % | 99,9 % | 100 % | 4 % |
+| B. ±3,3 %, 60 séances | 0 % | 5,1 % | 82 % | 99,5 % | 100 % | 100 % | 3 % |
+| B. ±5,7 %, 20 séances | ≈ 51 % | 5,2 % | 15 % | 39 % | 75 % | 88 % | 9 % |
+| B. ±5,7 %, 30 séances | ≈ 12 % | 4,8 % | 22 % | 51 % | 86 % | 96 % | 8 % |
+| B. ±5,7 %, 40 séances | ≈ 2 % | 4,5 % | 28 % | 63 % | 94 % | 99 % | 7 % |
+| B. ±5,7 %, 60 séances | 0 % | 5,5 % | 41 % | 81 % | 99 % | 100 % | 5 % |
+
+- **Critères fixés à l'avance** : faux positifs moyens 4,9 % (≤ 5 % ✓), max 5,5 % (≤ 7 % ✓) ; erreurs de sens à effet > 0 :
+  max 0,1 % (≤ 1 % ✓). → **critères remplis**.
+- **Y est honnête** : l'écart annoncé « détectable » est bien détecté ≈ 8 fois sur 10 (ex. ±3,3 %/20 séances : Y = 5, détection à 5 % = 76 %).
+- **Taille affichée quand un écart est détecté** : juste pour 8-10 % (médiane 8,3-11 %), **surestimée pour les petits
+  effets** (effet réel 3 % affiché 3,3 à 6,9 % en médiane selon le bruit) : un effet faible n'est détecté que les fois où le
+  hasard l'a grossi.
+- **Limites non couvertes par la simulation** : (1) facteur commun réel (nuits courtes pendant une phase de fatigue ou de
+  programme) → la méthode verra une association vraie mais non causale — d'où « association observée, pas une preuve de
+  cause » ; (2) effet supposé en marche (< 7 h oui/non), pas proportionnel au manque de sommeil ; (3) semi-réel sur un seul
+  athlète ; (4) 1 athlète sur 20 sans aucun effet lira un « écart net » (risque 5 % assumé).
