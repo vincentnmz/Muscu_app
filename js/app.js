@@ -15759,10 +15759,14 @@ function _maFiabilite(data) {
     if (d >= rw.startISO && d < rw.endISO) { var o = daily[d]; if (o) { sumN += o.rpe_n || 0; sumS += o.series || 0; } }
   });
   var rpeCov = sumS ? Math.min(1, sumN / sumS) : 0;
-  // Bien-être : jours avec un RPE de séance (ou legacy ressenti) sur la fenêtre / nb de séances.
+  // Questionnaire du jour : jours (distincts) où il a été rempli sur la fenêtre / jours d'entraînement.
+  // 13/11 (audit docs/audit-fiabilite-donnees-2026-11-13.md, option a validée) : avant, ce critère comptait la NOTE DE
+  // SÉANCE (bilan de fin de séance) sous le libellé « Questionnaire bien-être » → 0/15 et « fais ton questionnaire du
+  // jour » chez un athlète qui le remplissait tous les jours.
   var beDates = {};
-  _maEffortSeries(data, 'muscu').forEach(function (x) {
-    if (x && x.valeur != null && (x.date || '') >= rw.startISO && (x.date || '') < rw.endISO) beDates[x.date] = 1;
+  ((data && data.bien_etre) || []).forEach(function (b) {
+    var t = b ? _dYmd(b.date) : null; if (t == null) return;
+    var iso = _ymdLocal(new Date(t)); if (iso >= rw.startISO && iso < rw.endISO) beDates[iso] = 1;
   });
   nBE = Object.keys(beDates).length;
   var beCov = cur.seances ? Math.min(1, nBE / cur.seances) : 0;
@@ -15787,7 +15791,7 @@ function _maFiabilite(data) {
     { l: 'Base de comparaison (' + prev.seances + ' séance' + (prev.seances > 1 ? 's' : '') + ' avant)', g: pBase, m: 25, s: st(pBase, 25) },
     { l: 'Profondeur (' + cur.seances + ' séance' + (cur.seances > 1 ? 's' : '') + ')', g: pDepth, m: 25, s: st(pDepth, 25) },
     { l: 'RPE renseigné (' + Math.round(rpeCov * 100) + ' %)', g: pRpe, m: 20, s: st(pRpe, 20) },
-    { l: 'Questionnaire bien-être', g: pBE, m: 15, s: st(pBE, 15) },
+    { l: 'Questionnaire du jour (' + nBE + '/28 j)', g: pBE, m: 15, s: st(pBE, 15) },
     { l: 'Fourchette de reps définie (' + (_lgM.length ? _nF + '/' + _lgM.length + ' exos' : 'pas de programme') + ')', g: pCible, m: 15, s: st(pCible, 15) }
   ];
   // Conseils pour atteindre 100 % (uniquement les critères non pleins).
@@ -16199,7 +16203,7 @@ function _maLectureNovalyzBloc(data) {
     : '<div style="font-size:11px;color:#00A854;margin-top:7px">✓ Données complètes — fiabilité maximale.</div>';
   var fiabBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
     + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Fiabilité des données · ' + f.pct + '/100</div>'
-    + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + (function () { try { return (typeof _lv3ApprentissageHtml === 'function') ? _lv3ApprentissageHtml(data) : ''; } catch (e) { return ''; } })() + '</div>';
+    + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + (function () { try { return (typeof _spHtml === 'function') ? _spHtml(data) : ''   /* 13/11 : couche sommeil → performance (js/sommeil-perf.js, méthode validée) remplace l'ancienne ligne d'apprentissage */; } catch (e) { return ''; } })() + '</div>';
 
   // ── Volume par muscle · cette semaine vs cibles du moteur, au prorata ──
   var progBox = '';
