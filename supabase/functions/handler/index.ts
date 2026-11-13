@@ -1152,8 +1152,11 @@ function buildDailyMuscu(perfs: any[], secByExo?: Record<string, string>): Recor
     const d = normDate(r.date); if (!d) continue
     const charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
     let o = out[d]
-    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, spm: {} as Record<string, number>, vpm: {} as Record<string, number> }
+    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, spm: {} as Record<string, number>, vpm: {} as Record<string, number>, ppm: {} as Record<string, number> }
     o.series++
+    // 13/11 : séries en muscle PRINCIPAL seulement (spm ajoute ½ pour le secondaire) → « Fréquence par muscle » ne compte
+    // plus un jour de rowing comme un jour de biceps.
+    if (r.muscle && normMuscle(r.muscle) !== 'Corps entier') o.ppm[r.muscle] = (o.ppm[r.muscle] || 0) + 1
     o.reps += reps
     o.tonnage_kg += charge * reps
     if (r.rpe) { o.rpe_sum += Number(r.rpe); o.rpe_n++ }
@@ -2515,7 +2518,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(400),
     sb().from('volume_obti').select('*'),
     sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false }),
-    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: false }).limit(1),
+    // 13/11 : à date égale, la DERNIÈRE saisie gagne (avant : activer puis annuler le même jour → résultat au hasard).
+    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: false }).order('id', { ascending: false }).limit(1),
     _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }).order('id')),
     sb().from('objectif').select('*').eq('athlete_id', athleteId).limit(1),
     _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }).order('id')),
@@ -3036,6 +3040,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     planning: (planRows || []).map((r: any) => ({ id: r.id, date: fmtFR(r.date), date_iso: r.date, seance_id: r.seance_id, statut: r.statut, source: r.source })),
     bien_etre,
     pause: pauseObj,
+    pause_prevue: pausePrevue(pauseRow, now),
     contexte,
     sport,
     cardio,
@@ -3240,6 +3245,16 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
 // Pause active = aujourd'hui dans [debut, fin] (valeur = début, unite = fin, 'fin' = pause levée). Une source pour
 // getAppData et getCoachAthletes (audit 06/11 : getCoachAthletes disait « en pause » pour toute pause jamais levée,
 // ex. Vincent, pause du 19/08 au 02/09 encore lue comme en cours le 06/11).
+// 13/11 (retour client) : pause EN COURS OU À VENIR, pour l'affichage (Réglages, agendas). pauseActive reste la
+// seule utilisée par le moteur (alertes en veille uniquement pendant la pause). Terminée ou annulée → null.
+function pausePrevue(row: any, now: Date): { debut: string | null, fin: string | null, active: boolean } | null {
+  if (!row || !row.valeur || row.valeur === 'fin') return null
+  const debut = normDate(row.valeur) || null
+  const fin = row.unite ? normDate(row.unite) : null
+  const today0 = fmtYMD(now)
+  if (fin && today0 > fin) return null
+  return { debut, fin, active: !debut || today0 >= debut }
+}
 function pauseActive(row: any, now: Date): { debut: string | null, fin: string | null } | null {
   if (!row || !row.valeur || row.valeur === 'fin') return null
   const debut = normDate(row.valeur) || null
@@ -3260,7 +3275,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
 
   const [{ data: perfsAll }, { data: pauseAll }, { data: beAll }] = await Promise.all([
     _toutLire(() => sb().from('performances').select('*').in('athlete_id', athleteIds).gte('date', c28).order('id')),
-    sb().from('indicateurs').select('*').in('athlete_id', athleteIds).eq('cle', 'pause').order('date', { ascending: false }),
+    sb().from('indicateurs').select('*').in('athlete_id', athleteIds).eq('cle', 'pause').order('date', { ascending: false }).order('id', { ascending: false }),
     _toutLire(() => sb().from('bien_etre').select('*').in('athlete_id', athleteIds).order('date', { ascending: false }).order('id')),
   ])
 
@@ -3451,11 +3466,21 @@ const COACH_DEMANDE_CLE = 'coach_demande'
 async function handleRepondreDemandeCoach(body: any): Promise<Response> {
   const athleteId = String(body.athlete_id || '')
   if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  // Règle métier (porteur, 11/11 — audit P2.1) : la demande appartient à l'athlète. Seul l'athlète de la
+  // SESSION l'accepte ou la refuse ; aucun coach (même son coach actuel) ne peut y répondre.
+  if (body._sessRole !== 'a' || String(body._sessId || '') !== athleteId) return jsonResp({ success: false, error: 'Seul l\'athlète peut répondre à cette demande.' })
   const { data: dem } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE).limit(1)
   const coachId = dem && dem.length ? String(dem[0].valeur || '') : ''
   if (!coachId) return jsonResp({ success: false, error: 'Aucune demande en attente.' })
-  // Le coach qui a fait la demande doit être celui que l'athlète a vu (anti-remplacement entre-temps).
-  if (body.coach_id_vu != null && String(body.coach_id_vu) !== coachId) return jsonResp({ success: false, error: 'La demande a changé : rouvre l\'app.' })
+  // Le coach qui a fait la demande doit être celui que l'athlète a vu (anti-remplacement entre-temps) : obligatoire.
+  if (body.coach_id_vu == null || String(body.coach_id_vu) !== coachId) return jsonResp({ success: false, error: 'La demande a changé : rouvre l\'app.' })
+  // Un athlète déjà rattaché à un (autre) coach le quitte d'abord (même règle que lierAthlete et l'app).
+  // Refuser reste toujours possible. Rien n'est supprimé en cas de refus métier.
+  if (body.accepter) {
+    const { data: aCur } = await sb().from('athletes').select('coach_id').eq('id', athleteId).single()
+    const cur = String((aCur as any)?.coach_id ?? '').trim()
+    if (cur && cur !== 'null' && cur !== '0' && cur !== coachId) return jsonResp({ success: false, error: 'Quitte d\'abord ton coach actuel (Réglages ▸ Mon coach) avant d\'accepter un nouveau coach.' })
+  }
   await sb().from('indicateurs').delete().eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE)
   if (!body.accepter) return jsonResp({ success: true, accepte: false })
   const { data: cRow } = await sb().from('coachs').select('coach_id,nom').eq('coach_id', coachId).single()
@@ -4771,9 +4796,22 @@ async function handleSavePushSub(body: any): Promise<Response> {
   const p256dh = String(body.p256dh || '')
   const auth = String(body.auth || '')
   if (!athlete_id || !endpoint || !p256dh || !auth) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const row = { athlete_id, endpoint, p256dh, auth, user_agent: String(body.user_agent || ''), created_at: new Date().toISOString() }
-  const { error } = await sb().from('push_subscriptions').upsert(row, { onConflict: 'endpoint' })
-  if (error) return jsonResp({ success: false, error: error.message })
+  // Sécurité (audit P2.1, 11/11) : le propriétaire vient de la SESSION (athlète : son id ; coach :
+  // « coach:<id> », COACH_PUSH_PREFIX), jamais de l'app. Avant : upsert sur l'endpoint → n'importe quel
+  // compte réattribuait à son nom l'abonnement d'un autre, et un coach pouvait s'abonner sous l'id de son athlète.
+  const sid = String(body._sessId || '')
+  if (!sid) return jsonResp({ success: false, error: 'Session requise' })
+  const proprio = body._sessRole === 'c' ? COACH_PUSH_PREFIX + sid : sid
+  if (athlete_id !== proprio) return jsonResp({ success: false, error: 'Abonnement non autorisé pour ce compte.' })
+  const user_agent = String(body.user_agent || ''), created_at = new Date().toISOString()
+  // 1) Adresse nouvelle → insertion. 2) Adresse déjà connue → mise à jour SEULEMENT si elle est à ce compte
+  // (filtre sur le propriétaire dans la même requête : pas de lecture puis écriture). 3) Sinon : refus, rien ne change.
+  const { error: eIns } = await sb().from('push_subscriptions').insert({ athlete_id: proprio, endpoint, p256dh, auth, user_agent, created_at })
+  if (!eIns) return jsonResp({ success: true })
+  if (String((eIns as any).code || '') !== '23505' && !/duplicate|unique/i.test(String(eIns.message || ''))) return jsonResp({ success: false, error: eIns.message })
+  const { data: maj, error: eMaj } = await sb().from('push_subscriptions').update({ p256dh, auth, user_agent, created_at }).eq('endpoint', endpoint).eq('athlete_id', proprio).select('id')
+  if (eMaj) return jsonResp({ success: false, error: eMaj.message })
+  if (!maj || !maj.length) return jsonResp({ success: false, error: 'Cet appareil reçoit déjà les notifications d’un autre compte. Désactive-les d’abord sur cet autre compte.' })
   return jsonResp({ success: true })
 }
 
@@ -6143,10 +6181,14 @@ async function handleSaveNativePushToken(body: any): Promise<Response> {
 async function handleDeleteNativePushToken(body: any): Promise<Response> {
   const token = String(body.token || '')
   if (!token) return jsonResp({ success: false, error: 'token manquant' })
-  // Désactiver pour UN rôle ne coupe pas l'autre rôle du même téléphone (N1).
-  let q = sb().from('native_push_tokens').delete().eq('token', token)
-  if (body.athlete_id) q = q.eq('athlete_id', String(body.athlete_id))
-  const { error } = await q
+  // Sécurité (audit P2.1, 11/11) : on ne supprime que la ligne de la personne connectée (athlète : son id ;
+  // coach : « coach:<id> », COACH_PUSH_PREFIX), jamais selon l'athlete_id envoyé par l'app. Avant : sans
+  // athlete_id, n'importe quel compte effaçait le jeton d'un autre ; un coach effaçait celui de son athlète.
+  // Désactiver pour UN rôle ne coupe toujours pas l'autre rôle du même téléphone (N1, clé token + athlete_id).
+  const sid = String(body._sessId || '')
+  if (!sid) return jsonResp({ success: true })
+  const proprio = body._sessRole === 'c' ? COACH_PUSH_PREFIX + sid : sid
+  const { error } = await sb().from('native_push_tokens').delete().eq('token', token).eq('athlete_id', proprio)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
 }

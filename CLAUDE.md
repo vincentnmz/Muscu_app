@@ -3,6 +3,7 @@
 > Ce fichier est lu automatiquement au début de chaque session. Il évite de tout ré-expliquer.
 > **➡️ Reprise / état en cours : [`docs/etat-en-cours.md`](./docs/etat-en-cours.md)** (lire en 2ᵉ — ce qui est fait / à faire là tout de suite).
 > **🛠 Fiabilisation : [`docs/audit-architecture-2026-11-09.md`](./docs/audit-architecture-2026-11-09.md)** — audit d'architecture + plan P0→P5 avec son **état d'avancement** (à tenir à jour à chaque étape).
+> **⏳ Chantier futur (après l'audit du code) : [`docs/chantiers-futurs/moteur-decision-mission-2026-11.md`](./docs/chantiers-futurs/moteur-decision-mission-2026-11.md)** — moteur d'analyse → boucle diagnostic → hypothèse → décision → action → résultat → vérification (ne pas remplacer le diagnostic actuel).
 > Réflexions de fond : [`docs/vision-produit.md`](./docs/vision-produit.md) · [`docs/backlog-app.md`](./docs/backlog-app.md) (à faire & vérifier, athlète/coach) · [`docs/roadmap-beta.md`](./docs/roadmap-beta.md) (route vers un test à grande échelle) · [`docs/animations.md`](./docs/animations.md) · archi détaillée : [`docs/`](./docs/).
 
 ## Le projet en une phrase

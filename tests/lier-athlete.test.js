@@ -70,6 +70,7 @@ function loadBackend(store) {
   const call = async (p) => (await api.handleLierAthlete(new URLSearchParams(p))).json();
   const ath = id => store.athletes.find(a => a.id === id);
 
+  // 11/11 (règle porteur) : seul l'athlète de la SESSION répond — authCheck renseigne toujours _sessRole/_sessId.
   const rep = async (b) => (await api.handleRepondreDemandeCoach(b)).json();
   const dem = id => (store.indicateurs || []).find(x => String(x.athlete_id) === String(id) && x.cle === 'coach_demande');
 
@@ -78,11 +79,11 @@ function loadBackend(store) {
   eq(r.success && r.demande && ath(1).coach_id === null && dem(1) && dem(1).valeur === 'C1', 'athlète libre → DEMANDE créée, pas lié');
   r = await call({ coach_id: 'C1', login_athlete: '1234' });
   eq(r.success && r.deja_demande, 'redemande du même coach → « déjà envoyée »');
-  r = await rep({ athlete_id: '1', accepter: true, coach_id_vu: 'C2' });
+  r = await rep({ _sessRole: 'a', _sessId: '1', athlete_id: '1', accepter: true, coach_id_vu: 'C2' });
   eq(!r.success && ath(1).coach_id === null, 'demande remplacée entre-temps (coach vu ≠) → rien n\'est lié');
-  r = await rep({ athlete_id: '1', accepter: true, coach_id_vu: 'C1' });
+  r = await rep({ _sessRole: 'a', _sessId: '1', athlete_id: '1', accepter: true, coach_id_vu: 'C1' });
   eq(r.success && r.accepte && ath(1).coach_id === 'C1' && !dem(1) && r.coach.nom === 'Coach A', 'athlète accepte → lié, demande effacée');
-  r = await rep({ athlete_id: '1', accepter: true });
+  r = await rep({ _sessRole: 'a', _sessId: '1', athlete_id: '1', accepter: true });
   eq(!r.success, 'plus de demande → rien à accepter');
 
   r = await call({ coach_id: 'C1', login_athlete: '5678' });
@@ -100,7 +101,7 @@ function loadBackend(store) {
   eq(r.success && ath(2).coach_id === null, 'athlète quitte son coach → coach_id null');
   r = await call({ coach_id: 'C1', login_athlete: '5678' });
   eq(r.success && r.demande && ath(2).coach_id === null, 'après départ, un nouveau coach peut envoyer une demande');
-  r = await rep({ athlete_id: '2', accepter: false, coach_id_vu: 'C1' });
+  r = await rep({ _sessRole: 'a', _sessId: '2', athlete_id: '2', accepter: false, coach_id_vu: 'C1' });
   eq(r.success && r.accepte === false && ath(2).coach_id === null && !dem(2), 'athlète refuse → pas lié, demande effacée');
 
   // Front : sync coach_lie + validation 4 chiffres + toast

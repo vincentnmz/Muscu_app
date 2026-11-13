@@ -121,7 +121,12 @@ async function readJson(resp) { return await resp.json(); }
   {
     const store = { native_push_tokens: [{ token: 'TOK-A', athlete_id: 'ATH-1' }, { token: 'TOK-B', athlete_id: 'ATH-2' }] };
     const api = loadBackend(store, { FCM_SERVICE_ACCOUNT: FAKE_SA }, makeFetch([]));
-    const r = await readJson(await api.handleDeleteNativePushToken({ token: 'TOK-A' }));
+    // 11/11 (audit droits) : le propriétaire vient de la session — authCheck renseigne toujours _sessId/_sessRole.
+    const r0 = await readJson(await api.handleDeleteNativePushToken({ token: 'TOK-A' }));
+    eq(r0.success === true && store.native_push_tokens.length === 2, 'delete sans session : rien supprimé');
+    const rB = await readJson(await api.handleDeleteNativePushToken({ token: 'TOK-B', _sessId: 'ATH-1', _sessRole: 'a' }));
+    eq(rB.success === true && store.native_push_tokens.length === 2, 'delete du jeton d\'un autre compte : sans effet');
+    const r = await readJson(await api.handleDeleteNativePushToken({ token: 'TOK-A', _sessId: 'ATH-1', _sessRole: 'a' }));
     eq(r.success === true, 'delete: success');
     eq(store.native_push_tokens.length === 1 && store.native_push_tokens[0].token === 'TOK-B', 'delete: seul TOK-A retiré');
   }
