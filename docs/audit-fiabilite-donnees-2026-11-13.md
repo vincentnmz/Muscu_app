@@ -77,3 +77,31 @@ Compte les jours où il y a à la fois des séries muscu et une nuit mesurée (`
 Le compteur lui-même est juste (copie : 11/11 ; le porteur voit 16/20). Options proposées au porteur : (1) reformuler
 sans promesse (« Novalyz collecte tes nuits ; aucune analyse sommeil → performance n'est faite pour l'instant ») ;
 (2) retirer la ligne ; (3) coder l'analyse (chantier moteur, hors phase d'observation).
+
+## Contrôle 2 — données prod à jour, lecture seule (13/11, accord du porteur) — AUCUN CODE
+
+Extraction : force estimée max par exercice et par jour (exercices anonymisés) + durée des nuits, athlète 1. Rien écrit.
+Script de contrôle hors repo. Score de séance = médiane, sur les exercices du jour, de l'écart de force estimée à la
+moyenne des autres séances du même exercice à ±28 j.
+
+- **Appariables [V]** : 47 jours de séance, 16 avec une nuit mesurée (= compteur de l'app), 16 avec nuit ≥ 3 h et un score.
+  Nuit datée au jour du réveil, plus longue session gardée (`js/app.js` import Health Connect) → appariement correct (S3 levé).
+- **Nuit habituelle** (médiane des 43 nuits ≥ 3 h) : 7 h 38. Nuits des 16 séances : 5 h 53 à 8 h 52.
+- **Nuits courtes selon la définition** : −1 h (< 6 h 38) **3** · −1,5 h (< 6 h 08) **1** · < 7 h **5** · < 6 h 30 **2** · moitié basse (< 7 h 41) **8**.
+- **Dispersion normale** : ±5,7 % sur les 47 séances (été irrégulier, reprises), **±3,3 %** sur les 16 séances récentes.
+- **Écarts observés** (normales − courtes) : −1 h : 0,0 pt · < 7 h : −1,3 pt · < 6 h 30 : −0,2 pt · moitié basse : −2,5 pts
+  (les séances après nuits courtes sont même un peu meilleures). Corrélation de rang durée ↔ score : −0,08.
+- **Aucun écart n'est distinguable du hasard** : p naïf 0,15 à 1,00 ; p avec dépendance temporelle gardée (décalage
+  circulaire) 0,25 à 1,00.
+- **Effet minimal détectable** (80 %, 5 %) avec la dispersion récente ±3,3 % : ≈ 4,6 pts (8/8), 5 pts (5/11), 6 pts (3/13) ;
+  avec la dispersion longue ±5,7 % : 8 à 12 pts.
+- **Robustesse** : en retirant 1 ou 2 séances, l'écart varie de −3,8 à +1,9 pts ; pour « < 7 h » il **change de signe**.
+- **Dépendance (point méthodo du porteur) [V]** : les scores sont peu corrélés d'une séance à l'autre (lag-1 ≈ 0,1), mais les
+  **nuits courtes arrivent en grappes** (lag-1 = 0,45 : 22-23/10, 5-8/11). Un test qui suppose les séances indépendantes
+  donne des p plus petits (0,15 au lieu de 0,25 ; 0,49 au lieu de 0,69) → confiance artificielle confirmée. Les grappes
+  mélangent aussi « nuit courte » et « période » (phase de programme, fatigue de la semaine) : confusion possible.
+- **Multiplicité** : tester 5 définitions et garder la meilleure gonfle les faux positifs → une seule définition, fixée avant.
+
+Conclusion du contrôle : avec 16 séances, l'honnête est « pas d'écart net ; un écart de moins de ~5 % ne serait pas
+détectable ». Seuils et texte à fixer par le porteur à partir de ces chiffres (propositions dans le compte rendu du 13/11).
+Guide testeurs : suggestion de reformulation déposée (sg_w4ofkxsh6n), à accepter par le porteur.
