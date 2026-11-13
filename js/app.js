@@ -10021,7 +10021,7 @@ function _pbcRowHtml(l, sid, lab) {
       var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/\\/g, '\\\\').replace(/'/g, "\\'"), ri = l.row_index;
       var cat = ''; try { cat = _exoCat(l.exercice, _exoCatMap(_progAthleteId())); } catch (e) {}
       var nomJs = String(l.exercice || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-      var catBtn = function (k, t) { var on = (cat === k) || (k === 'moyen' && cat === 'gros'); return '<button class="pbc-cat' + (on ? ' on' : '') + '" onclick="_exoCatSet(\'' + nomJs + '\',\'' + (on ? '' : k) + '\')" title="' + (on ? 'Retirer la catégorie' : 'Classer l\'exercice') + '">' + t + '</button>'; };
+      var catBtn = function (k, t) { var on = (cat === k) || (k === 'moyen' && cat === 'gros'); return '<button class="pbc-cat' + (on ? ' on' : '') + '" onclick="_pbcCatClic(' + ri + ',\'' + sj + '\',\'' + nomJs + '\',\'' + (on ? '' : k) + '\')" title="' + (on ? 'Retirer la catégorie' : 'Classer l\'exercice') + '">' + t + '</button>'; };
       var fx = null; try { fx = _exoFourchette(l.exercice, _numOk(l.reps_mini) ? Number(l.reps_mini) : null, _numOk(l.reps_max) ? Number(l.reps_max) : null, _exoCatMap(_progAthleteId())); } catch (e) {}
       var rmin = fx && fx.rmin, rmax = fx && fx.rmax, nS = Number(l.series_prevues) || 0, rp = Number(l.repos_sec) || 0;
       var reposTxt = function (x) { return !x ? '—' : (x < 60 ? x + ' s' : (x % 60 ? Math.floor(x / 60) + ' min ' + (x % 60) : (x / 60) + ' min')); };
@@ -10034,7 +10034,8 @@ function _pbcRowHtml(l, sid, lab) {
         + '<div class="pbc-hd">' + gripSvg + (lab ? '<span class="pbc-lab">' + esc(lab) + '</span>' : '')
         +   '<div class="pbc-nm"><select class="pb-exo pbc-exo" title="Remplacer l\'exercice" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
         +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div>'
-        +   '<div class="pbc-cats">' + catBtn('moyen', 'Lourd / moyen · 6–12') + catBtn('petit', 'Léger · 8–20') + '</div>'
+        +   '<div class="pbc-cats">' + catBtn('moyen', 'Lourd / moyen · 6–12') + catBtn('petit', 'Léger · 8–20')
+        +     '<button class="pbc-cat' + (Number(l.reps_mini) === 1 && Number(l.reps_max) === 5 ? ' on' : '') + '" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,1,5,null,null)" title="Programme de force : fourchette 1–5 sur cette ligne (ne change pas la catégorie de l\'exercice)">Force · 1–5</button></div>'
         +   '<button class="pbc-dots" title="Actions" onclick="pbcMenu(event,' + ri + ',\'' + sj + '\')">⋯</button></div>'
         + '<div class="pbc-pres">'
         +   '<div class="pbc-f"><span class="pbc-l">Séries</span><div class="pbc-v"><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.max(1, nS - 1) + ',null,null,null,null)">−</button><b>' + (nS || '–') + '</b><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.min(15, (nS || 0) + 1) + ',null,null,null,null)">+</button></div></div>'
@@ -10050,6 +10051,14 @@ function _pbcRowHtml(l, sid, lab) {
         + '<div class="pbc-adv"' + (adv ? '' : ' style="display:none"') + '><div class="pbc-f"><span class="pbc-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>' + _schemaControlsHtml(l, sid) + '</div>'
         + '</div>';
     }
+// 13/11 (retour client) : choisir « Lourd / moyen » ou « Léger » classe l'exercice (catégorie de l'athlète) ET
+// écrit sa fourchette dans les cases Reps de CETTE ligne (6–12 ou 8–20). Avant : seule une mention « appliqué :
+// 6–12 » apparaissait et les cases gardaient 8–12. Retirer la catégorie ne touche pas aux reps.
+function _pbcCatClic(ri, sid, nom, val) {
+  _exoCatSet(nom, val);
+  var r = val ? _EXO_CAT_R[val] : null;
+  if (r) cdSauverLigne(ri, sid, null, null, r[0], r[1], null, null);
+}
 function _pbcBlocHtml(membres, sid, G0) {
   var esc = escapeHtml;
   // 05/11 : bloc enchaîné — nom automatique (biset / superset / triset / circuit), repères A1 / A2, tours, repos du bloc.
