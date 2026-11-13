@@ -54,6 +54,7 @@ function graine() {
     s.notes = (s.notes || []).concat([{ athlete_id: aid, date: AUJ, note: 'note ' + tag, seance_id: 'S_' + aid }]);
     s.activites = (s.activites || []).concat([{ athlete_id: aid, seance_id: 'S_' + aid, date: AUJ, type: 'muscu', titre: tag }]);
     s.alertes_traitees = (s.alertes_traitees || []).concat([{ coach_id: cid, athlete_id: aid, cle: 'absence|' + tag, semaine: AUJ }]);
+    s.decisions = (s.decisions || []).concat([{ id: 'D_' + aid, athlete_id: aid, semaine: AUJ, type_action: 'cible', cle: 'Squat ' + tag, titre: 'décision ' + tag, critere: {}, donnees_entree: {}, regle_version: 'plan-test' }]);   // journal des décisions (P1-1)
   };
   pour('A1', 'MINE_A1', 'C1'); pour('A2', 'SECRET_A2', 'C2'); pour('A3', 'SECRET_A3', null);
   s.exercices = [{ exercice_id: '1', exercice: 'Squat', muscle: 'Quadriceps', statut: 'valide' }, { exercice_id: '2', exercice: 'Privé SECRET_C2', muscle: 'Dos', statut: 'en_attente', cree_par: 'coach:C2' }];

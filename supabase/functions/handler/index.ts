@@ -4521,6 +4521,7 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
     sb().from('pauses').delete().eq('athlete_id', athleteId),
     sb().from('push_subscriptions').delete().eq('athlete_id', athleteId),
     sb().from('alertes_historique').delete().eq('athlete_id', athleteId),
+    sb().from('decisions').delete().eq('athlete_id', athleteId),   // journal des décisions (P1-1)
     sb().from('envois_recus').delete().eq('athlete_id', athleteId),
   ].map((q: any) => Promise.resolve(q).catch(() => null)))
   // Fichiers privés rangés sous le préfixe <athlete_id>/ : médias coach (photos/vidéos
@@ -6056,6 +6057,95 @@ async function handleCronResumes(body: any): Promise<Response> {
 // 'off' | 'semaine' | 'mois' | '3mois'. Le front envoie athlete_id OU coach_id.
 // P9 (05/11) : formulaire « Envoyer un retour » → hello@novalyz.fr (l'adresse perso n'apparaît plus dans l'app).
 const CONTACT_NOVALYZ = 'hello@novalyz.fr'
+// ── Journal des décisions (P1-1, 13/11 — migration 20261113160000_decisions.sql) ─────────────────────────────
+// Le plan de la semaine est calculé par l'APP (js/lecture-v3.js _lv3Plan, moteur unique). Ici on le FIGE, on ne le
+// recalcule pas. Garde-fous validés par le porteur : athlète = session (coach : jamais d'écriture) ; semaine COURANTE
+// seulement ; une seule version par athlète et par semaine (la première VALIDE), aucune ligne en double ; rien si l'app
+// n'a pas des données complètes ; contrôle de FORME uniquement. Journal en ajout seul (aucune route de modification).
+const DECISION_TYPES = ['charge', 'series', 'rpe', 'cible', 'reprise']
+const DECISION_CRITERE_BORNES: Record<string, [number, number]> = { charge: [0, 1000], alt: [0, 1000], reps: [0, 100], min: [0, 100], add: [0, 20], parSem: [0, 200], seances: [0, 14] }
+// Lundi de la semaine courante (aaaa-mm-jj) à l'heure de Paris, et en UTC (tolérance autour de minuit).
+function _lundisCourants(now: Date): string[] {
+  const out = new Set<string>([fmtYMD(getLundi(now))])
+  try {
+    const p: Record<string, string> = {}
+    for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)) p[x.type] = x.value
+    out.add(fmtYMD(getLundi(new Date(Date.UTC(+p.year, +p.month - 1, +p.day)))))
+  } catch (_) { /* Intl indisponible : lundi UTC seul */ }
+  return [...out]
+}
+// Contrôle de forme d'une action du plan → ligne prête à insérer, ou message d'erreur. Ne juge pas le contenu.
+function _decisionLigne(a: any, athleteId: string, semaine: string, version: string): { ligne?: any; err?: string } {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return { err: 'action invalide' }
+  const type = String(a.type || '')
+  if (!DECISION_TYPES.includes(type)) return { err: 'type d\'action inconnu' }
+  const str = (v: any, max: number) => (v == null || v === '') ? null : (typeof v === 'string' && v.trim().length <= max ? v.trim() : undefined)
+  const titre = str(a.titre, 200), raison = str(a.raison, 600), exercice = str(a.exo, 120), muscle = str(a.muscle, 60)
+  if (!titre) return { err: 'titre manquant ou trop long' }
+  if (raison === undefined || exercice === undefined || muscle === undefined) return { err: 'champ trop long' }
+  const cle = type === 'reprise' ? 'reprise' : type === 'series' ? (muscle || exercice) : exercice
+  if (!cle) return { err: 'exercice / muscle manquant' }
+  const critere: Record<string, number> = {}
+  const c = a.critere == null ? {} : a.critere
+  if (typeof c !== 'object' || Array.isArray(c)) return { err: 'critère invalide' }
+  for (const k of Object.keys(c)) {
+    const b = DECISION_CRITERE_BORNES[k], v = c[k]
+    if (!b) return { err: 'critère : champ inconnu (' + k + ')' }
+    if (v == null) continue
+    if (typeof v !== 'number' || !isFinite(v) || v < b[0] || v > b[1]) return { err: 'critère : valeur hors bornes (' + k + ')' }
+    critere[k] = v
+  }
+  const de = a.donnees_entree == null ? {} : a.donnees_entree
+  if (typeof de !== 'object' || Array.isArray(de)) return { err: 'données d\'entrée invalides' }
+  if (JSON.stringify(de).length > 2000) return { err: 'données d\'entrée trop longues' }
+  return { ligne: { athlete_id: athleteId, semaine, type_action: type, cle, exercice, muscle, titre, raison, critere, donnees_entree: de, regle_version: version } }
+}
+async function handleEnregistrerPlan(body: any): Promise<Response> {
+  // 1. Identité = session ATHLÈTE (authCheck refuse déjà le coach et un athlete_id d'un autre ; double contrôle ici).
+  if (body._sessRole !== 'a' || !body._sessId) return jsonResp({ success: false, error: 'Réservé à l\'athlète' })
+  const athleteId = String(body._sessId)
+  if (body.athlete_id != null && body.athlete_id !== '' && String(body.athlete_id) !== athleteId) return jsonResp({ success: false, error: 'Athlète incohérent avec la session' })
+  // 4. L'app déclare avoir calculé le plan sur des données complètes (en ligne, getAppData chargé) ; sinon rien.
+  if (body.donnees_completes !== true) return jsonResp({ success: false, error: 'Plan non enregistré : données incomplètes' })
+  // 2. Semaine courante seulement.
+  const semaine = String(body.semaine || '')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(semaine) || !_lundisCourants(new Date()).includes(semaine)) return jsonResp({ success: false, error: 'Seul le plan de la semaine en cours peut être enregistré' })
+  const version = String(body.regle_version || '')
+  if (!/^[a-z0-9._-]{3,40}$/.test(version)) return jsonResp({ success: false, error: 'Version de règle manquante ou invalide' })
+  const actions = body.actions
+  if (!Array.isArray(actions) || actions.length < 1 || actions.length > 3) return jsonResp({ success: false, error: 'Le plan doit contenir 1 à 3 actions' })
+  // 5. Contrôle de forme (pas de recalcul du moteur).
+  const lignes: any[] = [], vus = new Set<string>()
+  for (const a of actions) {
+    const r = _decisionLigne(a, athleteId, semaine, version)
+    if (r.err) return jsonResp({ success: false, error: 'Plan refusé : ' + r.err })
+    const k = r.ligne.type_action + '|' + r.ligne.cle
+    if (vus.has(k)) return jsonResp({ success: false, error: 'Plan refusé : action en double' })
+    vus.add(k); lignes.push(r.ligne)
+  }
+  // 3. Une seule version par semaine : si un plan existe déjà pour cette semaine, on n'écrit rien (première version valide).
+  const { data: deja, error: eLire } = await sb().from('decisions').select('id').eq('athlete_id', athleteId).eq('semaine', semaine).limit(1)
+  if (eLire) return jsonResp({ success: false, error: 'Lecture du journal impossible' })
+  if (deja && deja.length) return jsonResp({ success: true, deja: true, enregistrees: 0 })
+  const { error } = await sb().from('decisions').insert(lignes)
+  if (error) {
+    if (String((error as any).code) === '23505') return jsonResp({ success: true, deja: true, enregistrees: 0 })   // envoi simultané : la contrainte UNIQUE tranche
+    return jsonResp({ success: false, error: 'Enregistrement impossible' })
+  }
+  return jsonResp({ success: true, deja: false, enregistrees: lignes.length })
+}
+// Lecture du journal : l'athlète (le sien) ou son coach (authCheck vérifie athlete_id). Lecture seule.
+async function handleGetDecisions(params: URLSearchParams): Promise<Response> {
+  const athleteId = String(params.get('athlete_id') || '').trim()
+  if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
+  const n = Math.max(1, Math.min(52, Number(params.get('semaines')) || 12))
+  const depuis = fmtYMD(minus(getLundi(new Date()), 7 * n))
+  const { data, error } = await sb().from('decisions').select('semaine,type_action,cle,exercice,muscle,titre,raison,critere,donnees_entree,regle_version,created_at')
+    .eq('athlete_id', athleteId).gte('semaine', depuis).order('semaine', { ascending: false }).order('id', { ascending: true })
+  if (error) return jsonResp({ success: false, error: 'Lecture du journal impossible' })
+  return jsonResp({ success: true, decisions: data || [] })
+}
+
 async function handleEnvoyerRetour(body: any): Promise<Response> {
   const msg = String(body.message || '').trim().slice(0, 3000)
   if (msg.length < 3) return jsonResp({ success: false, error: 'Message vide' })
@@ -8030,7 +8120,8 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   // Audit P2.1 🟡 (décision porteur 13/11) : réservés à l'athlète lui-même. claimRecompense : les points sont les siens ;
   // saveEmail : l'e-mail sert à « mot de passe oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte,
   // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
-  if ((action === 'claimRecompense' || action === 'saveEmail') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
+  // P1-1 (13/11) : le journal des décisions n'est créé que depuis le parcours de l'athlète (jamais par le coach).
+  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -8109,6 +8200,7 @@ Deno.serve(async (req: Request) => {
         case 'getSuiviEquipe':        return handleGetSuiviEquipe(params)
         case 'getSuiviJoueur':        return handleGetSuiviJoueur(params)
         case 'getTests':              return handleGetTests(params)
+        case 'getDecisions':          return handleGetDecisions(params)
         default:                      return jsonResp({ erreur: `Action inconnue: ${action}` }, 404)
       }
     }
@@ -8147,6 +8239,7 @@ Deno.serve(async (req: Request) => {
         case 'saveRecapFreq':            return handleSaveRecapFreq(body)
         case 'saveCoachPref':            return handleSaveCoachPref(body)
         case 'envoyerRetour':            return handleEnvoyerRetour(body)
+        case 'enregistrerPlan':          return handleEnregistrerPlan(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
         case 'confirmerEmail':           return handleConfirmerEmail(body)
