@@ -6423,7 +6423,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
     try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
-    try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
+    // 13/11 (retour client) : la fiche coach montre aussi la carte « En vacances » (avant : seulement l'écran Équipe).
+    try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu', data.pause); } catch (_) {}
     renderEtatDuJourCoach(data);
     try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu v3 : carte Récupération (Poids masqué)
     try { var _fr = document.getElementById('cd-forme-recup'); if (_fr) _fr.style.display = 'none'; } catch (_) {}   // F6 (03/11) : redit le bloc ③ État & récup
@@ -7839,6 +7840,8 @@ function renderCoachCalendrier() {
     const isToday = j === today.getDate() && moisIdx === today.getMonth() && annee === today.getFullYear();
     const hasSeance = cdSeancesDates[dateStr];
     const isFutur = new Date(annee, moisIdx, j) > today;
+    // 13/11 (retour client) : jours de pause (mode vacances) de l'athlète colorés dans l'agenda coach.
+    const enPause = _jourEnPause(_pauseAffichee(typeof coachAthleteData !== 'undefined' ? coachAthleteData : null), annee, moisIdx, j);
     if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700';
       d.textContent = j;
@@ -7846,6 +7849,9 @@ function renderCoachCalendrier() {
       d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700';
       d.title = hasSeance;
       d.innerHTML = `<div style="font-size:10px">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600">${String(hasSeance).substring(0,4)}</div>`;
+    } else if (enPause) {
+      d.style.cssText = 'background:rgba(99,179,237,.22);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#2b6cb0;font-weight:700';
+      d.title = 'Vacances'; d.textContent = j;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border)';
       d.textContent = j;
@@ -10021,7 +10027,7 @@ function _pbcRowHtml(l, sid, lab) {
       var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/\\/g, '\\\\').replace(/'/g, "\\'"), ri = l.row_index;
       var cat = ''; try { cat = _exoCat(l.exercice, _exoCatMap(_progAthleteId())); } catch (e) {}
       var nomJs = String(l.exercice || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-      var catBtn = function (k, t) { var on = (cat === k) || (k === 'moyen' && cat === 'gros'); return '<button class="pbc-cat' + (on ? ' on' : '') + '" onclick="_exoCatSet(\'' + nomJs + '\',\'' + (on ? '' : k) + '\')" title="' + (on ? 'Retirer la catégorie' : 'Classer l\'exercice') + '">' + t + '</button>'; };
+      var catBtn = function (k, t) { var on = (cat === k) || (k === 'moyen' && cat === 'gros'); return '<button class="pbc-cat' + (on ? ' on' : '') + '" onclick="_pbcCatClic(' + ri + ',\'' + sj + '\',\'' + nomJs + '\',\'' + (on ? '' : k) + '\')" title="' + (on ? 'Retirer la catégorie' : 'Classer l\'exercice') + '">' + t + '</button>'; };
       var fx = null; try { fx = _exoFourchette(l.exercice, _numOk(l.reps_mini) ? Number(l.reps_mini) : null, _numOk(l.reps_max) ? Number(l.reps_max) : null, _exoCatMap(_progAthleteId())); } catch (e) {}
       var rmin = fx && fx.rmin, rmax = fx && fx.rmax, nS = Number(l.series_prevues) || 0, rp = Number(l.repos_sec) || 0;
       var reposTxt = function (x) { return !x ? '—' : (x < 60 ? x + ' s' : (x % 60 ? Math.floor(x / 60) + ' min ' + (x % 60) : (x / 60) + ' min')); };
@@ -10034,7 +10040,8 @@ function _pbcRowHtml(l, sid, lab) {
         + '<div class="pbc-hd">' + gripSvg + (lab ? '<span class="pbc-lab">' + esc(lab) + '</span>' : '')
         +   '<div class="pbc-nm"><select class="pb-exo pbc-exo" title="Remplacer l\'exercice" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
         +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div>'
-        +   '<div class="pbc-cats">' + catBtn('moyen', 'Lourd / moyen · 6–12') + catBtn('petit', 'Léger · 8–20') + '</div>'
+        +   '<div class="pbc-cats">' + catBtn('moyen', 'Lourd / moyen · 6–12') + catBtn('petit', 'Léger · 8–20')
+        +     '<button class="pbc-cat' + (Number(l.reps_mini) === 1 && Number(l.reps_max) === 5 ? ' on' : '') + '" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,1,5,null,null)" title="Programme de force : fourchette 1–5 sur cette ligne (ne change pas la catégorie de l\'exercice)">Force · 1–5</button></div>'
         +   '<button class="pbc-dots" title="Actions" onclick="pbcMenu(event,' + ri + ',\'' + sj + '\')">⋯</button></div>'
         + '<div class="pbc-pres">'
         +   '<div class="pbc-f"><span class="pbc-l">Séries</span><div class="pbc-v"><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.max(1, nS - 1) + ',null,null,null,null)">−</button><b>' + (nS || '–') + '</b><button class="pbc-st" onclick="cdSauverLigne(' + ri + ',\'' + sj + '\',null,' + Math.min(15, (nS || 0) + 1) + ',null,null,null,null)">+</button></div></div>'
@@ -10050,6 +10057,14 @@ function _pbcRowHtml(l, sid, lab) {
         + '<div class="pbc-adv"' + (adv ? '' : ' style="display:none"') + '><div class="pbc-f"><span class="pbc-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>' + _schemaControlsHtml(l, sid) + '</div>'
         + '</div>';
     }
+// 13/11 (retour client) : choisir « Lourd / moyen » ou « Léger » classe l'exercice (catégorie de l'athlète) ET
+// écrit sa fourchette dans les cases Reps de CETTE ligne (6–12 ou 8–20). Avant : seule une mention « appliqué :
+// 6–12 » apparaissait et les cases gardaient 8–12. Retirer la catégorie ne touche pas aux reps.
+function _pbcCatClic(ri, sid, nom, val) {
+  _exoCatSet(nom, val);
+  var r = val ? _EXO_CAT_R[val] : null;
+  if (r) cdSauverLigne(ri, sid, null, null, r[0], r[1], null, null);
+}
 function _pbcBlocHtml(membres, sid, G0) {
   var esc = escapeHtml;
   // 05/11 : bloc enchaîné — nom automatique (biset / superset / triset / circuit), repères A1 / A2, tours, repos du bloc.
@@ -10675,6 +10690,9 @@ function _jgAddSeance(nom) {
   nom = String(nom || '').trim(); if (!nom) return;
   var base = nom, k = 2; while (_jg.seances.indexOf(nom) >= 0) { nom = base + ' ' + k; k++; }
   _jg.seances.push(nom); _jg.autre = false; _jgRender();
+  // 13/11 (retour client) : avant, la séance s'ajoutait en bas de page sans rien ouvrir (on ne s'en rendait pas
+  // compte). Maintenant le choix des exercices s'ouvre directement ; fermé sans rien choisir, la séance vide reste.
+  _jgAjouterExos(nom);
 }
 function _jgAutre() { _jg.autre = true; _jgRender(); setTimeout(function () { var i = document.getElementById('jg-autre-in'); if (i) i.focus(); }, 30); }
 function _jgRetirer(nom) { _jg.seances = _jg.seances.filter(function (s) { return s !== nom; }); _jgRender(); }
@@ -10710,7 +10728,7 @@ function _jgRender() {
       + (rows ? '<div class="jg-rows">' + rows + '</div>' : '')
       + '<button class="jg-addx" onclick="_jgAjouterExos(\'' + js(s) + '\')">+ Ajouter des exercices</button></div>';
   }).join('');
-  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip" onclick="_jgAddSeance(\'' + js(n) + '\')">' + esc(n) + '</button>'; }).join('')
+  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip cta" onclick="_jgAddSeance(\'' + js(n) + '\')">+ ' + esc(n) + '</button>'; }).join('')
     + (_jg.autre ? '<span class="jg-autre"><input id="jg-autre-in" type="text" placeholder="Nom de la séance" onkeydown="if(event.key===\'Enter\')_jgAddSeance(this.value)"><button onclick="_jgAddSeance(document.getElementById(\'jg-autre-in\').value)">OK</button></span>'
                  : '<button class="jg-chip add" onclick="_jgAutre()">+ Autre nom…</button>');
   ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="fermerConstruireProgramme()" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Construis ton programme</div><div class="b">Crée tes séances puis ajoute tes exercices</div></div></div>'
@@ -10728,7 +10746,7 @@ async function cdAjouterSeance() {
   // fenêtre au style de l'app au lieu de la boîte système prompt().
   var p = document.getElementById('cd-newseance');
   if (!p) { p = document.createElement('div'); p.id = 'cd-newseance'; p.className = 'jg-panel-ov'; document.body.appendChild(p); p.addEventListener('click', function (e) { if (e.target === p) p.style.display = 'none'; }); }
-  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip" onclick="document.getElementById(\'cd-ns-in\').value=\'' + n + '\'">' + n + '</button>'; }).join('');
+  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip cta" onclick="document.getElementById(\'cd-ns-in\').value=\'' + n + '\';_cdNouvelleSeanceOk()">+ ' + n + '</button>'; }).join('');
   p.innerHTML = '<div class="jg-panel jg-panel-sm">'
     + '<div class="xp-hd"><button class="xp-back" onclick="document.getElementById(\'cd-newseance\').style.display=\'none\'" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Nouvelle séance</div><div class="b">Nomme-la, puis choisis ses exercices</div></div></div>'
     + '<div class="jg-pbody"><div class="jg-chips">' + chips + '</div>'
@@ -15853,35 +15871,55 @@ function _maProgRegBloc(data) {
     + _maCap('1RM estimé (Epley) vs la période précédente de même durée. Exercices présents dans les deux fenêtres.');
 }
 
-// FRÉQUENCE par muscle (jours distincts / semaine) — cible ≥ 2×/sem (hypertrophie).
+// FRÉQUENCE par muscle — calcul pur (testé : tests/frequence-muscle.test.js).
+// 13/11 (correctif validé par le porteur) :
+//  · suit TOUJOURS la période choisie (avant : « 4 dernières semaines terminées » dès que < 7 jours écoulés → Semaine figée) ;
+//  · jours où le muscle est travaillé en PRINCIPAL (ppm) — avant, un jour de rowing comptait un jour de biceps ;
+//  · diviseur non arrondi (avant : 9 jours = 1 semaine → fréquence gonflée) ;
+//  · début = 1re séance si elle est dans la période (avant : Année divisée depuis le 1er janvier → fréquence diluée) ;
+//  · moins de 7 jours mesurables → on affiche le NOMBRE de séances, pas une moyenne par semaine.
+function _freqMuscleCalc(daily, startISO, endISO, todayISO) {
+  var jours = Object.keys(daily || {}).filter(function (d) {
+    var o = daily[d], m = o && (o.ppm || o.spm); return m && Object.keys(m).some(function (k) { return m[k] > 0; });
+  }).sort();
+  if (!jours.length) return null;
+  var lendemain = (function () { var t = _dateISOtoLocal(todayISO); t.setDate(t.getDate() + 1); return _ymdLocal(t); })();
+  var s0 = startISO > jours[0] ? startISO : jours[0], e0 = endISO < lendemain ? endISO : lendemain;
+  if (s0 >= e0) return null;
+  var jdays = Math.round((_dateISOtoLocal(e0) - _dateISOtoLocal(s0)) / 86400000);
+  var dayc = {};
+  jours.forEach(function (d) {
+    if (d < s0 || d >= e0) return;
+    var o = daily[d];
+    if (o.ppm) Object.keys(o.ppm).forEach(function (m) { if (o.ppm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; });
+    else Object.keys(o.spm || {}).forEach(function (m) { if (o.spm[m] >= 1) dayc[m] = (dayc[m] || 0) + 1; });   // ancien serveur : ≥ 1 série pleine
+  });
+  var parSemaine = jdays >= 7, sem = jdays / 7;
+  var rows = Object.keys(dayc).map(function (m) { return { m: m, n: dayc[m], f: parSemaine ? dayc[m] / sem : null }; })
+    .sort(function (a, b) { return b.n - a.n || a.m.localeCompare(b.m); });
+  return { rows: rows, parSemaine: parSemaine, jours: jdays, debutISO: s0, depuis1re: s0 > startISO };
+}
 function _maFreqMuscleBloc(data) {
   var w = _maWin(), daily = (data.historique && data.historique.daily_muscu) || {};
-  // G3 (03/11) : période en cours → on divise par les jours ÉCOULÉS (avant : le mois entier → « 0,3×/sem » en rouge le 3 du mois).
-  var _ecoul = w.isCurrent ? Math.max(1, Math.round((Math.min(Date.now(), w.end.getTime()) - w.start.getTime()) / 86400000)) : w.days;
-  // 06/11 : période trop courte (début de semaine) → on montre les 4 DERNIÈRES SEMAINES TERMINÉES
-  // (même fenêtre que le volume des alertes) au lieu d'un bloc vide.
-  var _sISO = w.startISO, _eISO = w.endISO, _lab = w.plabel, weeks = Math.max(1, Math.round(_ecoul / 7));
-  if (_ecoul < 7) {
-    var _l = new Date(); _l.setHours(0, 0, 0, 0); _l.setDate(_l.getDate() - ((_l.getDay() + 6) % 7));
-    var _d0 = new Date(_l.getTime()); _d0.setDate(_d0.getDate() - 28);
-    var _iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-    _sISO = _iso(_d0); _eISO = _iso(_l); _lab = '4 dernières semaines terminées'; weeks = 4;
-  }
-  var dayc = {};
-  Object.keys(daily).forEach(function (d) {
-    if (d >= _sISO && d < _eISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
-  });
-  var rows = Object.keys(dayc).map(function (m) { return { m: m, f: dayc[m] / weeks }; }).sort(function (a, b) { return b.f - a.f; });
-  if (!rows.length) return _maSec('Fréquence par muscle', null, 'frequence') + _maEmpty('Pas encore de séances sur la période.');
-  w = Object.assign({}, w, { plabel: _lab });
-  var html = rows.map(function (r) {
-    var C = r.f >= 2 ? '#00A854' : r.f >= 1 ? '#E07800' : '#DC3545';
-    var ft = (Math.round(r.f * 10) / 10).toString().replace('.', ',');
-    return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(r.m) + '</span><span class="p" style="color:' + C + '">' + ft + '×/sem</span></div>'
-      + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, r.f / 3 * 100).toFixed(0) + '%;background:' + C + '"></div></div></div>';
+  var r = _freqMuscleCalc(daily, w.startISO, w.endISO, _ymdLocal(new Date()));
+  if (!r || !r.rows.length) return _maSec('Fréquence par muscle', w.plabel, 'frequence') + _maEmpty('Pas de séance sur la période.');
+  var lab = w.plabel + (r.depuis1re ? ' · depuis le ' + _pauseFmt(r.debutISO).slice(0, 5) : '')   // 1re séance dans la période;
+  var html = r.rows.map(function (x) {
+    var C, txt, pct;
+    if (r.parSemaine) {
+      var fr = Math.round(x.f * 10) / 10;   // couleur sur la valeur AFFICHÉE (0,98 → « 1×/sem » n'est pas rouge)
+      C = fr >= 2 ? '#00A854' : fr >= 1 ? '#E07800' : '#DC3545';
+      txt = fr.toString().replace('.', ',') + '×/sem'; pct = x.f / 3 * 100;
+    } else {   // période trop courte pour une moyenne : on compte, sans juger (la semaine n'est pas finie)
+      C = x.n >= 2 ? '#00A854' : 'var(--accent)'; txt = x.n + ' séance' + (x.n > 1 ? 's' : ''); pct = x.n / 3 * 100;
+    }
+    return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(x.m) + '</span><span class="p" style="color:' + C + '">' + txt + '</span></div>'
+      + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, pct).toFixed(0) + '%;background:' + C + '"></div></div></div>';
   }).join('');
-  return _maSec('Fréquence par muscle', w.plabel, 'frequence') + '<div class="ma-card ma-vol">' + html + '</div>'
-    + _maCap('Nombre de séances distinctes où le muscle est travaillé, ramené à la semaine. Pour l\'hypertrophie, viser ≥ 2×/semaine par muscle.');
+  var cap = r.parSemaine
+    ? 'Jours où le muscle est travaillé en principal, ramenés à la semaine (' + r.jours + ' jours mesurés). Pour l\'hypertrophie, viser ≥ 2×/semaine par muscle.'
+    : 'Moins de 7 jours sur la période : nombre de séances où le muscle est travaillé en principal (pas de moyenne par semaine). Repère : ≥ 2 séances par semaine et par muscle.';
+  return _maSec('Fréquence par muscle', lab, 'frequence') + '<div class="ma-card ma-vol">' + html + '</div>' + _maCap(cap);
 }
 
 // RÉPARTITION d'intensité : séries par zone de reps (lourd <6 · moyen 6-12 · léger >12).
@@ -17757,6 +17795,8 @@ function renderCalendrier() {
     const hasSeance = seancesDates[dateStr];        // muscu
     const hasCardio = !!seancesDatesCardio[dateStr]; // cardio
     const isFutur = new Date(annee, moisIdx, j) > today;
+    // 13/11 (retour client) : jours de pause (mode vacances) colorés dans l'agenda.
+    const enPause = _jourEnPause(_pauseAffichee(typeof dernierAppData !== 'undefined' ? dernierAppData : null), annee, moisIdx, j);
 
     if (hasSeance || hasCardio) {
       // Pastille : vert = muscu · rouge = cardio · dégradé vert/rouge = les deux
@@ -17771,6 +17811,9 @@ function renderCalendrier() {
     } else if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700;';
       d.textContent = j;
+    } else if (enPause) {
+      d.style.cssText = 'background:rgba(99,179,237,.22);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:#2b6cb0;font-weight:700;';
+      d.title = 'Vacances'; d.textContent = j;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
       d.textContent = j;
@@ -25325,8 +25368,20 @@ function estEnPause(pause) {
   return !!(d || f);
 }
 // Remplit l'écran Réglages avec la pause actuelle (depuis les données chargées)
+// Pause à afficher (en cours OU à venir). 13/11 : avant, seule la pause déjà commencée revenait du serveur →
+// une pause programmée pour plus tard disparaissait de l'écran après enregistrement (« ça ne fait rien »).
+// Jour (année, mois 0-11, jour) compris dans une pause {debut, fin} (ISO). Sert aux agendas athlète et coach.
+function _jourEnPause(p, y, m, j) {
+  if (!p) return false;
+  const d = _dateISOtoLocal(p.debut), f = _dateISOtoLocal(p.fin);
+  if (!d && !f) return false;
+  const x = new Date(y, m, j);
+  return (!d || x >= d) && (!f || x <= f);
+}
+function _pauseAffichee(d) { return (d && (d.pause || d.pause_prevue)) || null; }
+function _pauseFmt(iso) { return iso ? String(iso).split('-').reverse().join('/') : ''; }
 function majUiPause() {
-  const p = (dernierAppData && dernierAppData.pause) ? dernierAppData.pause : null;
+  const p = _pauseAffichee(typeof dernierAppData !== 'undefined' ? dernierAppData : null);
   const inpD = document.getElementById('pause-debut');
   const inpF = document.getElementById('pause-fin');
   const stat = document.getElementById('pause-statut');
@@ -25335,32 +25390,41 @@ function majUiPause() {
   inpF.value = p && p.fin ? p.fin : '';
   if (estEnPause(p)) {
     stat.style.display = 'block';
-    stat.textContent = 'Pause active' + (p.fin ? ' jusqu\'au ' + p.fin.split('-').reverse().join('/') : '');
+    stat.textContent = 'Pause active' + (p.fin ? ' jusqu\'au ' + _pauseFmt(p.fin) : '');
+  } else if (p && p.debut) {
+    stat.style.display = 'block';
+    stat.textContent = 'Pause prévue du ' + _pauseFmt(p.debut) + (p.fin ? ' au ' + _pauseFmt(p.fin) : '');
   } else {
     stat.style.display = 'none';
   }
 }
 async function enregistrerPause() {
   if (!athlete) return;
-  const debut = document.getElementById('pause-debut').value;
+  let debut = document.getElementById('pause-debut').value;
   const fin   = document.getElementById('pause-fin').value;
   if (!debut && !fin) { showToast('Choisis au moins une date', '#f59f00'); return; }
+  // 13/11 : sans date de début, la pause commence aujourd'hui (avant : le serveur l'enregistrait comme une annulation).
+  if (!debut) { const t = new Date(); debut = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
   if (debut && fin && fin < debut) { showToast('La fin est avant le début', '#f59f00'); return; }
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: debut, fin: fin }) });
-    if (dernierAppData) dernierAppData.pause = { debut: debut, fin: fin };
+    const j = await r.json().catch(function () { return null; });
+    if (!j || j.ok !== true) { showToast('Pause non enregistrée — réessaie', '#ff4444'); return; }   // 13/11 : avant, « activé » même en cas d'échec
+    if (dernierAppData) { dernierAppData.pause_prevue = { debut: debut, fin: fin || null, active: estEnPause({ debut: debut, fin: fin }) }; dernierAppData.pause = dernierAppData.pause_prevue.active ? { debut: debut, fin: fin || null } : null; }
     majUiPause();
-    showToast('Mode vacances activé');
+    showToast(estEnPause({ debut: debut, fin: fin }) ? 'Mode vacances activé' : 'Pause programmée à partir du ' + _pauseFmt(debut));
     try { chargerAppData(); } catch (e) {}   // la pause change la lecture (pas de « baisse » pendant les vacances)
   } catch (e) { showToast('Erreur', '#ff4444'); }
 }
 async function annulerPause() {
   if (!athlete) return;
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: '', fin: '' }) });
-    if (dernierAppData) dernierAppData.pause = null;
+    const j = await r.json().catch(function () { return null; });
+    if (!j || j.ok !== true) { showToast('Annulation non enregistrée — réessaie', '#ff4444'); return; }
+    if (dernierAppData) { dernierAppData.pause = null; dernierAppData.pause_prevue = null; }
     majUiPause();
     showToast('Pause annulée');
     try { chargerAppData(); } catch (e) {}
