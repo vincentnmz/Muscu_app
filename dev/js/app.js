@@ -6423,7 +6423,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
     try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
-    try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
+    // 13/11 (retour client) : la fiche coach montre aussi la carte « En vacances » (avant : seulement l'écran Équipe).
+    try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu', data.pause); } catch (_) {}
     renderEtatDuJourCoach(data);
     try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu v3 : carte Récupération (Poids masqué)
     try { var _fr = document.getElementById('cd-forme-recup'); if (_fr) _fr.style.display = 'none'; } catch (_) {}   // F6 (03/11) : redit le bloc ③ État & récup
@@ -7839,6 +7840,8 @@ function renderCoachCalendrier() {
     const isToday = j === today.getDate() && moisIdx === today.getMonth() && annee === today.getFullYear();
     const hasSeance = cdSeancesDates[dateStr];
     const isFutur = new Date(annee, moisIdx, j) > today;
+    // 13/11 (retour client) : jours de pause (mode vacances) de l'athlète colorés dans l'agenda coach.
+    const enPause = _jourEnPause(_pauseAffichee(typeof coachAthleteData !== 'undefined' ? coachAthleteData : null), annee, moisIdx, j);
     if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700';
       d.textContent = j;
@@ -7846,6 +7849,9 @@ function renderCoachCalendrier() {
       d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700';
       d.title = hasSeance;
       d.innerHTML = `<div style="font-size:10px">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600">${String(hasSeance).substring(0,4)}</div>`;
+    } else if (enPause) {
+      d.style.cssText = 'background:rgba(99,179,237,.22);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#2b6cb0;font-weight:700';
+      d.title = 'Vacances'; d.textContent = j;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border)';
       d.textContent = j;
@@ -17769,6 +17775,8 @@ function renderCalendrier() {
     const hasSeance = seancesDates[dateStr];        // muscu
     const hasCardio = !!seancesDatesCardio[dateStr]; // cardio
     const isFutur = new Date(annee, moisIdx, j) > today;
+    // 13/11 (retour client) : jours de pause (mode vacances) colorés dans l'agenda.
+    const enPause = _jourEnPause(_pauseAffichee(typeof dernierAppData !== 'undefined' ? dernierAppData : null), annee, moisIdx, j);
 
     if (hasSeance || hasCardio) {
       // Pastille : vert = muscu · rouge = cardio · dégradé vert/rouge = les deux
@@ -17783,6 +17791,9 @@ function renderCalendrier() {
     } else if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700;';
       d.textContent = j;
+    } else if (enPause) {
+      d.style.cssText = 'background:rgba(99,179,237,.22);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:#2b6cb0;font-weight:700;';
+      d.title = 'Vacances'; d.textContent = j;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
       d.textContent = j;
@@ -25337,8 +25348,20 @@ function estEnPause(pause) {
   return !!(d || f);
 }
 // Remplit l'écran Réglages avec la pause actuelle (depuis les données chargées)
+// Pause à afficher (en cours OU à venir). 13/11 : avant, seule la pause déjà commencée revenait du serveur →
+// une pause programmée pour plus tard disparaissait de l'écran après enregistrement (« ça ne fait rien »).
+// Jour (année, mois 0-11, jour) compris dans une pause {debut, fin} (ISO). Sert aux agendas athlète et coach.
+function _jourEnPause(p, y, m, j) {
+  if (!p) return false;
+  const d = _dateISOtoLocal(p.debut), f = _dateISOtoLocal(p.fin);
+  if (!d && !f) return false;
+  const x = new Date(y, m, j);
+  return (!d || x >= d) && (!f || x <= f);
+}
+function _pauseAffichee(d) { return (d && (d.pause || d.pause_prevue)) || null; }
+function _pauseFmt(iso) { return iso ? String(iso).split('-').reverse().join('/') : ''; }
 function majUiPause() {
-  const p = (dernierAppData && dernierAppData.pause) ? dernierAppData.pause : null;
+  const p = _pauseAffichee(typeof dernierAppData !== 'undefined' ? dernierAppData : null);
   const inpD = document.getElementById('pause-debut');
   const inpF = document.getElementById('pause-fin');
   const stat = document.getElementById('pause-statut');
@@ -25347,32 +25370,41 @@ function majUiPause() {
   inpF.value = p && p.fin ? p.fin : '';
   if (estEnPause(p)) {
     stat.style.display = 'block';
-    stat.textContent = 'Pause active' + (p.fin ? ' jusqu\'au ' + p.fin.split('-').reverse().join('/') : '');
+    stat.textContent = 'Pause active' + (p.fin ? ' jusqu\'au ' + _pauseFmt(p.fin) : '');
+  } else if (p && p.debut) {
+    stat.style.display = 'block';
+    stat.textContent = 'Pause prévue du ' + _pauseFmt(p.debut) + (p.fin ? ' au ' + _pauseFmt(p.fin) : '');
   } else {
     stat.style.display = 'none';
   }
 }
 async function enregistrerPause() {
   if (!athlete) return;
-  const debut = document.getElementById('pause-debut').value;
+  let debut = document.getElementById('pause-debut').value;
   const fin   = document.getElementById('pause-fin').value;
   if (!debut && !fin) { showToast('Choisis au moins une date', '#f59f00'); return; }
+  // 13/11 : sans date de début, la pause commence aujourd'hui (avant : le serveur l'enregistrait comme une annulation).
+  if (!debut) { const t = new Date(); debut = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
   if (debut && fin && fin < debut) { showToast('La fin est avant le début', '#f59f00'); return; }
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: debut, fin: fin }) });
-    if (dernierAppData) dernierAppData.pause = { debut: debut, fin: fin };
+    const j = await r.json().catch(function () { return null; });
+    if (!j || j.ok !== true) { showToast('Pause non enregistrée — réessaie', '#ff4444'); return; }   // 13/11 : avant, « activé » même en cas d'échec
+    if (dernierAppData) { dernierAppData.pause_prevue = { debut: debut, fin: fin || null, active: estEnPause({ debut: debut, fin: fin }) }; dernierAppData.pause = dernierAppData.pause_prevue.active ? { debut: debut, fin: fin || null } : null; }
     majUiPause();
-    showToast('Mode vacances activé');
+    showToast(estEnPause({ debut: debut, fin: fin }) ? 'Mode vacances activé' : 'Pause programmée à partir du ' + _pauseFmt(debut));
     try { chargerAppData(); } catch (e) {}   // la pause change la lecture (pas de « baisse » pendant les vacances)
   } catch (e) { showToast('Erreur', '#ff4444'); }
 }
 async function annulerPause() {
   if (!athlete) return;
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: '', fin: '' }) });
-    if (dernierAppData) dernierAppData.pause = null;
+    const j = await r.json().catch(function () { return null; });
+    if (!j || j.ok !== true) { showToast('Annulation non enregistrée — réessaie', '#ff4444'); return; }
+    if (dernierAppData) { dernierAppData.pause = null; dernierAppData.pause_prevue = null; }
     majUiPause();
     showToast('Pause annulée');
     try { chargerAppData(); } catch (e) {}
