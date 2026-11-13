@@ -259,3 +259,21 @@ après sur un jeu de données réel (copie), préprod, validation du porteur, pu
   < 3 saisies, sans orange affiché. → correctifs surtout **préventifs** pour les testeurs actuels (ils protègent les nouveaux
   comptes et les niveaux débutant / avancé).
 - 107 suites vertes ; SW v582. Captures : pastilles coach (vert / orange / rouge vérifiés), texte « ta normale ».
+
+## Réalisé — P1-1 journal des décisions (13/11, validé porteur : maquette + option A, 5 garde-fous)
+
+- **Base** : migration `20261113160000_decisions.sql` (préprod ✅ ; prod après validation). **Serveur** : `enregistrerPlan`
+  (athlète de la session, semaine courante, première version valide, contrôle de forme, pas de recalcul) et `getDecisions`
+  (athlète, son coach). Tests `journal-decisions` (44), droits (123 routes), suppression de compte.
+- **App** (`js/lecture-v3.js` section E + branchements `js/app.js`) : la règle « fait » du plan devient `_lv3Realise` (source
+  unique : coche du plan ET statut des décisions passées). Envoi du plan **seulement** après un `getAppData` réseau complet,
+  en session athlète, en ligne, **si le plan est montré à l'athlète** (pas quand le coach a coupé les propositions Novalyz —
+  défaut trouvé en préprod sur John et corrigé : on ne fige jamais un plan que l'athlète n'a pas vu), une fois par semaine et
+  par appareil. Affichage : « Semaine dernière » (Aujourd'hui), « Tes décisions » (Analyses + fenêtre), « Déjà proposé » et
+  « Historique des propositions » (fiche coach, lecture seule). Statuts : objectif atteint / pas atteint / pas tenté / non
+  évaluable, calculés sur la semaine de la décision avec le critère enregistré. Un refus du journal ne déconnecte pas.
+- Vérifié : tests `journal-front` (35 : statuts, bornes de semaine, garde-fous d'envoi, charge utile acceptée par le contrôle
+  de forme du vrai serveur, wording) ; app locale avec les vraies données de démo (John : rien envoyé ni affiché ; Lucas :
+  plan envoyé une fois, historique et fiche coach affichés, aucune erreur JS) ; envoi identique rejoué sur le **vrai serveur
+  préprod** (accepté, relu par le coach). Captures relues (Aujourd'hui, Analyses, coach).
+- **Pas encore fait** : « résultat observé ensuite » sur la ou les semaines suivantes (P1-2) ; échelle de confiance commune (P1-3).
