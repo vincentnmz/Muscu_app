@@ -2515,7 +2515,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(400),
     sb().from('volume_obti').select('*'),
     sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false }),
-    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: false }).limit(1),
+    // 13/11 : à date égale, la DERNIÈRE saisie gagne (avant : activer puis annuler le même jour → résultat au hasard).
+    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: false }).order('id', { ascending: false }).limit(1),
     _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }).order('id')),
     sb().from('objectif').select('*').eq('athlete_id', athleteId).limit(1),
     _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }).order('id')),
@@ -3036,6 +3037,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     planning: (planRows || []).map((r: any) => ({ id: r.id, date: fmtFR(r.date), date_iso: r.date, seance_id: r.seance_id, statut: r.statut, source: r.source })),
     bien_etre,
     pause: pauseObj,
+    pause_prevue: pausePrevue(pauseRow, now),
     contexte,
     sport,
     cardio,
@@ -3240,6 +3242,16 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
 // Pause active = aujourd'hui dans [debut, fin] (valeur = début, unite = fin, 'fin' = pause levée). Une source pour
 // getAppData et getCoachAthletes (audit 06/11 : getCoachAthletes disait « en pause » pour toute pause jamais levée,
 // ex. Vincent, pause du 19/08 au 02/09 encore lue comme en cours le 06/11).
+// 13/11 (retour client) : pause EN COURS OU À VENIR, pour l'affichage (Réglages, agendas). pauseActive reste la
+// seule utilisée par le moteur (alertes en veille uniquement pendant la pause). Terminée ou annulée → null.
+function pausePrevue(row: any, now: Date): { debut: string | null, fin: string | null, active: boolean } | null {
+  if (!row || !row.valeur || row.valeur === 'fin') return null
+  const debut = normDate(row.valeur) || null
+  const fin = row.unite ? normDate(row.unite) : null
+  const today0 = fmtYMD(now)
+  if (fin && today0 > fin) return null
+  return { debut, fin, active: !debut || today0 >= debut }
+}
 function pauseActive(row: any, now: Date): { debut: string | null, fin: string | null } | null {
   if (!row || !row.valeur || row.valeur === 'fin') return null
   const debut = normDate(row.valeur) || null
@@ -3260,7 +3272,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
 
   const [{ data: perfsAll }, { data: pauseAll }, { data: beAll }] = await Promise.all([
     _toutLire(() => sb().from('performances').select('*').in('athlete_id', athleteIds).gte('date', c28).order('id')),
-    sb().from('indicateurs').select('*').in('athlete_id', athleteIds).eq('cle', 'pause').order('date', { ascending: false }),
+    sb().from('indicateurs').select('*').in('athlete_id', athleteIds).eq('cle', 'pause').order('date', { ascending: false }).order('id', { ascending: false }),
     _toutLire(() => sb().from('bien_etre').select('*').in('athlete_id', athleteIds).order('date', { ascending: false }).order('id')),
   ])
 
