@@ -52,3 +52,28 @@ Les 4 autres critères sont justes sur ces comptes (bases et profondeurs recoup�
 
 Rien n'est modifié tant que le porteur n'a pas décidé (consigne : on ne touche plus au moteur pendant l'observation ;
 ce bloc est de l'affichage, pas le moteur — à arbitrer par le porteur).
+
+## Suivi — 13/11 (décision du porteur : option a)
+
+- **F1 corrigé (préprod)** : le critère s'appelle « Questionnaire du jour (N/28 j) » et compte les **jours distincts avec un
+  questionnaire** (`data.bien_etre`) sur les 28 derniers jours, rapportés aux jours d'entraînement (plein si ≥). La note
+  de séance n'entre plus dans ce critère. Test `tests/fiabilite-questionnaire.test.js`. SW v585. [V]
+- Recontrôlé sur les copies : A 96 (11/15, conseil « +4 » juste), John 100 (15/15, plus de conseil faux), Lucas 100. [V]
+- **F2 reste à faire** (texte du « ? »), petit.
+- **F3 s'accentue** : John lit maintenant « 100/100 — fiabilité maximale » dans Résumé pendant qu'Aujourd'hui dit
+  « fiabilité moyenne ». À traiter avec P1-3 (échelle de confiance commune).
+
+## Ligne « En apprentissage : sommeil → performance » (Aujourd'hui) — audit 13/11, rien modifié
+
+Code : `_lv3Apprentissage` / `_lv3ApprentissageHtml` (`js/lecture-v3.js`), seuil `LV3_SEUIL_SOMMEIL = 20`.
+Compte les jours où il y a à la fois des séries muscu et une nuit mesurée (`sommeil_min > 0`) à la même date.
+
+| # | Gravité | Constat |
+|---|---|---|
+| S1 | **Élevée** | [V] Aucun code ne calcule de lien sommeil → performance. À 20 séances la ligne **disparaît** simplement : la promesse « Novalyz tirera une conclusion » n'est pas tenue. |
+| S2 | Faible | [V] Toute nuit > 0 min compte, alors que le reste de l'app écarte les nuits < 3 h (sieste, synchro partielle). Sur la copie A, les 11 nuits appariées font ≥ 3 h : écart théorique. |
+| S3 | Faible | [D] Le rapprochement « nuit du même jour que la séance » suppose que la montre date la nuit au jour du réveil — non vérifié. |
+
+Le compteur lui-même est juste (copie : 11/11 ; le porteur voit 16/20). Options proposées au porteur : (1) reformuler
+sans promesse (« Novalyz collecte tes nuits ; aucune analyse sommeil → performance n'est faite pour l'instant ») ;
+(2) retirer la ligne ; (3) coder l'analyse (chantier moteur, hors phase d'observation).
