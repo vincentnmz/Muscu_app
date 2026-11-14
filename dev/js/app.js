@@ -15228,6 +15228,9 @@ function _maSingleRich(value, date, unit, color) {
 // Graphe courbe RICHE (desktop) : axes + grille + étiquettes de données + dernier
 // point mis en avant. Ratio préservé (pas de preserveAspectRatio:none) → PAS aplati.
 // Utilisé seulement en bureau ; sur mobile on garde _maArea (compact, inchangé).
+// 14/11 (porteur : dates qui se chevauchent en vue Année) : une étiquette sur `step`, plus la dernière
+// toujours visible ; l'étiquette intermédiaire trop proche de la dernière (moins d'un pas) est retirée.
+function _maLblKeep(i, n, step) { if (i === n - 1) return true; return i % step === 0 && (n - 1 - i) >= step; }
 function _maLineRich(series, dates, unit, color) {
   var n = series.length; color = color || '#1A5FFF';
   if (n === 1) return _maSingleRich(series[0], dates && dates[0], unit, color);
@@ -15252,13 +15255,12 @@ function _maLineRich(series, dates, unit, color) {
   series.forEach(function (v, i) {
     var xx = X(i), yv = Y(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + String(Math.round(v * 10) / 10).replace('.', ',') + (last && unit ? ' ' + unit : '') + '</text>';
+    if (_maLblKeep(i, n, step)) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + String(Math.round(v * 10) / 10).replace('.', ',') + (last && unit ? ' ' + unit : '') + '</text>';
   });
   // Une étiquette de date à CHAQUE point tant que ça reste lisible (≤ 9), sinon on
   // éclaircit. On affiche la vraie date partout (pas « Auj. ») — demande porteur.
   var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
-  for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
-  if (xi[xi.length - 1] !== n - 1) xi.push(n - 1);
+  for (var _xi = 0; _xi < n; _xi++) if (_maLblKeep(_xi, n, xstep)) xi.push(_xi);
   var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + '<path d="' + area + '" fill="' + color + '" opacity="0.08"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' + dots + xlab + '</svg>';
 }
@@ -15334,8 +15336,7 @@ function _maMultiLineRich(lines, dates, unit) {
     });
   });
   var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
-  for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
-  if (n > 1 && xi[xi.length - 1] !== n - 1) xi.push(n - 1);
+  for (var _xi = 0; _xi < n; _xi++) if (_maLblKeep(_xi, n, xstep)) xi.push(_xi);
   var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + paths + xlab + '</svg>';
 }
@@ -16240,7 +16241,7 @@ function _maLectureNovalyzBloc(data) {
     +   '<span onclick="ouvrirInfoLectureAnalyses()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
     + '</div>'
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:-6px">Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)</div>'
-    + verdict + litHtml + forceHtml + recoHtml + fiabBox + progBox + '</div>';
+    + verdict + litHtml + recoHtml + fiabBox + progBox + forceHtml + '</div>';   // 14/11 (porteur) : « Ta force estimée » juste après « Volume par muscle »
 }
 
 function _maMuscuResume(data) {
@@ -16456,8 +16457,8 @@ function _maChargeRepsRich(pts) {
   charges.forEach(function (v, i) {
     var xx = X(i), yy = Yc(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#00A854' : '#1A5FFF') + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    if (last || i % cstep === 0) clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + _kgTxt(v) + '×' + reps[i] + '</text>';
-    if (last || i % xstepCR === 0) xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
+    if (_maLblKeep(i, n, cstep)) clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + _kgTxt(v) + '×' + reps[i] + '</text>';
+    if (_maLblKeep(i, n, xstepCR)) xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
   });
   var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + areaEl + lineEl + dots + clab + xlab + '</svg>';
