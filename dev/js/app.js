@@ -6671,13 +6671,15 @@ function renderCoachDecider(data) {
   // P1-1 (13/11) : journal des décisions de l'athlète (lecture seule pour le coach) → « Déjà proposé » + bilan.
   var _jc = (typeof _lv3JournalCache !== 'undefined') ? _lv3JournalCache[a.athlete_id] : null;
   if (!_jc && typeof _lv3JournalCharger === 'function') _lv3JournalCharger(a.athlete_id, function () { try { if (coachAthleteCourant && String(coachAthleteCourant.athlete_id) === String(a.athlete_id)) renderCoachDecider(coachAthleteData); } catch (e) {} });
+  // C2 (banc coach 14/11) : propositions coupées par le coach → rien n'est « proposé à l'athlète », ce sont des pistes pour le coach.
+  var _propsOn = !(data && data.propositions_novalyz === false);
   var cards = D.filter(function (g) { return !alerteEstTraitee(a.athlete_id, { type: 'diag-' + g.exo }); }).map(function (g) {
     var p0 = (prog[g.exo] || [])[0], rmx = 0;
     if (p0) (p0.series || []).forEach(function (x) { var r = Number(x && x.rpe); if (r > rmx) rmx = r; });
     var faits = [];
     if (p0 && g.kind !== 'effort') faits.push(_coachDdmm(p0.date) + ' : <b>' + _cdFmtKg(p0.charge) + ' kg × ' + p0.reps + (rmx ? ' à RPE ' + rmx : '') + '</b> (fourchette ' + g.rmin + '-' + g.rmax + ')');
     (g.checks || []).filter(function (c) { return c.s === 'ko' && !/^<b>Charge :/.test(c.t); }).forEach(function (c) { faits.push(c.t.replace(/ta fourchette est/g, 'fourchette').replace(/\bta série\b/g, 'sa série').replace(/\btes séries\b/g, 'ses séries').replace(/\bta charge\b/g, 'sa charge').replace(/\btu pousses\b/g, 'il pousse')); });
-    var prop = (g.action && g.action.titre) ? String(g.action.titre).split(' : ').slice(1).join(' : ').replace(/^proposé /, '').replace(/\bgarde\b/, 'garder').replace(/\bvise\b/, 'viser') : '';
+    var prop = (_propsOn && g.action && g.action.titre) ? String(g.action.titre).split(' : ').slice(1).join(' : ').replace(/^proposé /, '').replace(/\bgarde\b/, 'garder').replace(/\bvise\b/, 'viser') : '';
     var bad = g.kind === 'sous' || g.kind === 'recule', col = bad ? '#f0505a' : '#f59f00', tcol = bad ? '#c0303a' : '#b86e00';
     var tag = g.kind === 'effort' ? 'Effort' : (g.cause === 'volume' ? 'Volume' : 'Charge');
     var ex = String(g.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -6685,7 +6687,7 @@ function renderCoachDecider(data) {
       + '<span style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:6px;background:' + col + '1a;color:' + tcol + '">' + tag + '</span>'
       + '<div style="font-size:13.5px;font-weight:800;margin-top:5px">' + esc(g.exo) + ' : ' + KIND[g.kind] + '</div>'
       + (faits.length ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">' + faits.join(' · ') + ' <span style="color:var(--text-subtle)">(' + g.n + ' séance' + (g.n > 1 ? 's' : '') + ' en ' + (g.sem || 1) + ' sem.)</span></div>' : '')
-      + '<div style="margin-top:7px;background:var(--accent-a08,rgba(26,95,255,.08));border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45">' + (prop ? 'Proposé à l\'athlète : <b style="color:var(--accent)">' + esc(prop) + '</b>' : (g.cause && g.levier ? 'Piste trouvée dans ses données, à lui proposer : « ' + esc(String(g.levier).replace(/<[^>]+>/g, '')) + ' »' : 'Aucune cause visible dans ses données : rien de proposé automatiquement.')) + '</div>'
+      + '<div style="margin-top:7px;background:var(--accent-a08,rgba(26,95,255,.08));border-radius:9px;padding:7px 9px;font-size:12px;line-height:1.45">' + (prop ? 'Proposé à l\'athlète : <b style="color:var(--accent)">' + esc(prop) + '</b>' : (g.cause && g.levier ? (g.cause === 'gene' ? 'Gêne signalée sur la zone : rien n\'est proposé à l\'athlète sur cet exercice. Piste : « ' : 'Piste trouvée dans ses données' + (_propsOn ? ', à lui proposer' : ' (tu as la main, rien n\'est montré à l\'athlète)') + ' : « ') + esc(String(g.levier).replace(/<[^>]+>/g, '')) + ' »' : 'Aucune cause visible dans ses données : rien de proposé automatiquement.')) + '</div>'
       + (_jc && typeof _lv3JournalDejaPropose === 'function' ? _lv3JournalDejaPropose(_jc.rows, data, g.exo) : '')
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'
       + '<button class="cda-btn cda-primary" onclick="switchCoachDetailTab(\'programme\')">✎ Modifier dans le programme</button>'
@@ -6693,7 +6695,7 @@ function renderCoachDecider(data) {
       + '<button class="cda-btn cda-ok" onclick="coachDiagTraite(\'' + ex + '\')">Marquer traité</button></div></div>';
   });
   var al = document.getElementById('cd-alertes-card');
-  host.innerHTML = '<div class="cdcp-lab"><span class="cd-num">① </span>À décider <span class="cdcp-tag">faits · ce qui est proposé à l\'athlète · actions</span></div><div id="cd-decider-diags">' + cards.join('') + '</div>' + (_jc && typeof _lv3JournalBilanCoachHtml === 'function' ? _lv3JournalBilanCoachHtml(_jc.rows, data) : '');
+  host.innerHTML = '<div class="cdcp-lab"><span class="cd-num">① </span>À décider <span class="cdcp-tag">faits · ' + (_propsOn ? 'ce qui est proposé à l\'athlète' : 'pistes Novalyz (non montrées à l\'athlète)') + ' · actions</span></div><div id="cd-decider-diags">' + cards.join('') + '</div>' + (_jc && typeof _lv3JournalBilanCoachHtml === 'function' ? _lv3JournalBilanCoachHtml(_jc.rows, data) : '');
   if (al) { host.appendChild(al); al.style.display = ''; }
 }
 
@@ -6748,7 +6750,9 @@ function renderCoachCoupDoeil(data) {
     // Stagne / sous la fourchette / effort en hausse : déplacés dans « ① À décider » (audit coach F6, 03/11).
     try {
       var _plC = (typeof _lv3Plan === 'function') ? _lv3Plan(data, nowT) : null;
-      if (_plC) entr += _cdCoupRow('var(--accent)', '➜', '<b>Plan de la semaine proposé à l\'athlète</b> (' + _plC.faits + '/' + (_plC.nActifs != null ? _plC.nActifs : _plC.actions.length) + ' fait) — ' + _plC.actions.map(function (a) { return (a.fait ? '✓ ' : '') + esc(a.titre); }).join(' · ') + sub('calculé par Novalyz, le même que voit l\'athlète'));
+      var _pOn = !(data && data.propositions_novalyz === false);   // C2 : propositions coupées → plan non montré à l'athlète
+      // C1 : action en pause (gêne active) affichée comme telle, hors compteur ; C3 : muscle lisible.
+      if (_plC) entr += _cdCoupRow('var(--accent)', '➜', '<b>' + (_pOn ? 'Plan de la semaine proposé à l\'athlète' : 'Plan de la semaine suggéré par Novalyz') + '</b> (' + _plC.faits + '/' + (_plC.nActifs != null ? _plC.nActifs : _plC.actions.length) + ' fait) — ' + _plC.actions.map(function (a) { return a.gene ? '<s>' + esc(a.titre) + '</s> (en pause : gêne ' + esc(a.gene.zone) + ')' : (a.fait ? '✓ ' : '') + esc(a.titre); }).join(' · ') + sub(_pOn ? 'calculé par Novalyz, le même que voit l\'athlète' : 'calculé par Novalyz pour toi — non montré à l\'athlète (tu as la main sur ses propositions)'));
     } catch (e) {}
     if (rpeMoy != null) {
       var rpeTxt = (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',');
