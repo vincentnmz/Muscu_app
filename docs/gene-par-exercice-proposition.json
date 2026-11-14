@@ -157,10 +157,9 @@
   "utilise": true,
   "articulations": [
    "coude",
-   "poignet",
-   "épaule"
+   "poignet"
   ],
-  "note": "bras en arrière : épaule étirée"
+  "note": ""
  },
  "Curl incliné uni poignée à la poulie": {
   "muscle": "Biceps",
@@ -168,10 +167,9 @@
   "utilise": true,
   "articulations": [
    "coude",
-   "poignet",
-   "épaule"
+   "poignet"
   ],
-  "note": "bras en arrière : épaule étirée"
+  "note": ""
  },
  "Curl machine": {
   "muscle": "Biceps",
@@ -820,9 +818,11 @@
   "utilise": false,
   "articulations": [
    "cheville",
-   "pied"
+   "pied",
+   "haut du dos",
+   "lombaires"
   ],
-  "note": "debout chargé : charge aussi sur les épaules / le dos selon la machine"
+  "note": "charge posée sur les épaules : colonne sous charge (validé porteur 14/11)"
  },
  "Mollets assis": {
   "muscle": "Mollets",
@@ -840,9 +840,11 @@
   "utilise": true,
   "articulations": [
    "cheville",
-   "pied"
+   "pied",
+   "haut du dos",
+   "lombaires"
   ],
-  "note": "debout chargé : charge aussi sur les épaules / le dos selon la machine"
+  "note": "charge posée sur les épaules : colonne sous charge (validé porteur 14/11)"
  },
  "Mollets unilatéral haltère": {
   "muscle": "Mollets",
@@ -1245,8 +1247,7 @@
   "secondaire": null,
   "utilise": false,
   "articulations": [
-   "nuque",
-   "épaule"
+   "nuque"
   ],
   "note": ""
  },
@@ -1255,8 +1256,7 @@
   "secondaire": null,
   "utilise": true,
   "articulations": [
-   "nuque",
-   "épaule"
+   "nuque"
   ],
   "note": ""
  },
@@ -1265,8 +1265,7 @@
   "secondaire": null,
   "utilise": true,
   "articulations": [
-   "nuque",
-   "épaule"
+   "nuque"
   ],
   "note": ""
  },

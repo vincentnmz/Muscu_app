@@ -16,19 +16,19 @@ Stress faible (2/5)
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
 DEPUIS TA DERNIÈRE SÉANCE · FULL BODY B (11/11)
 ⏸
-Soulevé de terre roumain bloqué à 50 kg × 10 depuis 9 séances
+RDL barre bloqué à 50 kg × 10 depuis 9 séances
 Pourquoi : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : +4 séries de Soulevé de terre roumain (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Levier : +4 séries de RDL barre (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 ⏸
-Développé militaire haltères bloqué à 55 kg × 10 depuis 9 séances
+Développé militaire aux haltères bloqué à 55 kg × 10 depuis 9 séances
 Pourquoi : Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : +4 séries de Développé militaire haltères (4,5 → 8 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Levier : +4 séries de Développé militaire aux haltères (4,5 → 8 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 ⏸
-Tirage vertical bloqué à 60 kg × 10 depuis 9 séances
+Tirage vertical prise large bloqué à 60 kg × 10 depuis 9 séances
 Pourquoi : Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : +1 série de Tirage vertical (9 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Levier : +1 série de Tirage vertical prise large (9 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 TON PLAN DE LA SEMAINE
 0 / 3
@@ -82,22 +82,22 @@ Régularité au rendez-vous (2/2 séances cette semaine).
 Records : Développé couché barre 80 × 8
 charge (ou reps à charge égale) battue · 10 derniers jours
 ⏸
-Bloqué : Soulevé de terre roumain 50 × 10 depuis 9 séances · Développé militaire haltères 55 × 10 depuis 9 séances +3
-Pourquoi (Soulevé de terre roumain) : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : +4 séries de Soulevé de terre roumain (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Bloqué : RDL barre 50 × 10 depuis 9 séances · Développé militaire aux haltères 55 × 10 depuis 9 séances +3
+Pourquoi (RDL barre) : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
+Levier : +4 séries de RDL barre (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 0 / 3 fait
 1
 Ischio : 10 séries cette semaine · 3 / 10
-Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices d'ischios comptent (ex. +4 séries de Soulevé de terre roumain, idéalement sur 2 séances). Séance « Full body B ».
+Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices d'ischios comptent (ex. +4 séries de RDL barre, idéalement sur 2 séances). Séance « Full body B ».
 2
 Epaule : 8 séries cette semaine · 3 / 8
-Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 8. Tous tes exercices d'épaules comptent (ex. +4 séries de Développé militaire haltères, idéalement sur 2 séances). Séance « Full body B ».
+Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 8. Tous tes exercices d'épaules comptent (ex. +4 séries de Développé militaire aux haltères, idéalement sur 2 séances). Séance « Full body B ».
 3
 Dos : 10 séries cette semaine · 6 / 10
-Moyenne 9 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices de dos comptent (ex. +1 série de Tirage vertical). Séance « Full body B ».
+Moyenne 9 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices de dos comptent (ex. +1 série de Tirage vertical prise large). Séance « Full body B ».
 Ce sont des propositions : c'est toi qui choisis. Calculées sur tes séances jusqu'à dimanche ; chacune se coche toute seule quand ta séance la réalise.
 TES SAISIES · 100/100
 100
@@ -148,13 +148,13 @@ sur 9 séances
 Squat
 sur 9 séances · bloqué depuis 5 séances
 +8,9 %
-Soulevé de terre roumain
+RDL barre
 sur 9 séances · bloqué depuis 9 séances
 0 %
-Développé militaire haltères
+Développé militaire aux haltères
 sur 9 séances · bloqué depuis 9 séances
 0 %
-Tirage vertical
+Tirage vertical prise large
 sur 9 séances · bloqué depuis 9 séances
 0 %
 Rowing barre
@@ -237,7 +237,7 @@ Squat
 Développé couché barre
 80 kg
 09/11/2026
-Tirage vertical
+Tirage vertical prise large
 60 kg
 11/11/2026
 Rowing barre

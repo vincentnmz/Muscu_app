@@ -87,7 +87,7 @@ Pectoraux : 6 séries cette semaine · 3 / 6
 Moyenne 3,5 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices de pectoraux comptent (ex. +3 séries de Développé couché barre, idéalement sur 2 séances). Séance « Full body A ».
 3
 Ischio : 6 séries cette semaine · 0 / 6
-Moyenne 3,5 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischios comptent (ex. +3 séries de Soulevé de terre roumain, idéalement sur 2 séances). Séance « Full body B ».
+Moyenne 3,5 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischios comptent (ex. +3 séries de RDL barre, idéalement sur 2 séances). Séance « Full body B ».
 Rien à changer : dos 7 séries/sem, dans ta zone. Ce sont des propositions : c'est toi qui choisis. Calculées sur tes séances jusqu'à dimanche ; chacune se coche toute seule quand ta séance la réalise.
 TES SAISIES · 75/100
 75
@@ -215,13 +215,13 @@ RECORDS PERSONNELS
 Rowing barre
 60 kg
 12/11/2026
-Tirage vertical
+Tirage vertical prise large
 60 kg
 08/11/2026
 Développé couché barre
 50 kg
 12/11/2026
-Développé militaire haltères
+Développé militaire aux haltères
 50 kg
 08/11/2026
 == Forme ==

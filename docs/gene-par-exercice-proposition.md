@@ -1,6 +1,7 @@
-# Gêne par exercice — proposition à relire (étape 1, 14/11/2026)
+# Gêne par exercice — table VALIDÉE (14/11/2026) et branchée (préprod)
 
-> **Rien n'est branché dans l'app.** Pour chaque exercice du catalogue : les **articulations / zones** qu'il sollicite.
+> **Validée par le porteur le 14/11** (OK sauf : curl incliné sans épaule · shrugs / tirage trapèze = nuque seule · mollets debout / Smith + dos · avant-bras = poignet, main = règle par muscle · les deux règles s'additionnent). La table ci-dessous est la proposition d'origine ; **la version appliquée** est `LV3_ZONES_EXO` (`js/lecture-v3.js`) = `_RC_ZONES_EXO` (`index.ts`), identiques (test `gene-active`).
+> Pour chaque exercice du catalogue : les **articulations / zones** qu'il sollicite.
 > Une fois validée, cette table s'ajoutera à la règle actuelle (par muscle) : une gêne active (≥ 3/5 au dernier
 > questionnaire, ≤ 7 j) sur une de ces zones mettra en pause les séries / la charge proposées sur l'exercice.
 > Zones = celles du questionnaire (épaule, coude, poignet, nuque, haut du dos, lombaires, hanche, aine, genou, cheville, pied ;
