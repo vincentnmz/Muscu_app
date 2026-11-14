@@ -164,6 +164,34 @@ function _lv3Volume(data, muscle, nowT) {
 
 // ── B. Diagnostic ─────────────────────────────────────────────────────────────
 // kind : 'sous' | 'bloque' | 'recule' | 'effort'. Renvoie { checks[], cause, pourquoi, levier, action, n, sem }.
+// E (14/11, validé porteur) : charge INHABITUELLE (moteur.surcharge ≠ Faible) dont le ressenti ne permet pas de dire
+// qu'elle est encaissée (non évalué, ou dégradé) → aucune proposition d'AUGMENTATION (séries, cible « à pousser »,
+// RPE 9-10). Maintien, allègement, récupération et garde-fous (gêne prioritaire) restent. Vérité = le moteur.
+function _lv3PicCharge(data) {
+  var m = (data && data.moteur) || {};
+  if (!m.surcharge || m.surcharge === 'Faible') return null;
+  var cr = m.charge_ressenti || {};
+  if (cr.evaluable === true && cr.degrade !== true) return null;
+  return { pic: true, degrade: cr.degrade === true };
+}
+// H (14/11, validé porteur) : douleur FORTE signalée (alerte moteur « douleur », sévérité haute). Hors zone : maintien,
+// aucune progression (pas de +séries, RPE 9-10, échec) — la zone garde son garde-fou propre (gêne). Moteur de douleur inchangé.
+function _lv3DouleurForte(data) {
+  var a = (((data && data.moteur) || {}).alertes || []).filter(function (x) { return x && x.type === 'douleur' && x.severite === 'haute'; })[0];
+  if (!a) return null;
+  var z = (String(a.message || '').match(/\(([^)]+)\)/) || [])[1] || '';
+  return { df: true, zone: z };
+}
+var LV3_HORS_ZONE = 'hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d\'aller à l\'échec.';
+// Raison d'une action en pause (gêne ou pic de charge) — courte (liste) et longue (plan détaillé).
+function _lv3PauseCourt(g) { return (g && g.df) ? 'douleur forte' : (g && g.pic) ? 'charge en hausse' : ('gêne ' + ((g && g.zone) || '')); }
+function _lv3PauseLong(g) {
+  if (g && g.df) return 'Douleur forte signalée' + (g.zone ? ' (' + _maE(g.zone) + ')' : '') + ' : hors zone, garde tes charges et tes séries prévues. Pas besoin de forcer ni d\'aller à l\'échec. L\'action revient d\'elle-même quand la douleur est levée.';
+  if (g && g.pic) return g.degrade
+    ? 'Ta charge est en hausse et ton ressenti baisse : on n\'ajoute rien cette semaine, priorité à la récupération. L\'action revient d\'elle-même quand ta charge redevient habituelle.'
+    : 'Ta charge est en hausse et ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses : on n\'ajoute rien tant qu\'on ne sait pas. Renseigne ton état du jour ; l\'action revient d\'elle-même.';
+  return 'Gêne ' + _maE(g.zone) + ' ' + g.val + '/5 signalée le ' + g.date + ' : n\'ajoute ni charge ni séries sur cette zone tant qu\'elle revient (avis kiné si ça persiste). L\'action revient d\'elle-même quand ton questionnaire ne signale plus la gêne.';
+}
 function _lv3Diag(data, exo, kind, nowT) {
   nowT = nowT || Date.now();
   if (typeof _ctxAttendu === 'function' && _ctxAttendu(data)) return null;   // déload / reprise : baisse attendue (X1)
@@ -314,6 +342,21 @@ function _lv3Diag(data, exo, kind, nowT) {
     cause = 'gene'; action = null;   // C1 (banc coach 14/11) : plus d'action « +séries / charge » proposée sur la zone
     levier = 'gêne ' + _gA.zone + ' signalée le ' + _gA.date + ' : n\'ajoute ni charge ni séries sur cet exercice tant qu\'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).';
   }
+  // E (14/11) : pic de charge non interprétable → le levier ne demande pas d'en rajouter (séries, RPE 9-10, série en plus).
+  // L'action reste (le plan la met en pause, visible) ; la gêne, garde-fou explicite, reste prioritaire.
+  // H (14/11) : douleur forte, exercice HORS zone (la zone est déjà traitée ci-dessus) → maintien, prioritaire sur le pic.
+  var _dF = null; try { _dF = _gA ? null : _lv3DouleurForte(data); } catch (_) {}
+  if (_dF && levier) {
+    if (cause !== 'charge' && cause !== 'effort' && cause !== 'repos') levier = LV3_HORS_ZONE;
+    else levier = levier.replace(/ Et sur ta dernière série, va jusqu'à RPE 9-10[^.]*\./, '');
+  }
+  var _pic = null; try { _pic = (_gA || _dF) ? null : _lv3PicCharge(data); } catch (_) {}
+  if (_pic && levier) {
+    var _prud = 'ta charge est en hausse ' + (_pic.degrade ? 'et ton ressenti baisse' : 'et ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses')
+      + ' : garde tes séries et ta charge prévues, sans aller à l\'échec' + (_pic.degrade ? ', et priorise la récupération.' : ', et renseigne ton état du jour.');
+    if (cause === 'volume' || cause === 'reserve' || cause === 'marche') levier = _prud;
+    else levier = levier.replace(/ Et sur ta dernière série, va jusqu'à RPE 9-10[^.]*\./, '');
+  }
   var pourquoi = '';
   var ko = checks.filter(function (c) { return c.s === 'ko'; });
   if (ko.length) pourquoi = ko.slice(0, kind === 'bloque' ? 3 : 2).map(function (c) { return c.t; }).join(' · ');
@@ -450,6 +493,11 @@ function _lv3Plan(data, nowT) {
   // Gêne ACTIVE (14/11) : une action qui chargerait la zone douloureuse est MISE EN PAUSE (affichée comme telle, hors
   // compteur, jamais enregistrée au journal comme proposée). Calculé sur le dernier questionnaire, pas sur lundi.
   acts.forEach(function (a) { try { var m = a.muscle || (a.exo ? _lv3MuscleExo(data, a.exo) : null); var g = (a.type === 'series') ? (m ? _lv3GeneMuscle(data, m, nowT) : null) : (m || a.exo ? _lv3GeneActive(data, m, nowT, a.exo) : null); if (g && a.type !== 'reprise') a.gene = g; } catch (_) {} });
+  // E (14/11) : pic de charge non interprétable → les actions d'AUGMENTATION (séries, cible « à pousser ») passent en pause
+  // (même mécanique que la gêne : affichées barrées, hors compteur, jamais au journal). Maintien / allègement restent.
+  // H (14/11) : douleur forte → actions d'augmentation hors zone en pause (maintien) ; la zone garde sa raison « gêne ».
+  try { var _dfP = _lv3DouleurForte(data); if (_dfP) acts.forEach(function (a) { if (!a.gene && !a.fait && (a.type === 'series' || a.type === 'cible')) a.gene = _dfP; }); } catch (_) {}
+  try { var _picP = _lv3PicCharge(data); if (_picP) acts.forEach(function (a) { if (!a.gene && !a.fait && (a.type === 'series' || a.type === 'cible')) a.gene = _picP; if (a.fait && a.type === 'series' && a.raison) a.raison = String(a.raison).replace(/ ?Tous tes exercices .*? comptent \(ex\. [^)]*\)\./, ' Objectif atteint cette semaine : n\'en rajoute pas tant que ta charge est en hausse.'); });   /* déjà fait = acquis, pas une proposition */ } catch (_) {}
   var actifs = acts.filter(function (a) { return !a.gene; });
   return { actions: acts, ok: ok, lundi: isoL, faits: actifs.filter(function (a) { return a.fait; }).length, nActifs: actifs.length };
 }
@@ -499,18 +547,18 @@ function _lv3PlanHtml(data, compact) {
   if (!P) return '';
   if (compact) {
     return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:10px 12px;margin:0 0 12px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:800">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.nActifs + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:800">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + (P.nActifs ? P.faits + ' / ' + P.nActifs : 'en pause') + '</span></div>'
       + P.actions.map(function (a) {
-        if (a.gene) return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--text-muted)"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;color:#B35F00;border:2px solid #E0780055">⏸</span><span><s>' + _maE(a.titre) + '</s> <b style="color:#B35F00">· en pause (gêne ' + _maE(a.gene.zone) + ')</b></span></div>';
+        if (a.gene) return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--text-muted)"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;color:#B35F00;border:2px solid #E0780055">⏸</span><span><s>' + _maE(a.titre) + '</s> <b style="color:#B35F00">· en pause (' + _maE(_lv3PauseCourt(a.gene)) + ')</b></span></div>';
         return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:12px;color:#fff;' + (a.fait ? 'background:#00A854;border:2px solid #00A854' : 'border:2px solid var(--border)') + '">' + (a.fait ? '✓' : '') + '</span>'
           + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <b style="color:var(--accent)">· ' + _maE(a.progres) + '</b>' : '') + (a.seance && !a.fait && !a.progres ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '') + '</span></div>';
       }).join('') + _lv3GeneAutreHtml(data) + '</div>';
   }
   return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:11px 13px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.nActifs + ' fait' + (P.faits > 1 ? 's' : '') + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + (P.nActifs ? P.faits + ' / ' + P.nActifs + ' fait' + (P.faits > 1 ? 's' : '') : 'en pause') + '</span></div>'
     + P.actions.map(function (a, i) {
       if (a.gene) return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:#FFF1E0;color:#B35F00;font-weight:800;font-size:11px;display:grid;place-items:center;flex:none">⏸</span>'
-        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;color:var(--text-muted)"><s>' + _maE(a.titre) + '</s> <span style="color:#B35F00">· en pause</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">Gêne ' + _maE(a.gene.zone) + ' ' + a.gene.val + '/5 signalée le ' + a.gene.date + ' : n\'ajoute ni charge ni séries sur cette zone tant qu\'elle revient (avis kiné si ça persiste). L\'action revient d\'elle-même quand ton questionnaire ne signale plus la gêne.</div></div></div>';
+        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;color:var(--text-muted)"><s>' + _maE(a.titre) + '</s> <span style="color:#B35F00">· en pause</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _lv3PauseLong(a.gene) + '</div></div></div>';
       return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:' + (a.fait ? '#00A854' : 'var(--accent)') + ';color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none">' + (a.fait ? '✓' : (i + 1)) + '</span>'
         + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <span style="color:var(--accent);font-weight:800">· ' + _maE(a.progres) + '</span>' : '') + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
     }).join('')
