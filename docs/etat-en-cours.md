@@ -2,12 +2,35 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **13 nov. 2026** (voir le bloc « 13/11 » juste en dessous).
+> Dernière mise à jour : **14 nov. 2026** (voir le bloc « 14/11 soir » juste en dessous).
+
+## ▶ DÉCISION PORTEUR (14/11) — après le déploiement de ce lot : STOP AU CODE pendant quelques semaines
+
+Le moteur a été rendu cohérent (A–E, douleur, R1-R8 au banc). La question suivante n'est plus « le moteur est-il cohérent ? » mais
+**« les athlètes comprennent-ils ces décisions, les suivent-ils, et le résultat observé leur apporte-t-il quelque chose ? »**
+→ Observation des vrais comptes uniquement (journal des décisions, statuts du 23/11, tests utilisateurs — grille
+`docs/tests-utilisateurs-journal-2026-11.md`). Pas de nouvelle règle ; seules exceptions : un bug bloquant ou une phrase fausse
+constatée en réel (corrigée par le même processus banc → test → préprod → validation).
+
+## ▶ 14/11 soir — Cohérence charge ↔ récupération (A-D) en PRÉPROD · trajectoire force validée
+
+- **Audit charge ↔ récup** (`docs/audit-charge-recuperation-2026-11-14.md`) : A-D validés et codés selon le processus porteur
+  (banc → attendu écrit → test → préprod → vérif réelle → prod). Nouveau **contrôle de cohérence inter-écrans** dans le banc
+  (`scripts/banc-profils/coherence.js`, R1-R5) : 16 contradictions avant, 0 après. 2 profils ajoutés. **En préprod, pas en prod**
+  (à vérifier sur /dev/ puis « mise en prod » ; `index.ts` à redéployer à la main : seule la synthèse Croisé serveur change).
+- **E validé et codé (préprod)** : pendant un pic de charge non interprétable, plus aucune augmentation proposée (plan en pause, leviers et cibles de maintien, mail) — §9 bis du doc d'audit.
+- **Trajectoire** : force validée (6 semaines, délai ≈ 5 sem. assumé, jamais « objectif compromis ») ; **Sèche simulée** (aucun seuil
+  ne passe : conflit structurel) → **décision : descriptif seulement, pas d'état « à surveiller », ne pas coder T = 0,8** — §14-§15.
+- **Douleur (14/11 soir, préprod)** : tuile « Douleurs & blessures » sans « OK » si douleur (R7) ; **règle H** (douleur forte : maintien partout,
+  +séries hors zone en pause, piste coach « garde tes charges prévues ») ; **D2** douleur modérée : progression hors zone conservée, cibles
+  alignées ; contrôle **R8** (rouge avant, vert après) ; John revérifié sur /dev/ — `docs/chantiers-futurs/douleur-hors-zone-2026-11.md`.
+- **A–D + E** : en préprod ; **prod seulement après les 3 vérifications visuelles du porteur** (fiche coach ▸ Charge & assiduité ;
+  Forme avec douleur ; plan en pause pendant un pic de charge), puis redéploiement manuel d'`index.ts` (Croisé A + mail récap E).
 
 ## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
 
 **État prod (14/11)** : serveur `index.ts` **v258** (= commit `8ca8fa8`, vérifié caractère pour caractère) · app web `main` = fusion du 14/11 fin d'après-midi (gêne par exercice) · SW **v594** · 115 suites de tests vertes (dont le **banc de profils**, 9 profils, `docs/banc-profils.md`) · migration `20261113160000_decisions.sql` appliquée. **AAB** : n°17 (13/11, `76f4a0b`) ; pas de nouvel AAB pour l'instant (porteur, 14/11).
-**En prod depuis le 14/11 (`41fbeda`)** : « Tes saisies » (ex-Fiabilité des données) · force après volume · dates Évolution sans chevauchement · Reco du jour sans « RAS » · Pourquoi nommé · **L1** progresse = dépasse les séances précédentes / oscillation = bloqué (app + serveur, plan `plan-2026-11-14`) · **L2** titre tiré de l'entraînement · **gêne active** (plan, leviers, mail récap ; nuque ; « Autre » = ligne de prudence) · banc de profils. Audits : `docs/audit-lecture-analyses-reco-2026-11-14.md`, `docs/banc-profils.md`. **14/11 après-midi** : B2-B7 du banc en prod (affichage seulement). **Historique par exercice (prod 14/11, v258)** : 400 derniers jours + au moins 30 dates (avant : 30 dates → vue Année tronquée, faux records ; seuls les 2 comptes démo dépassaient 30). **Boucle résultat → décision** : spécification + simulation (10 000 cas/scénario) validées le 14/11 → **3 tentatives comparables ratées**, « pas faite » ≠ échec ; **pas de code avant le 23/11** (`docs/chantiers-futurs/boucle-resultat-decision-2026-11.md` §15). **Gêne par exercice (option B) en prod** (table 135 exercices validée, `docs/gene-par-exercice-proposition.md`). **Suite** : limite 30 dates/exercice, point 4 sécurité (`password_hash_s2`).
+**En prod depuis le 14/11 (`41fbeda`)** : « Tes saisies » (ex-Fiabilité des données) · force après volume · dates Évolution sans chevauchement · Reco du jour sans « RAS » · Pourquoi nommé · **L1** progresse = dépasse les séances précédentes / oscillation = bloqué (app + serveur, plan `plan-2026-11-14`) · **L2** titre tiré de l'entraînement · **gêne active** (plan, leviers, mail récap ; nuque ; « Autre » = ligne de prudence) · banc de profils. Audits : `docs/audit-lecture-analyses-reco-2026-11-14.md`, `docs/banc-profils.md`. **14/11 après-midi** : B2-B7 du banc en prod (affichage seulement). **Historique par exercice (prod 14/11, v258)** : 400 derniers jours + au moins 30 dates (avant : 30 dates → vue Année tronquée, faux records ; seuls les 2 comptes démo dépassaient 30). **Prod 14/11 (`bc1bb1c`, front seulement)** : fiche coach sans « proposé à l'athlète » faux (gêne active, propositions coupées = défaut de tout athlète suivi), titres « Épaules / Ischios », banc coach (11 scénarios). Spec `objectif-trajectoire-2026-11.md` (2 athlètes réels sur 14 ont un objectif). **Boucle résultat → décision** : spécification + simulation (10 000 cas/scénario) validées le 14/11 → **3 tentatives comparables ratées**, « pas faite » ≠ échec ; **pas de code avant le 23/11** (`docs/chantiers-futurs/boucle-resultat-decision-2026-11.md` §15). **Gêne par exercice (option B) en prod** (table 135 exercices validée, `docs/gene-par-exercice-proposition.md`). **Suite** : limite 30 dates/exercice, point 4 sécurité (`password_hash_s2`).
 **En prod depuis le 13/11 soir (`76f4a0b`)** : Résumé ▸ Fiabilité des données — le critère « Questionnaire du jour (N/28 j) » compte vraiment le questionnaire du jour (audit F1, option a), + **sommeil → performance** : couche séparée `js/sommeil-perf.js`, méthode validée par simulation (`docs/sommeil-performance-methode.md`), SW v586. 
 
 **Fait aujourd'hui (dans l'ordre)**

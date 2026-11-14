@@ -48,12 +48,8 @@ const engineCode = extractBetween(
   'moteur Novalyz'
 );
 
-// 2) computeACWR (fonction pure)
-const acwrCode = extractBetween(
-  'function computeACWR(progressionParExo, volumeParJour) {',
-  '\n}',
-  'computeACWR'
-);
+// 2) computeACWR : SUPPRIMÉ du front le 14/11 (audit charge ↔ récup, C — une seule source : le moteur serveur,
+//    testé côté backend). On vérifie seulement qu'il n'a pas été réintroduit (section B).
 
 // 3) WQ_DIMS + wqPositif (logique d'inversion fatigue/douleur du Bilan)
 const wqDimsCode  = extractBetween('const WQ_DIMS = [', '];', 'WQ_DIMS');
@@ -75,12 +71,10 @@ sandbox.console = console;
 vm.createContext(sandbox);
 vm.runInContext(engineCode, sandbox);
 vm.runInContext(contexteCode, sandbox);
-vm.runInContext(acwrCode + '\nthis.computeACWR = computeACWR;', sandbox);
 vm.runInContext(wqDimsCode + '\n' + wqPositifCode + '\nthis.WQ_DIMS = WQ_DIMS; this.wqPositif = wqPositif;', sandbox);
 
 const Engine = sandbox.NovalyzEngine;
 const Ctx = sandbox.NovalyzContexte;
-const computeACWR = sandbox.computeACWR;
 const WQ_DIMS = sandbox.WQ_DIMS;
 const wqPositif = sandbox.wqPositif;
 
@@ -134,30 +128,8 @@ function approx(nom, obtenu, attendu, tol) {
 // B) computeACWR — charge aiguë 7j / chronique 28j
 // =============================================================================
 (function testACWR() {
-  // Historique insuffisant (< 28 jours) → { insuffisant: true }
-  const today = new Date(); today.setHours(0,0,0,0);
-  const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  const jMoins = n => { const d = new Date(today); d.setDate(d.getDate() - n); return iso(d); };
-
-  // Seulement 10 jours d'historique → insuffisant
-  const court = {}; court[jMoins(0)] = 1000; court[jMoins(9)] = 1000;
-  const rCourt = computeACWR({}, court);
-  eq('ACWR historique court → insuffisant', rCourt && rCourt.insuffisant === true, true);
-
-  // Charge constante sur 28 jours → ACWR ≈ 1.0
-  const constant = {};
-  for (let i = 0; i < 28; i++) constant[jMoins(i)] = 1000;
-  const rConst = computeACWR({}, constant);
-  check('ACWR charge constante ≈ 1.0', rConst && !rConst.insuffisant && Math.abs(rConst.ratio - 1) < 0.15, '≈1.0', rConst && rConst.ratio);
-
-  // Pic récent : 28j à 500, mais 7 derniers jours à 2000 → ACWR > 1 (surcharge)
-  const pic = {};
-  for (let i = 0; i < 28; i++) pic[jMoins(i)] = (i < 7) ? 2000 : 500;
-  const rPic = computeACWR({}, pic);
-  check('ACWR pic récent → surcharge (>1.3)', rPic && !rPic.insuffisant && rPic.ratio > 1.3, '>1.3', rPic && rPic.ratio);
-
-  // Aucune donnée → null (jamais une valeur inventée)
-  eq('ACWR aucune donnée → null', computeACWR({}, {}), null);
+  // C (14/11) : plus aucun calcul ACWR local dans le front — le ratio vient du moteur (dashboard.acwr + moteur.acwr_fiable).
+  eq('computeACWR absent du front (une seule source)', /function computeACWR\(/.test(HTML), false);
 })();
 
 // =============================================================================

@@ -2404,7 +2404,16 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   if (mPct >= 85) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % musculation (${mPct} %). Un peu de cardio renforcerait ta base d'endurance.` })
   else if (mPct <= 15) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % cardio (${100 - mPct} %). La musculation entretient force et masse.` })
   else constats.push({ ton: 'positif', texte: `Bon équilibre muscu / cardio (${mPct} % / ${100 - mPct} %).` })
-  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération est ${recup === 'Excellent' ? 'excellente' : 'bonne'} — tu encaisses bien ta charge actuelle.` })
+  // Audit charge ↔ récup A (14/11, validé porteur) : MÊME règle que la reco du moteur — « tu encaisses bien » seulement si
+  // la charge monte (moteur.surcharge) ET que le ressenti a pu être évalué sans être dégradé (moteur.charge_ressenti).
+  const _crC = (moteur && moteur.charge_ressenti) || {}, _chHaute = !!(moteur && moteur.surcharge && moteur.surcharge !== 'Faible')
+  const _recTxt = recup === 'Excellent' ? 'excellente' : 'bonne'
+  if (recup === 'Excellent' || recup === 'Bon') {
+    if (!_chHaute) constats.push({ ton: 'positif', texte: `Ta récupération est ${_recTxt} ces 7 derniers jours.` })
+    else if (_crC.degrade === true) constats.push({ ton: 'attention', texte: `Ta charge monte et ton ressenti baisse — soigne ta récupération.` })
+    else if (_crC.evaluable === true) constats.push({ ton: 'positif', texte: `Ta récupération est ${_recTxt} et ta charge monte : tu encaisses bien pour l'instant.` })
+    else constats.push({ ton: 'neutre', texte: `Ta charge monte — renseigne ton état du jour pour qu'on vérifie ta récupération.` })
+  }
   else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse — allège ta charge globale (muscu + cardio) le temps qu'elle remonte.` })
 
   let reco: any
@@ -5968,7 +5977,19 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   }
   if (!_genes.length) { const ga = (() => { try { return _rcGeneAutre(_beG, _nowG) } catch (_) { return null } })(); if (ga) recos.push(`<b>Gêne ${ga.val}/5 signalée le ${ga.date}</b> (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.`) }
   const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_geneMus(v.muscle))
-  if (bas.length) {
+  // E (14/11, validé porteur) = app `_lv3PicCharge` : charge inhabituelle (moteur.surcharge ≠ Faible) dont le ressenti ne permet
+  // pas de dire qu'elle est encaissée (non évalué ou dégradé) → pas de « il manque N séries » ; une phrase de prudence à la place.
+  const _motR = (ad && ad.moteur) || {}, _crR = _motR.charge_ressenti || {}
+  const _picR = !!(_motR.surcharge && _motR.surcharge !== 'Faible' && !(_crR.evaluable === true && _crR.degrade !== true))
+  // H (14/11, validé porteur) = app `_lv3DouleurForte` : douleur forte → hors zone, maintien ; pas de séries en plus proposées.
+  const _dfR = ((_motR.alertes || []) as any[]).some((x: any) => x && x.type === 'douleur' && x.severite === 'haute')
+  if (_dfR && bas.length) {
+    recos.push(`<b>Douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.`)
+  } else if (_picR && bas.length) {
+    recos.push(_crR.degrade === true
+      ? `<b>Charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`
+      : `<b>Charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)
+  } else if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
     const nm = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux' } as any)[m] || m.toLowerCase()

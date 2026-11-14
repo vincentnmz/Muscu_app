@@ -11,6 +11,7 @@ const ICI = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.join(ICI, 
 const ATT = path.join(ROOT, 'tests', 'banc-profils');
 const { NOW, PROFILS, equipe } = require('./profils.js');
 const { getAppData, equipeData } = require('./serveur.js');
+const { verifier } = require('./coherence.js');
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (_) { try { ({ chromium } = require('/opt/node22/lib/node_modules/playwright')); } catch (e) { console.log('banc-profils : Playwright absent → ignoré'); process.exit(0); } }
 
@@ -49,10 +50,33 @@ try {
       return ECRANS.map(([nom, idEl]) => { const el = document.getElementById(idEl); if (!el) return '== ' + nom + ' ==\n(absent)';
         document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
         for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
-        return '== ' + nom + ' ==\n' + el.innerText; }).join('\n\n');
+        return '== ' + nom + ' ==\n' + el.innerText; }).join('\n\n')
+        + (function () { try { maSetDisc('croise'); } catch (e) { return ''; }   // 14/11 : Analyses ▸ Croisé (cohérence charge ↔ récup)
+          var el = document.getElementById('tab-historique'); if (!el) return '';
+          document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
+          for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+          return '\n\n== Analyses ▸ Croisé ==\n' + el.innerText; })();
     }, { data, a, ECRANS });
     await pg.clock.runFor(2500);
+    // R8b (H, 14/11) — même décision : un exercice dont la cible athlète dit « pas de progression aujourd'hui » (mode vigilance)
+    // n'a aucune action active du plan ni levier qui l'augmente (séries, charge, RPE 9-10). Calcul sur les VRAIES fonctions de l'app.
+    const r8b = await pg.evaluate(() => { const out = [];
+      try {
+        const rows = _tjCibles(dernierAppData, dernierAppData.programme || []);
+        const vig = rows.filter((r) => r.mode === 'vigilance').map((r) => r.exo.trim());
+        const mus = (e) => { try { return _lv3MuscleExo(dernierAppData, e); } catch (x) { return null; } };
+        const P = _lv3Plan(dernierAppData); const act = P ? P.actions.filter((a) => !a.gene && !a.fait && (a.type === 'series' || a.type === 'cible' || a.type === 'charge')) : [];
+        vig.forEach((e) => {
+          act.forEach((a) => { if ((a.exo && a.exo.trim() === e && a.type !== 'charge') || (a.type === 'series' && a.muscle && mus(e) && _musKey(a.muscle) === _musKey(mus(e)))) out.push('plan « ' + a.titre + ' » actif alors que la cible de ' + e + ' dit « pas de progression »'); });
+          _lv3Diags(dernierAppData).filter((d) => d.exo.trim() === e).forEach((d) => { if (/\+\d+ séries? de |RPE 9-10|ajoute 1 série/i.test(d.levier || '')) out.push('levier « ' + d.levier.slice(0, 70) + '… » sur ' + e + ' (cible : pas de progression)'); });
+        });
+      } catch (e) { out.push('R8b non calculable : ' + e.message); }
+      return out; });
+    if (r8b.length) { ko++; console.error('  ✗ ' + id + ' : décision athlète ≠ plan / levier'); r8b.forEach((e) => console.error('      ⚠ R8b ' + e)); }
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
+    if (erreurs.length) { ko++; console.error('  ✗ ' + id + ' : erreur JavaScript — ' + erreurs[0]); }   // bloquant même en --maj (14/11)
+    const inc = verifier(normaliser(txt), data);   // cohérence inter-écrans (14/11) : bloquant même en --maj
+    if (inc.length) { ko++; console.error('  ✗ ' + id + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     const f = path.join(ATT, id + '.txt');
     if (MAJ) { fs.mkdirSync(ATT, { recursive: true }); fs.writeFileSync(f, sortie); console.log('  ✎ ' + id + ' : attendu réécrit (' + sortie.split('\n').length + ' lignes)'); }
     else if (!fs.existsSync(f)) { ko++; console.error('  ✗ ' + id + ' : pas de fichier attendu (lancer --maj ' + id + ' après relecture)'); }
@@ -93,12 +117,29 @@ try {
     await pg.evaluate(async () => { coach = { coach_id: 'C1', login: '0808', nom: 'Coach Banc', role: 'coach', sport: 'muscu' }; await ouvrirEspaceCoach(); });
     for (let i = 0; i < 20; i++) { await pg.clock.runFor(1000); if (await pg.evaluate(() => { const t = (document.getElementById('view-coach') || {}).innerText || ''; return /athlètes suivis/.test(t) && !/Analyse des athlètes…/.test(t); })) break; }
     let txt = '== Coach ▸ Accueil ==\n' + await lire('view-coach');
+    // Accueil coach (14/11) : la ligne « Entraînement à regarder » de chaque athlète est contrôlée contre SON moteur.
+    for (const aid of E.athleteIds) {
+      const ligne = await pg.evaluate((d) => { try { const L = _coachEntrLigne(d); return L ? L.txt.replace(/<[^>]+>/g, '') : ''; } catch (e) { return 'ERREUR ' + e.message; } }, D.fiches[aid]);
+      const incA = ligne ? verifier(ligne, D.fiches[aid]) : [];
+      if (incA.length) { ko++; console.error('  ✗ coach ▸ accueil, athlète ' + aid + ' : ' + incA.join(' | ')); }
+    }
     for (const aid of E.athleteIds) {
       await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a); }, aid);
       await pg.clock.runFor(2500);
-      txt += '\n\n== Coach ▸ Fiche athlète ' + aid + ' ==\n' + await lire('view-coach-detail');
+      const fiche = await lire('view-coach-detail');
+      const indic = await pg.evaluate(() => { const el = document.getElementById('cd-indicateurs'); if (!el) return '';   // bloc #cd-indicateurs : MASQUÉ à l'écran (mobile + ordi), contrôlé quand même s'il réapparaît
+        for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+        return el.innerText; });
+      const croise = await pg.evaluate((d) => { try { _maCoachAttach(d); maSetDisc('croise'); } catch (e) { return '(croisé indisponible : ' + e.message + ')'; }
+        const el = document.getElementById('tab-historique'); if (!el) return '';
+        for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+        const t = el.innerText; try { maSetDisc('muscu'); } catch (e) {} return t; }, D.fiches[aid]);
+      txt += '\n\n== Coach ▸ Fiche athlète ' + aid + ' ==\n' + fiche + '\n-- Indicateurs (bloc masqué à l\'écran, contrôlé quand même) --\n' + indic + '\n-- Analyses ▸ Croisé (coach) --\n' + croise;
+      const inc = verifier(normaliser(fiche + '\n' + indic + '\n' + croise), D.fiches[aid]);
+      if (inc.length) { ko++; console.error('  ✗ coach ▸ fiche ' + aid + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     }
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
+    if (erreurs.length) { ko++; console.error('  ✗ coach_equipe : erreur JavaScript — ' + erreurs[0]); }
     const f = path.join(ATT, 'coach_equipe.txt');
     if (MAJ) { fs.writeFileSync(f, sortie); console.log('  ✎ coach_equipe : attendu réécrit (' + sortie.split('\n').length + ' lignes)'); }
     else if (!fs.existsSync(f)) { ko++; console.error('  ✗ coach_equipe : pas de fichier attendu (lancer --maj coach_equipe après relecture)'); }

@@ -274,7 +274,7 @@ Charge & fraîcheur
 Frais · indicatif
 Frais
 +62% de fraîcheur
-Tu es reposé — bon moment pour pousser.
+Tu es reposé.
 fatigue
 équilibre
 frais
@@ -325,5 +325,47 @@ Photos avant/après + mensurations
 Mes objectifs
 Suivre et fixer tes objectifs
 Douleurs & blessures
-Aucune blessure active
-OK
+Douleur modérée signalée (autre)
+à évaluer
+== Analyses ▸ Croisé ==
+Mes analyses
+Le verdict, puis les chiffres.
+V
+Importer mes séances (montre & capteurs)
+Muscu
+Cardio
+Croisé
+Résumé
+LECTURE NOVALYZ
+cette semaine
+●
+Sur cette semaine, ta charge d'entraînement vient uniquement de la musculation — aucun cardio enregistré sur la période.
+●
+Récupération : Excellent · disponibilité Vigilance.
+Fiabilité : faible · 1 sem. · bien-être 2 relevés.
+RECO
+Ajoute 1 à 2 séances de cardio par semaine pour ta base d'endurance, sans alourdir ta charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).

@@ -6,16 +6,20 @@ Ajouter
 Ajoute ton e-mail : récupération du mot de passe et résumé d'équipe.
 Ajouter
 BONJOUR COACH BANC
-jeudi 12 novembre · 5 athlètes suivis
-60%
+jeudi 12 novembre · 9 athlètes suivis
+44%
 À JOUR
-2
+5
 athlètes à voir aujourd'hui
-0
-À SURVEILLER
 2
+À SURVEILLER
+3
 INTERVENTION
 À SURVEILLER EN PRIORITÉ
+AD
+Athlète douleur_forte_recup_ok
+Douleur forte signalée (épaule) · aujourd'hui
+›
 AD
 Athlète douleur_vigilance
 Douleur forte signalée (épaule) · aujourd'hui
@@ -24,17 +28,40 @@ AG
 Athlète gene_poignet
 Douleur forte signalée (poignet) · aujourd'hui
 ›
+AD
+Athlète douleur_moderee
+Douleur modérée signalée (épaule) · aujourd'hui
+›
+AR
+Athlète reprise_apres_pause
+10 jours sans séance
+›
 ENTRAÎNEMENT À REGARDER
 PLAN DE LA SEMAINE
 AD
+Athlète douleur_forte_recup_ok
+RDL barre : bloqué
+Plan en pause
+›
+AD
 Athlète douleur_vigilance
-RDL barre : bloqué · +4 séries de RDL barre
-Plan 0/1 fait
+RDL barre : bloqué
+Plan en pause
 ›
 AG
 Athlète gene_poignet
+RDL barre : bloqué
+Plan en pause
+›
+AD
+Athlète douleur_moderee
 RDL barre : bloqué · +4 séries de RDL barre
-Plan 0/2 fait · +1 autre action
+Plan 0/1 fait
+›
+AC
+Athlète charge_hausse_sans_ressenti
+Squat : bloqué
+✓ Plan de la semaine fait
 ›
 AC
 Athlète coach_sans_propositions
@@ -46,27 +73,34 @@ Athlète intermediaire_plateau
 RDL barre : bloqué · +4 séries de RDL barre
 Plan 0/3 fait · +2 autres actions
 ›
+AR
+Athlète reprise_apres_pause
+Squat : bloqué · +4 séries de Squat
+Plan 0/3 fait · +2 autres actions
+›
 AS
 Athlète sous_fourchette
 Développé couché barre : sous la fourchette (80 kg × 4) · proposé 75 kg
 Plan 0/3 fait · +2 autres actions
 ›
 QUESTIONNAIRES BIEN-ÊTRE
-5/5 · 7 J
+9/9 · 7 J
+Athlète douleur_forte_recup_ok a répondu au questionnaire
+Aujourd'hui · fatigue 2/5
 Athlète douleur_vigilance a répondu au questionnaire
 Aujourd'hui · fatigue 4/5
 Athlète gene_poignet a répondu au questionnaire
+Aujourd'hui · fatigue 2/5
+Athlète douleur_moderee a répondu au questionnaire
 Aujourd'hui · fatigue 2/5
 Athlète coach_sans_propositions a répondu au questionnaire
 Aujourd'hui · fatigue 2/5
 Athlète intermediaire_plateau a répondu au questionnaire
 Aujourd'hui · fatigue 2/5
-Athlète sous_fourchette a répondu au questionnaire
-Aujourd'hui · fatigue 2/5
 MESSAGES NON LUS
 Aucun message non lu.
 LECTURE NOVALYZ · ÉQUIPE
-Athlète douleur_vigilance — Douleur signalée. Une douleur significative a été déclarée · zone : Épaule.
+Athlète douleur_forte_recup_ok — Douleur signalée. Une douleur significative a été déclarée · zone : Épaule.
 Adapte la charge et surveille l'évolution de la douleur.
 == Coach ▸ Fiche athlète 2 ==
 Aperçu
@@ -159,14 +193,79 @@ RPE 7 J
 TONNAGE 7 J
 2/2
 ASSIDUITÉ
+Habituelle
+CHARGE
 0,97
-ACWR
+ACWR (COMPLÉMENT)
 0/3
 PLAN
 11/11
 DERNIÈRE SÉANCE
 Semaines d'affilée avec au moins 1 séance
 7 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+2/2
+séances / objectif
+CHARGE
+Habituelle
+ACWR 0,97 · indice complémentaire
+DERNIÈRE SÉANCE
+11/11/2026
+Full body B · 9 séries
+PLAN
+0/3
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète intermediaire_plateau
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité Prêt · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 2 relevés.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+2 séances
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+2 (2 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · Prêt
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
 == Coach ▸ Fiche athlète 5 ==
 Aperçu
 Analyses
@@ -192,7 +291,7 @@ Planifier la semaine
 VOLUME
 RDL barre : bloqué
 09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (2,6 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -213,7 +312,7 @@ Marquer traité
 VOLUME
 Squat : bloqué
 06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3,5 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -255,7 +354,7 @@ Marquer traité
 Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
 ➜
-Plan de la semaine suggéré par Novalyz (0/1 fait) — Ischios : 10 séries cette semaine · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+Plan de la semaine suggéré par Novalyz (en pause) — Ischios : 10 séries cette semaine (en pause : douleur forte) · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
 🔥
 Effort — RPE moyen des séries 8,5 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
@@ -283,12 +382,76 @@ RPE 7 J
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
-0/1
+Habituelle
+CHARGE
+en pause
 PLAN
 09/11
 DERNIÈRE SÉANCE
 Semaines d'affilée avec au moins 1 séance
 5 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+1/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+09/11/2026
+Full body B · 9 séries
+PLAN
+en pause
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète douleur_vigilance
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité À surveiller · récup Moyen.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 2 relevés.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+40/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+1 (1 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Moyen · À surveiller
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
 == Coach ▸ Fiche athlète 7 ==
 Aperçu
 Analyses
@@ -386,12 +549,76 @@ RPE 7 J
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
+Habituelle
+CHARGE
 0/3
 PLAN
 09/11
 DERNIÈRE SÉANCE
 Semaines d'affilée avec au moins 1 séance
 4 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+1/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+09/11/2026
+Full body A · 9 séries
+PLAN
+0/3
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète sous_fourchette
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité Prêt · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 1 relevé.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+1 (1 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · Prêt
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
 == Coach ▸ Fiche athlète 8 ==
 Aperçu
 Analyses
@@ -454,12 +681,76 @@ RPE 7 J
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
+Habituelle
+CHARGE
 0/3
 PLAN
 09/11
 DERNIÈRE SÉANCE
 Semaines d'affilée avec au moins 1 séance
 4 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+1/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+09/11/2026
+Full body B · 9 séries
+PLAN
+0/3
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète coach_sans_propositions
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité Prêt · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 2 relevés.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+1 (1 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · Prêt
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
 == Coach ▸ Fiche athlète 10 ==
 Aperçu
 Analyses
@@ -485,7 +776,7 @@ Planifier la semaine
 VOLUME
 RDL barre : bloqué
 09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (2,6 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -499,14 +790,14 @@ Marquer traité
 VOLUME
 Tirage vertical prise large : bloqué
 09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Tirage vertical prise large (6,1 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Squat : bloqué
 06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3,5 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -520,7 +811,7 @@ Marquer traité
 VOLUME
 Rowing barre : bloqué
 06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Rowing barre (6,1 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -538,7 +829,7 @@ Marquer traité
 Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
 ➜
-Plan de la semaine suggéré par Novalyz (0/2 fait) — Ischios : 10 séries cette semaine · Épaules : 8 séries cette semaine (en pause : gêne poignet) · Dos : 10 séries cette semaine (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+Plan de la semaine suggéré par Novalyz (en pause) — Ischios : 10 séries cette semaine (en pause : douleur forte) · Épaules : 8 séries cette semaine (en pause : gêne poignet) · Dos : 10 séries cette semaine (en pause : douleur forte) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
 🔥
 Effort — RPE moyen des séries 8,5 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
@@ -566,9 +857,740 @@ RPE 7 J
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
-0/2
+Habituelle
+CHARGE
+en pause
 PLAN
 09/11
 DERNIÈRE SÉANCE
 Semaines d'affilée avec au moins 1 séance
 5 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+1/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+09/11/2026
+Full body B · 9 séries
+PLAN
+en pause
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète gene_poignet
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité À surveiller · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 2 relevés.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+1 (1 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · À surveiller
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
+== Coach ▸ Fiche athlète 11 ==
+Aperçu
+Analyses
+Séances
+Programme
+Forme
+AC
+Athlète charge_hausse_sans_ressenti
+Intermédiaire
+ÉTAT DU JOUR
+Prêt
+récup excellent · 3/2 séances cette semaine · dernière le 12/11/2026
+Sommeil : Excellent
+Stress : Aucun
+Fatigue : Aucune
+Douleur : Aucune
+Ressenti hier
+Contexte : saison normale · changer ›
+▶ Saisir sa séance
+Modifier le programme
+Planifier la semaine
+À DÉCIDER
+VOLUME
+Squat : bloqué
+12/11 : 60 kg × 8 à RPE 9 (fourchette 6-10) · Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances (8 séances en 5 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour. »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Développé couché barre : bloqué
+12/11 : 70 kg × 8 à RPE 9 (fourchette 6-10) · Volume pectoraux : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances (8 séances en 5 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour. »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Rowing barre : bloqué
+12/11 : 80 kg × 8 à RPE 9 (fourchette 8-12) · Volume dos : 8,3 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances (8 séances en 5 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour. »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+À SURVEILLER
+CHARGE
+Volume sous le minimum (moyenne des 4 dernières semaines terminées) — Ischio 3,8/10 · Pectoraux 4,5/10 · Quadriceps 4,5/10 · +2 autres
+Répondre
+Marquer traité
+Basé sur 16 séances récentes · dernier ressenti 11/11/2026.
+Entraînement
+➜
+Plan de la semaine suggéré par Novalyz (3/3 fait) — ✓ Quadriceps : 10 séries cette semaine · ✓ Pectoraux : 10 séries cette semaine · ✓ Dos : 10 séries cette semaine (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+🔥
+Effort — RPE moyen des séries 8,4 (7 j) · en hausse
+SÉRIES DES 7 DERNIERS JOURS
+· cible de l'athlète (min-opt)
+VOIR TOUT →
+Pectoraux
+18 · 10-16
+Dos
+30 · 10-16
+Quadriceps
+18 · 10-16
+Ischio
+12 · 10-16
+Epaule
+12 · 8-14
+Mêmes cibles que celles de l'athlète ; séries indirectes comptées 0,5.
+CHARGE & ASSIDUITÉ
+8,4
+RPE 7 J
+48,3 t ▲1067%
+TONNAGE 7 J
+3/2
+ASSIDUITÉ
+En hausse
+CHARGE
+2,8
+ACWR (COMPLÉMENT)
+3/3
+PLAN
+12/11
+DERNIÈRE SÉANCE
+Semaines d'affilée avec au moins 1 séance
+7 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+3/2
+séances / objectif
+CHARGE
+En hausse
+ACWR 2,8 · indice complémentaire
+DERNIÈRE SÉANCE
+12/11/2026
+Full body A · 18 séries
+PLAN
+3/3
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète charge_hausse_sans_ressenti
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité Prêt · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 1 relevé.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+3 séances
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+95/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+3 (3 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · Prêt
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
+== Coach ▸ Fiche athlète 12 ==
+Aperçu
+Analyses
+Séances
+Programme
+Forme
+AR
+Athlète reprise_apres_pause
+Intermédiaire
+ÉTAT DU JOUR
+Prêt
+récup excellent · 0/2 séances cette semaine · dernière le 02/11/2026
+Sommeil : Bon
+Stress : Faible
+Fatigue : Faible
+Douleur : Aucune
+Ressenti hier
+Contexte : saison normale · changer ›
+▶ Saisir sa séance
+Modifier le programme
+Planifier la semaine
+À DÉCIDER
+VOLUME
+Squat : bloqué
+02/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem (5 séances en 4 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Développé couché barre : bloqué
+02/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Volume pectoraux : 3 séries/sem (minimum 10) · Travaillé 1×/sem (5 séances en 4 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Développé couché barre (3 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Rowing barre : bloqué
+02/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 5,3 séries/sem (minimum 10) (5 séances en 4 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Rowing barre (5,3 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+RDL barre : bloqué
+29/10 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,3 séries/sem (minimum 10) · Travaillé 0,8×/sem (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (2,3 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Développé militaire aux haltères : bloqué
+29/10 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Volume épaules : 2,3 séries/sem (minimum 8) · Travaillé 0,8×/sem (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Développé militaire aux haltères (2,3 → 8 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Tirage vertical prise large : bloqué
+29/10 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 5,3 séries/sem (minimum 10) (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Tirage vertical prise large (5,3 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+À SURVEILLER
+RÉGULARITÉ
+Aucune séance depuis 10 j — dernière muscu le 02/11
+Répondre à l'athlète
+Pourquoi ?
+Marquer traité
+CHARGE
+Volume sous le minimum (moyenne des 4 dernières semaines terminées) — Ischio 2,3/10 · Epaule 2,3/8 · Pectoraux 3/10 · +2 autres
+Répondre
+Marquer traité
+Basé sur 13 séances récentes · dernier ressenti 11/11/2026.
+Entraînement
+📅
+Activité — Muscu : dernière le 02/11 (10 j) · Cardio : aucune sortie
+➜
+Plan de la semaine suggéré par Novalyz (0/3 fait) — Quadriceps : 10 séries cette semaine · Pectoraux : 10 séries cette semaine · Dos : 10 séries cette semaine (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+🗓
+Dernière séance — 02/11 · Full body A · 9 séries · RPE 8,5
+SÉRIES DES 7 DERNIERS JOURS
+· cible de l'athlète (min-opt)
+VOIR TOUT →
+Pectoraux
+0 · 10-16
+Dos
+0 · 10-16
+Quadriceps
+0 · 10-16
+Ischio
+0 · 10-16
+Epaule
+0 · 8-14
+5 muscles sous le minimum sur 7 jours. Mêmes cibles que celles de l'athlète ; séries indirectes comptées 0,5.
+PROCHAINE SÉANCE À FAIRE
+Programme →
+Full body A · 3 exercices
+Squat
+3 × 6–10 Novalyz : +4 séries
+Développé couché barre
+3 × 6–10 Novalyz : +4 séries
+Rowing barre
+3 × 8–12 Novalyz : +4 séries
+CHARGE & ASSIDUITÉ
+0 t ▼100%
+TONNAGE 7 J
+0/2
+ASSIDUITÉ
+Habituelle
+CHARGE
+0/3
+PLAN
+02/11
+DERNIÈRE SÉANCE
+Semaines d'affilée avec au moins 1 séance
+7 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+0/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+02/11/2026
+Full body A · 9 séries
+PLAN
+0/3
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète reprise_apres_pause
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+Pas encore assez de séances muscu + cardio pour croiser.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+Répartition dispo dès que tu as des séances.
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+0 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+0
+Muscu / cardio
+—
+Récupération
+Excellent · Prêt
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
+== Coach ▸ Fiche athlète 14 ==
+Aperçu
+Analyses
+Séances
+Programme
+Forme
+AD
+Athlète douleur_forte_recup_ok
+Intermédiaire
+ÉTAT DU JOUR
+À surveiller
+récup excellent · 1/2 séances cette semaine · dernière le 09/11/2026
+Sommeil : Bon
+Stress : Faible
+Fatigue : Faible
+Douleur : Forte (Épaule)
+Ressenti aujourd'hui
+Contexte : saison normale · changer ›
+▶ Saisir sa séance
+Modifier le programme
+Planifier la semaine
+À DÉCIDER
+VOLUME
+RDL barre : bloqué
+09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Développé militaire aux haltères : bloqué
+09/11 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Tirage vertical prise large : bloqué
+09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Squat : bloqué
+06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Développé couché barre : bloqué
+06/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume pectoraux : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Rowing barre : bloqué
+06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+PRIORITAIRE
+DOULEUR
+Douleur forte signalée (épaule)
+Répondre à l'athlète
+Pourquoi ?
+Marquer traité
+À SURVEILLER
+CHARGE
+Volume sous le minimum (moyenne des 4 dernières semaines terminées) — Ischio 2,6/10 · Epaule 2,6/8 · Pectoraux 3,5/10 · +2 autres
+Répondre
+Marquer traité
+Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
+Entraînement
+➜
+Plan de la semaine suggéré par Novalyz (en pause) — Ischios : 10 séries cette semaine (en pause : douleur forte) · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+🔥
+Effort — RPE moyen des séries 8,5 (7 j) · stable
+SÉRIES DES 7 DERNIERS JOURS
+· cible de l'athlète (min-opt)
+VOIR TOUT →
+Pectoraux
+3 · 10-16
+Dos
+6 · 10-16
+Quadriceps
+3 · 10-16
+Ischio
+3 · 10-16
+Epaule
+3 · 8-14
+5 muscles sous le minimum sur 7 jours. Mêmes cibles que celles de l'athlète ; séries indirectes comptées 0,5.
+PROCHAINE SÉANCE À FAIRE
+Programme →
+Full body A · 3 exercices
+Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
+CHARGE & ASSIDUITÉ
+8,5
+RPE 7 J
+10,9 t ▲0%
+TONNAGE 7 J
+1/2
+ASSIDUITÉ
+Habituelle
+CHARGE
+en pause
+PLAN
+09/11
+DERNIÈRE SÉANCE
+Semaines d'affilée avec au moins 1 séance
+5 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+1/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+09/11/2026
+Full body B · 9 séries
+PLAN
+en pause
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète douleur_forte_recup_ok
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité À surveiller · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 2 relevés.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+1 (1 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · À surveiller
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.
+== Coach ▸ Fiche athlète 15 ==
+Aperçu
+Analyses
+Séances
+Programme
+Forme
+AD
+Athlète douleur_moderee
+Intermédiaire
+ÉTAT DU JOUR
+Vigilance
+récup excellent · 1/2 séances cette semaine · dernière le 09/11/2026
+Sommeil : Bon
+Stress : Faible
+Fatigue : Faible
+Douleur : Modérée (Épaule)
+Ressenti aujourd'hui
+Contexte : saison normale · changer ›
+▶ Saisir sa séance
+Modifier le programme
+Planifier la semaine
+À DÉCIDER
+VOLUME
+RDL barre : bloqué
+09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (2,6 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Développé militaire aux haltères : bloqué
+09/11 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 3/5 signalée le 12/11 · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Tirage vertical prise large : bloqué
+09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 3/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Squat : bloqué
+06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3,5 → 10 séries/sem). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Développé couché barre : bloqué
+06/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Gêne épaule 3/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume pectoraux : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+CHARGE
+Rowing barre : bloqué
+06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 3/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
+Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+À SURVEILLER
+DOULEUR
+Douleur modérée signalée (épaule)
+Répondre à l'athlète
+Pourquoi ?
+Marquer traité
+CHARGE
+Volume sous le minimum (moyenne des 4 dernières semaines terminées) — Ischio 2,6/10 · Epaule 2,6/8 · Pectoraux 3,5/10 · +2 autres
+Répondre
+Marquer traité
+Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
+Entraînement
+➜
+Plan de la semaine suggéré par Novalyz (0/1 fait) — Ischios : 10 séries cette semaine · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+🔥
+Effort — RPE moyen des séries 8,5 (7 j) · stable
+SÉRIES DES 7 DERNIERS JOURS
+· cible de l'athlète (min-opt)
+VOIR TOUT →
+Pectoraux
+3 · 10-16
+Dos
+6 · 10-16
+Quadriceps
+3 · 10-16
+Ischio
+3 · 10-16
+Epaule
+3 · 8-14
+5 muscles sous le minimum sur 7 jours. Mêmes cibles que celles de l'athlète ; séries indirectes comptées 0,5.
+PROCHAINE SÉANCE À FAIRE
+Programme →
+Full body A · 3 exercices
+Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
+CHARGE & ASSIDUITÉ
+8,5
+RPE 7 J
+10,9 t ▲0%
+TONNAGE 7 J
+1/2
+ASSIDUITÉ
+Habituelle
+CHARGE
+0/1
+PLAN
+09/11
+DERNIÈRE SÉANCE
+Semaines d'affilée avec au moins 1 séance
+5 sem.
+-- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
+RÉGULARITÉ
+1/2
+séances / objectif
+CHARGE
+Habituelle
+DERNIÈRE SÉANCE
+09/11/2026
+Full body B · 9 séries
+PLAN
+0/1
+fait cette semaine
+-- Analyses ▸ Croisé (coach) --
+Athlète douleur_moderee
+Analyses de l'athlète
+V
+Muscu
+Cardio
+Croisé
+Résumé
+●
+Charge surtout muscu (100%) — peu de cardio sur cette semaine.
+●
+Tendance charge / forme : pas assez de recul sur cette période — à regarder sur Mois ou Année.
+●
+Athlète : disponibilité Vigilance · récup Excellent.
+Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 2 relevés.
+RECO · POUR LE COACH
+Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+■ Muscu 100%
+■ Cardio 0%
+Force / masse
+charge combinée
+Endurance
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+1 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+80/100
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+CHARGE COMBINÉE
+cette semaine
+Séances
+1 (1 musc · 0 car)
+Muscu / cardio
+100% / 0%
+Récupération
+Excellent · Vigilance
+Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.

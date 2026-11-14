@@ -76,6 +76,23 @@ const PROFILS = {
     bienEtre(st, 0, { sommeil: 2, energie: 2, fatigue_musculaire: 4, douleur: 4, zone_douloureuse: 'Épaule', stress: 4 });
     return st;
   },
+  // 5 quater (H, 14/11). Douleur FORTE épaule 4/5 avec récupération NORMALE : zone (épaule, pecs, dos) en garde-fou ;
+  //          hors zone (jambes) → maintien, pas de « +N séries / RPE 9-10 » (H1 · H2 · H6).
+  douleur_forte_recup_ok() {
+    const st = base('14'); athlete(st, { annees: 5 }); programme(st);
+    [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
+    bienEtre(st, 0, { douleur: 4, zone_douloureuse: 'Épaule' });
+    return st;
+  },
+  // 5 quinquies (H3, 14/11). Douleur MODÉRÉE épaule 3/5 : progression existante hors zone, cibles alignées sur le plan (D2).
+  douleur_moderee() {
+    const st = base('15'); athlete(st, { annees: 5 }); programme(st);
+    [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
+    bienEtre(st, 0, { douleur: 3, zone_douloureuse: 'Épaule' });
+    return st;
+  },
   // 5 bis. Gêne 3/5 sans zone reliée à un muscle (« Autre ») : rien en pause, ligne de prudence (14/11).
   douleur_autre() {
     const st = base('9'); athlete(st, { annees: 5 }); programme(st);
@@ -115,9 +132,37 @@ const PROFILS = {
     for (let d = 0; d < 20; d += 3) bienEtre(st, d, {});
     return st;
   },
+  // 9. Charge en forte hausse (7 derniers jours) + seulement 2 questionnaires récents : ressenti NON évaluable (audit 14/11 A/B).
+  charge_hausse_sans_ressenti() {
+    const st = base('11'); athlete(st, { annees: 4 }); programme(st);
+    [45, 42, 38, 35, 31, 28, 24, 21, 17, 14, 10].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10, 8, 7)])));
+    const lourd = (c, r, rpe) => [[c, r, rpe], [c, r, rpe], [c, r, rpe], [c, r, rpe + 0.5], [c, r - 1, rpe + 1], [c, r - 1, rpe + 1]];
+    [6, 5, 3, 2, 0].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, lourd(60 + i * 10, 8, 8)])));
+    for (let d = 9; d < 45; d += 3) bienEtre(st, d, {});
+    [4, 1].forEach((d) => bienEtre(st, d, { sommeil: 5, fatigue_musculaire: 1, stress: 1 }));
+    return st;
+  },
+  // 9 bis. Pic de charge la semaine dernière, plan de cette semaine PAS encore fait, ressenti non évalué (E, 14/11) :
+  //        les actions « + séries / à pousser » passent en pause (maintien / allègement restent).
+  pic_plan_a_faire() {
+    const st = base('13'); athlete(st, { annees: 4 }); programme(st);
+    [45, 42, 38, 35, 31, 28, 24, 21, 17, 14].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10, 8, 7)])));
+    const lourd = (c, r, rpe) => [[c, r, rpe], [c, r, rpe], [c, r, rpe], [c, r, rpe + 0.5], [c, r - 1, rpe + 1], [c, r - 1, rpe + 1]];
+    [7, 6, 5, 4, 2].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, lourd(60 + i * 10, 8, 8)])));
+    for (let d = 9; d < 45; d += 3) bienEtre(st, d, {});
+    [1].forEach((d) => bienEtre(st, d, { sommeil: 5, fatigue_musculaire: 1, stress: 1 }));
+    return st;
+  },
+  // 10. Reprise : 6 semaines régulières puis 10 jours sans séance ; questionnaire récent bon (audit 14/11 D).
+  reprise_apres_pause() {
+    const st = base('12'); athlete(st, { annees: 4 }); programme(st);
+    [52, 49, 45, 42, 38, 35, 31, 28, 24, 21, 17, 14, 10].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 50; d += 3) bienEtre(st, d, {});
+    return st;
+  },
 };
 // Équipe coach (14/11) : un coach fictif + 5 athlètes tirés des profils ci-dessus (mêmes données, reliés au coach).
-const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet'];
+const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet', 'charge_hausse_sans_ressenti', 'reprise_apres_pause', 'douleur_forte_recup_ok', 'douleur_moderee'];
 function equipe() {
   const st = { athletes: [], performances: [], indicateurs: [], bien_etre: [], programme: [], exercices: [], volume_obti: [], planning: [], coachs: [{ coach_id: 'C1', login: '0808', nom: 'Coach Banc', sport: 'muscu' }] };
   let id = 1;

@@ -132,5 +132,36 @@ Photos avant/après + mensurations
 Mes objectifs
 Suivre et fixer tes objectifs
 Douleurs & blessures
-Aucune blessure active
+Aucune douleur ni blessure signalée
 OK
+== Analyses ▸ Croisé ==
+Mes analyses
+Le verdict, puis les chiffres.
+V
+Importer mes séances (montre & capteurs)
+Muscu
+Cardio
+Croisé
+Résumé
+LECTURE NOVALYZ
+Pas encore assez de séances sur cette période pour croiser muscu et cardio.
+Semaine
+Mois
+Année
+‹
+9 – 15 nov.
+›
+Le sélecteur ajuste la répartition et les tendances ci-dessous.
+RÉPARTITION DE LA CHARGE
+?
+muscu vs cardio · cette semaine
+Répartition dispo dès que tu as des séances.
+CHARGE VS FORME
+cette semaine · tendance dès ~4 sem.
+Charge d'entraînement
+0 séance
+sur cette semaine · tendance dès ~4 sem.
+Forme (récupération)
+—
+forme actuelle · tendance dès ~4 sem.
+Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
