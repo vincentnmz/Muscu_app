@@ -196,3 +196,38 @@ les échecs **comparables**, ne pas compter les semaines **non tentées**). Rien
 
 **S9 (perturbations non déclarées)** reste le point faible : un athlète qui ne remplit pas son questionnaire fait passer
 ses mauvaises semaines pour des échecs comparables (14 % d'abandon à tort avec N = 3, 43 % avec N = 2).
+
+## 15. Décision finale du porteur après simulation (14/11) — RÈGLE RETENUE (toujours aucun code)
+
+| # | Règle retenue |
+|---|---|
+| R0 | Garde-fous prioritaires (gêne, pause, déload, reprise…) avant la boucle. |
+| R1 | Succès → étape suivante ; compteur d'échecs remis à zéro, historique conservé. |
+| **R2** | **3 tentatives comparables ratées** → levier suivant déjà identifié par le diagnostic, sinon levier de repli défini ; jamais de modification arbitraire. |
+| R3 | « Pas faite » ne compte **jamais** comme échec ; après 2 semaines non tentées, la proposition reste valide mais descend en priorité. |
+| R4 | 1 ou 2 échecs : aucun changement automatique, observation. |
+| R5 | Coach aux commandes : la boucle ne modifie pas le plan. |
+
+- **C2 reformulé** : « Un levier inefficace est remplacé après **3 tentatives comparables ratées**. » La mesure porte sur
+  les **tentatives comparables**, pas sur les semaines écoulées. **Ce n'est pas une garantie produit** : en semaines,
+  la simulation donne ≈ 78 % de leviers inefficaces remplacés en 6 semaines (N = 3), pas 100 %.
+- **Échec (définition verrouillée)** = Novalyz a proposé → l'athlète a essayé → le critère était évaluable → le résultat
+  n'est pas atteint → la semaine est comparable (§12). **Tout le reste n'incrémente pas le compteur.**
+- **Mis de côté** : changement plus rapide sur « échec net » (ex. 4 reps sous l'objectif) — pas avant des données réelles
+  du journal, puis un nouveau protocole de simulation figé.
+- **Calendrier** : pas de code ; observation des vraies décisions à partir du 23/11, puis décision de coder.
+
+### Tests obligatoires le jour où ce sera codé (verrouillage échec / pas tenté)
+1. Semaine **non tentée** → compteur d'échecs **inchangé** (ni +1, ni remise à zéro).
+2. Semaine **sans questionnaire** ni séance de l'action → non tentée, jamais un échec.
+3. Semaine tentée mais **critère incomplet / non évaluable** → aucun effet sur le compteur.
+4. Semaine tentée, échec, avec **R0 actif** (pause, déload, reprise, gêne sur la zone) → non comparable, aucun effet.
+5. Semaine tentée, échec, **toutes les séances perturbées** (fatigue ≥ 4, sommeil ≤ 2 ou douleur ≥ 3 le jour même ou la
+   veille) → non comparable, aucun effet.
+6. **Critère différent** (charge visée ≠ ± 2,5 kg, minimum de séries différent) → nouvelle action, compteur repart de 0.
+7. 1 puis 2 échecs comparables → **aucun changement** ; 3e → changement de levier, avec le texte validé.
+8. Succès entre deux échecs → compteur remis à 0, historique intact.
+9. Échec comparable vieux de plus de 6 semaines → ne compte plus.
+10. Coach aux commandes → plan inchangé, information disponible pour le coach seulement.
+11. Même historique en entrée → même décision (déterminisme), identique sur tous les appareils.
+12. Profils du banc : « échec répété ×3 », « 2 échecs puis succès », « pas fait ×2 », « semaines perturbées ».
