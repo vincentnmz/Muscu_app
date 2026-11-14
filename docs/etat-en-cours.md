@@ -2,7 +2,18 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **14 nov. 2026** (voir le bloc « 14/11 soir » juste en dessous).
+> Dernière mise à jour : **14 nov. 2026 soir** (prod A–E + douleur, puis gel du code — blocs juste en dessous).
+
+## ▶ PROD 14/11 soir (20:32 UTC) — A–E + douleur (R7, H, D2) EN PROD · GEL DU CODE
+
+- `main` = `9537ff1` (fusion dev, contenu identique à dev) · front prod **SW v599** (vérifié servi par app.novalyz.fr) ·
+  serveur prod **v259 = `index.ts` du commit `9537ff1`, identique caractère pour caractère** (get_edge_function).
+- Smoke test : site prod chargé (390 / 1280 px) env « prod », 0 erreur JavaScript, 0 réponse 5xx ; appel sans session → 401
+  « Session expirée » (auth active) ; journaux serveur depuis le déploiement : 2 × 401 (smoke test) + 2 × 200, aucun 5xx.
+- Données métier prod inchangées (comptages identiques avant / après : athlètes 52, performances 6 253, bien-être 460,
+  indicateurs 9 309, décisions 3, programme 196, coachs 8). Aucune écriture prod.
+- Données de test préprod retirées (36 + 156 séries, 2 questionnaires).
+- Environnement de session « Novalyz » : hôtes autorisés vincentnmz.github.io, app.novalyz.fr, préprod et prod Supabase.
 
 ## ▶ DÉCISION PORTEUR (14/11) — après le déploiement de ce lot : STOP AU CODE pendant quelques semaines
 
