@@ -84,3 +84,43 @@ dérive (−1 %/sem) en ≤ 4 semaines dans ≥ 80 % des cas ; **≤ 1 changemen
 3. Trois états sans score, une phrase par signal.
 4. Hystérésis de 2 semaines.
 5. Lancer la simulation (§6) avant le 23/11, code après.
+
+---
+
+## 8. Décisions du porteur (14/11)
+
+| Point | Décision |
+|---|---|
+| Prérequis | 🟢 **Demander l'objectif à tous** : les 3 parcours d'inscription + une invitation (1 tap) aux comptes sans objectif. Sans objectif : pas de trajectoire, seulement l'invitation. |
+| Signaux | 🟢 Tels quels (§4) : séances d'abord ; poids seulement si ≥ 4 pesées en 6 semaines. |
+| Affichage | 🟢 3 états par signal, une phrase par signal, **pas de score global**. |
+| Anti-nervosité | 🟢 Un état ne change qu'après **2 semaines consécutives** dans le nouvel état. |
+| Simulation | 🟢 Maintenant, sans code ; code après le 23/11. |
+
+## 9. Protocole de simulation (FIGÉ AVANT LANCEMENT — rien ne change après avoir vu les résultats)
+
+**Règles simulées (ce que l'app ferait)** — évaluées chaque semaine, sur les 6 dernières semaines terminées :
+- **Force estimée** (Force, Recomposition, Sèche, signal secondaire ailleurs) : score de séance = écart de force en % ;
+  pente par moindres carrés (en % par semaine) et son erreur type **SE** sur les séances de la fenêtre. Moins de 6 séances →
+  « pas assez de données ». **« À surveiller » si la force baisse nettement : pente + 1,28 × SE < 0.** Sinon « dans le sens
+  de l'objectif ».
+- **Volume** (Prise de masse ; Tonification) : moyenne des séries par semaine sur les **4** dernières semaines, pour chaque
+  muscle du programme (4 muscles, minimum 10). **« À surveiller » si au moins la moitié des muscles sont sous minimum − 1.**
+- **Anti-nervosité** : l'état affiché ne change qu'après 2 évaluations hebdomadaires consécutives dans le nouvel état.
+
+**Modèle** (10 000 tirages par scénario, graine fixe, 6 semaines d'historique avant la 1re évaluation, puis 12 semaines) :
+- Force : 3 séances / semaine, score = tendance vraie + bruit gaussien d'écart-type **σ = 3,3 %** (récent mesuré) ou **5,7 %**
+  (long mesuré) ; 10 % des séances manquées au hasard.
+- Volume : séries / semaine par muscle = arrondi d'une loi normale (moyenne m, écart-type 2), jamais < 0.
+
+**Scénarios**
+- F+ : force +1 %/sem tout du long · F0 : 0 %/sem · F− : +0,5 %/sem 6 semaines puis **−1 %/sem** (bascule en semaine 7 des 12).
+- V+ : volume m = 12 (au-dessus du minimum) tout du long · V− : m = 12 puis **7** à partir de la semaine 7.
+
+**Critères (fixés avant)**
+- **T1 faux « à surveiller »** quand la tendance va dans le bon sens (F+, V+) : part des tirages qui affichent au moins une
+  fois « à surveiller » sur les 12 semaines **≤ 10 %**.
+- **T2 détection** d'une vraie dérive (F−, V−) : « à surveiller » affiché **≤ 4 semaines** après la bascule dans **≥ 80 %**.
+- **T3 stabilité** (F+, F0, V+) : **≤ 1 changement d'état par mois** en moyenne.
+- Rapporté sans critère : F0 (stagnation : ce qui est affiché), effet de σ = 5,7 %, délai médian de détection.
+- **Si un critère échoue : on le dit tel quel**, retour au porteur, pas d'ajustement silencieux.
