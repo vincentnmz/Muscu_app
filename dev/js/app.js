@@ -5063,7 +5063,7 @@ function _coachEtatEquipe(e, d) {
   return { cat: 'prets', court: 'Prêt', color: '#00a854' };
 }
 // Plan de la semaine « x/n » (E3) — même calcul que l'accueil et l'athlète ; null si pas de plan.
-function _coachPlanXN(d) { try { const P = (typeof _lv3Plan === 'function') ? _lv3Plan(d) : null; return P ? P.faits + '/' + P.actions.length : null; } catch (e) { return null; } }
+function _coachPlanXN(d) { try { const P = (typeof _lv3Plan === 'function') ? _lv3Plan(d) : null; return P ? P.faits + '/' + (P.nActifs != null ? P.nActifs : P.actions.length) : null; } catch (e) { return null; } }
 // Tonnage 7 j « 12 t · −41 % » (E4).
 function _coachTonTxt(t) {
   if (!t) return null; const v = t.j7 != null ? t.j7 : t.semaine; if (!(v > 0)) return null;
@@ -5119,7 +5119,7 @@ function _coachEntrLigne(d) {
   if (!d || typeof _lv3Plan !== 'function') return null;
   var P = null, D = []; try { P = _lv3Plan(d); } catch (e) {}
   // 04/11 (retour porteur : Alizé « Plan 1/1 » restait listée après sa séance) : plan fait = rien à regarder.
-  var _toutFait = !!(P && P.actions && P.actions.length && P.faits >= P.actions.length);
+  var _nA = P ? (P.nActifs != null ? P.nActifs : (P.actions ? P.actions.length : 0)) : 0, _toutFait = !!(P && _nA && P.faits >= _nA);
   if (P && P.reprise && _toutFait) return null;
   if (P && P.reprise) { var a0 = P.actions[0], pp = String(a0.derniere || '').split('-'); return { txt: '<b>Reprendre</b> : 1 séance de muscu cette semaine' + (pp.length === 3 ? ' (dernière le ' + pp[2] + '/' + pp[1] + ')' : ''), P: P }; }
   try { D = _lv3Diags(d) || []; } catch (e) {}
@@ -5598,7 +5598,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
   const _entr = enrich.filter(e => !e.enPause).map(e => ({ e, L: _coachEntrLigne(datas[e.i]) })).filter(x => x.L);
   const entrHtml = !_entr.length ? '' : `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Entraînement à regarder<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">plan de la semaine</span></div></div>`
     + _entr.map(({ e, L }) => {
-      const P = L.P, n = P ? P.actions.length : 0;
+      const P = L.P, n = P ? (P.nActifs != null ? P.nActifs : P.actions.length) : 0;
       const _ok = P && n && P.faits >= n;
       const tag = P ? (_ok ? `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A);">✓ Plan de la semaine fait</span>` : `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--surface2);color:var(--text-muted);">Plan ${P.faits}/${n} fait${n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : ''}</span>`) : '';
       const _ex = L.exo ? String(L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
@@ -6748,7 +6748,7 @@ function renderCoachCoupDoeil(data) {
     // Stagne / sous la fourchette / effort en hausse : déplacés dans « ① À décider » (audit coach F6, 03/11).
     try {
       var _plC = (typeof _lv3Plan === 'function') ? _lv3Plan(data, nowT) : null;
-      if (_plC) entr += _cdCoupRow('var(--accent)', '➜', '<b>Plan de la semaine proposé à l\'athlète</b> (' + _plC.faits + '/' + _plC.actions.length + ' fait) — ' + _plC.actions.map(function (a) { return (a.fait ? '✓ ' : '') + esc(a.titre); }).join(' · ') + sub('calculé par Novalyz, le même que voit l\'athlète'));
+      if (_plC) entr += _cdCoupRow('var(--accent)', '➜', '<b>Plan de la semaine proposé à l\'athlète</b> (' + _plC.faits + '/' + (_plC.nActifs != null ? _plC.nActifs : _plC.actions.length) + ' fait) — ' + _plC.actions.map(function (a) { return (a.fait ? '✓ ' : '') + esc(a.titre); }).join(' · ') + sub('calculé par Novalyz, le même que voit l\'athlète'));
     } catch (e) {}
     if (rpeMoy != null) {
       var rpeTxt = (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',');
@@ -8743,7 +8743,7 @@ function _coachDeskAujourdhui() {
   // A4 (audit coach 03/11) : « Entraînement à regarder » — mêmes lignes que le mobile.
   var entr = (d.enrich || []).filter(function (e) { return !e.enPause; }).map(function (e) { var L = null; try { L = _coachEntrLigne(d.datas[e.i]); } catch (_) {} return L ? { e: e, L: L } : null; }).filter(Boolean);
   var entrHtml = !entr.length ? '' : '<div class="cs-panel"><div class="cs-pt">Entraînement à regarder<span class="cs-pt-ct">plan de la semaine</span></div><div class="cs-watch">' + entr.map(function (x) {
-    var P = x.L.P, n = P ? P.actions.length : 0, ex = x.L.exo ? String(x.L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+    var P = x.L.P, n = P ? (P.nActifs != null ? P.nActifs : P.actions.length) : 0, ex = x.L.exo ? String(x.L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
     return '<div class="cs-wrow" onclick="coachOuvrirProgression(\'' + x.e.i + '\'' + (ex ? ',\'' + ex + '\'' : '') + ')"><span class="cs-av2">' + _coachDeskInit(x.e.a.nom) + '</span><div class="cs-wn"><b>' + escapeHtml(x.e.a.nom) + '</b><div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px">' + x.L.txt.replace(/<b>/g, '<strong style="font-weight:700;color:var(--text)">').replace(/<\/b>/g, '</strong>') + '</div>'
       + (P && n && P.faits >= n ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A)">✓ Plan de la semaine fait</span></div>' : '')
       + (P && !(n && P.faits >= n) ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">Plan ' + P.faits + '/' + n + ' fait' + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
@@ -9023,7 +9023,7 @@ function _aeHtml(M, desk) {
     // 05/11 (retour porteur : Alizé « 2 séances » alors qu'elle en fait 1 par semaine) : objectif / semaine d'abord,
     // puis le contenu du programme (ici une ancienne séance est restée dans son programme).
     var p = [(r.obj ? r.obj + ' séance' + (r.obj > 1 ? 's' : '') + ' / semaine' : '') + (r.obj && r.nbProg !== r.obj ? ' · <span class="ae-mut">' + r.nbProg + ' séances au programme (' + esc(r.sids.join(', ')) + ')</span>' : (!r.obj ? r.nbProg + ' séance' + (r.nbProg > 1 ? 's' : '') + ' au programme' : ''))];
-    if (r.P && r.P.actions && r.P.actions.length) p.push(r.P.faits >= r.P.actions.length ? 'plan ✓ fait' : 'plan de la semaine ' + r.P.faits + '/' + r.P.actions.length);
+    if (r.P && r.P.actions && (r.P.nActifs != null ? r.P.nActifs : r.P.actions.length)) p.push(r.P.faits >= (r.P.nActifs != null ? r.P.nActifs : r.P.actions.length) ? 'plan ✓ fait' : 'plan de la semaine ' + r.P.faits + '/' + (r.P.nActifs != null ? r.P.nActifs : r.P.actions.length));
     if (r.et.cat === 'inactifs') p.push('<span style="color:var(--danger)">' + esc(r.et.court) + '</span>');
     p.push('<span class="ae-mut">propositions Novalyz : ' + (r.nvok ? 'aussi à ' + esc(String(r.nom).split(/\s+/)[0]) : 'au coach') + '</span>');
     if (r.progMaj && r.progMaj.date) { var t = new Date(r.progMaj.date).getTime(); if (t) p.push('<span class="ae-mut">modifié le ' + fmtD(t) + ' par ' + (r.progMaj.par === 'c' ? 'toi' : esc(String(r.nom).split(/\s+/)[0])) + '</span>'); }
@@ -18876,7 +18876,7 @@ function _tjCiblesHtml(rows) {
   }
   // Lecture v3 : levier du diagnostic (au lieu des leviers génériques) + rappel du plan de la semaine.
   var _dgT = {}, _plT = {};
-  try { var _dd = (typeof dernierAppData !== 'undefined') ? dernierAppData : null; if (_dd && typeof _lv3Diags === 'function') { _lv3Diags(_dd).forEach(function (d) { _dgT[String(d.exo).trim()] = d; }); var _pp = _lv3Plan(_dd); if (_pp) _pp.actions.forEach(function (a) { if (!a.fait) _plT[String(a.exo).trim()] = a; }); } } catch (e) {}
+  try { var _dd = (typeof dernierAppData !== 'undefined') ? dernierAppData : null; if (_dd && typeof _lv3Diags === 'function') { _lv3Diags(_dd).forEach(function (d) { _dgT[String(d.exo).trim()] = d; }); var _pp = _lv3Plan(_dd); if (_pp) _pp.actions.forEach(function (a) { if (!a.fait && !a.gene) _plT[String(a.exo).trim()] = a; /* action en pause (gêne) : pas de rappel */ }); } } catch (e) {}
   var why = function (x) {
     if (x.mode === 'premier') return '1re fois : trouve ta charge de travail';
     var dg = _dgT[String(x.exo).trim()];
