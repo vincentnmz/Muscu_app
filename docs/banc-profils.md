@@ -29,10 +29,20 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
 
 | # | Gravité | Profil | Constat |
 |---|---|---|---|
-| B1 | **Élevée** | douleur_vigilance | Douleur **forte** à l'épaule déclarée aujourd'hui, mais le plan de la semaine et le « Levier » proposent « +4 séries de Développé militaire » (exercice d'épaule). La douleur n'apparaît qu'en 2e cause (« Possible : gêne épaule »). |
+| B1 | ✅ **corrigé 14/11 (préprod)** — Élevée | douleur_vigilance | Douleur **forte** à l'épaule déclarée aujourd'hui, mais le plan de la semaine et le « Levier » proposent « +4 séries de Développé militaire » (exercice d'épaule). La douleur n'apparaît qu'en 2e cause (« Possible : gêne épaule »). |
 | B2 | Moyenne | douleur_vigilance | Aujourd'hui dit « À surveiller » (douleur forte), Analyses dit « Ton état du jour appelle à la vigilance » : deux niveaux différents pour le même état. |
 | B3 | Moyenne | coach_sans_propositions | Coach a coupé les propositions, mais Aujourd'hui affiche « Reco du jour : 3 exercices à pousser » et Analyses une « Reco entraînement » (protéines). |
 | B4 | Faible | nouveau_vide | Aujourd'hui ▸ Reco du jour : « Données insuffisantes pour établir une tendance. » (jargon ; masqué sur Forme mais pas ici). |
 | B5 | Faible | tous | Muscle sans accent ni majuscule dans les phrases : « Volume epaule », « exercices d'epaule ». |
 | B6 | Faible | tous | Forme : « ACWR 0.97 » (point au lieu de virgule), « Forme de fond 2864 / Fatigue récente 2253 » (chiffres bruts sans unité). |
 | B7 | À vérifier | tous | Forme ▸ « Ressenti & bien-être · 7 derniers jours » affiche « — » malgré 4 questionnaires en 7 jours (peut venir du profil fictif : champ `ressenti_global` non rempli). |
+
+## Suivi
+- **B1 corrigé (14/11, préprod)** : « gêne active » = douleur ≥ 3/5 au **dernier** questionnaire (≤ 7 j) sur une zone
+  sollicitée par le muscle (`_lv3GeneActive`, table des zones validée le 09/11). Diagnostic : la gêne passe en 1re cause,
+  levier « n'ajoute ni charge ni séries… garde ta charge ou allège (avis kiné si ça persiste) ». Plan de la semaine : les
+  actions sur la zone sont **en pause** (affichées, hors compteur, jamais envoyées au journal), elles reviennent quand le
+  questionnaire ne signale plus la gêne. Défaut trouvé au passage : « Dos » devenait « do » (`_musKey`) → la gêne n'était
+  jamais reliée au dos ; corrigé (`_lv3Cle`). Tests `gene-active` + référence du banc mise à jour (profil douleur_vigilance).
+- **Reste lié à B1** : le **mail récap** (serveur, `index.ts` ~l. 5903) propose encore « +N séries pour atteindre le
+  minimum » sans tenir compte d'une gêne — à aligner (modification serveur, déploiement manuel).
