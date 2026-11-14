@@ -260,11 +260,34 @@ Ta charge récente est proche de ton habitude.
 fatigue
 équilibre
 frais
-Forme de fond 2723
-Fatigue récente 2909
-ACWR 1.02 · indice secondaire (à interpréter avec prudence)
+Forme de fond 2 723
+Fatigue récente 2 909
+En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+ACWR 1,02 · indice secondaire (à interpréter avec prudence)
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+BIEN-ÊTRE DU JOUR
+Dernier relevé · 12/11/2026
+Fiabilité des données :
+élevée
+Sommeil
+Bon
+Fatigue générale
+Faible
+Stress / tension
+Faible
+Courbatures
+—
+Douleur
+Aucune
 —
 kg
 1M

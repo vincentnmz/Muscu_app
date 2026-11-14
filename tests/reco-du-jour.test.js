@@ -12,6 +12,7 @@ eq(S._nvRecoUtile('RAS') === '', '« RAS » seul masqué');
 eq(S._nvRecoUtile('Douleur modérée — adapte la charge.') === 'Douleur modérée — adapte la charge.', 'reco avec signal conservée');
 eq(S._nvRecoUtile('Charge élevée (ACWR 1,6) — allège.') === 'Charge élevée — allège.', 'mention ACWR retirée');
 eq(S._nvRecoUtile(null) === '' && S._nvRecoUtile('') === '', 'vide → rien');
+eq(S._nvRecoUtile('Données insuffisantes pour établir une tendance.') === '', 'B4 : « Données insuffisantes » masqué');
 eq(!/RASSURANT/.test(S._nvRecoUtile('Rassure-toi')) && S._nvRecoUtile('Rassure-toi') === 'Rassure-toi', 'un mot qui commence par « Ras » n\'est pas masqué');
 const d = { pourquoi: 'X', levier: 'Y' };
 eq(/Pourquoi \(Développé couché\) :/.test(S._lv3PourquoiHtml(d, 'Développé couché ')), 'Pourquoi nommé si demandé');

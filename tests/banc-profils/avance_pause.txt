@@ -273,11 +273,34 @@ Tu es reposé — bon moment pour pousser.
 fatigue
 équilibre
 frais
-Forme de fond 2154
-Fatigue récente 1632
-ACWR 1.00 · indice secondaire (à interpréter avec prudence)
+Forme de fond 2 154
+Fatigue récente 1 632
+En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+ACWR 1,00 · indice secondaire (à interpréter avec prudence)
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+DERNIER BIEN-ÊTRE
+Dernier relevé · 10/11/2026
+Fiabilité des données :
+moyenne
+Sommeil
+Bon
+Fatigue générale
+Faible
+Stress / tension
+Faible
+Courbatures
+—
+Douleur
+Aucune
 —
 kg
 1M

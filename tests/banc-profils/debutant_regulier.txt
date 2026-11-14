@@ -87,7 +87,7 @@ Pectoraux : 6 séries cette semaine · 3 / 6
 Moyenne 3,5 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices de pectoraux comptent (ex. +3 séries de Développé couché barre, idéalement sur 2 séances). Séance « Full body A ».
 3
 Ischio : 6 séries cette semaine · 0 / 6
-Moyenne 3,5 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischio comptent (ex. +3 séries de Soulevé de terre roumain, idéalement sur 2 séances). Séance « Full body B ».
+Moyenne 3,5 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischios comptent (ex. +3 séries de Soulevé de terre roumain, idéalement sur 2 séances). Séance « Full body B ».
 Rien à changer : dos 7 séries/sem, dans ta zone. Ce sont des propositions : c'est toi qui choisis. Calculées sur tes séances jusqu'à dimanche ; chacune se coche toute seule quand ta séance la réalise.
 TES SAISIES · 75/100
 75
@@ -243,10 +243,33 @@ Tu es reposé — bon moment pour pousser.
 fatigue
 équilibre
 frais
-Forme de fond 2073
-Fatigue récente 1761
+Forme de fond 2 073
+Fatigue récente 1 761
+En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+BIEN-ÊTRE DU JOUR
+Dernier relevé · 12/11/2026
+Fiabilité des données :
+moyenne
+Sommeil
+Bon
+Fatigue générale
+Faible
+Stress / tension
+Faible
+Courbatures
+—
+Douleur
+Aucune
 —
 kg
 1M
