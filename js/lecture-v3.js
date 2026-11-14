@@ -15,16 +15,54 @@ function _lv3Iso(d) { var s = String(d || ''); var m = s.match(/^(\d{2})\/(\d{2}
 // 09/11 (validé porteur) : une gêne déclarée sur une ZONE (articulation) compte aussi pour les exercices
 // dont le muscle travaille cette zone. 1 = la zone EST le muscle, 2 = zone sollicitée par l'exercice, 0 = non.
 var _LV3_ZONE_MUS = [
+  ['nuque', ['trap', 'epau', 'dos']],   // 14/11 (porteur) : nuque / cou
   ['epaul', ['epau', 'pect', 'dos']], ['coude', ['bice', 'tric']], ['poign', ['avan', 'bice']], ['main', ['avan', 'bice']],
   ['avant', ['avan', 'bice']], ['haut', ['dos', 'trap']], ['lomb', ['dos', 'isch', 'lomb']], ['hanch', ['fess', 'addu', 'quad']],
   ['aine', ['fess', 'addu', 'quad']], ['genou', ['quad', 'isch']], ['chevi', ['moll']], ['pied', ['moll']]
 ];
+// Clé muscle / zone pour _lv3ZoneTouche (14/11) : _musKey retire le « s » final → « Dos » devenait « do » et ne
+// correspondait plus à rien (gêne jamais reliée aux exercices de dos).
+function _lv3Cle(x) { var k = (typeof _musKey === 'function') ? _musKey(String(x || '')) : String(x || '').toLowerCase(); return k === 'do' ? 'dos' : k; }
 function _lv3ZoneTouche(z, mk) {
   z = String(z || ''); mk = String(mk || '');
   if (!z || !mk) return 0;
   if (z.indexOf(mk) >= 0) return 1;
   for (var i = 0; i < _LV3_ZONE_MUS.length; i++) if (z.indexOf(_LV3_ZONE_MUS[i][0]) === 0) return _LV3_ZONE_MUS[i][1].indexOf(mk) >= 0 ? 2 : 0;
   return 0;
+}
+// Gêne ACTIVE (14/11, point 1 du banc de profils) : au DERNIER questionnaire (≤ 7 jours), douleur ≥ 3/5 sur une zone
+// sollicitée par ce muscle. Une gêne levée au questionnaire suivant n'est plus active. → { zone, val, date, indir } ou null.
+function _lv3GeneActive(data, muscle, nowT) {
+  nowT = nowT || Date.now();
+  var mk = _lv3Cle(muscle).slice(0, 4);
+  if (!mk) return null;
+  var be = ((data && data.bien_etre) || []).filter(function (b) { var t = _lv3T(b && b.date); return t && t <= nowT + 864e5 && (nowT - t) / 864e5 <= 7; });
+  if (!be.length) return null;
+  be.sort(function (a, b) { return _lv3T(b.date) - _lv3T(a.date); });
+  var b0 = be[0], z = _lv3Cle(b0.zone || b0.zone_douloureuse || '');
+  if (!(_lv3Num(b0.douleur) >= 3) || !z) return null;
+  var tz = _lv3ZoneTouche(z, mk); if (!tz) return null;
+  var z0 = String(b0.zone || b0.zone_douloureuse || ''), lbl = ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(z0.toLowerCase())) : z0).toLowerCase().replace(/_/g, ' ');
+  var d = new Date(_lv3T(b0.date));
+  return { zone: lbl, val: _lv3Num(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 };
+}
+// Gêne SANS zone reliée à un muscle (« Autre », zone vide ou inconnue) au dernier questionnaire (≤ 7 j), douleur ≥ 3/5 :
+// rien n'est mis en pause (on ne sait pas quoi), mais le plan affiche une ligne de prudence (14/11, porteur).
+function _lv3GeneAutre(data, nowT) {
+  nowT = nowT || Date.now();
+  var be = ((data && data.bien_etre) || []).filter(function (b) { var t = _lv3T(b && b.date); return t && t <= nowT + 864e5 && (nowT - t) / 864e5 <= 7; });
+  if (!be.length) return null;
+  be.sort(function (a, b) { return _lv3T(b.date) - _lv3T(a.date); });
+  var b0 = be[0]; if (!(_lv3Num(b0.douleur) >= 3)) return null;
+  var z = _lv3Cle(b0.zone || b0.zone_douloureuse || '');
+  var MUS = ['pect', 'dos', 'epau', 'bice', 'tric', 'avan', 'trap', 'lomb', 'abdo', 'quad', 'isch', 'fess', 'addu', 'moll'];
+  if (z && MUS.some(function (m) { return _lv3ZoneTouche(z, m) > 0; })) return null;
+  var d = new Date(_lv3T(b0.date));
+  return { val: _lv3Num(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') };
+}
+function _lv3GeneAutreHtml(data) {
+  var g = null; try { g = _lv3GeneAutre(data); } catch (_) {}
+  return g ? '<div style="font-size:11.5px;color:#B35F00;margin-top:6px;line-height:1.45">⚠ Gêne ' + g.val + '/5 signalée le ' + g.date + ' (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.</div>' : '';
 }
 function _lv3T(d) { var i = _lv3Iso(d); var t = new Date(i + 'T12:00:00').getTime(); return isNaN(t) ? 0 : t; }
 function _lv3Num(x) { var n = Number(x); return isNaN(n) ? 0 : n; }
@@ -186,16 +224,16 @@ function _lv3Diag(data, exo, kind, nowT) {
     // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
     // 8) (validé 06/11) Gêne ≥ 3/5 signalée sur la zone du muscle pendant le plateau → cause POSSIBLE.
     try {
-      var t0p = _lv3T(recentes[recentes.length - 1].date), mk = _musKey(muscle || '').slice(0, 4);
+      var t0p = _lv3T(recentes[recentes.length - 1].date), mk = _lv3Cle(muscle).slice(0, 4);
       var gen = mk ? ((data && data.bien_etre) || []).filter(function (b) {
-        var t = _lv3T(b.date), z = _musKey(String(b.zone || b.zone_douloureuse || ''));
+        var t = _lv3T(b.date), z = _lv3Cle(b.zone || b.zone_douloureuse || '');
         return t && t >= t0p - 864e5 && t <= nowT && _lv3Num(b.douleur) >= 3 && z && _lv3ZoneTouche(z, mk) > 0;
       }) : [];
       if (gen.length) {
         var gMax = Math.max.apply(null, gen.map(function (b) { return _lv3Num(b.douleur); }));
         var gDates = gen.map(function (b) { var d = new Date(_lv3T(b.date)); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); });
         var gZ0 = String(gen[0].zone || gen[0].zone_douloureuse || nom), gZone = ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(gZ0.toLowerCase())) : gZ0).toLowerCase().replace(/_/g, ' ');
-        var gIndir = _lv3ZoneTouche(_musKey(gZone), mk) === 2;
+        var gIndir = _lv3ZoneTouche(_lv3Cle(gZone), mk) === 2;
         checks.push({ s: 'ko', t: '<b>Possible : gêne ' + _maE(gZone) + ' ' + gMax + '/5</b> signalée le ' + gDates.join(', ') + (gIndir ? ' (zone sollicitée par cet exercice)' : '') });
         if (!cause) { cause = 'gene'; levier = 'surveille la zone : tant que la gêne revient, garde ta charge (avis kiné si ça persiste).'; }
       }
@@ -227,6 +265,14 @@ function _lv3Diag(data, exo, kind, nowT) {
       if (!cause) { cause = 'marche'; levier = 'la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : trop gros pour cet exercice. Passe-la au plus petit cran possible (micro-disque, cran intermédiaire de poulie) ou ajoute 1 série à ' + kg(c0) + ' kg en attendant de faire ' + rmax + ' reps.'; }
       else levier += ' Et la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : monte seulement quand tu fais ' + rmax + ' reps sur toutes tes séries.';
     }
+  }
+  // Gêne ACTIVE sur la zone (14/11) : première cause, et le levier ne propose plus ni charge ni séries en plus.
+  var _gA = null; try { _gA = _lv3GeneActive(data, muscle, nowT); } catch (_) {}
+  if (_gA) {
+    checks = checks.filter(function (c) { return !/^<b>Possible : gêne /.test(c.t); });
+    checks.unshift({ s: 'ko', t: '<b>Gêne ' + _maE(_gA.zone) + ' ' + _gA.val + '/5</b> signalée le ' + _gA.date + (_gA.indir ? ' (zone sollicitée par cet exercice)' : '') });
+    cause = 'gene';
+    levier = 'gêne ' + _gA.zone + ' signalée le ' + _gA.date + ' : n\'ajoute ni charge ni séries sur cet exercice tant qu\'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).';
   }
   var pourquoi = '';
   var ko = checks.filter(function (c) { return c.s === 'ko'; });
@@ -360,7 +406,11 @@ function _lv3Plan(data, nowT) {
     }
   });
   if (!acts.length) return null;
-  return { actions: acts, ok: ok, lundi: isoL, faits: acts.filter(function (a) { return a.fait; }).length };
+  // Gêne ACTIVE (14/11) : une action qui chargerait la zone douloureuse est MISE EN PAUSE (affichée comme telle, hors
+  // compteur, jamais enregistrée au journal comme proposée). Calculé sur le dernier questionnaire, pas sur lundi.
+  acts.forEach(function (a) { try { var m = a.muscle || (a.exo ? _lv3MuscleExo(data, a.exo) : null); var g = m ? _lv3GeneActive(data, m, nowT) : null; if (g && a.type !== 'reprise') a.gene = g; } catch (_) {} });
+  var actifs = acts.filter(function (a) { return !a.gene; });
+  return { actions: acts, ok: ok, lundi: isoL, faits: actifs.filter(function (a) { return a.fait; }).length, nActifs: actifs.length };
 }
 
 // ── D. Fiabilité : sommeil → performance en apprentissage ───────────────────
@@ -408,24 +458,27 @@ function _lv3PlanHtml(data, compact) {
   if (!P) return '';
   if (compact) {
     return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:10px 12px;margin:0 0 12px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:800">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.actions.length + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:800">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.nActifs + '</span></div>'
       + P.actions.map(function (a) {
+        if (a.gene) return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--text-muted)"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;color:#B35F00;border:2px solid #E0780055">⏸</span><span><s>' + _maE(a.titre) + '</s> <b style="color:#B35F00">· en pause (gêne ' + _maE(a.gene.zone) + ')</b></span></div>';
         return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:12px;color:#fff;' + (a.fait ? 'background:#00A854;border:2px solid #00A854' : 'border:2px solid var(--border)') + '">' + (a.fait ? '✓' : '') + '</span>'
           + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <b style="color:var(--accent)">· ' + _maE(a.progres) + '</b>' : '') + (a.seance && !a.fait && !a.progres ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '') + '</span></div>';
-      }).join('') + '</div>';
+      }).join('') + _lv3GeneAutreHtml(data) + '</div>';
   }
   return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:11px 13px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.actions.length + ' fait' + (P.faits > 1 ? 's' : '') + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.nActifs + ' fait' + (P.faits > 1 ? 's' : '') + '</span></div>'
     + P.actions.map(function (a, i) {
+      if (a.gene) return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:#FFF1E0;color:#B35F00;font-weight:800;font-size:11px;display:grid;place-items:center;flex:none">⏸</span>'
+        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;color:var(--text-muted)"><s>' + _maE(a.titre) + '</s> <span style="color:#B35F00">· en pause</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">Gêne ' + _maE(a.gene.zone) + ' ' + a.gene.val + '/5 signalée le ' + a.gene.date + ' : n\'ajoute ni charge ni séries sur cette zone tant qu\'elle revient (avis kiné si ça persiste). L\'action revient d\'elle-même quand ton questionnaire ne signale plus la gêne.</div></div></div>';
       return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:' + (a.fait ? '#00A854' : 'var(--accent)') + ';color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none">' + (a.fait ? '✓' : (i + 1)) + '</span>'
         + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <span style="color:var(--accent);font-weight:800">· ' + _maE(a.progres) + '</span>' : '') + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
     }).join('')
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div>' + _lv3GeneAutreHtml(data) + '</div>';
 }
-function _lv3PourquoiHtml(d) {
+function _lv3PourquoiHtml(d, nom) {   // nom : exercice concerné, affiché quand la ligne en cite plusieurs (audit L3, 14/11)
   if (!d) return '';
   return '<div style="margin:5px 0 0;padding:7px 9px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.06));border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);line-height:1.45">'
-    + '<b style="color:var(--text)">Pourquoi :</b> ' + (d.pourquoi || 'aucune cause visible dans tes données') + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<br><b style="color:var(--text)">Levier :</b> ' + _maE(d.levier)) + '</div>';
+    + '<b style="color:var(--text)">Pourquoi' + (nom ? ' (' + _maE(String(nom).trim()) + ')' : '') + ' :</b> ' + (d.pourquoi || 'aucune cause visible dans tes données') + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<br><b style="color:var(--text)">Levier :</b> ' + _maE(d.levier)) + '</div>';
 }
 function _lv3DiagCardHtml(d) {
   if (!d) return '';
@@ -552,7 +605,7 @@ function _maEffortBloc(data, w, rsArr) {
 // Statuts d'une décision passée (même critère que la coche du plan, _lv3Realise, sur la semaine de la décision) :
 // objectif atteint · pas atteint (tenté) · pas tenté · non évaluable (données absentes). « Résultat observé après la
 // recommandation », jamais « grâce à » ; « association observée, pas une preuve de cause » côté coach.
-var LV3_REGLE_VERSION = 'plan-2026-11-13';
+var LV3_REGLE_VERSION = 'plan-2026-11-14';   // 14/11 : règle progresse / bloqué (L1) — le journal garde la version de chaque plan
 var _lv3JournalCache = {};      // athlete_id → { rows, t }
 var _lv3JournalEnCours = {};
 var LV3_STATUTS = { atteint: ['Objectif atteint', '#E3F7EC', '#00813F'], pas_atteint: ['Pas atteint', '#FFF1E0', '#B35F00'], pas_tente: ['Pas tenté', 'var(--surface2,#EEF1F7)', 'var(--text-muted,#55627E)'], non_evaluable: ['Non évaluable', 'var(--surface2,#F2F2F2)', 'var(--text-subtle,#777)'] };
@@ -563,7 +616,7 @@ function _lv3SessionAthlete() { try { var t = (typeof _nvzTok === 'function') ? 
 function _lv3PlanPourJournal(P, data) {
   if (!P || !P.actions || !P.actions.length) return null;
   var avant = _lv3DataAvant(data, P.lundi), prog = (avant.historique && avant.historique.progression_par_exo) || {};
-  var actions = P.actions.slice(0, 3).map(function (a) {
+  var actions = P.actions.filter(function (a) { return !a.gene; }).slice(0, 3).map(function (a) {   // action en pause (gêne) : pas proposée
     var crit = {}, de = {};
     var put = function (o, k, v) { if (v != null && v !== '' && isFinite(Number(v))) o[k] = Math.round(Number(v) * 100) / 100; };
     if (a.type === 'charge') { put(crit, 'charge', a.charge); put(crit, 'alt', a.alt); put(crit, 'reps', a.reps); }
@@ -577,6 +630,7 @@ function _lv3PlanPourJournal(P, data) {
     }
     return { type: a.type, exo: a.exo || null, muscle: a.muscle || null, titre: String(a.titre || '').replace(/^★\s*/, '').slice(0, 200), raison: a.raison ? String(a.raison).slice(0, 600) : null, critere: crit, donnees_entree: de };
   });
+  if (!actions.length) return null;
   return { semaine: P.lundi, actions: actions };
 }
 // Envoi du plan (garde-fous 1 à 4) : appelé UNIQUEMENT après un getAppData réseau complet (chargerAppData), jamais
