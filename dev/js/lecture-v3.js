@@ -15,6 +15,7 @@ function _lv3Iso(d) { var s = String(d || ''); var m = s.match(/^(\d{2})\/(\d{2}
 // 09/11 (validé porteur) : une gêne déclarée sur une ZONE (articulation) compte aussi pour les exercices
 // dont le muscle travaille cette zone. 1 = la zone EST le muscle, 2 = zone sollicitée par l'exercice, 0 = non.
 var _LV3_ZONE_MUS = [
+  ['nuque', ['trap', 'epau', 'dos']],   // 14/11 (porteur) : nuque / cou
   ['epaul', ['epau', 'pect', 'dos']], ['coude', ['bice', 'tric']], ['poign', ['avan', 'bice']], ['main', ['avan', 'bice']],
   ['avant', ['avan', 'bice']], ['haut', ['dos', 'trap']], ['lomb', ['dos', 'isch', 'lomb']], ['hanch', ['fess', 'addu', 'quad']],
   ['aine', ['fess', 'addu', 'quad']], ['genou', ['quad', 'isch']], ['chevi', ['moll']], ['pied', ['moll']]
@@ -44,6 +45,24 @@ function _lv3GeneActive(data, muscle, nowT) {
   var z0 = String(b0.zone || b0.zone_douloureuse || ''), lbl = ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(z0.toLowerCase())) : z0).toLowerCase().replace(/_/g, ' ');
   var d = new Date(_lv3T(b0.date));
   return { zone: lbl, val: _lv3Num(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 };
+}
+// Gêne SANS zone reliée à un muscle (« Autre », zone vide ou inconnue) au dernier questionnaire (≤ 7 j), douleur ≥ 3/5 :
+// rien n'est mis en pause (on ne sait pas quoi), mais le plan affiche une ligne de prudence (14/11, porteur).
+function _lv3GeneAutre(data, nowT) {
+  nowT = nowT || Date.now();
+  var be = ((data && data.bien_etre) || []).filter(function (b) { var t = _lv3T(b && b.date); return t && t <= nowT + 864e5 && (nowT - t) / 864e5 <= 7; });
+  if (!be.length) return null;
+  be.sort(function (a, b) { return _lv3T(b.date) - _lv3T(a.date); });
+  var b0 = be[0]; if (!(_lv3Num(b0.douleur) >= 3)) return null;
+  var z = _lv3Cle(b0.zone || b0.zone_douloureuse || '');
+  var MUS = ['pect', 'dos', 'epau', 'bice', 'tric', 'avan', 'trap', 'lomb', 'abdo', 'quad', 'isch', 'fess', 'addu', 'moll'];
+  if (z && MUS.some(function (m) { return _lv3ZoneTouche(z, m) > 0; })) return null;
+  var d = new Date(_lv3T(b0.date));
+  return { val: _lv3Num(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') };
+}
+function _lv3GeneAutreHtml(data) {
+  var g = null; try { g = _lv3GeneAutre(data); } catch (_) {}
+  return g ? '<div style="font-size:11.5px;color:#B35F00;margin-top:6px;line-height:1.45">⚠ Gêne ' + g.val + '/5 signalée le ' + g.date + ' (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.</div>' : '';
 }
 function _lv3T(d) { var i = _lv3Iso(d); var t = new Date(i + 'T12:00:00').getTime(); return isNaN(t) ? 0 : t; }
 function _lv3Num(x) { var n = Number(x); return isNaN(n) ? 0 : n; }
@@ -444,7 +463,7 @@ function _lv3PlanHtml(data, compact) {
         if (a.gene) return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--text-muted)"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;color:#B35F00;border:2px solid #E0780055">⏸</span><span><s>' + _maE(a.titre) + '</s> <b style="color:#B35F00">· en pause (gêne ' + _maE(a.gene.zone) + ')</b></span></div>';
         return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:12px;color:#fff;' + (a.fait ? 'background:#00A854;border:2px solid #00A854' : 'border:2px solid var(--border)') + '">' + (a.fait ? '✓' : '') + '</span>'
           + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <b style="color:var(--accent)">· ' + _maE(a.progres) + '</b>' : '') + (a.seance && !a.fait && !a.progres ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '') + '</span></div>';
-      }).join('') + '</div>';
+      }).join('') + _lv3GeneAutreHtml(data) + '</div>';
   }
   return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:11px 13px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Ton plan de la semaine</span><span style="font-size:11.5px;font-weight:800;color:var(--accent)">' + P.faits + ' / ' + P.nActifs + ' fait' + (P.faits > 1 ? 's' : '') + '</span></div>'
@@ -454,7 +473,7 @@ function _lv3PlanHtml(data, compact) {
       return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:' + (a.fait ? '#00A854' : 'var(--accent)') + ';color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none">' + (a.fait ? '✓' : (i + 1)) + '</span>'
         + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <span style="color:var(--accent);font-weight:800">· ' + _maE(a.progres) + '</span>' : '') + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
     }).join('')
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div>' + _lv3GeneAutreHtml(data) + '</div>';
 }
 function _lv3PourquoiHtml(d, nom) {   // nom : exercice concerné, affiché quand la ligne en cite plusieurs (audit L3, 14/11)
   if (!d) return '';
