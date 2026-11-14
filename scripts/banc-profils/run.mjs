@@ -9,13 +9,14 @@ import http from 'http'; import fs from 'fs'; import path from 'path'; import { 
 const require = createRequire(import.meta.url);
 const ICI = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.join(ICI, '..', '..');
 const ATT = path.join(ROOT, 'tests', 'banc-profils');
-const { NOW, PROFILS } = require('./profils.js');
-const { getAppData } = require('./serveur.js');
+const { NOW, PROFILS, equipe } = require('./profils.js');
+const { getAppData, equipeData } = require('./serveur.js');
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (_) { try { ({ chromium } = require('/opt/node22/lib/node_modules/playwright')); } catch (e) { console.log('banc-profils : Playwright absent → ignoré'); process.exit(0); } }
 
 const args = process.argv.slice(2), MAJ = args[0] === '--maj', QUI = (MAJ ? args.slice(1) : args).filter(Boolean);
 const ids = Object.keys(PROFILS).filter((id) => !QUI.length || QUI.includes(id));
+const COACH = !QUI.length || QUI.includes('coach_equipe');
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2' };
 const srv = http.createServer((q, r) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html'; const f = path.join(ROOT, p); if (!f.startsWith(ROOT)) { r.writeHead(403); r.end(); return; } fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); r.end(d); }); });
 await new Promise((res) => srv.listen(0, '127.0.0.1', res));
@@ -67,6 +68,48 @@ try {
     }
     await ctx.close();
   }
+  // ── Espace COACH (14/11) : accueil coach + fiche de chaque athlète de l'équipe ──
+  if (COACH) {
+    const E = equipe(), D = await equipeData(E.store, E.coachId, E.athleteIds, NOW);
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 900 }, timezoneId: 'Europe/Paris', locale: 'fr-FR', serviceWorkers: 'block' });
+    const pg = await ctx.newPage();
+    const erreurs = []; pg.on('pageerror', (e) => erreurs.push(e.message));
+    await pg.clock.install({ time: NOW }); await pg.clock.pauseAt(NOW);
+    await pg.addInitScript(() => { let s = 20261114; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; });
+    await pg.route((u) => !u.href.startsWith(URL0.replace('/index.html', '')), (r) => {
+      const u = new URL(r.request().url()), act = u.searchParams.get('action');
+      const body = act === 'getCoachAthletes' ? D.liste : act === 'getAppData' ? (D.fiches[u.searchParams.get('athlete_id')] || {}) : {};
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+    await pg.goto(URL0);
+    await pg.clock.runFor(1500);
+    const lire = (sel) => pg.evaluate((sel) => {
+      ['onb-overlay', 'nvt-ov', 'annonce-retour'].forEach((x) => { const e = document.getElementById(x); if (e) e.remove(); });
+      const el = document.getElementById(sel); if (!el) return '(absent)';
+      document.querySelectorAll('.view').forEach((v) => { if (v !== el) v.classList.remove('active'); });
+      el.classList.add('active'); for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+      return el.innerText;
+    }, sel);
+    await pg.evaluate(async () => { coach = { coach_id: 'C1', login: '0808', nom: 'Coach Banc', role: 'coach', sport: 'muscu' }; await ouvrirEspaceCoach(); });
+    for (let i = 0; i < 20; i++) { await pg.clock.runFor(1000); if (await pg.evaluate(() => !/Analyse des athlètes…/.test((document.getElementById('view-coach') || {}).innerText || ''))) break; }
+    let txt = '== Coach ▸ Accueil ==\n' + await lire('view-coach');
+    for (const aid of E.athleteIds) {
+      await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a); }, aid);
+      await pg.clock.runFor(2500);
+      txt += '\n\n== Coach ▸ Fiche athlète ' + aid + ' ==\n' + await lire('view-coach-detail');
+    }
+    const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
+    const f = path.join(ATT, 'coach_equipe.txt');
+    if (MAJ) { fs.writeFileSync(f, sortie); console.log('  ✎ coach_equipe : attendu réécrit (' + sortie.split('\n').length + ' lignes)'); }
+    else if (!fs.existsSync(f)) { ko++; console.error('  ✗ coach_equipe : pas de fichier attendu (lancer --maj coach_equipe après relecture)'); }
+    else {
+      const att = fs.readFileSync(f, 'utf8');
+      if (att === sortie) console.log('  ✓ coach_equipe');
+      else { ko++; console.error('  ✗ coach_equipe : le texte affiché a changé'); const A1 = att.split('\n'), B1 = sortie.split('\n'), sa = new Set(A1), sb = new Set(B1);
+        A1.filter((l) => !sb.has(l)).slice(0, 15).forEach((l) => console.error('      − ' + l)); B1.filter((l) => !sa.has(l)).slice(0, 15).forEach((l) => console.error('      + ' + l)); }
+    }
+    await ctx.close();
+  }
 } finally { await browser.close(); srv.close(); }
-console.log('banc-profils : ' + (ids.length - ko) + ' OK / ' + ko + ' KO');
+console.log('banc-profils : ' + (ids.length + (COACH ? 1 : 0) - ko) + ' OK / ' + ko + ' KO');
 process.exit(ko ? 1 : 0);
