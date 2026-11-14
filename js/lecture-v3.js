@@ -552,7 +552,7 @@ function _maEffortBloc(data, w, rsArr) {
 // Statuts d'une décision passée (même critère que la coche du plan, _lv3Realise, sur la semaine de la décision) :
 // objectif atteint · pas atteint (tenté) · pas tenté · non évaluable (données absentes). « Résultat observé après la
 // recommandation », jamais « grâce à » ; « association observée, pas une preuve de cause » côté coach.
-var LV3_REGLE_VERSION = 'plan-2026-11-13';
+var LV3_REGLE_VERSION = 'plan-2026-11-14';   // 14/11 : règle progresse / bloqué (L1) — le journal garde la version de chaque plan
 var _lv3JournalCache = {};      // athlete_id → { rows, t }
 var _lv3JournalEnCours = {};
 var LV3_STATUTS = { atteint: ['Objectif atteint', '#E3F7EC', '#00813F'], pas_atteint: ['Pas atteint', '#FFF1E0', '#B35F00'], pas_tente: ['Pas tenté', 'var(--surface2,#EEF1F7)', 'var(--text-muted,#55627E)'], non_evaluable: ['Non évaluable', 'var(--surface2,#F2F2F2)', 'var(--text-subtle,#777)'] };

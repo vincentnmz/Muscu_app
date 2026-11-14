@@ -5732,6 +5732,26 @@ function _rcProgSecondaire(pA: any, pB: any): string | null {
 // porteur 03/11 ; parité vérifiée par tests/bloque-regle-unique.test.js). Avant le 13/11, le mail récap et l'IA disaient
 // « bloqué » après 3 séances quel que soit le niveau → contradiction avec l'app (audit moteur C1 / P0-1).
 const BLOQUE_N_NIVEAU: Record<string, number> = { debutant: 2, intermediaire: 3, avance: 4, expert: 4 }
+// L1 (audit 14/11) — même algorithme que l'app (_lxDepasse / _lxPlateau, js/app.js). pts : séance la plus récente en [0].
+function _rcDepasse(pts: any[], k: number): boolean {
+  const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
+  const c0 = num(pts[0].charge), r0 = num(pts[0].reps), c1 = num(pts[1].charge); let mc = -1, rc = -1, rAt = -1
+  for (let i = 1; i <= k && i < pts.length; i++) {
+    const c = num(pts[i].charge), r = num(pts[i].reps)
+    if (c > mc) { mc = c; rc = r } else if (c === mc && r > rc) rc = r
+    if (c === c0 && r > rAt) rAt = r
+  }
+  if (c0 > c1) return c0 > mc || (c0 === mc && r0 > rc)
+  return r0 > rAt
+}
+function _rcPlateau(pts: any[]): number {
+  const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
+  const c0 = num(pts[0].charge); let run = 0, M = -1, j = 0, L = 1
+  while (run < pts.length && num(pts[run].charge) === c0) run++
+  for (let i = 0; i < run; i++) { const r = num(pts[i].reps); if (r >= M) { M = r; j = i } }
+  while (L < run && !_rcProgSecondaire(pts[L - 1], pts[L])) L++
+  return Math.min(j + 1, L)
+}
 function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null, niveau?: string | null): any {
   // Audit Contexte X1 (01/11) — même règle que l'app : en déload / reprise, « recule » et « bloqué » sont attendus.
   const ctxA = ctxEtat === 'deload' ? 'déload' : (ctxEtat === 'retour_vacances' || ctxEtat === 'retour_blessure') ? 'reprise' : null
@@ -5761,19 +5781,19 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     }
     if (pts.length < 2) continue
     const c1 = num(pts[1].charge), r1 = num(pts[1].reps)
-    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo }); continue }
+    // Même algorithme que l'app (_lectureExos) : NB séances selon le niveau, jamais sur un exercice neuf (≥ 3 séances).
+    const NB = BLOQUE_N_NIVEAU[String(niveau || '')] || 3
+    // L1 (audit 14/11) : « progresse » seulement si la séance dépasse les max(NB, 3) précédentes (app : _lxDepasse).
+    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1)) && _rcDepasse(pts, Math.max(NB, 3))) { R.progresse.push({ exo }); continue }
     const p2 = (dj <= 14) ? _rcProgSecondaire(pts[0], pts[1]) : null
     if (p2) { R.progresse.push({ exo, why: p2 }); continue }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
-    // Même algorithme que l'app (_lectureExos) : NB séances identiques selon le niveau, jamais sur un exercice neuf (≥ 3 séances).
-    const NB = BLOQUE_N_NIVEAU[String(niveau || '')] || 3
-    let memes = pts.length >= Math.max(NB, 3)
-    for (let q = 1; memes && q < NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) memes = false }
-    if (memes && c0 === c1 && r0 <= r1) {
+    // L1 (14/11) : bloqué = même charge, aucune séance au-dessus du meilleur nombre de reps depuis ≥ NB séances (app : _lxPlateau).
+    const n = (pts.length >= Math.max(NB, 3)) ? _rcPlateau(pts) : 0
+    if (n >= NB) {
       let secondaire = false
       for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }
       if (secondaire) continue
-      let n = NB; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
       if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
     }
   }

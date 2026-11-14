@@ -53,3 +53,21 @@ actuelle. »**) + éventuellement « Séance du jour (…) : N exercices à pous
   (« Bonnes conditions pour t'entraîner comme prévu aujourd'hui. ») remplace « RAS ». Vues coach / foot inchangées.
 - Vérifié [V] : John → « Séance du jour (Full Body A) : 3 exercices à pousser » ; A et Lucas → reco de signal conservée.
   Test `tests/reco-du-jour.test.js`. SW v589. **Restent à décider : L1 (progresse), L2 (titre).**
+
+## Suivi — 14/11 : L1 et L2 (décision porteur) — préprod
+
+- **L1** (app `_lectureExos` + serveur `_rcLectureExos`, même algorithme `_lxDepasse`/`_rcDepasse`, `_lxPlateau`/`_rcPlateau`) :
+  « progresse » seulement si la séance **dépasse les max(N, 3) séances précédentes** (hausse de charge au-dessus de la plus
+  haute récente ; à charge égale, plus de reps qu'aux séances récentes **à cette charge** — un progrès après une baisse de
+  charge reste un progrès). « Bloqué » = même charge et **aucune séance au-dessus du meilleur nombre de reps depuis ≥ N
+  séances** (couvre les oscillations), N = seuil du niveau (2/3/4), jamais avant 3 séances, coupé par un progrès secondaire.
+  Version de règle du plan : **`plan-2026-11-14`** (le journal garde la version de chaque plan).
+  Effet mesuré [V] : John 5 « en progrès » → 0, bloqués 1 → 6 (Squat 105 × 10 depuis 7 séances…) ; compte A : +1 bloqué
+  (Tirage trapèze machine 50 × 8 le 16/10, puis 6 et 7 reps) ; Lucas : inchangé. Test `tests/progresse-oscillation.test.js`
+  (app = serveur pour les 4 niveaux).
+- **L2** : titre calculé sur l'entraînement — vert « Sur la bonne voie » (progrès ≥ points à revoir, aucun constat
+  d'alerte), orange « Ajuste le tir » (plus de points à revoir que de progrès, ou alerte sans majorité de progrès), bleu
+  « Des progrès, des points à revoir » (sinon), neutre sans données. Constats d'état du jour exclus. Icône ✓ / ! / i.
+  [V] John : Ajuste le tir · A : Sur la bonne voie · Lucas : Des progrès, des points à revoir.
+- **Prod** : `index.ts` modifié → **déploiement manuel** nécessaire (mail récap, pastille coach, IA), en même temps que la
+  fusion `dev` → `main`.
