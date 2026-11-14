@@ -271,3 +271,15 @@ d'anti-nervosité) et ce bruit de mesure.
 2. Changer la règle de détection de la forte baisse (ex. comparer le niveau des 2-3 dernières semaines à celui d'avant, au
    lieu d'une pente sur 6 semaines) — à simuler, risque de fausses alertes sur les fluctuations (R3).
 3. En sèche, rester **descriptif** (« force maintenue / en baisse sur 6 semaines », poids) **sans état « à surveiller »**.
+
+## 15. Décision du porteur sur la Sèche (14/11) — FIGÉE
+
+🟢 **Option 3 : descriptif, sans état automatique « à surveiller ».**
+- Phrases : « Force maintenue sur les 6 dernières semaines » / « Force en baisse sur les 6 dernières semaines », avec le poids à
+  côté (« poids en baisse » / « poids stable » / « pas assez de pesées »). Le poids ne déclenche ni n'annule rien.
+- **Pas d'état automatique « à surveiller » pour la sèche** tant qu'une méthode de détection suffisamment fiable n'est pas
+  démontrée par simulation.
+- 🔴 **Ne pas coder T = 0,8** au motif qu'il minimise les fausses alertes (27 % de détection seulement : pas une alerte utile).
+- Pas de nouvelle simulation maintenant. Une vraie détection (option 2) = **nouveau protocole complet** (fenêtre, anti-bruit,
+  critères) puis simulation **avant tout code**.
+- Moteur Sèche : **on n'y touche pas** ; le code de la trajectoire reste prévu après le 23/11 (force : §11 ; sèche : descriptif).

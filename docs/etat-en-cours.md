@@ -11,8 +11,10 @@
   (`scripts/banc-profils/coherence.js`, R1-R5) : 16 contradictions avant, 0 après. 2 profils ajoutés. **En préprod, pas en prod**
   (à vérifier sur /dev/ puis « mise en prod » ; `index.ts` à redéployer à la main : seule la synthèse Croisé serveur change).
 - **E validé et codé (préprod)** : pendant un pic de charge non interprétable, plus aucune augmentation proposée (plan en pause, leviers et cibles de maintien, mail) — §9 bis du doc d'audit.
-- **Trajectoire** : force validée (6 semaines, délai ≈ 5 sem. assumé, jamais « objectif compromis ») ; **Sèche = simulation
-  dédiée avant code** (protocole à faire valider, seuils fixés avant résultats) — `objectif-trajectoire-2026-11.md` §11.
+- **Trajectoire** : force validée (6 semaines, délai ≈ 5 sem. assumé, jamais « objectif compromis ») ; **Sèche simulée** (aucun seuil
+  ne passe : conflit structurel) → **décision : descriptif seulement, pas d'état « à surveiller », ne pas coder T = 0,8** — §14-§15.
+- **A–D + E** : en préprod ; **prod seulement après les 3 vérifications visuelles du porteur** (fiche coach ▸ Charge & assiduité ;
+  Forme avec douleur ; plan en pause pendant un pic de charge), puis redéploiement manuel d'`index.ts` (Croisé A + mail récap E).
 
 ## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
 
