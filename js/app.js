@@ -478,7 +478,7 @@ try {
         if (v.progUp != null && v.progDown != null) ev.push('exercices : ' + v.progUp + ' en progrès, ' + v.progDown + ' en recul');
         return analyse({ priorite: 'succes', niveau: 'moyen', categorie: this.categorie,
           titre: 'Bonne adaptation à l\'entraînement',
-          description: 'Progression en hausse, bon sommeil et fatigue faible : tu encaisses bien la charge actuelle.',
+          description: 'Progression en hausse, bon sommeil et fatigue faible.',   // A (14/11) : plus de « tu encaisses bien » hors règle moteur
           evidence: ev.join(' · '),
           recommandation: 'Continue sur cette structure ; tu peux viser une surcharge progressive.' });
       }
@@ -1002,13 +1002,7 @@ function renderCockpitEtat(m){
       + _ckMini('Risque blessure', m.risque_blessure || '—', _ckColNiv3(m.risque_blessure))
       // Audit #3 : « Charge » (pas « Surcharge ») et jamais orange sur la charge seule —
       // orange uniquement si le ressenti confirme (moteur.charge_ressenti.degrade).
-      + (function () {
-          var cr = m.charge_ressenti || null, cf = m.charge_fatigue || null;
-          var haut = !!(cf && cf.tsbPct != null && cf.tsbPct < -12);
-          if (!cr || !cf) return _ckMini('Charge', m.surcharge || '—', _ckColNiv3(m.surcharge));
-          var v = !haut ? 'Habituelle' : (cr.degrade ? 'Élevée' : (cr.evaluable ? 'En hausse · encaissée' : 'En hausse'));
-          return _ckMini('Charge', v, (haut && cr.degrade) ? _ckColNiv3('Élevé') : 'var(--text)');
-        })()
+      + (function () { var _c = _chargeMoteur(m); return _ckMini('Charge', _c.v, _c.c); })()   // B (14/11) : logique partagée
     +'</div>'
     + recoHtml
   +'</div>';
@@ -6448,7 +6442,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachCalendrier();
     renderCoachSeances(data);
     chargerSeancesDetailCoach(a.athlete_id, data);
-    renderACWR(data);
+    // renderACWR supprimé (C, 14/11) : carte jamais affichée, ACWR = moteur seulement.
     // Fiche ouverte directement sur Analyses (accueil coach « Entraînement à regarder », rechargement) :
     // l'onglet a été affiché AVANT l'arrivée des données → on le rattache maintenant (avant : vide).
     try { var _cp = document.getElementById('cdtab-prog'); if (_cp && _cp.style.display === 'block' && coachAthleteCourant === a) { _maCoachAttach(data); if (typeof _coachProgApres === 'function') { var f = _coachProgApres; _coachProgApres = null; f(); } } } catch (_) {}
@@ -7522,25 +7516,13 @@ function computeMarqueursCoach(data, a) {
   else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else { progColor = '#e5484d'; progLabel = `${enProg}↑/${enBaisse}↓`; }
 
-  // 2. ACWR — vérifier d'abord si on a ≥28 jours d'historique
-  let acwrColor, acwrLabel, acwrRatio = null;
-  const acwrLocal = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
-  const acwrBackend = (dash.acwr != null) ? Number(dash.acwr) : null;
-  // Cohérent avec l'athlète : on affiche si le local est OK OU si le backend a une valeur
-  const acwrInsuffisant = (!acwrLocal || acwrLocal.insuffisant) && acwrBackend == null;
-  if (!acwrInsuffisant) {
-    // Utiliser la valeur backend si disponible, sinon locale
-    const ratio = acwrBackend != null ? acwrBackend : acwrLocal.ratio;
-    acwrRatio = ratio;
-    if (ratio >= 0.8 && ratio <= 1.3) { acwrColor = '#00c96e'; }
-    else if (ratio > 1.5) { acwrColor = '#e5484d'; }
-    else if (ratio > 1.3) { acwrColor = '#f59f00'; }
-    else { acwrColor = '#4da6ff'; }  // < 0.8 : sous-charge
-    acwrLabel = `ACWR ${ratio}`;
-  } else {
-    // Moins de 28 jours : ne pas afficher l'ACWR
-    acwrColor = '#aaa'; acwrLabel = '< 4 sem.';
-  }
+  // 2. ACWR — B/C (14/11, validé porteur) : UNE source (le moteur), montré seulement s'il le juge fiable, et SANS
+  //    couleur ni zone (« zone optimale »…) : c'est un indice complémentaire, la charge c'est le verdict du moteur.
+  let acwrColor = 'var(--text)', acwrLabel, acwrRatio = null;
+  const _motA = data.moteur || {};
+  const acwrBackend = (dash.acwr != null && !isNaN(Number(dash.acwr))) ? Number(dash.acwr) : null;
+  if (acwrBackend != null && _motA.acwr_fiable === true) { acwrRatio = acwrBackend; acwrLabel = `ACWR ${acwrBackend}`; }
+  else { acwrColor = '#aaa'; acwrLabel = 'ACWR non interprétable'; }
 
   // 3. Volume muscles
   const niv = getNiveauExperience(annees);
@@ -7668,6 +7650,15 @@ function computeMarqueursCoach(data, a) {
   };
 }
 
+// Verdict de CHARGE du moteur (14/11, B) — UNE logique pour le cockpit et la fiche coach : fraîcheur (charge_fatigue.tsbPct)
+// + règle « charge + ressenti » (charge_ressenti). Jamais orange sur la charge seule (audit #3).
+function _chargeMoteur(m) {
+  var cr = (m && m.charge_ressenti) || null, cf = (m && m.charge_fatigue) || null;
+  if (!cr || !cf || cf.tsbPct == null) return { v: (m && m.surcharge) || '—', c: _ckColNiv3((m && m.surcharge) || '') };
+  var haut = Number(cf.tsbPct) < -12;
+  var v = !haut ? 'Habituelle' : (cr.degrade ? 'Élevée' : (cr.evaluable ? 'En hausse · encaissée' : 'En hausse'));
+  return { v: v, c: (haut && cr.degrade) ? _ckColNiv3('Élevé') : 'var(--text)' };
+}
 function renderCoachIndicateurs(data) {
   const el = document.getElementById('cd-indicateurs');
   if (!el) return;
@@ -7679,13 +7670,11 @@ function renderCoachIndicateurs(data) {
   const regVal = (m.regLabel && m.regLabel !== 'N/A') ? m.regLabel : '—';
   const regSub = (reg.seances_prevues) ? 'séances / objectif' : 'cette semaine';
 
-  // ACWR (ratio + zone) — repli factuel si < 4 semaines de données
-  let acwrVal, acwrSub, acwrColor = m.acwrColor;
-  if (m.acwrRatio != null) {
-    acwrVal = String(m.acwrRatio).replace('.', ',');
-    const r = m.acwrRatio;
-    acwrSub = (r >= 0.8 && r <= 1.3) ? 'zone optimale' : r > 1.5 ? 'zone de risque' : r > 1.3 ? 'charge élevée' : 'sous-charge';
-  } else { acwrVal = '—'; acwrSub = '< 4 semaines de données'; acwrColor = 'var(--text-subtle)'; }
+  // B (14/11, validé porteur) : la tuile montre la CHARGE selon le moteur (même verdict que la tuile « Charge » du cockpit
+  // et que l'athlète) ; l'ACWR n'est qu'un indice complémentaire, sans zone, et seulement s'il est fiable.
+  const _chV = _chargeMoteur(data.moteur || {});
+  const acwrVal = _chV.v, acwrColor = _chV.c;
+  const acwrSub = m.acwrRatio != null ? ('ACWR ' + String(m.acwrRatio).replace('.', ',') + ' · indice complémentaire') : '';
 
   // Dernière séance
   const ds = dash.derniere_seance || null;
@@ -7707,7 +7696,7 @@ function renderCoachIndicateurs(data) {
 
   el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
     ${tile('Régularité', regVal, m.regColor, regSub)}
-    ${tile('ACWR', acwrVal, acwrColor, acwrSub)}
+    ${tile('Charge', acwrVal, acwrColor, acwrSub)}
     ${tile('Dernière séance', dsVal, 'var(--text)', dsSub)}
     ${tile('Plan', progVal, 'var(--text)', progSub)}
   </div>`;
@@ -8435,202 +8424,9 @@ function renderRecapTable(results) {
     </div>`;
 }
 
-function computeACWR(progressionParExo, volumeParJour) {
-  // Utilise volume_par_jour (exact, depuis Performance sheet) si dispo, sinon proxy
-  let volumes = {};
-  if (volumeParJour && Object.keys(volumeParJour).length > 0) {
-    volumes = volumeParJour;
-  } else {
-    Object.values(progressionParExo).forEach(perfs => {
-      (perfs || []).forEach(p => {
-        if (!p.date || !p.charge || !p.reps) return;
-        if (!volumes[p.date]) volumes[p.date] = 0;
-        volumes[p.date] += (parseFloat(p.reps) || 0) * (parseFloat(p.charge) || 0);
-      });
-    });
-  }
-  const now = new Date(); now.setHours(0,0,0,0);
-  const jour = 86400000;
-
-  // Première séance connue (pour ne pas diluer la charge chronique avec des jours "avant le début")
-  let premierTs = null;
-  Object.keys(volumes).forEach(k => {
-    if (!volumes[k]) return;
-    const p = k.split('-');
-    if (p.length !== 3) return;
-    const ts = new Date(+p[0], +p[1] - 1, +p[2]).getTime();
-    if (premierTs === null || ts < premierTs) premierTs = ts;
-  });
-  if (premierTs === null) return null;
-
-  const joursDepuisDebut = Math.floor((now.getTime() - premierTs) / jour) + 1;
-  // Il faut ~4 semaines d'historique pour un ACWR fiable (Gabbett) : sinon la charge
-  // chronique est calculée sur trop peu de jours et un pic isolé fausse le ratio.
-  if (joursDepuisDebut < 28) return { insuffisant: true, joursDepuisDebut };
-
-  const chronicDays = Math.min(28, joursDepuisDebut);
-  const acuteDays = Math.min(7, joursDepuisDebut);
-
-  const isoLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  let acute = 0, chronic = 0;
-  for (let i = 0; i < chronicDays; i++) {
-    const d = new Date(now); d.setDate(d.getDate() - i);
-    const key = isoLocal(d); // clés volume_par_jour en heure locale (toISOString décalait d'un jour)
-    const v = volumes[key] || 0;
-    if (i < acuteDays) acute += v;
-    chronic += v;
-  }
-  const acuteAvg = acute / acuteDays;
-  const chronicAvg = chronic / chronicDays;
-  if (chronicAvg < 1) return null;
-  return {
-    ratio: Math.round((acuteAvg / chronicAvg) * 100) / 100,
-    volumes,
-    exact: !!(volumeParJour && Object.keys(volumeParJour).length > 0),
-    chronicDays
-  };
-}
-
-function renderACWR(data) {
-  const el = document.getElementById('cd-acwr-content');
-  if (!el) return;
-  const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
-  const vpj = data.historique ? (data.historique.volume_par_jour || {}) : {};
-  const result = computeACWR(prog, vpj);
-  const backend = (data.dashboard && data.dashboard.acwr != null) ? Number(data.dashboard.acwr) : null;
-  const localOk = result && !result.insuffisant;
-  const mot = data.moteur;
-
-  // Phase 4A — le backend est l'autorité du ratio ACWR. S'il juge l'ACWR NON interprétable
-  // (historique < 28 j, < 6 jours actifs, reprise vacances, chronique nulle), on respecte
-  // cette décision : on n'affiche PAS un ratio local qui la contredirait.
-  if (mot && mot.acwr_fiable === false) {
-    const note = mot.acwr_note || 'ACWR non interprétable — données insuffisantes.';
-    el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">⏳ ${escapeHtml(note)}</div>`;
-    const ch = document.getElementById('cd-acwr-chart-content'); if (ch) ch.innerHTML = '';
-    return;
-  }
-
-  // Si le calcul local est insuffisant mais que le backend a une valeur (comme côté athlète),
-  // on affiche la valeur backend pour rester cohérent entre les deux côtés.
-  if (!localOk && backend != null && !isNaN(backend)) {
-    const z = backend < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
-      : backend <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
-      : backend <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
-      : { label: 'Zone danger', color: 'var(--danger)', bg: 'rgba(255,68,68,0.1)', conseil: 'Charge aiguë très élevée vs chronique — risque de blessure. Réduire le volume.' };
-    const pctb = Math.min(100, (backend / 2) * 100);
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
-        <div style="text-align:center;min-width:64px;">
-          <div style="font-size:28px;font-weight:800;color:${z.color};">${backend.toFixed(2)}</div>
-          <div style="font-size:10px;color:var(--text-muted);">ratio ACWR</div>
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:700;color:${z.color};margin-bottom:6px;">${z.label}</div>
-          <div style="position:relative;background:var(--surface2);border-radius:20px;height:8px;margin-bottom:4px;">
-            <div style="position:absolute;left:0;top:0;height:100%;width:${pctb}%;background:${z.color};border-radius:20px;"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);">
-            <span>0</span><span style="color:#00c96e;">0.8–1.3</span><span style="color:#f59f00;">1.5</span><span>2.0+</span>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:10px;background:${z.bg};border-left:3px solid ${z.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
-        ${ic('lightbulb')} ${z.conseil}
-      </div>
-      <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · valeur calculée côté serveur</div>`;
-    document.getElementById('cd-acwr-chart-content').innerHTML = '';
-    return;
-  }
-
-  if (result === null) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Pas assez de données (besoin d\'au moins 4 semaines d\'historique)</div>';
-    return;
-  }
-  if (result.insuffisant) {
-    el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">⏳ ACWR en construction — ${result.joursDepuisDebut} jour${result.joursDepuisDebut>1?'s':''} d'historique. Fiable à partir de ~4 semaines de séances régulières.</div>`;
-    return;
-  }
-
-  const { volumes, exact, chronicDays } = result;
-  // Phase 4A — ratio AFFICHÉ : backend prioritaire s'il est fiable ; sinon local (fallback).
-  // Le graphe hebdo (volumes) reste une métrique front (volume_par_jour), inchangée.
-  const ratio = (mot && mot.acwr_fiable === true && backend != null && !isNaN(backend)) ? backend : result.ratio;
-  const partiel = chronicDays < 28;
-  const zone = ratio < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
-    : ratio <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
-    : ratio <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
-    : { label: 'Zone danger', color: 'var(--danger)', bg: 'rgba(255,68,68,0.1)', conseil: 'Charge aiguë très élevée vs chronique — risque de blessure. Réduire le volume.' };
-
-  const pct = Math.min(100, (ratio / 2) * 100);
-  el.innerHTML = `
-    <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
-      <div style="text-align:center;min-width:64px;">
-        <div style="font-size:28px;font-weight:800;color:${zone.color};">${ratio.toFixed(2)}</div>
-        <div style="font-size:10px;color:var(--text-muted);">ratio ACWR</div>
-      </div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:${zone.color};margin-bottom:6px;">${zone.label}</div>
-        <div style="position:relative;background:var(--surface2);border-radius:20px;height:8px;margin-bottom:4px;">
-          <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${zone.color};border-radius:20px;transition:width 0.4s;"></div>
-          <div style="position:absolute;left:40%;top:-3px;width:1px;height:14px;background:#00c96e;opacity:0.5;"></div>
-          <div style="position:absolute;left:65%;top:-3px;width:1px;height:14px;background:#f59f00;opacity:0.5;"></div>
-          <div style="position:absolute;left:75%;top:-3px;width:1px;height:14px;background:var(--danger);opacity:0.5;"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);">
-          <span>0</span><span style="color:#00c96e;">0.8–1.3</span><span style="color:#f59f00;">1.5</span><span>2.0+</span>
-        </div>
-      </div>
-    </div>
-    <div style="margin-top:10px;background:${zone.bg};border-left:3px solid ${zone.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
-      ${ic('lightbulb')} ${zone.conseil}
-    </div>
-    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique ${chronicDays}j${partiel ? ' (historique partiel)' : ''} · ${exact ? 'Données exactes (séries réelles)' : 'Proxy (données exactes non encore chargées)'}</div>`;
-
-  renderACWRChart(volumes);
-}
-
-function renderACWRChart(volumes) {
-  const el = document.getElementById('cd-acwr-chart-content');
-  if (!el) return;
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  const semaines = [];
-  for (let w = 7; w >= 0; w--) {
-    let vol = 0;
-    for (let d = 0; d < 7; d++) {
-      const dt = new Date(now); dt.setDate(dt.getDate() - w * 7 - d);
-      vol += volumes[iso(dt)] || 0;
-    }
-    const lundi = new Date(now); lundi.setDate(lundi.getDate() - w * 7 - ((now.getDay() + 6) % 7));
-    semaines.push({ vol, date: lundi.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) });
-  }
-  const max = Math.max(...semaines.map(s => s.vol), 1);
-  const fmt = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : String(Math.round(v));
-  const H = 120, plot = H - 20;
-  const avg = semaines.reduce((a, s) => a + s.vol, 0) / (semaines.filter(s => s.vol > 0).length || 1);
-  el.innerHTML = `
-    <div style="position:relative;height:${H}px;">
-      <div style="position:absolute;left:0;right:0;bottom:${Math.round((avg / max) * plot) + 0}px;border-top:1px dashed var(--border);"></div>
-      <div style="position:absolute;left:0;bottom:${Math.round((avg / max) * plot) + 2}px;font-size:9px;color:var(--text-muted);background:var(--surface);padding:0 3px;">moy. ${fmt(avg)}</div>
-      <div style="display:flex;align-items:flex-end;gap:6px;height:${H}px;">
-        ${semaines.map((s, i) => {
-          const h = s.vol === 0 ? 3 : Math.max(4, Math.round((s.vol / max) * plot));
-          const isLast = i === semaines.length - 1;
-          const op = s.vol === 0 ? '1' : isLast ? '1' : '0.45';
-          const bg = s.vol === 0 ? 'var(--surface2)' : 'var(--accent)';
-          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;">
-            <div style="font-size:9px;font-weight:700;color:${isLast ? 'var(--accent)' : 'var(--text-muted)'};font-variant-numeric:tabular-nums;line-height:1;">${s.vol ? fmt(s.vol) : ''}</div>
-            <div title="Semaine du ${s.date} · ${Math.round(s.vol)} kg soulevés" style="width:100%;height:${h}px;background:${bg};opacity:${op};border-radius:5px 5px 0 0;"></div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-    <div style="display:flex;gap:6px;margin-top:5px;">
-      ${semaines.map((s, i) => `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted);${i % 2 ? 'opacity:0.45;' : ''}">${s.date}</div>`).join('')}
-    </div>
-    <div style="font-size:10px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Tonnage hebdomadaire (charge × reps), semaine du lundi indiqué. Barre pleine = semaine en cours ; pointillés = moyenne sur 8 semaines.</div>`;
-}
+// C (14/11, audit charge ↔ récup, validé porteur) : calcul ACWR local (computeACWR) + carte coach masquée
+// (renderACWR / renderACWRChart, jamais affichée, verdicts « Zone optimale / danger ») SUPPRIMÉS. Une seule source :
+// le moteur (dashboard.acwr + moteur.acwr_fiable).
 
 function renderCoachAthleteGrid(athletes) {
   const grid = document.getElementById('coach-athletes-grid');
@@ -15372,9 +15168,17 @@ function _maMultiLineRich(lines, dates, unit) {
 // Libellé UNIQUE de la fraîcheur (TSB %) — même règle partout (lecture, rails, Forme) :
 // charge au-dessus de l'habitude = « Charge en hausse », orange SEULEMENT si le ressenti
 // se dégrade (règle charge + ressenti validée le 26/10). Jamais « Fatigue » sur la charge seule.
+// D (14/11, validé porteur) : « reposé » ≠ « prêt à pousser ». On ne dit « bon moment pour pousser » que si le moteur
+// dit Prêt, sans absence / sous-charge / douleur ni contexte particulier (reprise, déload…). Sinon : « Tu es reposé. »
+function _peutPousser(m) {
+  m = m || {};
+  var niv = m.disponibilite && m.disponibilite.niveau;
+  var al = (m.alertes || []).map(function (a) { return a && a.type; });
+  return niv === 'Prêt' && !m.contexte_tag && !al.some(function (t) { return t === 'absence' || t === 'sous_charge' || t === 'douleur'; });
+}
 function _frEtat(tsbPct, m) {
   var cr = (m && m.charge_ressenti) || null, deg = !!(cr && cr.degrade), ev = !!(cr && cr.evaluable);
-  if (tsbPct >= 5) return { l: 'Frais', c: 'var(--good)', bg: 'var(--good-a)', d: 'Tu es reposé — bon moment pour pousser.' };
+  if (tsbPct >= 5) return { l: 'Frais', c: 'var(--good)', bg: 'var(--good-a)', d: _peutPousser(m) ? 'Tu es reposé — bon moment pour pousser.' : 'Tu es reposé.' };
   if (tsbPct >= -12) return { l: 'Équilibré', c: null, bg: 'var(--surface2)', d: 'Ta charge récente est proche de ton habitude.' };
   return { l: 'Charge en hausse', c: deg ? 'var(--warn)' : null, bg: deg ? 'var(--warn-a)' : 'var(--surface2)',
     d: deg ? 'Tu as plus chargé que d\'habitude et ton ressenti baisse — soigne la récup.'
@@ -17380,7 +17184,10 @@ function _maCroise(data) {
       // Tendance charge/forme : AFFICHÉE SEULEMENT si assez de recul (garde-fou #1).
       if (!trendOk) L += rc('var(--text-subtle)', 'Tendance charge / forme : <b>pas assez de recul</b> sur cette période — à regarder sur <b>Mois</b> ou <b>Année</b>.');
       else if (chUp && foDown) L += rc('var(--warn)', 'La <b>charge globale monte</b> alors que la <b>forme baisse</b> → accumulation à surveiller.');
-      else if (chUp) L += rc('var(--accent2)', 'Charge globale en hausse, forme tenue → bonne assimilation pour l\'instant.');
+      // Audit charge ↔ récup A (14/11) : « bonne assimilation » = MÊME règle que le moteur (ressenti évalué, non dégradé).
+      else if (chUp) { var _crX = mot.charge_ressenti || {};
+        L += (_crX.evaluable === true && _crX.degrade !== true) ? rc('var(--accent2)', 'Charge globale en hausse, forme tenue → bonne assimilation pour l\'instant.')
+          : rc('var(--text-subtle)', 'Charge globale en hausse, forme tenue sur la période — ressenti récent insuffisant pour confirmer l\'assimilation.'); }
       else if (foDown) L += rc('var(--warn)', 'Forme en légère baisse — vérifier sommeil / récupération.');
       else L += rc('var(--good)', 'Charge et forme stables.');
       var dispo = (mot.disponibilite && mot.disponibilite.niveau) || null;
@@ -19159,7 +18966,7 @@ function renderChargeFatigueJour(data) {
   // Fraîcheur (TSB %) → libellé grand public, jamais rouge (max orange).
   var fr, frc, frTxt;
   if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frTxt = 'pas encore assez de données'; }
-  else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frTxt = 'tu es reposé, bon moment pour pousser'; }
+  else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frTxt = _peutPousser(m) ? 'tu es reposé, bon moment pour pousser' : 'tu es reposé'; }   // D (14/11)
   else if (tsbPct >= -12) { fr = 'Équilibré'; frc = 'var(--tj-text)'; frTxt = 'ta charge récente est proche de ton habitude'; }
   else {
     // Règle « charge + ressenti » (oct. 2026) : la charge seule n'est PAS de la fatigue.
@@ -25161,7 +24968,9 @@ function renderCoachChargeCard(data) {
   }
   var reg = dash.regularite;
   if (reg) { var f = _seancesFaites(reg), pv = reg.seances_prevues; if (f != null) tiles.push(tile(f + (pv != null ? '/' + pv : ''), 'Régularité', null, 'Assiduité')); }
-  if (dash.acwr != null && mot.acwr_fiable !== false) tiles.push(tile(String(dash.acwr).replace('.', ','), 'ACWR'));
+  // B (14/11) : charge selon le moteur (même verdict que l'athlète) ; ACWR = indice complémentaire, seulement s'il est fiable.
+  try { var _cM = _chargeMoteur(mot); if (_cM.v && _cM.v !== '—') tiles.push(tile(escapeHtml(_cM.v), 'Charge (moteur)', _cM.c, 'Charge')); } catch (e) {}
+  if (dash.acwr != null && mot.acwr_fiable === true) tiles.push(tile(String(dash.acwr).replace('.', ','), 'ACWR · complémentaire', null, 'ACWR (complément)'));
   // 06/11 (fiche courte) : « Repères » fusionné ici → plan de la semaine + dernière séance.
   try { var _pX = _coachPlanXN(data); if (_pX) tiles.push(tile(_pX, 'Plan', null, null, true)); } catch (e) {}
   if (dash.derniere_seance && dash.derniere_seance.date) tiles.push(tile(escapeHtml(String(dash.derniere_seance.date).slice(0, 5)), 'Dernière séance', null, null, true));

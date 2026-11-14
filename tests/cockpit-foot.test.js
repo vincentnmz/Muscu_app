@@ -25,7 +25,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_chargeMoteur', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;

@@ -147,3 +147,12 @@ boucle. Rien n'a été ajusté.
 moins une fois sur 12 semaines dans **≈ 35 %** des cas. Pour **Force / Recomposition**, une stagnation de 12 semaines
 mérite peut-être d'être signalée ; pour la **Sèche** (objectif : maintenir), une force stable est un **succès** → ces
 35 % seraient de **fausses alertes**. La règle de la Sèche doit donc être distincte (ex. tolérance avant « baisse »).
+
+## 11. Décisions du porteur après la simulation (14/11)
+
+| Point | Décision |
+|---|---|
+| Force : fenêtre 6 semaines, règle telle que simulée | 🟢 Validé — délai ≈ 5 semaines **assumé** ; ne jamais promettre une détection en 4 semaines. |
+| Raccourcir la fenêtre pour tenir T2 | 🔴 Refusé (faux positifs ≤ 1,5 %, stable : on garde une conclusion fiable plutôt qu'une alerte rapide). |
+| Phrase en cas de baisse | « Ta progression est en baisse sur les dernières semaines. » + « Lecture des 6 dernières semaines. » — **jamais** « ton objectif est compromis » (pas de trajectoire prédictive). |
+| Sèche | 🟠 Règle séparée, **simulation dédiée avant tout code** ; seuils fixés **avant** de voir les résultats. Scénarios demandés : poids ↓ + force stable ; poids ↓ + petite baisse de force acceptable ; poids ↓ + forte baisse de force ; poids stable + force stable ; bruit normal ; reprise / déload. |

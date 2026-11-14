@@ -2404,7 +2404,16 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   if (mPct >= 85) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % musculation (${mPct} %). Un peu de cardio renforcerait ta base d'endurance.` })
   else if (mPct <= 15) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % cardio (${100 - mPct} %). La musculation entretient force et masse.` })
   else constats.push({ ton: 'positif', texte: `Bon équilibre muscu / cardio (${mPct} % / ${100 - mPct} %).` })
-  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération est ${recup === 'Excellent' ? 'excellente' : 'bonne'} — tu encaisses bien ta charge actuelle.` })
+  // Audit charge ↔ récup A (14/11, validé porteur) : MÊME règle que la reco du moteur — « tu encaisses bien » seulement si
+  // la charge monte (moteur.surcharge) ET que le ressenti a pu être évalué sans être dégradé (moteur.charge_ressenti).
+  const _crC = (moteur && moteur.charge_ressenti) || {}, _chHaute = !!(moteur && moteur.surcharge && moteur.surcharge !== 'Faible')
+  const _recTxt = recup === 'Excellent' ? 'excellente' : 'bonne'
+  if (recup === 'Excellent' || recup === 'Bon') {
+    if (!_chHaute) constats.push({ ton: 'positif', texte: `Ta récupération est ${_recTxt} ces 7 derniers jours.` })
+    else if (_crC.degrade === true) constats.push({ ton: 'attention', texte: `Ta charge monte et ton ressenti baisse — soigne ta récupération.` })
+    else if (_crC.evaluable === true) constats.push({ ton: 'positif', texte: `Ta récupération est ${_recTxt} et ta charge monte : tu encaisses bien pour l'instant.` })
+    else constats.push({ ton: 'neutre', texte: `Ta charge monte — renseigne ton état du jour pour qu'on vérifie ta récupération.` })
+  }
   else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse — allège ta charge globale (muscu + cardio) le temps qu'elle remonte.` })
 
   let reco: any

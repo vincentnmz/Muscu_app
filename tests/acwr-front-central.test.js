@@ -5,7 +5,7 @@
  *   - backend prioritaire quand il est fiable ;
  *   - un backend « non interprétable » (acwr_fiable === false) n'est JAMAIS
  *     écrasé par un ratio local ;
- *   - computeACWR front reste le fallback strict (backend absent / ancien contrat).
+ *   - [14/11, C] computeACWR front SUPPRIMÉ : la décision ci-dessous est conservée comme historique de la Phase 4A.
  * =========================================================================== */
 const fs = require('fs');
 const path = require('path');
@@ -73,12 +73,13 @@ r = decideACWR(D({ acwr_fiable: true }, 1.05), { insuffisant: true, joursDepuisD
 check('local insuffisant + backend fiable → backend compact', r.mode === 'backend_compact' && r.value === 1.05, 'backend_compact', r.mode);
 console.log(`  local insuffisant + backend 1.05 → ${r.mode} (${r.value}) ✅`);
 
-console.log('=== Non-régression : computeACWR front conservé ===');
+console.log('=== C (14/11) : une seule source ACWR (le moteur) ===');
 const APP = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-check('computeACWR présent', /function computeACWR\(/.test(APP), 'présent', 'absent');
+check('computeACWR supprimé', !/function computeACWR\(/.test(APP), 'absent', 'présent');
+check('renderACWR (carte masquée, zones) supprimé', !/function renderACWR\(/.test(APP), 'absent', 'présent');
+check('tuile coach : ACWR seulement si acwr_fiable === true', /_motA\.acwr_fiable === true/.test(APP), 'présent', 'absent');
 check('STATUT_VISUEL inchangé (hex)', /'Prêt':\s*'#22c55e'/.test(APP) && /'Vigilance':\s*'#f5a623'/.test(APP) && /'À surveiller':\s*'#e5484d'/.test(APP), 'hex inchangés', 'modifiés');
-check('renderACWRChart toujours appelé', /renderACWRChart\(volumes\)/.test(APP), 'présent', 'absent');
-console.log('  computeACWR conservé ✅ · couleurs statut inchangées ✅ · graphe conservé ✅');
+console.log('  computeACWR / renderACWR supprimés ✅ · couleurs statut inchangées ✅');
 
 /* =============================================================================
  * P1-C — La sortie ACWR vestigiale de marqueurRecap est SUPPRIMÉE.

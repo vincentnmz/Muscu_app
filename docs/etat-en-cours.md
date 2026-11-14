@@ -2,7 +2,17 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **13 nov. 2026** (voir le bloc « 13/11 » juste en dessous).
+> Dernière mise à jour : **14 nov. 2026** (voir le bloc « 14/11 soir » juste en dessous).
+
+## ▶ 14/11 soir — Cohérence charge ↔ récupération (A-D) en PRÉPROD · trajectoire force validée
+
+- **Audit charge ↔ récup** (`docs/audit-charge-recuperation-2026-11-14.md`) : A-D validés et codés selon le processus porteur
+  (banc → attendu écrit → test → préprod → vérif réelle → prod). Nouveau **contrôle de cohérence inter-écrans** dans le banc
+  (`scripts/banc-profils/coherence.js`, R1-R5) : 16 contradictions avant, 0 après. 2 profils ajoutés. **En préprod, pas en prod**
+  (à vérifier sur /dev/ puis « mise en prod » ; `index.ts` à redéployer à la main : seule la synthèse Croisé serveur change).
+- **Constat E non corrigé** (à décider) : levier « +4 séries / RPE 9-10 » affiché pendant un pic de charge (§8 du doc d'audit).
+- **Trajectoire** : force validée (6 semaines, délai ≈ 5 sem. assumé, jamais « objectif compromis ») ; **Sèche = simulation
+  dédiée avant code** (protocole à faire valider, seuils fixés avant résultats) — `objectif-trajectoire-2026-11.md` §11.
 
 ## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
 

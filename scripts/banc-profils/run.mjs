@@ -11,6 +11,7 @@ const ICI = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.join(ICI, 
 const ATT = path.join(ROOT, 'tests', 'banc-profils');
 const { NOW, PROFILS, equipe } = require('./profils.js');
 const { getAppData, equipeData } = require('./serveur.js');
+const { verifier } = require('./coherence.js');
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (_) { try { ({ chromium } = require('/opt/node22/lib/node_modules/playwright')); } catch (e) { console.log('banc-profils : Playwright absent → ignoré'); process.exit(0); } }
 
@@ -49,10 +50,17 @@ try {
       return ECRANS.map(([nom, idEl]) => { const el = document.getElementById(idEl); if (!el) return '== ' + nom + ' ==\n(absent)';
         document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
         for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
-        return '== ' + nom + ' ==\n' + el.innerText; }).join('\n\n');
+        return '== ' + nom + ' ==\n' + el.innerText; }).join('\n\n')
+        + (function () { try { maSetDisc('croise'); } catch (e) { return ''; }   // 14/11 : Analyses ▸ Croisé (cohérence charge ↔ récup)
+          var el = document.getElementById('tab-historique'); if (!el) return '';
+          document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
+          for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+          return '\n\n== Analyses ▸ Croisé ==\n' + el.innerText; })();
     }, { data, a, ECRANS });
     await pg.clock.runFor(2500);
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
+    const inc = verifier(normaliser(txt), data);   // cohérence inter-écrans (14/11) : bloquant même en --maj
+    if (inc.length) { ko++; console.error('  ✗ ' + id + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     const f = path.join(ATT, id + '.txt');
     if (MAJ) { fs.mkdirSync(ATT, { recursive: true }); fs.writeFileSync(f, sortie); console.log('  ✎ ' + id + ' : attendu réécrit (' + sortie.split('\n').length + ' lignes)'); }
     else if (!fs.existsSync(f)) { ko++; console.error('  ✗ ' + id + ' : pas de fichier attendu (lancer --maj ' + id + ' après relecture)'); }
@@ -96,7 +104,17 @@ try {
     for (const aid of E.athleteIds) {
       await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a); }, aid);
       await pg.clock.runFor(2500);
-      txt += '\n\n== Coach ▸ Fiche athlète ' + aid + ' ==\n' + await lire('view-coach-detail');
+      const fiche = await lire('view-coach-detail');
+      const indic = await pg.evaluate(() => { const el = document.getElementById('cd-indicateurs'); if (!el) return '';   // bloc #cd-indicateurs : MASQUÉ à l'écran (mobile + ordi), contrôlé quand même s'il réapparaît
+        for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+        return el.innerText; });
+      const croise = await pg.evaluate((d) => { try { _maCoachAttach(d); maSetDisc('croise'); } catch (e) { return '(croisé indisponible : ' + e.message + ')'; }
+        const el = document.getElementById('tab-historique'); if (!el) return '';
+        for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+        const t = el.innerText; try { maSetDisc('muscu'); } catch (e) {} return t; }, D.fiches[aid]);
+      txt += '\n\n== Coach ▸ Fiche athlète ' + aid + ' ==\n' + fiche + '\n-- Indicateurs (bloc masqué à l\'écran, contrôlé quand même) --\n' + indic + '\n-- Analyses ▸ Croisé (coach) --\n' + croise;
+      const inc = verifier(normaliser(fiche + '\n' + indic + '\n' + croise), D.fiches[aid]);
+      if (inc.length) { ko++; console.error('  ✗ coach ▸ fiche ' + aid + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     }
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
     const f = path.join(ATT, 'coach_equipe.txt');
