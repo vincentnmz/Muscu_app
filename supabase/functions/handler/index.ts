@@ -5732,6 +5732,26 @@ function _rcProgSecondaire(pA: any, pB: any): string | null {
 // porteur 03/11 ; parité vérifiée par tests/bloque-regle-unique.test.js). Avant le 13/11, le mail récap et l'IA disaient
 // « bloqué » après 3 séances quel que soit le niveau → contradiction avec l'app (audit moteur C1 / P0-1).
 const BLOQUE_N_NIVEAU: Record<string, number> = { debutant: 2, intermediaire: 3, avance: 4, expert: 4 }
+// L1 (audit 14/11) — même algorithme que l'app (_lxDepasse / _lxPlateau, js/app.js). pts : séance la plus récente en [0].
+function _rcDepasse(pts: any[], k: number): boolean {
+  const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
+  const c0 = num(pts[0].charge), r0 = num(pts[0].reps), c1 = num(pts[1].charge); let mc = -1, rc = -1, rAt = -1
+  for (let i = 1; i <= k && i < pts.length; i++) {
+    const c = num(pts[i].charge), r = num(pts[i].reps)
+    if (c > mc) { mc = c; rc = r } else if (c === mc && r > rc) rc = r
+    if (c === c0 && r > rAt) rAt = r
+  }
+  if (c0 > c1) return c0 > mc || (c0 === mc && r0 > rc)
+  return r0 > rAt
+}
+function _rcPlateau(pts: any[]): number {
+  const num = (x: any) => { const n = Number(x); return isNaN(n) ? 0 : n }
+  const c0 = num(pts[0].charge); let run = 0, M = -1, j = 0, L = 1
+  while (run < pts.length && num(pts[run].charge) === c0) run++
+  for (let i = 0; i < run; i++) { const r = num(pts[i].reps); if (r >= M) { M = r; j = i } }
+  while (L < run && !_rcProgSecondaire(pts[L - 1], pts[L])) L++
+  return Math.min(j + 1, L)
+}
 function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null, niveau?: string | null): any {
   // Audit Contexte X1 (01/11) — même règle que l'app : en déload / reprise, « recule » et « bloqué » sont attendus.
   const ctxA = ctxEtat === 'deload' ? 'déload' : (ctxEtat === 'retour_vacances' || ctxEtat === 'retour_blessure') ? 'reprise' : null
@@ -5761,19 +5781,19 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     }
     if (pts.length < 2) continue
     const c1 = num(pts[1].charge), r1 = num(pts[1].reps)
-    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo }); continue }
+    // Même algorithme que l'app (_lectureExos) : NB séances selon le niveau, jamais sur un exercice neuf (≥ 3 séances).
+    const NB = BLOQUE_N_NIVEAU[String(niveau || '')] || 3
+    // L1 (audit 14/11) : « progresse » seulement si la séance dépasse les max(NB, 3) précédentes (app : _lxDepasse).
+    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1)) && _rcDepasse(pts, Math.max(NB, 3))) { R.progresse.push({ exo }); continue }
     const p2 = (dj <= 14) ? _rcProgSecondaire(pts[0], pts[1]) : null
     if (p2) { R.progresse.push({ exo, why: p2 }); continue }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
-    // Même algorithme que l'app (_lectureExos) : NB séances identiques selon le niveau, jamais sur un exercice neuf (≥ 3 séances).
-    const NB = BLOQUE_N_NIVEAU[String(niveau || '')] || 3
-    let memes = pts.length >= Math.max(NB, 3)
-    for (let q = 1; memes && q < NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) memes = false }
-    if (memes && c0 === c1 && r0 <= r1) {
+    // L1 (14/11) : bloqué = même charge, aucune séance au-dessus du meilleur nombre de reps depuis ≥ NB séances (app : _lxPlateau).
+    const n = (pts.length >= Math.max(NB, 3)) ? _rcPlateau(pts) : 0
+    if (n >= NB) {
       let secondaire = false
       for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }
       if (secondaire) continue
-      let n = NB; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_rcProgSecondaire(pts[n - 1], pts[n])) n++
       if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
     }
   }
@@ -5781,6 +5801,42 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
 }
 // Bilan v2 (PUR, testable). `in_` = { perfs (brutes), appData (getAppData), secByExo
 // (exercice→muscle secondaire), musByExo (exercice→muscle) }.
+// Gêne ACTIVE (14/11, constat B1 du banc de profils) — même règle que l'app (js/lecture-v3.js _lv3GeneActive, _lv3Cle,
+// _lv3ZoneTouche, table _LV3_ZONE_MUS validée le 09/11) : douleur ≥ 3/5 au DERNIER questionnaire (≤ 7 j) sur une zone
+// sollicitée par le muscle → le mail récap ne propose ni séries ni charge en plus sur ce muscle.
+const _RC_ZONE_MUS: [string, string[]][] = [
+  ['nuque', ['trap', 'epau', 'dos']],
+  ['epaul', ['epau', 'pect', 'dos']], ['coude', ['bice', 'tric']], ['poign', ['avan', 'bice']], ['main', ['avan', 'bice']],
+  ['avant', ['avan', 'bice']], ['haut', ['dos', 'trap']], ['lomb', ['dos', 'isch', 'lomb']], ['hanch', ['fess', 'addu', 'quad']],
+  ['aine', ['fess', 'addu', 'quad']], ['genou', ['quad', 'isch']], ['chevi', ['moll']], ['pied', ['moll']]
+]
+function _rcCle(x: any): string { const k = String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().replace(/s$/, ''); return k === 'do' ? 'dos' : k }
+function _rcZoneTouche(z: string, mk: string): number {
+  if (!z || !mk) return 0
+  if (z.indexOf(mk) >= 0) return 1
+  for (const [zz, mus] of _RC_ZONE_MUS) if (z.indexOf(zz) === 0) return mus.indexOf(mk) >= 0 ? 2 : 0
+  return 0
+}
+function _rcGeneActive(be: any[], muscle: any, nowT: number): any {
+  const mk = _rcCle(muscle).slice(0, 4); if (!mk) return null
+  const t = (x: any) => { const d = normDate(x && x.date); return d ? new Date(d + 'T12:00:00').getTime() : 0 }
+  const rec = (be || []).filter((b: any) => { const tb = t(b); return tb && tb <= nowT + 864e5 && (nowT - tb) / 864e5 <= 7 }).sort((a: any, b: any) => t(b) - t(a))
+  if (!rec.length) return null
+  const b0 = rec[0], zr = String(b0.zone || b0.zone_douloureuse || ''), z = _rcCle(zr)
+  if (!(Number(b0.douleur) >= 3) || !z) return null
+  const tz = _rcZoneTouche(z, mk); if (!tz) return null
+  const d = new Date(t(b0))
+  return { zone: zr.toLowerCase().replace(/_/g, ' '), val: Number(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 }
+}
+function _rcGeneAutre(be: any[], nowT: number): any {
+  const t = (x: any) => { const d = normDate(x && x.date); return d ? new Date(d + 'T12:00:00').getTime() : 0 }
+  const rec = (be || []).filter((b: any) => { const tb = t(b); return tb && tb <= nowT + 864e5 && (nowT - tb) / 864e5 <= 7 }).sort((a: any, b: any) => t(b) - t(a))
+  if (!rec.length || !(Number(rec[0].douleur) >= 3)) return null
+  const z = _rcCle(rec[0].zone || rec[0].zone_douloureuse || '')
+  if (z && ['pect', 'dos', 'epau', 'bice', 'tric', 'avan', 'trap', 'lomb', 'abdo', 'quad', 'isch', 'fess', 'addu', 'moll'].some((m) => _rcZoneTouche(z, m) > 0)) return null
+  const d = new Date(t(rec[0]))
+  return { val: Number(rec[0].douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') }
+}
 function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const B = _recapBornes(per, now)
   const d0 = fmtYMD(B.debut), d1 = fmtYMD(B.fin), dp = fmtYMD(B.precDebut)
@@ -5875,7 +5931,18 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   out.cardio = { n: chP.length, duree: chP.reduce((s: number, x: any) => s + (Number(x.duree) || 0), 0), types: chP.map((s: any) => String(s.type_cardio || 'autre')), derniere }
   // Recos (max 3) — mêmes règles que l'app, chiffres réels.
   const recos: string[] = []
-  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0)
+  // Gêne active (14/11) : aucune séance / charge en plus proposée sur un muscle touché par la zone douloureuse.
+  const _beG = Array.isArray(ad.bien_etre) ? ad.bien_etre : [], _nowG = now.getTime()
+  const _gene = (m: any) => { try { return _rcGeneActive(_beG, m, _nowG) } catch (_) { return null } }
+  const _musExo = (exo: any) => { const k = String(exo || '').trim().toLowerCase(); const r = perfsAll.find((x: any) => String(x.exercice || '').trim().toLowerCase() === k); return (r && r.muscle) || (in_.musByExo || {})[k] || null }
+  const _genes = out.volume.map((v: any) => ({ m: v.muscle, g: _gene(v.muscle) })).filter((x: any) => x.g)
+  if (_genes.length) {
+    const g0 = _genes[0].g
+    const _nmG = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux', Pectoraux: 'pectoraux', Dos: 'dos' } as any)[m] || String(m).toLowerCase()
+    recos.push(`<b>Gêne ${_escHtml(g0.zone)} signalée le ${g0.date}</b> : n'ajoute ni séries ni charge pour : ${_genes.map((x: any) => _escHtml(_nmG(x.m))).join(', ')}, tant qu'elle revient (avis kiné si ça persiste).`)
+  }
+  if (!_genes.length) { const ga = (() => { try { return _rcGeneAutre(_beG, _nowG) } catch (_) { return null } })(); if (ga) recos.push(`<b>Gêne ${ga.val}/5 signalée le ${ga.date}</b> (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.`) }
+  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_gene(v.muscle))
   if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
@@ -5883,15 +5950,16 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
     recos.push(`<b>${titre}</b> : ` + bas.map((v: any) => `${nm(v.muscle)} ${_frNum(v.parSem)} séries/sem. (min. ${v.min})`).join(', ') + '. Pour atteindre le minimum, il manque environ ' + bas.map((v: any) => `${Math.max(1, Math.round(v.min - v.parSem))} séries/sem. ${['Ischio', 'Fessier'].indexOf(v.muscle) >= 0 ? 'aux' : 'aux'} ${nm(v.muscle)}`).join(', ').replace(/, ([^,]*)$/, ' et $1') + '.')
   }
   const L = out.lecture
-  const sous = (L.sous || []).slice().sort((a: any, b: any) => (b.rpe - a.rpe) || (a.r - b.r))[0]
+  const _libre = (x: any) => !_gene(_musExo(x.exo))
+  const sous = (L.sous || []).filter(_libre).slice().sort((a: any, b: any) => (b.rpe - a.rpe) || (a.r - b.r))[0]
   if (sous) {
     const same = (sous.hist || []).filter((h: any) => h.c === sous.c).map((h: any) => h.r)
     const desc = same.length >= 2 ? `à ${_frNum(sous.c)} kg tu es passé de ${same.slice(0, -1).join(' à ')} puis ${same[same.length - 1]} rep${same[same.length - 1] > 1 ? 's' : ''} (RPE ${_frNum(sous.rpe)})` : `${_frNum(sous.c)} kg × ${sous.r} à RPE ${_frNum(sous.rpe)}, sous ta fourchette (${sous.rmin}-${sous.rmax})`
     recos.push(`<b>${_escHtml(sous.exo)}</b> : ${desc}. Au choix : alléger un peu pour revenir à ${sous.rmin} reps, ou garder ${_frNum(sous.c)} kg et viser +1 rep.`)
-  } else if ((L.recule || []).length) {
-    const x = L.recule[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
-  } else if ((L.bloque || []).length) {
-    const x = L.bloque[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
+  } else if ((L.recule || []).filter(_libre).length) {
+    const x = L.recule.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
+  } else if ((L.bloque || []).filter(_libre).length) {
+    const x = L.bloque.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
   }
   const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')

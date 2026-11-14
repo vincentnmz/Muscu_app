@@ -109,18 +109,18 @@ const P = { lundi, actions: [
   { type: 'rpe', exo: 'Leg curl', titre: 'Leg curl : garde 40 kg, vise RPE 8', raison: 'RPE 8 → 9,5', charge: 40 }] };
 const pl = S._lv3PlanPourJournal(P, data);
 eq(pl.semaine === lundi && pl.actions.length === 3, 'charge utile : semaine courante, 3 actions');
-eq(pl.actions.every((a) => !B.f(a, 'A1', lundi, 'plan-2026-11-13').err), 'chaque action passe le contrôle de forme du VRAI serveur', pl.actions.map((a) => B.f(a, 'A1', lundi, 'plan-2026-11-13').err));
+eq(pl.actions.every((a) => !B.f(a, 'A1', lundi, 'plan-2026-11-14').err), 'chaque action passe le contrôle de forme du VRAI serveur', pl.actions.map((a) => B.f(a, 'A1', lundi, 'plan-2026-11-14').err));
 eq(pl.actions[1].titre.indexOf('★') < 0 && pl.actions[1].critere.min === 8, 'titre nettoyé (★), critère séries = min');
 eq(pl.actions[0].donnees_entree.c === 75 && pl.actions[0].donnees_entree.r === 6, 'données d\'entrée = dernière séance AVANT la semaine', pl.actions[0].donnees_entree);
 const rep = S._lv3PlanPourJournal({ lundi, actions: [{ type: 'reprise', titre: 'Reprendre : 1 séance', derniere: L2 }] }, data).actions[0];
-eq(!B.f(rep, 'A1', lundi, 'plan-2026-11-13').err && rep.critere.seances === 1, 'action « reprise » acceptée par le serveur');
+eq(!B.f(rep, 'A1', lundi, 'plan-2026-11-14').err && rep.critere.seances === 1, 'action « reprise » acceptée par le serveur');
 
 // Envoi : garde-fous côté app
 S._lv3Plan = () => P;
 const tokA = 'v1.a.QTE.9999999999.sig', tokC = 'v1.c.QzE.9999999999.sig';
 const essai = (lib, prep, attendu) => { ENVOIS.length = 0; for (const k of Object.keys(LS)) delete LS[k]; S.navigator.onLine = true; LS.nvz_tok = tokA; const d = { historique: data.historique, programme: [] }; prep && prep(d); const r = S._lv3JournalEnvoyer(d); eq(r === attendu && ENVOIS.length === (attendu ? 1 : 0), lib, { r, n: ENVOIS.length }); return ENVOIS[0]; };
 const env = essai('session athlète, en ligne, données complètes → envoi', null, true);
-eq(env && env.body.action === 'enregistrerPlan' && env.body.donnees_completes === true && env.body.regle_version === 'plan-2026-11-13' && env.body.semaine === lundi, 'corps : action, données complètes, version, semaine', env && env.body);
+eq(env && env.body.action === 'enregistrerPlan' && env.body.donnees_completes === true && env.body.regle_version === 'plan-2026-11-14' && env.body.semaine === lundi, 'corps : action, données complètes, version, semaine', env && env.body);
 essai('session COACH → aucun envoi', () => { LS.nvz_tok = tokC; }, false);
 essai('sans session → aucun envoi', () => { delete LS.nvz_tok; }, false);
 essai('hors ligne → aucun envoi', () => { S.navigator.onLine = false; }, false);

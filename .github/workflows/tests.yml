@@ -5,7 +5,7 @@ name: Tests des calculs
 # et pull request sur dev et main. Vérification seulement : ne déploie rien et
 # ne bloque pas la mise en ligne (deploy.yml est indépendant).
 # Node 22 : les tests transpilent index.ts avec node:module stripTypeScriptTypes.
-# Aucune dépendance npm nécessaire (modules node intégrés uniquement).
+# Seule dépendance : Playwright (installé à la volée) pour le banc de profils.
 on:
   push:
     branches: [dev, main]
@@ -23,6 +23,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      # Banc de profils (14/11) : la vraie app dans Chromium (tests/banc-profils.test.js).
+      - name: Installer Playwright + Chromium (banc de profils)
+        run: npm install --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
 
       - name: Lancer toutes les suites de tests
         run: node scripts/run-tests.mjs

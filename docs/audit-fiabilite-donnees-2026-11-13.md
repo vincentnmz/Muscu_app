@@ -105,3 +105,12 @@ moyenne des autres séances du même exercice à ±28 j.
 Conclusion du contrôle : avec 16 séances, l'honnête est « pas d'écart net ; un écart de moins de ~5 % ne serait pas
 détectable ». Seuils et texte à fixer par le porteur à partir de ces chiffres (propositions dans le compte rendu du 13/11).
 Guide testeurs : suggestion de reformulation déposée (sg_w4ofkxsh6n), à accepter par le porteur.
+
+## Suivi — 14/11 : F2 et F3 traités (préprod)
+
+- **F3** : le bloc de Résumé s'appelle **« Tes saisies · N/100 »** (nom choisi par le porteur) ; anneau « complet » (100) /
+  « partiel » ; « Pour compléter : … » ; « Tout ce que cette lecture utilise est renseigné ». Le calcul (`_maFiabilite`), les
+  critères et les couleurs sont inchangés. La seule « fiabilité » affichée est celle du moteur (Aujourd'hui). [V] capture.
+- **F2** : l'aide « ? » explique « Tes saisies » (séances, RPE, questionnaire du jour, fourchettes) et renvoie à Aujourd'hui
+  pour la fiabilité de l'état du jour.
+- Autres « fiabilité » de l'app (Croisé, fenêtre d'info d'un indicateur, glossaire) : calculs à part, non concernés.
