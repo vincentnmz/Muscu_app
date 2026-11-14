@@ -5805,6 +5805,7 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
 // _lv3ZoneTouche, table _LV3_ZONE_MUS validée le 09/11) : douleur ≥ 3/5 au DERNIER questionnaire (≤ 7 j) sur une zone
 // sollicitée par le muscle → le mail récap ne propose ni séries ni charge en plus sur ce muscle.
 const _RC_ZONE_MUS: [string, string[]][] = [
+  ['nuque', ['trap', 'epau', 'dos']],
   ['epaul', ['epau', 'pect', 'dos']], ['coude', ['bice', 'tric']], ['poign', ['avan', 'bice']], ['main', ['avan', 'bice']],
   ['avant', ['avan', 'bice']], ['haut', ['dos', 'trap']], ['lomb', ['dos', 'isch', 'lomb']], ['hanch', ['fess', 'addu', 'quad']],
   ['aine', ['fess', 'addu', 'quad']], ['genou', ['quad', 'isch']], ['chevi', ['moll']], ['pied', ['moll']]
@@ -5826,6 +5827,15 @@ function _rcGeneActive(be: any[], muscle: any, nowT: number): any {
   const tz = _rcZoneTouche(z, mk); if (!tz) return null
   const d = new Date(t(b0))
   return { zone: zr.toLowerCase().replace(/_/g, ' '), val: Number(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 }
+}
+function _rcGeneAutre(be: any[], nowT: number): any {
+  const t = (x: any) => { const d = normDate(x && x.date); return d ? new Date(d + 'T12:00:00').getTime() : 0 }
+  const rec = (be || []).filter((b: any) => { const tb = t(b); return tb && tb <= nowT + 864e5 && (nowT - tb) / 864e5 <= 7 }).sort((a: any, b: any) => t(b) - t(a))
+  if (!rec.length || !(Number(rec[0].douleur) >= 3)) return null
+  const z = _rcCle(rec[0].zone || rec[0].zone_douloureuse || '')
+  if (z && ['pect', 'dos', 'epau', 'bice', 'tric', 'avan', 'trap', 'lomb', 'abdo', 'quad', 'isch', 'fess', 'addu', 'moll'].some((m) => _rcZoneTouche(z, m) > 0)) return null
+  const d = new Date(t(rec[0]))
+  return { val: Number(rec[0].douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') }
 }
 function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const B = _recapBornes(per, now)
@@ -5931,6 +5941,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
     const _nmG = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux', Pectoraux: 'pectoraux', Dos: 'dos' } as any)[m] || String(m).toLowerCase()
     recos.push(`<b>Gêne ${_escHtml(g0.zone)} signalée le ${g0.date}</b> : n'ajoute ni séries ni charge pour : ${_genes.map((x: any) => _escHtml(_nmG(x.m))).join(', ')}, tant qu'elle revient (avis kiné si ça persiste).`)
   }
+  if (!_genes.length) { const ga = (() => { try { return _rcGeneAutre(_beG, _nowG) } catch (_) { return null } })(); if (ga) recos.push(`<b>Gêne ${ga.val}/5 signalée le ${ga.date}</b> (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.`) }
   const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_gene(v.muscle))
   if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']

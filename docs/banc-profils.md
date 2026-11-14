@@ -13,6 +13,7 @@ figés, réseau coupé). Tout le texte affiché sur **Aujourd'hui**, **Analyses 
 | `avance_pause` | avancé, pause dans la période de comparaison |
 | `montre_sommeil` | montre, 30 séances avec nuit, épisodes de nuits courtes (sommeil → performance) |
 | `douleur_vigilance` | douleur forte à l'épaule + fatigue déclarées aujourd'hui |
+| `douleur_autre` | gêne 3/5 zone « Autre » : rien en pause, ligne de prudence |
 | `nouveau_vide` | compte neuf, aucune donnée |
 | `sous_fourchette` | saut de charge, séries sous la fourchette à RPE 10 |
 | `coach_sans_propositions` | athlète suivi, propositions Novalyz coupées par le coach |
@@ -47,3 +48,8 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
 - **Mail récap aligné (14/11, préprod)** : `_rcGeneActive` (serveur) = même règle que l'app (test : mêmes réponses sur
   10 cas). Le mail signale d'abord la gêne (« n'ajoute ni séries ni charge pour : épaules… ») et ne propose plus de séries,
   de « débloquer » ni de charge sur un muscle touché. **`index.ts` : déploiement prod manuel** (même lot que L1).
+- **Zones (14/11, porteur — option A)** : **nuque / cou** → trapèzes, épaules, dos ; **« Autre » ou zone vide** (≥ 3/5) → rien
+  en pause, ligne « ⚠ Gêne N/5 signalée le … (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça
+  persiste » sous le plan de la semaine et dans le mail récap. Profil `douleur_autre` ajouté au banc.
+- **Plus tard (option B, décidée)** : règle par **exercice** (articulations sollicitées par exercice dans le catalogue :
+  développé couché → poignet, épaule ; squat → genou, lombaires…), à relire exercice par exercice avec le porteur.

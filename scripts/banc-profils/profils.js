@@ -76,6 +76,14 @@ const PROFILS = {
     bienEtre(st, 0, { sommeil: 2, energie: 2, fatigue_musculaire: 4, douleur: 4, zone_douloureuse: 'Épaule', stress: 4 });
     return st;
   },
+  // 5 bis. Gêne 3/5 sans zone reliée à un muscle (« Autre ») : rien en pause, ligne de prudence (14/11).
+  douleur_autre() {
+    const st = base('9'); athlete(st, { annees: 5 }); programme(st);
+    [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
+    bienEtre(st, 0, { douleur: 3, zone_douloureuse: 'autre' });
+    return st;
+  },
   // 6. Nouveau compte : aucune séance, aucun questionnaire.
   nouveau_vide() {
     const st = base('6'); athlete(st, { annees: 1, created_at: '2026-11-12' }); return st;

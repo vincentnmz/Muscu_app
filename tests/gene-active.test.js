@@ -7,7 +7,7 @@ const LV3 = fs.readFileSync(path.join(__dirname, '..', 'js', 'lecture-v3.js'), '
 function ex(src, n) { const m = src.match(new RegExp('function\\s+' + n + '\\s*\\(')); let i = src.indexOf('{', m.index), d = 0, j = i; for (; j < src.length; j++) { const c = src[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } } return src.slice(m.index, j); }
 const S = {}; vm.createContext(S);
 vm.runInContext(['_normTxt', '_musKey'].map((n) => ex(APP, n)).join('\n') + '\n' + LV3.match(/var _LV3_ZONE_MUS = \[[\s\S]*?\];/)[0] + '\n'
-  + ['_lv3Iso', '_lv3T', '_lv3Num', '_lv3Cle', '_lv3ZoneTouche', '_lv3GeneActive'].map((n) => ex(LV3, n)).join('\n'), S);
+  + ['_lv3Iso', '_lv3T', '_lv3Num', '_lv3Cle', '_lv3ZoneTouche', '_lv3GeneActive', '_lv3GeneAutre'].map((n) => ex(LV3, n)).join('\n'), S);
 let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n + (g !== undefined ? ' (got ' + JSON.stringify(g) + ')' : '')); } };
 const now = Date.UTC(2026, 10, 12, 17), J = (n) => new Date(now - n * 864e5).toISOString().slice(0, 10);
 const d = (be) => ({ bien_etre: be });
@@ -25,7 +25,7 @@ eq(/P\.actions\.filter\(function \(a\) \{ return !a\.gene; \}\)/.test(LV3), 'jou
 // Serveur (mail récap) : même règle que l'app sur les mêmes cas.
 const { stripTypeScriptTypes } = require('node:module'); const { webcrypto } = require('crypto');
 let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
-js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _rcGeneActive, _bilanRecapV2, buildProgressionParExo };';
+js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _rcGeneActive, _rcGeneAutre, _bilanRecapV2, buildProgressionParExo };';
 const SV = { createClient: () => ({ from: () => ({}) }), webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => undefined }, serve: () => {} },
   Response, Request, URLSearchParams, TextEncoder, TextDecoder, console, atob, btoa, setTimeout, clearTimeout, crypto: webcrypto, fetch: async () => ({}) };
 vm.createContext(SV); vm.runInContext(js, SV); const A = SV.__api;
@@ -43,4 +43,18 @@ const b = A._bilanRecapV2({ perfs, appData, secByExo: {}, musByExo: {} }, 'semai
 const txt = (b.recos || []).join(' | ');
 eq(/Gêne épaule signalée/.test(txt), 'mail récap : la gêne est signalée en premier', txt);
 eq(!/épaules? [0-9]/.test(txt.replace(/Gêne[^|]*/, '')), 'mail récap : pas de séries en plus proposées sur l\'épaule', txt);
+// A (14/11, porteur) : nuque → trapèzes / épaules / dos ; « Autre » ou zone vide → ligne de prudence, rien en pause.
+const nuq = [{ date: J(0), douleur: 4, zone_douloureuse: 'nuque' }];
+for (const m of ['Trapèzes', 'Epaule', 'Dos']) eq(!!S._lv3GeneActive(d(nuq), m, now) && !!A._rcGeneActive(nuq, m, now), 'nuque → ' + m + ' protégé (app et serveur)');
+eq(S._lv3GeneActive(d(nuq), 'Quadriceps', now) === null, 'nuque → quadriceps non concerné');
+for (const z of ['autre', '', null]) {
+  const be = [{ date: J(1), douleur: 3, zone_douloureuse: z }];
+  const a = S._lv3GeneAutre(d(be), now), b = A._rcGeneAutre(be, now);
+  eq(a && b && a.val === 3 && a.date === b.date, 'zone « ' + z + ' » → ligne de prudence (app = serveur)', { a, b });
+  eq(['Pectoraux', 'Dos', 'Epaule', 'Quadriceps'].every((m) => S._lv3GeneActive(d(be), m, now) === null), 'zone « ' + z + ' » → rien mis en pause');
+}
+eq(S._lv3GeneAutre(d(doul), now) === null && A._rcGeneAutre(doul, now) === null, 'zone reliée (épaule) → pas de ligne « zone non précisée »');
+eq(S._lv3GeneAutre(d([{ date: J(0), douleur: 2, zone_douloureuse: 'autre' }]), now) === null, '« Autre » à 2/5 → rien');
+const b2 = A._bilanRecapV2({ perfs, appData: Object.assign({}, appData, { bien_etre: [{ date: J(0), douleur: 4, zone_douloureuse: 'autre' }] }), secByExo: {}, musByExo: {} }, 'semaine', new Date(now));
+eq(/zone non précisée/.test((b2.recos || []).join(' ')), 'mail récap : ligne de prudence pour « Autre »', b2.recos);
 console.log(`gene-active : ${ok} OK / ${ko} KO`); process.exit(ko ? 1 : 0);
