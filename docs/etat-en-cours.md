@@ -4,6 +4,14 @@
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
 > Dernière mise à jour : **14 nov. 2026** (voir le bloc « 14/11 soir » juste en dessous).
 
+## ▶ DÉCISION PORTEUR (14/11) — après le déploiement de ce lot : STOP AU CODE pendant quelques semaines
+
+Le moteur a été rendu cohérent (A–E, douleur, R1-R8 au banc). La question suivante n'est plus « le moteur est-il cohérent ? » mais
+**« les athlètes comprennent-ils ces décisions, les suivent-ils, et le résultat observé leur apporte-t-il quelque chose ? »**
+→ Observation des vrais comptes uniquement (journal des décisions, statuts du 23/11, tests utilisateurs — grille
+`docs/tests-utilisateurs-journal-2026-11.md`). Pas de nouvelle règle ; seules exceptions : un bug bloquant ou une phrase fausse
+constatée en réel (corrigée par le même processus banc → test → préprod → validation).
+
 ## ▶ 14/11 soir — Cohérence charge ↔ récupération (A-D) en PRÉPROD · trajectoire force validée
 
 - **Audit charge ↔ récup** (`docs/audit-charge-recuperation-2026-11-14.md`) : A-D validés et codés selon le processus porteur
