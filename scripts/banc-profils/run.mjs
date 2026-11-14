@@ -91,7 +91,7 @@ try {
       return el.innerText;
     }, sel);
     await pg.evaluate(async () => { coach = { coach_id: 'C1', login: '0808', nom: 'Coach Banc', role: 'coach', sport: 'muscu' }; await ouvrirEspaceCoach(); });
-    for (let i = 0; i < 20; i++) { await pg.clock.runFor(1000); if (await pg.evaluate(() => !/Analyse des athlètes…/.test((document.getElementById('view-coach') || {}).innerText || ''))) break; }
+    for (let i = 0; i < 20; i++) { await pg.clock.runFor(1000); if (await pg.evaluate(() => { const t = (document.getElementById('view-coach') || {}).innerText || ''; return /athlètes suivis/.test(t) && !/Analyse des athlètes…/.test(t); })) break; }
     let txt = '== Coach ▸ Accueil ==\n' + await lire('view-coach');
     for (const aid of E.athleteIds) {
       await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a); }, aid);

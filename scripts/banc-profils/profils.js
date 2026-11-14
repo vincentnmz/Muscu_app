@@ -125,7 +125,7 @@ function equipe() {
     const p = PROFILS[nom]();
     for (const t of Object.keys(st)) {
       if (t === 'coachs' || !Array.isArray(p[t])) continue;
-      for (const r of p[t]) st[t].push(Object.assign({}, r, t === 'athletes' ? { coach_id: 'C1', nom: 'Athlète ' + nom } : {}, r.id != null && t !== 'athletes' ? { id: id++ } : {}));
+      for (const r of p[t]) st[t].push(Object.assign({}, r, t === 'athletes' ? { coach_id: 'C1', nom: 'Athlète ' + nom, prefs: Object.assign({}, r.prefs, nom === 'intermediaire_plateau' ? { novalyz_athlete: true } : {}) } : {}, r.id != null && t !== 'athletes' ? { id: id++ } : {}));   // plateau : propositions autorisées par le coach
     }
   }
   return { store: st, coachId: 'C1', athleteIds: st.athletes.map((a) => String(a.id)) };

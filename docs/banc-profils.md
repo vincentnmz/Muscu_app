@@ -71,6 +71,12 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
 
 | # | Gravité | Écran | Constat |
 |---|---|---|---|
-| **C1** | **Élevée** | Fiche coach ▸ À décider + ligne « Plan de la semaine » | Athlète avec **gêne forte à l'épaule** : la fiche affiche « **Proposé à l'athlète** : +4 séries de Développé militaire / Tirage vertical / Développé couché / Rowing » et liste l'action Épaule du plan **sans « en pause »**, alors que l'athlète ne voit plus ces propositions (gêne active). Faux pour le coach. |
-| **C2** | Moyenne | Fiche coach | Athlète dont le coach a **coupé les propositions** : « Plan de la semaine proposé à l'athlète … (calculé par Novalyz, **le même que voit l'athlète**) » et « Novalyz : +4 séries » — l'athlète ne voit aucune proposition. Phrase fausse. |
-| C3 | Faible | Fiche coach | Muscle sans accent dans la ligne du plan (« Epaule : 8 séries cette semaine »). |
+| **C1** | ✅ corrigé 14/11 — **Élevée** | Fiche coach ▸ À décider + ligne « Plan de la semaine » | Athlète avec **gêne forte à l'épaule** : la fiche affiche « **Proposé à l'athlète** : +4 séries de Développé militaire / Tirage vertical / Développé couché / Rowing » et liste l'action Épaule du plan **sans « en pause »**, alors que l'athlète ne voit plus ces propositions (gêne active). Faux pour le coach. |
+| **C2** | ✅ corrigé 14/11 — Moyenne | Fiche coach | Athlète dont le coach a **coupé les propositions** : « Plan de la semaine proposé à l'athlète … (calculé par Novalyz, **le même que voit l'athlète**) » et « Novalyz : +4 séries » — l'athlète ne voit aucune proposition. Phrase fausse. |
+| C3 | ✅ corrigé 14/11 — Faible | Fiche coach | Muscle sans accent dans la ligne du plan (« Epaule : 8 séries cette semaine »). |
+- **C1-C3 corrigés (14/11, préprod, affichage seulement)** : gêne active → le diagnostic ne propose plus d'action
+  (« Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice ») et le plan coach affiche « (en pause :
+  gêne épaule) » ; propositions coupées (cas **par défaut** de tout athlète relié à un coach sans autorisation) →
+  « Plan de la semaine suggéré par Novalyz … non montré à l'athlète » et « Piste … (tu as la main, rien n'est montré à
+  l'athlète) » au lieu de « proposé à l'athlète » ; titres du plan « Épaules », « Ischios ». L'équipe du banc a un athlète
+  aux propositions autorisées (plateau) pour couvrir les deux cas.
