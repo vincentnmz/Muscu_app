@@ -1037,7 +1037,7 @@ function _ckFraicheurHeader(m, dash){
   var tsbPct = (cf && cf.tsbPct != null) ? Number(cf.tsbPct) : null;
   var acwrRatio = (dash.acwr != null && !isNaN(Number(dash.acwr))) ? Number(dash.acwr) : null;
   var acwrSec = (acwrRatio != null && m.acwr_fiable === true)
-    ? 'ACWR ' + acwrRatio.toFixed(2) + ' · indice secondaire'
+    ? 'ACWR ' + acwrRatio.toFixed(2).replace('.', ',') + ' · indice secondaire'
     : 'ACWR non interprétable';
   if (tsbPct == null) {
     return '<div style="display:flex;align-items:center;gap:10px;">'
@@ -1049,7 +1049,7 @@ function _ckFraicheurHeader(m, dash){
   if (tsbPct >= 5) { frL = 'Frais'; frC = '#00c96e'; frSub = 'Reposé / affûté'; }
   else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frSub = 'Charge proche de l\'habitude'; }
   else { var _cr2 = m.charge_ressenti || null; frL = 'Charge en hausse'; frC = (_cr2 && _cr2.degrade) ? '#f5a623' : 'var(--text)'; frSub = (_cr2 && _cr2.degrade) ? 'et récupération en baisse' : ((_cr2 && _cr2.evaluable) ? 'ressenti stable : encaissé' : 'au-dessus de l\'habitude'); }
-  var ctl = (cf.ctl != null) ? String(cf.ctl) : '—', atl = (cf.atl != null) ? String(cf.atl) : '—';
+  var ctl = (cf.ctl != null) ? Number(cf.ctl).toLocaleString('fr-FR') : '—', atl = (cf.atl != null) ? Number(cf.atl).toLocaleString('fr-FR') : '—';
   var fiabTag = (cf.fiable === true) ? '' : ' · indicatif';
   return '<div style="display:flex;align-items:center;gap:12px;">'
     + '<div style="font-size:26px;font-weight:800;color:' + frC + ';line-height:1;">' + frL + '</div>'
@@ -16143,7 +16143,8 @@ function _maLectureNovalyzBloc(data) {
   var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
   // Constats = synthèse muscu enrichie (volume → force → cible → reste).
   var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
-  var constats = (s && s.constats) ? s.constats.slice() : [];
+  // B2 (banc 14/11) : l'état du jour vit sur Aujourd'hui — Analyses (entraînement 4 semaines) ne le répète plus.
+  var constats = ((s && s.constats) ? s.constats.slice() : []).filter(function (c) { return !(c && /état du jour|récupération est dégradée/i.test(c.texte || '')); });
   var f = _maFiabilite(data);
   // Classement partagé (charges · reps · RPE réels) — remplace le « 1RM estimé moyen ».
   var L = { records: [], progresse: [], recule: [], bloque: [], sous: [] };
@@ -16177,7 +16178,7 @@ function _maLectureNovalyzBloc(data) {
   var niveauXp = 'debutant'; try { niveauXp = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var recos = []; try { if (_nvPropsAthlete(data)) recos = _lxRecos(L, V, niveauXp, data); } catch (e) {}   // D3 : pas de recos Novalyz si le coach a la main
   var reco = '';
-  if (!recos.length) { try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {} }
+  if (!recos.length) { try { reco = (s && _nvPropsAthlete(data)) ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {} }   // B3 : coach a la main → pas de conseil Novalyz
   // Rien à montrer : nouvel athlète sans aucune séance → état vide qui explique quand l'analyse arrive
   // (07/11 : avant, bloc masqué → écran « vide » dans la visite d'un nouveau compte). Sinon, bloc masqué.
   if (!constats.length && !cls.length && f.pct <= 0) {
@@ -19133,7 +19134,7 @@ function _fmtHmin(m) { m = Math.round(m); return Math.floor(m / 60) + ' h ' + ((
 // et « maintenir » pouvait contredire le plan de la semaine ou une sous-charge. Le moteur n'est pas modifié.
 function _nvRecoUtile(r) {
   var t = r ? String(r).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
-  return /^RAS\b/i.test(t) ? '' : t;
+  return (/^RAS\b/i.test(t) || /^Données insuffisantes/i.test(t)) ? '' : t;   // B4 : « Données insuffisantes… » = rien à dire
 }
 function renderChargeFatigueJour(data) {
   var el = document.getElementById('tj-chargefatigue'); if (!el) return;
@@ -19228,7 +19229,7 @@ function renderChargeFatigueJour(data) {
   // une baisse indicative (sous la fourchette) est toujours signalée. Propositions indicatives.
   var recoSeance = '';
   try {
-    var _sj = _tjSeanceDuJour(data);
+    var _sj = (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete(data)) ? null : _tjSeanceDuJour(data);   // B3 : coach a la main → pas d'« exercices à pousser »
     if (_sj) {
       var _rows = _tjCibles(data, _sj.exos), _e2 = escapeHtml;
       var _sous = _rows.filter(function (x) { return x.mode === 'sous'; });
@@ -20001,7 +20002,9 @@ function renderEtat(data) {
       // « Charge & fraîcheur » ci-dessous. On retire toute mention « (ACWR x) » du texte
       // affiché (repère secondaire) — filet de sécurité si un ancien backend tourne encore.
       var recoHero = _nvRecoUtile(m.reco);   // 14/11 : « RAS » → texte de l'état (EX) à la place
-      var ex = recoHero || (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
+      // B4 : sans données (« Données insuffisantes » du moteur), jamais la phrase « Bonnes conditions… » par défaut.
+      var _insuff = /^Données insuffisantes/i.test(String(m.reco || '')) || m.confiance === 'non_interpretable';
+      var ex = recoHero || (_insuff ? 'Pas encore assez de données : fais ton questionnaire du jour pour que Novalyz évalue ton état.' : (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.'));
       var dashArc = (score != null) ? (score + ' 100') : '0 100';
       var ringTxt = (score != null) ? String(score) : '—';
       el.setAttribute('style', 'background:' + tint.bg + ';border-color:' + tint.bd + ';');
@@ -20028,7 +20031,7 @@ function renderEtat(data) {
       // Mention ACWR secondaire (si dispo) — affichée en petit, jamais décisionnelle.
       var acwrRatio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
       var acwrLine = (acwrRatio != null && m.acwr_fiable === true)
-        ? '<div style="margin-top:10px;font-size:11px;color:var(--text-subtle)">ACWR ' + acwrRatio.toFixed(2) + ' <span style="opacity:.8">· indice secondaire (à interpréter avec prudence)</span></div>'
+        ? '<div style="margin-top:10px;font-size:11px;color:var(--text-subtle)">ACWR ' + acwrRatio.toFixed(2).replace('.', ',') + ' <span style="opacity:.8">· indice secondaire (à interpréter avec prudence)</span></div>'
         : '';
       if (!cfe || tsbPct == null) {
         var noteF = 'Il faut ~4 semaines d\'entraînement (28 jours d\'historique) avec assez de séances. Continue d\'enregistrer : la fraîcheur s\'activera toute seule.';
@@ -20054,7 +20057,7 @@ function renderEtat(data) {
         var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,var(--warn) 0 47%,var(--text-muted) 47% 75%,var(--good) 75% 100%)">'
           + '<div style="position:absolute;top:-3px;left:' + posF.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
           + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>fatigue</span><span>équilibre</span><span>frais</span></div></div>';
-        var ctlTxt = (cfe.ctl != null) ? String(cfe.ctl) : '—', atlTxt = (cfe.atl != null) ? String(cfe.atl) : '—';
+        var ctlTxt = (cfe.ctl != null) ? Number(cfe.ctl).toLocaleString('fr-FR') : '—', atlTxt = (cfe.atl != null) ? Number(cfe.atl).toLocaleString('fr-FR') : '—';
         elA.innerHTML =
           '<div class="et-rowh"><span class="et-k">Charge &amp; fraîcheur</span>' + _maInfoBtn('fraicheur')
           + '<span class="et-chip" style="color:' + frC + ';background:' + frBg + '">' + frL + fiabF + '</span></div>'
@@ -20062,7 +20065,7 @@ function renderEtat(data) {
           + '<span class="et-big" style="color:' + frC + '">' + frL + '</span>'
           + '<span class="et-muted"><b style="color:' + frC + '">' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%</b> de fraîcheur<br>' + esc(frD) + '</span></div>'
           + zbarF
-          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div>'
+          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div><div style="font-size:10px;color:var(--text-subtle);margin-top:3px">En unités de charge (' + (cfe.source === 'srpe' ? 'RPE × durée' : 'tonnage pondéré par l\'effort') + ') : seul leur rapport compte, c\'est la fraîcheur ci-dessus.</div>'
           + acwrLine;
       }
     }
