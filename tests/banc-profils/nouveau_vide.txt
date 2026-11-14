@@ -6,8 +6,6 @@ LECTURE NOVALYZ · AUJOURD'HUI
 Ton état du jour
 État non renseigné
 Fais ton questionnaire du jour pour que Novalyz évalue ta forme
-RECO DU JOUR
-Données insuffisantes pour établir une tendance.
 SÉANCE DU JOUR
 Séance libre
 Choisis tes exercices au démarrage
@@ -90,7 +88,7 @@ Aucun record enregistré pour l'instant.
 AUJOURD'HUI
 —
 Prêt
-Données insuffisantes pour établir une tendance.
+Pas encore assez de données : fais ton questionnaire du jour pour que Novalyz évalue ton état.
 CONTEXTE DE PERFORMANCE
 Saison normale
 Aucun ajustement — analyses standard.
@@ -105,6 +103,18 @@ Il faut ~4 semaines d'entraînement (28 jours d'historique) avec assez de séanc
 C'est quoi la fraîcheur ? En clair : es-tu reposé ? Novalyz compare ce que tu encaisses d'habitude (~6 semaines) à ta charge des derniers jours. Tu as fait plus que d'habitude récemment → charge en hausse (c'est ton ressenti qui dit si c'est de la fatigue) ; moins → reposé. Méthode reconnue (modèle fitness-fatigue).
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+BIEN-ÊTRE DU JOUR
+Fiabilité des données :
+insuffisante
+Aucun questionnaire récent. Remplis ton bien-être après ta prochaine séance pour suivre ton état.
 —
 kg
 1M

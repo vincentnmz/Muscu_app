@@ -44,6 +44,7 @@ try {
       _appliquerAppData(data);
       try { maResetNav(); } catch (e) {}
       ['onb-overlay', 'nvt-ov', 'annonce-retour'].forEach((x) => { const e = document.getElementById(x); if (e) e.remove(); });
+      try { const rb = document.getElementById('et-rb-body'); if (rb && rb.style.display !== 'flex') _etFoldRB(); } catch (e) {}   // Forme : bloc Ressenti déplié (14/11)
       return ECRANS.map(([nom, idEl]) => { const el = document.getElementById(idEl); if (!el) return '== ' + nom + ' ==\n(absent)';
         document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
         for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }

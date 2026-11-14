@@ -31,12 +31,12 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
 | # | Gravité | Profil | Constat |
 |---|---|---|---|
 | B1 | ✅ **corrigé 14/11 (préprod)** — Élevée | douleur_vigilance | Douleur **forte** à l'épaule déclarée aujourd'hui, mais le plan de la semaine et le « Levier » proposent « +4 séries de Développé militaire » (exercice d'épaule). La douleur n'apparaît qu'en 2e cause (« Possible : gêne épaule »). |
-| B2 | Moyenne | douleur_vigilance | Aujourd'hui dit « À surveiller » (douleur forte), Analyses dit « Ton état du jour appelle à la vigilance » : deux niveaux différents pour le même état. |
-| B3 | Moyenne | coach_sans_propositions | Coach a coupé les propositions, mais Aujourd'hui affiche « Reco du jour : 3 exercices à pousser » et Analyses une « Reco entraînement » (protéines). |
-| B4 | Faible | nouveau_vide | Aujourd'hui ▸ Reco du jour : « Données insuffisantes pour établir une tendance. » (jargon ; masqué sur Forme mais pas ici). |
-| B5 | Faible | tous | Muscle sans accent ni majuscule dans les phrases : « Volume epaule », « exercices d'epaule ». |
-| B6 | Faible | tous | Forme : « ACWR 0.97 » (point au lieu de virgule), « Forme de fond 2864 / Fatigue récente 2253 » (chiffres bruts sans unité). |
-| B7 | À vérifier | tous | Forme ▸ « Ressenti & bien-être · 7 derniers jours » affiche « — » malgré 4 questionnaires en 7 jours (peut venir du profil fictif : champ `ressenti_global` non rempli). |
+| B2 | ✅ corrigé 14/11 — Moyenne | douleur_vigilance | Aujourd'hui dit « À surveiller » (douleur forte), Analyses dit « Ton état du jour appelle à la vigilance » : deux niveaux différents pour le même état. |
+| B3 | ✅ corrigé 14/11 — Moyenne | coach_sans_propositions | Coach a coupé les propositions, mais Aujourd'hui affiche « Reco du jour : 3 exercices à pousser » et Analyses une « Reco entraînement » (protéines). |
+| B4 | ✅ corrigé 14/11 — Faible | nouveau_vide | Aujourd'hui ▸ Reco du jour : « Données insuffisantes pour établir une tendance. » (jargon ; masqué sur Forme mais pas ici). |
+| B5 | ✅ corrigé 14/11 — Faible | tous | Muscle sans accent ni majuscule dans les phrases : « Volume epaule », « exercices d'epaule ». |
+| B6 | ✅ corrigé 14/11 — Faible | tous | Forme : « ACWR 0.97 » (point au lieu de virgule), « Forme de fond 2864 / Fatigue récente 2253 » (chiffres bruts sans unité). |
+| B7 | ✅ pas un défaut — À vérifier | tous | Forme ▸ « Ressenti & bien-être · 7 derniers jours » affiche « — » malgré 4 questionnaires en 7 jours (peut venir du profil fictif : champ `ressenti_global` non rempli). |
 
 ## Suivi
 - **B1 corrigé (14/11, préprod)** : « gêne active » = douleur ≥ 3/5 au **dernier** questionnaire (≤ 7 j) sur une zone
@@ -53,3 +53,9 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
   persiste » sous le plan de la semaine et dans le mail récap. Profil `douleur_autre` ajouté au banc.
 - **Plus tard (option B, décidée)** : règle par **exercice** (articulations sollicitées par exercice dans le catalogue :
   développé couché → poignet, épaule ; squat → genou, lombaires…), à relire exercice par exercice avec le porteur.
+- **B2-B7 (14/11, préprod, affichage seulement)** : B2 Analyses ne répète plus l'état du jour (il vit sur Aujourd'hui) ·
+  B3 coach a la main → plus d'« exercices à pousser » ni de conseil d'entraînement Novalyz (Aujourd'hui, Analyses) ·
+  B4 « Données insuffisantes… » masqué ; sans données, l'en-tête de Forme invite au questionnaire (et non « Bonnes
+  conditions… », erreur attrapée par le banc pendant la correction) · B5 muscles lisibles (« épaules », « ischios ») ·
+  B6 « ACWR 0,97 », milliers séparés, unité expliquée sous « Forme de fond / Fatigue récente » · B7 pas un défaut : le bloc
+  Ressenti est replié par défaut et le « — » était le bloc Poids ; le banc déplie maintenant Ressenti (couvert).

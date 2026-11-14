@@ -267,10 +267,33 @@ Tu es reposé — bon moment pour pousser.
 fatigue
 équilibre
 frais
-Forme de fond 2509
+Forme de fond 2 509
 Fatigue récente 741
+En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+BIEN-ÊTRE DU JOUR
+Dernier relevé · 12/11/2026
+Fiabilité des données :
+moyenne
+Sommeil
+Bon
+Fatigue générale
+Faible
+Stress / tension
+Faible
+Courbatures
+—
+Douleur
+Aucune
 —
 kg
 1M

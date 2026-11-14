@@ -64,6 +64,12 @@ function _lv3GeneAutreHtml(data) {
   var g = null; try { g = _lv3GeneAutre(data); } catch (_) {}
   return g ? '<div style="font-size:11.5px;color:#B35F00;margin-top:6px;line-height:1.45">⚠ Gêne ' + g.val + '/5 signalée le ' + g.date + ' (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.</div>' : '';
 }
+// B5 (banc 14/11) : nom de muscle lisible dans une phrase (« Volume épaules », « exercices d'ischios »).
+function _lv3MusNom(m) {
+  var M = { epaule: 'épaules', ischio: 'ischios', fessier: 'fessiers', adducteur: 'adducteurs', trapeze: 'trapèzes', trapezes: 'trapèzes', lombaire: 'lombaires', mollet: 'mollets', abdominau: 'abdominaux', pectorau: 'pectoraux' };
+  var k = String(m || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return M[k] || M[k.replace(/s$/, '')] || String(m || '').toLowerCase();
+}
 function _lv3T(d) { var i = _lv3Iso(d); var t = new Date(i + 'T12:00:00').getTime(); return isNaN(t) ? 0 : t; }
 function _lv3Num(x) { var n = Number(x); return isNaN(n) ? 0 : n; }
 function _lv3Fmt(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
@@ -145,7 +151,7 @@ function _lv3Diag(data, exo, kind, nowT) {
   var pas = (typeof _petitPas === 'function' && _petitPas(exo)) || 2.5;
   var checks = [], cause = null, levier = '', action = null, avant = null;
   var kg = function (x) { return _cdFmtKg(x); };
-  var nom = (muscle || '').toLowerCase();
+  var nom = _lv3MusNom(muscle);
 
   // 1) Charge trop lourde pour la fourchette (reps sous le minimum, effort maximal).
   var lourd = r0 > 0 && r0 < rmin && (rpeMax(p0) || 0) >= 9 && c0 > 0;
@@ -402,7 +408,7 @@ function _lv3Plan(data, nowT) {
       a.titre = (String(a.titre || '').indexOf('★') === 0 ? '★ ' : '') + _mu + ' : ' + a.min + ' séries cette semaine';
       a.progres = _lv3Fmt(tot) + ' / ' + a.min;
       a.raison = (a.parSem != null ? 'Moyenne ' + _lv3Fmt(a.parSem) + ' séries/sem sur ' + (a.recul && a.recul < 4 ? _lv3Fmt(Math.round(a.recul)) : '4') + ' semaines, ton minimum ' + a.min + '. ' : '')
-        + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _mu.toLowerCase() + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + a.exo + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';
+        + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _lv3MusNom(_mu) + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + a.exo + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';
     }
   });
   if (!acts.length) return null;

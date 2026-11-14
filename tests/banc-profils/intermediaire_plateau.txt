@@ -17,12 +17,12 @@ Stress faible (2/5)
 DEPUIS TA DERNIÈRE SÉANCE · FULL BODY B (11/11)
 ⏸
 Soulevé de terre roumain bloqué à 50 kg × 10 depuis 9 séances
-Pourquoi : Volume ischio : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
+Pourquoi : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : +4 séries de Soulevé de terre roumain (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 ⏸
 Développé militaire haltères bloqué à 55 kg × 10 depuis 9 séances
-Pourquoi : Volume epaule : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
+Pourquoi : Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : +4 séries de Développé militaire haltères (4,5 → 8 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 ⏸
@@ -83,7 +83,7 @@ Records : Développé couché barre 80 × 8
 charge (ou reps à charge égale) battue · 10 derniers jours
 ⏸
 Bloqué : Soulevé de terre roumain 50 × 10 depuis 9 séances · Développé militaire haltères 55 × 10 depuis 9 séances +3
-Pourquoi (Soulevé de terre roumain) : Volume ischio : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
+Pourquoi (Soulevé de terre roumain) : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : +4 séries de Soulevé de terre roumain (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 même charge, reps qui ne montent plus
@@ -91,10 +91,10 @@ TON PLAN DE LA SEMAINE
 0 / 3 fait
 1
 Ischio : 10 séries cette semaine · 3 / 10
-Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices d'ischio comptent (ex. +4 séries de Soulevé de terre roumain, idéalement sur 2 séances). Séance « Full body B ».
+Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices d'ischios comptent (ex. +4 séries de Soulevé de terre roumain, idéalement sur 2 séances). Séance « Full body B ».
 2
 Epaule : 8 séries cette semaine · 3 / 8
-Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 8. Tous tes exercices d'epaule comptent (ex. +4 séries de Développé militaire haltères, idéalement sur 2 séances). Séance « Full body B ».
+Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 8. Tous tes exercices d'épaules comptent (ex. +4 séries de Développé militaire haltères, idéalement sur 2 séances). Séance « Full body B ».
 3
 Dos : 10 séries cette semaine · 6 / 10
 Moyenne 9 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices de dos comptent (ex. +1 série de Tirage vertical). Séance « Full body B ».
@@ -262,11 +262,34 @@ Tu es reposé — bon moment pour pousser.
 fatigue
 équilibre
 frais
-Forme de fond 2864
-Fatigue récente 2253
-ACWR 0.97 · indice secondaire (à interpréter avec prudence)
+Forme de fond 2 864
+Fatigue récente 2 253
+En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+ACWR 0,97 · indice secondaire (à interpréter avec prudence)
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+BIEN-ÊTRE DU JOUR
+Dernier relevé · 12/11/2026
+Fiabilité des données :
+élevée
+Sommeil
+Bon
+Fatigue générale
+Faible
+Stress / tension
+Faible
+Courbatures
+—
+Douleur
+Aucune
 —
 kg
 1M

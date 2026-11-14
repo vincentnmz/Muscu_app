@@ -17,8 +17,6 @@ ta normale arrive après 7 saisies (4 pour l'instant)
 DEPUIS TA DERNIÈRE SÉANCE · FULL BODY B (09/11)
 ★
 Records : Soulevé de terre roumain 60 kg × 10, Développé militaire haltères 70 kg × 10, Tirage vertical 80 kg × 10
-RECO DU JOUR
-Séance du jour (Full body A) : 3 exercices à pousser (charge ou +1 rep).
 SÉANCE DU JOUR
 Full body A
 3 exercices · 2 séances au programme
@@ -71,8 +69,6 @@ Régularité : 1/2 séances cette semaine.
 ★
 Records : Soulevé de terre roumain 60 × 10 · Développé militaire haltères 70 × 10 · Tirage vertical 80 × 10 +3
 charge (ou reps à charge égale) battue · 10 derniers jours
-RECO ENTRAÎNEMENT
-Assure l'apport : assez de protéines (~1,6 à 2 g/kg/jour) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.
 TES SAISIES · 75/100
 75
 PARTIEL
@@ -216,10 +212,33 @@ Tu es reposé — bon moment pour pousser.
 fatigue
 équilibre
 frais
-Forme de fond 2716
-Fatigue récente 1047
+Forme de fond 2 716
+Fatigue récente 1 047
+En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
+TON RESSENTI · 7 DERNIERS JOURS
+V
+S
+D
+L
+M
+M
+J
+BIEN-ÊTRE DU JOUR
+Dernier relevé · 12/11/2026
+Fiabilité des données :
+moyenne
+Sommeil
+Bon
+Fatigue générale
+Faible
+Stress / tension
+Faible
+Courbatures
+—
+Douleur
+Aucune
 —
 kg
 1M
