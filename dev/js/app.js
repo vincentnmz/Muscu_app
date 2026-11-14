@@ -20102,8 +20102,11 @@ function _etRenderSuivis(data) {
       blSub = act.length + (act.length > 1 ? ' à suivre' : ' à suivre') + loc;
       blPill = { txt: 'à suivre', bg: 'var(--bad-a)', c: 'var(--danger)' };
     } else {
-      blSub = 'Aucune blessure active';
-      blPill = { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' };
+      // 14/11 (décision porteur) : une douleur signalée au questionnaire (alerte « douleur » du moteur) n'est jamais
+      // résumée en « OK ». Affichage seulement : moteur et logique des blessures inchangés.
+      var _dA = (((data && data.moteur) || {}).alertes || []).filter(function (a) { return a && a.type === 'douleur'; })[0];
+      if (_dA) { blSub = String(_dA.message || 'Douleur signalée'); blPill = { txt: 'à évaluer', bg: 'var(--warn-a)', c: 'var(--warn)' }; }
+      else { blSub = 'Aucune douleur ni blessure signalée'; blPill = { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' }; }
     }
   } catch (e) { blSub = 'Tes douleurs signalées et blessures suivies'; blPill = null; }
 
