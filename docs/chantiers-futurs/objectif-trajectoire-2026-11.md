@@ -156,3 +156,33 @@ mérite peut-être d'être signalée ; pour la **Sèche** (objectif : maintenir)
 | Raccourcir la fenêtre pour tenir T2 | 🔴 Refusé (faux positifs ≤ 1,5 %, stable : on garde une conclusion fiable plutôt qu'une alerte rapide). |
 | Phrase en cas de baisse | « Ta progression est en baisse sur les dernières semaines. » + « Lecture des 6 dernières semaines. » — **jamais** « ton objectif est compromis » (pas de trajectoire prédictive). |
 | Sèche | 🟠 Règle séparée, **simulation dédiée avant tout code** ; seuils fixés **avant** de voir les résultats. Scénarios demandés : poids ↓ + force stable ; poids ↓ + petite baisse de force acceptable ; poids ↓ + forte baisse de force ; poids stable + force stable ; bruit normal ; reprise / déload. |
+
+## 12. Protocole Sèche — PROPOSITION à valider (rien n'est lancé ; figé seulement après accord du porteur)
+
+**Règle candidate** (évaluée chaque semaine, 6 dernières semaines terminées, même anti-nervosité de 2 semaines) :
+- **Force** : même pente + erreur type que §9, mais avec une **tolérance** : « à surveiller » seulement si la force baisse
+  **plus que T %/semaine** de façon nette : pente + 1,28 × SE < **−T**. Proposition : **T = 0,5 %/sem** (≈ −3 % sur 6 semaines,
+  ordre de grandeur d'une baisse « acceptable » en déficit) — **c'est le seuil à valider**.
+- **Poids** : lu seulement si ≥ 4 pesées en 6 semaines ; pente des pesées (kg/sem). Le poids ne déclenche **jamais** seul une
+  alerte : il sert à dire si la sèche « avance » (pente < 0) ou non (« poids stable »), en phrase descriptive.
+- **R0** : semaines marquées reprise / déload exclues de la fenêtre (pas jugées).
+- Phrases : « Force maintenue pendant ta sèche » · « Ta force baisse plus que prévu sur les dernières semaines » ·
+  « Poids stable sur 6 semaines » / « Poids en baisse » / « Pas assez de pesées ». Jamais « sèche ratée ».
+
+**Scénarios** (10 000 tirages, bruit σ 3,3 % et 5,7 % comme §9 ; poids : bruit 0,4 kg par pesée, 1 à 2 pesées/sem.) :
+| Id | Vérité | Ce qu'on attend |
+|---|---|---|
+| S1 | poids −0,5 kg/sem, force 0 %/sem | « maintenue » (succès) |
+| S2 | poids −0,5 kg/sem, force −0,3 %/sem (petite baisse acceptable) | « maintenue » |
+| S3 | poids −0,5 kg/sem, force −1,5 %/sem (forte baisse) | « à surveiller » |
+| S4 | poids stable, force stable | force « maintenue » + « poids stable » (descriptif, pas d'alerte) |
+| S5 | S1 avec 2 semaines de reprise / déload (force −5 % ces semaines-là) | pas d'alerte due au déload |
+
+**Critères proposés** :
+- **K1 fausse alerte** (S1, S2, S4, S5) : « à surveiller » au moins une fois sur 12 semaines **≤ 10 %**.
+- **K2 détection** (S3) : « à surveiller » affiché dans **≥ 80 %** des tirages, délai **≤ 6 semaines** (on assume déjà ≈ 5 sem.).
+- **K3 stabilité** : ≤ 1 changement d'état par mois.
+- **K4 poids** : S1 lu « en baisse » et S4 lu « stable » dans ≥ 80 % des tirages quand il y a assez de pesées.
+- Rapporté : sensibilité au choix de T (0,3 / 0,5 / 0,8 %/sem) — **uniquement en rapport**, le T retenu est celui validé avant.
+
+**À valider** : le seuil T, les 5 scénarios (dont la valeur « −0,3 %/sem acceptable » et « −1,5 %/sem forte baisse »), les critères.
