@@ -273,13 +273,17 @@ eq('Squat[0].series = 1 série (20/08)', prog.Squat[0].series.length, 1);
 eq('progression Curl = 9 points (sous le plafond de 30)', prog.Curl.length, 9);
 eq('Curl[0] = date la plus récente 09/08/2026', prog.Curl[0].date, '09/08/2026');
 check('Curl garde la plus ancienne quand < 30 (01/08)', prog.Curl.some(p => p.date === '01/08/2026'), 'présente', 'ABSENTE');
-// Plafond à 30 : 32 dates consécutives → 30 points, les 2 plus anciennes exclues.
+// 14/11 : fenêtre de 400 jours + au moins les 30 dernières dates (avant : 30 dates seulement).
 const perfsCap = [];
 const _base = new Date('2026-06-01T00:00:00Z');
 for (let d = 0; d < 32; d++) { const dt = new Date(_base); dt.setUTCDate(_base.getUTCDate() + d); perfsCap.push({ date: dt.toISOString().slice(0, 10), seance_id: 'C', exercice: 'Dev', charge: 50, reps: 10 }); }
-const progCap = buildProgressionParExo(perfsCap);
-eq('progression Dev plafonnée à 30 points (sur 32 dates)', progCap.Dev.length, 30);
-check('Dev exclut les 2 plus anciennes (01/06, 02/06)', !progCap.Dev.some(p => p.date === '01/06/2026' || p.date === '02/06/2026'), 'absentes', 'PRÉSENTES');
+const _now = Date.UTC(2026, 10, 14);
+const progCap = buildProgressionParExo(perfsCap, _now);
+eq('progression Dev : 32 dates récentes (< 400 j) toutes gardées', progCap.Dev.length, 32);
+const perfsVieux = perfsCap.map(r => ({ ...r, date: '2024' + r.date.slice(4) }));
+const progVieux = buildProgressionParExo(perfsVieux, _now);
+eq('progression Dev : 32 dates de plus de 400 j → les 30 dernières gardées', progVieux.Dev.length, 30);
+check('Dev (ancien) exclut les 2 plus anciennes (01/06, 02/06/2024)', !progVieux.Dev.some(p => p.date === '01/06/2024' || p.date === '02/06/2024'), 'absentes', 'PRÉSENTES');
 
 // =============================================================================
 // buildVolumeSemaineParMuscle — séries/muscle de la SEMAINE (source UNIQUE

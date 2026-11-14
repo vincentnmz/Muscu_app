@@ -1,5 +1,7 @@
 # Chantier futur — Moteur d'analyse et de décision (mission du porteur, 12/11/2026)
 
+> **14/11** : spécification de la boucle « résultat → décision suivante » → [`boucle-resultat-decision-2026-11.md`](./boucle-resultat-decision-2026-11.md) (à valider, aucun code).
+>
 > **Statut (13/11) : LANCÉ — audit livré** → [`docs/audit-moteur-decision-2026-11-13.md`](../audit-moteur-decision-2026-11-13.md) (A→H, P0→P3). Aucun code avant validation du porteur.
 >
 > ~~**Statut : EN ATTENTE.**~~ (historique) Décision du porteur (12/11) : finir d'abord l'audit du code (fiabilisation,

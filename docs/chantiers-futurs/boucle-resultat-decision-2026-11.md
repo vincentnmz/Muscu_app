@@ -1,0 +1,233 @@
+# Boucle « résultat → décision suivante » — spécification (14/11/2026, VALIDÉE par le porteur, AUCUN CODE)
+
+> Demande du porteur (14/11). Prolonge `moteur-decision-mission-2026-11.md` (§8 boucle décision → résultat, §9 mémoire)
+> et l'audit `docs/audit-moteur-decision-2026-11-13.md` (P1-1 journal, P1-2 résultat observé : en prod).
+> **Rien n'est codé tant que cette spec, puis son contrôle de fiabilité (§7), ne sont pas validés.** Implémentation
+> prévue **après le point du 23/11 et les premiers retours testeurs** (décision du 13/11 : on observe d'abord).
+> Légende : **[V]** vérifié dans le code au 14/11 · **[P]** proposition à valider.
+
+## 1. Ce qu'on veut
+
+Novalyz doit pouvoir dire, pour chaque action de son plan :
+**« voilà ce que je t'ai proposé → voilà ce qui s'est passé → donc voilà ce que je te propose maintenant »**,
+sans jamais affirmer une cause (« résultat observé après la recommandation », pas « grâce à »).
+
+## 2. Ce qui existe déjà [V]
+
+| Brique | Où | Ce qu'elle fait |
+|---|---|---|
+| Plan de la semaine | `_lv3Plan` (js/lecture-v3.js) | ≤ 3 actions, calculées sur les séances **avant lundi** (stable toute la semaine). Types : `charge` (revenir dans la fourchette), `series` (volume d'un muscle), `rpe` (garder la charge, viser RPE 8), `cible` (pousser un exercice en progrès), `reprise`. |
+| Journal | table `decisions`, `enregistrerPlan` / `getDecisions` | Fige la **première version valide** du plan de chaque semaine : type, clé (exercice ou muscle), texte, raison, **critère de réussite**, données d'entrée, version de règle. Ajout seul. |
+| Statut de la semaine | `_lv3JournalEvaluer` (même règle que la coche « fait ») | `atteint` · `pas_atteint` (tenté, critère pas atteint) · `pas_tente` (exercice / muscle pas fait) · `non_evaluable`. |
+| Résultat observé ensuite | `_lv3JournalSuite` | Sur les 1 à 2 semaines suivantes, avec le critère enregistré : `confirme` · `non_confirme` (≥ 2 séances) · `trop_tot` · `pas_refait`. |
+| Leviers possibles | `_lv3Diag` | Pour un exercice qui coince, plusieurs causes testées (volume, effort, repos, gêne, série légère d'avant, marche de charge…) ; **seule la 1re donne le levier**, les autres restent dans le « Pourquoi ». |
+
+**Le manque [V]** : `_lv3Plan` **ne lit pas le journal**. Une action « pas atteinte » peut être reproposée à l'identique la
+semaine suivante, puis la suivante, sans que Novalyz le dise ni change d'approche. La boucle est ouverte à cet endroit.
+
+## 3. Historique d'une action [P]
+
+- **Même action** = même `type_action` + même `cle` (l'exercice, ou le muscle pour `series`) — c'est déjà la clé unique du journal.
+- **Issue d'une semaine** (à partir des deux évaluations existantes, rien de nouveau à calculer) :
+
+| Issue | Condition | Ce que ça veut dire |
+|---|---|---|
+| **Réussie** | statut `atteint` | le critère fixé à l'avance a été atteint |
+| **Échec tenté** | statut `pas_atteint` (l'exercice / le muscle a été fait) | l'action a été essayée et n'a pas marché cette semaine |
+| **Non tentée** | statut `pas_tente` | l'athlète ne l'a pas faite : ce n'est **pas** une preuve que le levier est mauvais |
+| **Inconnue** | `non_evaluable`, semaine en cours, données manquantes | ne compte pas |
+
+- **Mémoire** : les **6 dernières semaines** du journal ; un succès **remet à zéro** le compteur d'échecs de cette action.
+
+## 4. Règles de décision [P] (déterministes, appliquées au calcul du plan de la semaine W, avec le journal des semaines < W)
+
+| # | Situation | Décision |
+|---|---|---|
+| **R0** | Gêne active, pause, déload, reprise | Les garde-fous existants passent **avant** la boucle (inchangés). |
+| **R1** | Dernière issue = réussie | Le moteur propose la suite normale (ex. nouvelle cible). Une ligne le rappelle : « Semaine du 09/11 : objectif atteint (75 kg × 6). » |
+| **R2** | **2 échecs tentés de suite** (2 semaines distinctes) pour la même action | **Ne pas la reproposer telle quelle.** Prendre le **levier suivant** du diagnostic (2e cause trouvée). S'il n'y en a pas : levier de repli selon le niveau (changer de fourchette ou de variante 3-4 semaines — leviers déjà écrits dans `_lv3Diag`). S'il n'y en a aucun : pas d'action, et le dire (« déjà proposé 2 fois sans résultat : change d'approche, ou vois-le avec ton coach »). |
+| **R3** | **2 non tentées de suite** | Ne **pas** changer de levier (rien ne dit qu'il est mauvais). L'action reste, mais passe **en dernier** et le texte le reconnaît : « proposé 2 semaines, pas fait : garde-la seulement si elle te semble faisable ». |
+| **R4** | 1 seul échec, ou issues inconnues | **Aucun changement** (une semaine ratée = bruit possible : la performance varie de ±3 à 6 % d'une séance à l'autre, mesuré le 13/11). |
+| **R5** | Coach a coupé les propositions | Rien ne change pour l'athlète (pas de plan affiché). Le coach voit l'historique (« Déjà proposé », maquette `mockups/journal-decisions.html`). |
+
+**Pourquoi 2 et pas 1** : avec un seul échec, Novalyz changerait d'avis sur du bruit. 2 est le minimum ; le contrôle (§7)
+dira si 2 suffit ou s'il faut 3.
+
+## 5. Ce que l'athlète lit [P] (gabarits, pas de cause)
+
+- R1 : « Semaine du 09/11 : objectif atteint (75 kg × 6). On continue : vise 75 kg × 8. »
+- R2 : « Déjà proposé les semaines du 02/11 et du 09/11 (« garde 40 kg, vise RPE 8 ») sans résultat (RPE 9 puis 9,5).
+  Novalyz propose autre chose : reviens à 2 min de repos. » — le nouveau levier garde son propre « Pourquoi ».
+- R3 : « Proposé 2 semaines, pas fait. Garde-le seulement s'il te semble faisable. »
+- Toujours : « Résultat observé après la recommandation — d'autres facteurs peuvent jouer. »
+
+## 6. Contraintes techniques [P]
+
+1. **Le plan doit lire le journal** : aujourd'hui le journal est chargé à part (`getDecisions`, asynchrone). Règle : le plan
+   n'est **enregistré** dans le journal qu'**après** le chargement du journal (sinon la première version figée de la
+   semaine serait calculée sans la boucle). Journal indisponible → plan sans boucle, **pas d'enregistrement**.
+2. **Stabilité** : le plan de la semaine W n'utilise que les décisions des semaines < W et les séances avant lundi
+   (comme aujourd'hui) → identique toute la semaine, sur tous les appareils.
+3. **Version de règle** du plan incrémentée (le journal sait quelle règle a produit chaque plan).
+4. Rien côté serveur pour la boucle elle-même (le plan est calculé dans l'app) ; le mail récap n'utilise pas le plan.
+5. Pas de nouvelle table : tout vient du journal existant + des séances.
+
+## 7. Contrôle de fiabilité AVANT code [P] (même méthode que sommeil → performance)
+
+Simulation fixée à l'avance, puis seulement ensuite le code :
+- Athlètes simulés, chaque semaine l'action **réussit avec une probabilité p** : levier qui marche (p = 0,7), levier
+  moyen (p = 0,4), levier qui ne marche pas (p = 0,1) ; adhérence variable (non tentée 0 à 40 % des semaines).
+- Mesures : **abandon à tort** d'un levier qui marche (sur 6 semaines) · **délai** pour changer un levier qui ne marche
+  pas · nombre de changements d'avis par athlète et par mois.
+- Critères proposés (à fixer avant de lancer) : abandon à tort ≤ 10 % (p = 0,7) ; changement en ≤ 3 semaines dans
+  ≥ 80 % des cas (p = 0,1) ; ≤ 1 changement de levier par action et par mois en moyenne.
+- Comparer N = 2 et N = 3 échecs ; retenir le plus petit N qui respecte les critères.
+- **Limite** : on n'a pas encore de vraies probabilités de réussite par type d'action (3 décisions en prod au 13/11).
+  Les retours du journal d'ici fin novembre serviront à calibrer p.
+
+## 8. Tests prévus [P]
+
+Unitaires (R0-R5, mémoire de 6 semaines, remise à zéro après un succès, journal absent → pas d'enregistrement) ·
+profils de banc : « échec répété », « non tentée », « succès puis suite » · comparaison avant / après sur le banc
+(aucun changement pour les profils sans historique de journal).
+
+## 9. Hors périmètre
+
+Objectif → trajectoire (chantier suivant) · IA · apprentissage automatique · toute affirmation de cause · changement du
+calcul des statuts existants (`_lv3JournalEvaluer`, `_lv3JournalSuite`) · vue coach (lecture de l'historique : existe).
+
+## 10. Décisions attendues du porteur
+
+1. Règles R1 à R5 (en particulier **R3** : garder l'action non tentée en dernier, ou la retirer ?).
+2. Mémoire de **6 semaines**, remise à zéro après un succès.
+3. Textes du §5.
+4. Lancer le **contrôle de fiabilité (§7)** maintenant (sans code app), le code après le 23/11.
+
+
+---
+
+## 11. Décisions du porteur (14/11) — font foi sur les §3 à §7
+
+| Point | Décision |
+|---|---|
+| R1 succès | 🟢 Validé. Le succès **remet à zéro le compteur d'échecs** de l'action, **sans effacer** son historique (le journal reste la mémoire, « Tes décisions » le montre). |
+| R2 deux échecs | 🟢 Validé **seulement si les deux échecs sont comparables** (définition §12) et qu'**aucun garde-fou R0** ne peut expliquer le résultat. Hiérarchie : ① levier déjà identifié par le diagnostic ; ② sinon levier de repli explicitement défini ; ③ **jamais** de modification arbitraire. |
+| R3 deux « pas faite » | 🟢 **Garder, en dernier**. Pas faite ≠ échec. |
+| R4 un échec | 🟢 Rien ne change : 1 échec = observation, pas verdict. |
+| R5 coach | 🟢 La boucle ne modifie jamais le plan quand le coach a la main ; elle peut l'informer (« Proposition précédente : non atteinte deux semaines de suite »). |
+| Mémoire | 🟢 6 semaines = **fenêtre de décision**, pas suppression : l'historique reste consultable. |
+| Textes | 🟢 Trois niveaux (ci-dessous), toujours « résultat observé », jamais « grâce à ». |
+| Calendrier | 🟢 Simulation maintenant ; 🔴 aucun code app / base / moteur avant la simulation ; 🔴 aucun code avant le 23/11. Puis observation réelle jusqu'au 23/11, puis décision de coder. |
+| Stabilité | 🟢 Test ajouté : du bruit ne doit pas faire alterner les leviers (A → B → A → C). |
+
+Textes validés :
+- Succès : « Objectif atteint la semaine dernière. Novalyz passe à l'étape suivante. »
+- Deux échecs comparables : « Cet objectif n'a pas été atteint deux fois malgré deux tentatives comparables. Novalyz change de levier. » puis « Résultat observé, pas preuve de cause. »
+- Deux « pas faits » : « Cette proposition n'a pas encore été suffisamment testée. Novalyz la conserve, mais la place derrière les autres priorités. »
+
+## 12. « Échec comparable » — définition calculable [P, figée pour la simulation]
+
+Une semaine compte comme **échec comparable** pour une action seulement si **toutes** les conditions sont vraies :
+1. **Tentée et évaluable** : statut `pas_atteint` (l'exercice / le muscle a été fait, le critère est connu).
+2. **Même action, même objectif** : même `type_action` + `cle`, et même critère (charge visée à ± 2,5 kg près ;
+   même minimum de séries pour `series`).
+3. **Aucun garde-fou R0 cette semaine-là** : pas de pause, pas de contexte déload / reprise / retour (vacances, blessure),
+   pas de gêne active sur une zone sollicitée par l'action.
+4. **Au moins une tentative dans des conditions normales** : au moins une séance de l'exercice / du muscle sans
+   questionnaire « perturbé » le jour même ou la veille (perturbé = fatigue musculaire ≥ 4/5, sommeil ≤ 2/5 ou
+   douleur ≥ 3/5).
+Une semaine qui échoue sans remplir 3 et 4 est **non comparable** : elle ne compte ni comme échec ni comme succès.
+**Limite assumée** : un athlète qui ne remplit pas son questionnaire ne déclare pas ses perturbations → la simulation
+mesure ce cas (détection imparfaite).
+
+## 13. Protocole de simulation (FIGÉ AVANT LANCEMENT — aucun paramètre modifié après avoir vu les résultats)
+
+**Modèle** (par action suivie, 12 semaines, 10 000 tirages par scénario, graine fixe) :
+- Chaque semaine : l'athlète **tente** l'action avec la probabilité *a* (adhérence) ; la semaine est **perturbée** (R0
+  ou fatigue) avec la probabilité *q* ; une perturbation est **vue** par Novalyz avec la probabilité *d* = 0,8.
+- Si tentée : réussite avec la probabilité *p* du levier en cours (divisée par 3 si la semaine est perturbée).
+- Leviers : le diagnostic en fournit jusqu'à 3 (A, B, C) puis un levier de repli R ; chacun a sa propre *p*.
+- Le moteur applique R1-R4 et §12 : compteur d'échecs comparables par levier, remis à zéro par un succès ; au N-ième
+  échec comparable consécutif → levier suivant ; un levier abandonné n'est pas reproposé pendant la fenêtre de 6 semaines ;
+  non tentée 2 fois → l'action passe en dernier (aucun changement de levier).
+- Valeurs par défaut : *a* = 0,8 · *q* = 0,15 · *d* = 0,8.
+
+**Scénarios** (demandés par le porteur) :
+S1 levier efficace (*p* = 0,7) · S2 inefficace (0,1) · S3 moyen (0,4) · S4 bruit pur (0,5) · S5 succès puis échec
+(0,8 les 6 premières semaines, puis 0,1) · S6 deux « pas faits » répétés (*a* = 0,3, *p* = 0,7) · S7 reprise / déload
+fréquents (*q* = 0,4, *p* = 0,7) · S8 plusieurs leviers (A = 0,1, B = 0,7, C = 0,4) · S9 conditions qui changent sans
+être vues (*q* = 0,4, *d* = 0,3, *p* = 0,7).
+
+**Mesures et critères (fixés avant)** — comparés pour **N = 2** et **N = 3** ; on retient le plus petit N qui les respecte tous :
+- **C1 abandon injustifié** d'un levier efficace (S1, S6, S7) sur 6 semaines : **≤ 10 %**.
+- **C2 remplacement d'un levier inefficace** (S2) en **≤ 3 semaines** dans **≥ 80 %** des cas.
+- **C3 aucun changement après un seul échec** : **0 %** (tous scénarios).
+- **C4 stabilité** : sur 12 semaines avec un levier efficace (S1), **≤ 1 changement de levier par mois** en moyenne et
+  **aucun retour** à un levier abandonné dans la fenêtre de 6 semaines ; et S8 doit finir sur B (le bon levier) dans
+  ≥ 80 % des cas. Déterminisme : mêmes données d'entrée → mêmes décisions (100 %).
+- Rapporté sans critère : S3, S4, S5 (délai de changement après la bascule), S9 (effet de la détection imparfaite).
+
+**Si un critère échoue** : on le dit tel quel et on revient au porteur (pas d'ajustement silencieux).
+
+## 14. Résultats de la simulation (14/11, protocole §13 inchangé — `scripts/simulation-boucle/sim.js`)
+
+10 000 tirages par scénario, graine fixe. Paramètre non précisé par le protocole : efficacité des leviers suivants
+(B, C, repli) quand le scénario ne la donne pas = 0,5 (« inconnue ») ; il n'intervient dans aucun critère.
+
+| Critère | N = 2 | N = 3 |
+|---|---|---|
+| **C1** abandon injustifié ≤ 10 % (S1 / S6 / S7) | ❌ 24,6 % / 6,7 % / 21,1 % | ✅ 5,3 % / 0,7 % / 4,5 % |
+| **C2** levier inefficace remplacé en ≤ 3 sem. ≥ 80 % | ❌ 67,1 % (≤ 6 sem. : 94,6 %) | ❌ 26,1 % (≤ 6 sem. : 77,7 %) |
+| **C3** aucun changement après 1 seul échec | ✅ 0 % | ✅ 0 % |
+| **C4** stabilité : changements / mois (S1) · retours dans la fenêtre · S8 finit sur B · déterminisme | ❌ 0,24 · 0 · **65,6 %** · 100 % | ✅ 0,05 · 0 · 90,7 % · 100 % |
+| Rapporté : S3 levier moyen abandonné ≤ 6 sem. | 65,8 % | 32,3 % |
+| Rapporté : S4 bruit pur abandonné ≤ 6 sem. | 51,8 % | 20,8 % |
+| Rapporté : S9 conditions peu vues, levier efficace abandonné ≤ 6 sem. | 43,5 % | 14,1 % |
+| Rapporté : S5 abandon avant la bascule · changement après · délai médian | 12,7 % · 83,1 % · 3 sem. | 1,9 % · 77,6 % · 4 sem. |
+| Rapporté : S6 action mise en dernier | 99,5 % | 99,5 % |
+
+**Verdict** : **aucun N ne remplit tous les critères.** N = 3 remplit C1, C3, C4 ; N = 2 n'en remplit que C3.
+
+**Pourquoi C2 échoue (borne théorique, hors protocole, même modèle)** : avec un levier qui échoue **toujours**, la part
+maximale remplaçable en 3 semaines vaut **79,0 % (N = 2)** et **35,0 % (N = 3)** avec les paramètres du protocole
+(adhérence 0,8, perturbation 0,15, vue 0,8) — 96,2 % / 68,4 % seulement si l'athlète tente chaque semaine. C2, exprimé
+en **semaines**, est donc **inatteignable par construction** : il contredit les deux protections voulues (ne compter que
+les échecs **comparables**, ne pas compter les semaines **non tentées**). Rien n'a été ajusté ; décision au porteur.
+
+**S9 (perturbations non déclarées)** reste le point faible : un athlète qui ne remplit pas son questionnaire fait passer
+ses mauvaises semaines pour des échecs comparables (14 % d'abandon à tort avec N = 3, 43 % avec N = 2).
+
+## 15. Décision finale du porteur après simulation (14/11) — RÈGLE RETENUE (toujours aucun code)
+
+| # | Règle retenue |
+|---|---|
+| R0 | Garde-fous prioritaires (gêne, pause, déload, reprise…) avant la boucle. |
+| R1 | Succès → étape suivante ; compteur d'échecs remis à zéro, historique conservé. |
+| **R2** | **3 tentatives comparables ratées** → levier suivant déjà identifié par le diagnostic, sinon levier de repli défini ; jamais de modification arbitraire. |
+| R3 | « Pas faite » ne compte **jamais** comme échec ; après 2 semaines non tentées, la proposition reste valide mais descend en priorité. |
+| R4 | 1 ou 2 échecs : aucun changement automatique, observation. |
+| R5 | Coach aux commandes : la boucle ne modifie pas le plan. |
+
+- **C2 reformulé** : « Un levier inefficace est remplacé après **3 tentatives comparables ratées**. » La mesure porte sur
+  les **tentatives comparables**, pas sur les semaines écoulées. **Ce n'est pas une garantie produit** : en semaines,
+  la simulation donne ≈ 78 % de leviers inefficaces remplacés en 6 semaines (N = 3), pas 100 %.
+- **Échec (définition verrouillée)** = Novalyz a proposé → l'athlète a essayé → le critère était évaluable → le résultat
+  n'est pas atteint → la semaine est comparable (§12). **Tout le reste n'incrémente pas le compteur.**
+- **Mis de côté** : changement plus rapide sur « échec net » (ex. 4 reps sous l'objectif) — pas avant des données réelles
+  du journal, puis un nouveau protocole de simulation figé.
+- **Calendrier** : pas de code ; observation des vraies décisions à partir du 23/11, puis décision de coder.
+
+### Tests obligatoires le jour où ce sera codé (verrouillage échec / pas tenté)
+1. Semaine **non tentée** → compteur d'échecs **inchangé** (ni +1, ni remise à zéro).
+2. Semaine **sans questionnaire** ni séance de l'action → non tentée, jamais un échec.
+3. Semaine tentée mais **critère incomplet / non évaluable** → aucun effet sur le compteur.
+4. Semaine tentée, échec, avec **R0 actif** (pause, déload, reprise, gêne sur la zone) → non comparable, aucun effet.
+5. Semaine tentée, échec, **toutes les séances perturbées** (fatigue ≥ 4, sommeil ≤ 2 ou douleur ≥ 3 le jour même ou la
+   veille) → non comparable, aucun effet.
+6. **Critère différent** (charge visée ≠ ± 2,5 kg, minimum de séries différent) → nouvelle action, compteur repart de 0.
+7. 1 puis 2 échecs comparables → **aucun changement** ; 3e → changement de levier, avec le texte validé.
+8. Succès entre deux échecs → compteur remis à 0, historique intact.
+9. Échec comparable vieux de plus de 6 semaines → ne compte plus.
+10. Coach aux commandes → plan inchangé, information disponible pour le coach seulement.
+11. Même historique en entrée → même décision (déterminisme), identique sur tous les appareils.
+12. Profils du banc : « échec répété ×3 », « 2 échecs puis succès », « pas fait ×2 », « semaines perturbées ».
