@@ -334,8 +334,8 @@ Photos avant/après + mensurations
 Mes objectifs
 Suivre et fixer tes objectifs
 Douleurs & blessures
-Aucune blessure active
-OK
+Douleur forte signalée (épaule)
+à évaluer
 == Analyses ▸ Croisé ==
 Mes analyses
 Le verdict, puis les chiffres.

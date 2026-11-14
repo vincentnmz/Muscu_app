@@ -70,6 +70,11 @@ const rec = (mot) => (RC._bilanRecapV2({ perfs, appData: ad(mot), secByExo: {}, 
 const r0 = rec({ surcharge: 'Faible', charge_ressenti: { evaluable: false } }), r1 = rec({ surcharge: 'Élevé', charge_ressenti: { evaluable: false } });
 eq(/il manque environ/.test(r0), 'mail : charge habituelle → « il manque environ N séries » (inchangé)', r0);
 eq(!/il manque environ/.test(r1) && /Charge en hausse/.test(r1) && /renseigne ton état du jour/.test(r1), 'mail : pic non interprétable → prudence, pas de séries en plus', r1);
+// R7 (14/11) : douleur signalée → jamais « Aucune blessure active · OK » (affichage seulement).
+eq(verifier('Douleurs & blessures\nAucune blessure active\nOK', D({ alertes: [{ type: 'douleur' }] })).some((e) => e.startsWith('R7')), 'R7 : douleur + « Aucune blessure active · OK » → contradiction');
+eq(verifier('Douleurs & blessures\nDouleur forte signalée (épaule)\nà évaluer', D({ alertes: [{ type: 'douleur' }] })).length === 0, 'R7 : douleur affichée « à évaluer » → permis');
+eq(verifier('Douleurs & blessures\nAucune douleur ni blessure signalée\nOK', D({})).length === 0, 'R7 : aucune douleur → « OK » permis');
+eq(/a\.type === 'douleur'[\s\S]{0,200}blPill = \{ txt: 'à évaluer'/.test(fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8')), 'R7 code : tuile « à évaluer » branchée sur l\'alerte douleur du moteur');
 console.log('-'.repeat(70));
 console.log('cohérence charge ↔ récup : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) process.exit(1);

@@ -325,8 +325,8 @@ Photos avant/après + mensurations
 Mes objectifs
 Suivre et fixer tes objectifs
 Douleurs & blessures
-Aucune blessure active
-OK
+Douleur modérée signalée (autre)
+à évaluer
 == Analyses ▸ Croisé ==
 Mes analyses
 Le verdict, puis les chiffres.

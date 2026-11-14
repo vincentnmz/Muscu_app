@@ -132,7 +132,7 @@ Photos avant/après + mensurations
 Mes objectifs
 Suivre et fixer tes objectifs
 Douleurs & blessures
-Aucune blessure active
+Aucune douleur ni blessure signalée
 OK
 == Analyses ▸ Croisé ==
 Mes analyses

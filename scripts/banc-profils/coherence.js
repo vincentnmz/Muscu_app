@@ -52,6 +52,10 @@ function verifier(texte, data) {
   const pic = m.surcharge && m.surcharge !== 'Faible' && !(cr.evaluable === true && cr.degrade !== true);
   const aug = pic ? L.find((l) => /\+\d+ séries? de |jusqu'à RPE 9-10|ajoute 1 série|il manque environ|à pousser \(charge ou \+1 rep\)|Prochaine fois : vise/i.test(l)) : null;
   if (aug) err.push('R6 augmentation proposée pendant un pic de charge non interprétable : ' + aug);
+  // R7 (14/11, décision porteur) — douleur signalée au questionnaire (alerte « douleur » du moteur) : la synthèse
+  //          « Douleurs & blessures » ne dit jamais « Aucune blessure active · OK ».
+  const okBl = al.includes('douleur') ? L.find((l, i) => /^Aucune (douleur ni )?blessure/i.test(l) && /^OK$/.test(L[i + 1] || '')) : null;
+  if (okBl) err.push('R7 « ' + okBl + ' · OK » alors qu\'une douleur est signalée au questionnaire');
   return err;
 }
 module.exports = { verifier, acwrAffiche, zoneAcwr };
