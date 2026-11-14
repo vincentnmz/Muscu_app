@@ -311,7 +311,7 @@ function _lv3Diag(data, exo, kind, nowT) {
   if (_gA) {
     checks = checks.filter(function (c) { return !/^<b>Possible : gêne /.test(c.t); });
     checks.unshift({ s: 'ko', t: '<b>Gêne ' + _maE(_gA.zone) + ' ' + _gA.val + '/5</b> signalée le ' + _gA.date + (_gA.indir ? ' (zone sollicitée par cet exercice)' : '') });
-    cause = 'gene';
+    cause = 'gene'; action = null;   // C1 (banc coach 14/11) : plus d'action « +séries / charge » proposée sur la zone
     levier = 'gêne ' + _gA.zone + ' signalée le ' + _gA.date + ' : n\'ajoute ni charge ni séries sur cet exercice tant qu\'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).';
   }
   var pourquoi = '';
@@ -439,7 +439,8 @@ function _lv3Plan(data, nowT) {
       // 06/11 : l'action dit ce qui est réellement compté — le TOTAL du muscle sur la semaine (tous ses exercices),
       // pas « +N séries de tel exercice » (retour porteur : 4 séries de Belt squat ne semblaient pas comptées).
       var _mu = String(a.muscle || '');
-      a.titre = (String(a.titre || '').indexOf('★') === 0 ? '★ ' : '') + _mu + ' : ' + a.min + ' séries cette semaine';
+      var _muL = _lv3MusNom(_mu); _muL = _muL.charAt(0).toUpperCase() + _muL.slice(1);   // C3 (14/11) : « Épaules », pas « Epaule »
+      a.titre = (String(a.titre || '').indexOf('★') === 0 ? '★ ' : '') + _muL + ' : ' + a.min + ' séries cette semaine';
       a.progres = _lv3Fmt(tot) + ' / ' + a.min;
       a.raison = (a.parSem != null ? 'Moyenne ' + _lv3Fmt(a.parSem) + ' séries/sem sur ' + (a.recul && a.recul < 4 ? _lv3Fmt(Math.round(a.recul)) : '4') + ' semaines, ton minimum ' + a.min + '. ' : '')
         + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _lv3MusNom(_mu) + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + a.exo + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';

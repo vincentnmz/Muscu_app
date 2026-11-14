@@ -116,4 +116,18 @@ const PROFILS = {
     return st;
   },
 };
-module.exports = { NOW, PROFILS };
+// Équipe coach (14/11) : un coach fictif + 5 athlètes tirés des profils ci-dessus (mêmes données, reliés au coach).
+const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet'];
+function equipe() {
+  const st = { athletes: [], performances: [], indicateurs: [], bien_etre: [], programme: [], exercices: [], volume_obti: [], planning: [], coachs: [{ coach_id: 'C1', login: '0808', nom: 'Coach Banc', sport: 'muscu' }] };
+  let id = 1;
+  for (const nom of EQUIPE) {
+    const p = PROFILS[nom]();
+    for (const t of Object.keys(st)) {
+      if (t === 'coachs' || !Array.isArray(p[t])) continue;
+      for (const r of p[t]) st[t].push(Object.assign({}, r, t === 'athletes' ? { coach_id: 'C1', nom: 'Athlète ' + nom, prefs: Object.assign({}, r.prefs, nom === 'intermediaire_plateau' ? { novalyz_athlete: true } : {}) } : {}, r.id != null && t !== 'athletes' ? { id: id++ } : {}));   // plateau : propositions autorisées par le coach
+    }
+  }
+  return { store: st, coachId: 'C1', athleteIds: st.athletes.map((a) => String(a.id)) };
+}
+module.exports = { NOW, PROFILS, EQUIPE, equipe };
