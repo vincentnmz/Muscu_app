@@ -127,3 +127,50 @@ Le levier volume regarde la moyenne des **4 semaines terminées** (4,5 séries) 
 et il pousse l'intensité pendant un pic de charge. Même chose côté coach (« Piste… »). Touche au moteur de décision (leviers) →
 **pas de correction sans décision**. Piste : suspendre les leviers « + séries / RPE 9-10 » quand `moteur.surcharge` ≠ Faible
 (comme pour une gêne), avec une phrase « on attend ton ressenti avant d'ajouter du volume ».
+
+## 9. E — décision du porteur (14/11) et comportement attendu (écrit AVANT le code)
+
+**Règle validée** : quand la charge est **inhabituelle** et que le ressenti nécessaire pour l'interpréter **n'est pas assez
+renseigné**, Novalyz **ne propose pas d'augmenter** séries, charge ou effort. « Je ne sais pas encore si tu encaisses cette
+charge, donc je ne vais pas te demander d'en rajouter » — **sans laisser l'athlète sans plan**.
+
+**Condition (vérité = moteur)** : `moteur.surcharge` ≠ « Faible » (fraîcheur < −12 %, = « Charge en hausse ») **et** ressenti
+**non évalué** (`charge_ressenti.evaluable` ≠ true). **Extension proposée** (même logique, à confirmer par le porteur) : ressenti
+**dégradé** (`degrade` = true) — le moteur dit déjà « allège 1 séance » ; proposer +séries le contredirait.
+Hors champ (question ouverte) : charge en hausse **bien encaissée** (ressenti évalué, stable) — le moteur dit « continue,
+**sans empiler davantage de volume** » ; on ne suspend rien dans ce cas sans décision.
+
+| Proposition | Pendant un pic non interprétable |
+|---|---|
+| ❌ Plan : « +N séries / muscle : N séries cette semaine » (volume) | **en pause**, affichée barrée avec la raison, hors compteur, **jamais enregistrée au journal** (même mécanique que la gêne) |
+| ❌ Plan : cible « à pousser » (charge ou +1 rep de plus) | **en pause** (idem) |
+| ❌ Levier d'un exercice : « +N séries de… », « va jusqu'à RPE 9-10 », « ajoute 1 série » | remplacé par : garde tes séries et ta charge prévues, sans aller à l'échec ; renseigne ton état |
+| ❌ Mail récap : « il manque environ N séries » | remplacé par la même phrase de prudence |
+| ✅ Maintien (« garde X kg, vise RPE 8 ») | reste |
+| ✅ Allègement (revenir dans la fourchette avec une charge plus basse) | reste |
+| ✅ Récupération / renseigner le ressenti | proposé (reco du moteur « renseigne ton état du jour ») |
+| ✅ Garde-fous (gêne, reprise, déload) | **prioritaires** : une action en pause pour gêne garde la raison « gêne » |
+
+**Contrôle permanent R6** (banc, `coherence.js`) : si la condition est vraie, aucun texte affiché ne contient « +N série(s) de »,
+« jusqu'à RPE 9-10 », « ajoute 1 série » ni « il manque environ » (athlète, Analyses, Croisé, Forme, fiche coach).
+
+### 9 bis. E — réalisé (14/11, en préprod)
+
+- `_lv3PicCharge(data)` (app) = condition du §9 ; même condition côté serveur pour le mail récap.
+- **Plan** : actions « séries » et « cible à pousser » **non encore faites** → en pause (« en pause (charge en hausse) »),
+  hors compteur, jamais au journal ; compteur « en pause » au lieu de « 0 / 0 » quand tout est en pause (athlète et coach).
+  Action **déjà faite** cette semaine : laissée faite (c'est un acquis, pas une proposition), explication « Objectif atteint
+  cette semaine : n'en rajoute pas tant que ta charge est en hausse » au lieu de « ex. +4 séries ».
+- **Leviers** (Analyses, fiche coach « Piste ») : volume / effort laissé en réserve / marche → « garde tes séries et ta charge
+  prévues, sans aller à l'échec, et renseigne ton état du jour » ; la mention « va jusqu'à RPE 9-10 » est retirée des autres.
+- **Cibles de séance** (saisie + Reco du jour) : mode **maintien** existant (« mêmes charges que la dernière fois, pas de
+  progression aujourd'hui »), avec la raison « charge en hausse, ressenti pas encore renseigné » → plus de « N exercices à
+  pousser ».
+- **Recos de secours** (Analyses sans plan) et **mail récap** : « Charge en hausse : … garde tes séries et ta charge prévues… »
+  au lieu de « à pousser » / « il manque environ N séries ».
+- Gêne : reste prioritaire (une action déjà en pause pour gêne garde sa raison « gêne »).
+- **Banc** : profil `pic_plan_a_faire` (pic la semaine dernière, plan pas fait) ; R6 étendu à « à pousser (charge ou +1 rep) »
+  et « Prochaine fois : vise » ; une **erreur JavaScript fait désormais échouer le banc**, même en `--maj` (une erreur de syntaxe
+  de ma part a été attrapée ainsi pendant ce lot, avant tout envoi). Tests : `tests/coherence-charge-recup.test.js` (26 vérifs).
+- **Choix à confirmer** : ressenti **dégradé** inclus dans la règle (le moteur dit déjà « allège ») ; charge en hausse **bien
+  encaissée** laissée hors règle (le moteur dit « sans empiler davantage de volume » — à trancher).

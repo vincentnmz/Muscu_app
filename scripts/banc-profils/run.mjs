@@ -59,6 +59,7 @@ try {
     }, { data, a, ECRANS });
     await pg.clock.runFor(2500);
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
+    if (erreurs.length) { ko++; console.error('  ✗ ' + id + ' : erreur JavaScript — ' + erreurs[0]); }   // bloquant même en --maj (14/11)
     const inc = verifier(normaliser(txt), data);   // cohérence inter-écrans (14/11) : bloquant même en --maj
     if (inc.length) { ko++; console.error('  ✗ ' + id + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     const f = path.join(ATT, id + '.txt');
@@ -117,6 +118,7 @@ try {
       if (inc.length) { ko++; console.error('  ✗ coach ▸ fiche ' + aid + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     }
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
+    if (erreurs.length) { ko++; console.error('  ✗ coach_equipe : erreur JavaScript — ' + erreurs[0]); }
     const f = path.join(ATT, 'coach_equipe.txt');
     if (MAJ) { fs.writeFileSync(f, sortie); console.log('  ✎ coach_equipe : attendu réécrit (' + sortie.split('\n').length + ' lignes)'); }
     else if (!fs.existsSync(f)) { ko++; console.error('  ✗ coach_equipe : pas de fichier attendu (lancer --maj coach_equipe après relecture)'); }

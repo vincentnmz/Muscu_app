@@ -10,7 +10,7 @@
   (banc → attendu écrit → test → préprod → vérif réelle → prod). Nouveau **contrôle de cohérence inter-écrans** dans le banc
   (`scripts/banc-profils/coherence.js`, R1-R5) : 16 contradictions avant, 0 après. 2 profils ajoutés. **En préprod, pas en prod**
   (à vérifier sur /dev/ puis « mise en prod » ; `index.ts` à redéployer à la main : seule la synthèse Croisé serveur change).
-- **Constat E non corrigé** (à décider) : levier « +4 séries / RPE 9-10 » affiché pendant un pic de charge (§8 du doc d'audit).
+- **E validé et codé (préprod)** : pendant un pic de charge non interprétable, plus aucune augmentation proposée (plan en pause, leviers et cibles de maintien, mail) — §9 bis du doc d'audit.
 - **Trajectoire** : force validée (6 semaines, délai ≈ 5 sem. assumé, jamais « objectif compromis ») ; **Sèche = simulation
   dédiée avant code** (protocole à faire valider, seuils fixés avant résultats) — `objectif-trajectoire-2026-11.md` §11.
 

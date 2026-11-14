@@ -125,6 +125,17 @@ const PROFILS = {
     [4, 1].forEach((d) => bienEtre(st, d, { sommeil: 5, fatigue_musculaire: 1, stress: 1 }));
     return st;
   },
+  // 9 bis. Pic de charge la semaine dernière, plan de cette semaine PAS encore fait, ressenti non évalué (E, 14/11) :
+  //        les actions « + séries / à pousser » passent en pause (maintien / allègement restent).
+  pic_plan_a_faire() {
+    const st = base('13'); athlete(st, { annees: 4 }); programme(st);
+    [45, 42, 38, 35, 31, 28, 24, 21, 17, 14].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10, 8, 7)])));
+    const lourd = (c, r, rpe) => [[c, r, rpe], [c, r, rpe], [c, r, rpe], [c, r, rpe + 0.5], [c, r - 1, rpe + 1], [c, r - 1, rpe + 1]];
+    [7, 6, 5, 4, 2].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, lourd(60 + i * 10, 8, 8)])));
+    for (let d = 9; d < 45; d += 3) bienEtre(st, d, {});
+    [1].forEach((d) => bienEtre(st, d, { sommeil: 5, fatigue_musculaire: 1, stress: 1 }));
+    return st;
+  },
   // 10. Reprise : 6 semaines régulières puis 10 jours sans séance ; questionnaire récent bon (audit 14/11 D).
   reprise_apres_pause() {
     const st = base('12'); athlete(st, { annees: 4 }); programme(st);

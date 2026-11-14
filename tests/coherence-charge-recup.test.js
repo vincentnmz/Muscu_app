@@ -39,6 +39,37 @@ const t3 = txt({ surcharge: 'Élevé', charge_ressenti: { evaluable: true, degra
 eq(!/encaisses bien/.test(t3) && /ressenti baisse/.test(t3), 'A : ressenti dégradé → alerte, pas « encaisses »', t3);
 const t4 = txt({ surcharge: 'Faible', charge_ressenti: { evaluable: false } });
 eq(!/encaisses/.test(t4) && /récupération est excellente ces 7 derniers jours/.test(t4), 'A : charge habituelle → récup seule, sans lien charge', t4);
+
+// ── 3) E (14/11, validé porteur) : pic de charge non interprétable → pas d'augmentation ──
+eq(verifier('Levier : +4 séries de Squat (4,5 → 10 séries/sem).', D({ surcharge: 'Élevé', charge_ressenti: { evaluable: false } })).some((e) => e.startsWith('R6')), 'R6 : +séries pendant un pic non interprétable');
+eq(verifier('Séance du jour (A) : 3 exercices à pousser (charge ou +1 rep).', D({ surcharge: 'Modéré', charge_ressenti: { evaluable: true, degrade: true } })).some((e) => e.startsWith('R6')), 'R6 : « à pousser » avec ressenti dégradé');
+eq(verifier('Levier : +4 séries de Squat.', D({ surcharge: 'Élevé', charge_ressenti: { evaluable: true, degrade: false } })).length === 0, 'R6 : charge en hausse BIEN encaissée → hors règle (pas de décision)');
+eq(verifier('Levier : +4 séries de Squat.', D({ surcharge: 'Faible', charge_ressenti: { evaluable: false } })).length === 0, 'R6 : charge habituelle → +séries permis');
+const LV3 = fs.readFileSync(path.join(__dirname, '..', 'js', 'lecture-v3.js'), 'utf8');
+const fnSrc = (src, n) => { const i0 = src.indexOf('function ' + n + '('); let i = src.indexOf('{', i0), dd = 0, j = i; for (; j < src.length; j++) { if (src[j] === '{') dd++; else if (src[j] === '}') { dd--; if (!dd) { j++; break; } } } return src.slice(i0, j); };
+const P = {}; vm.createContext(P); vm.runInContext(fnSrc(LV3, '_lv3PicCharge') + '\nthis.f = _lv3PicCharge;', P);
+const pk = (sur, ev, dg) => P.f({ moteur: { surcharge: sur, charge_ressenti: { evaluable: ev, degrade: dg } } });
+eq(pk('Élevé', false, false) && pk('Élevé', false, false).degrade === false, 'E app : Élevé + non évalué → pic');
+eq(pk('Modéré', true, true) && pk('Modéré', true, true).degrade === true, 'E app : Modéré + dégradé → pic (ressenti en baisse)');
+eq(pk('Élevé', true, false) === null, 'E app : Élevé + évalué stable → pas de pic (encaissée)');
+eq(pk('Faible', false, false) === null && P.f({}) === null, 'E app : charge habituelle / pas de moteur → pas de pic');
+eq(/if \(_picP\) acts\.forEach\(function \(a\) \{ if \(!a\.gene && !a\.fait && \(a\.type === 'series' \|\| a\.type === 'cible'\)\) a\.gene = _picP;/.test(LV3), 'E plan : séries / cibles non faites mises en pause (maintien, allègement, fait : intacts)');
+// Mail récap (serveur) : « il manque N séries » remplacé par la prudence pendant un pic.
+const { webcrypto } = require('crypto');
+let js2 = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase/functions/handler/index.ts'), 'utf8'));
+js2 = js2.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _bilanRecapV2, buildProgressionParExo };';
+const SV = { createClient: () => ({ from: () => ({}) }), webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => undefined }, serve: () => {} },
+  Response, Request, URLSearchParams, TextEncoder, TextDecoder, console, atob, btoa, setTimeout, clearTimeout, crypto: webcrypto, fetch: async () => ({}) };
+vm.createContext(SV); vm.runInContext(js2, SV); const RC = SV.__api;
+const nowM = Date.UTC(2026, 10, 12, 17), JM = (n) => new Date(nowM - n * 864e5).toISOString().slice(0, 10);
+const perfs = []; const add = (exo, mus, dj, c, r) => [1, 2, 3].forEach((sr) => perfs.push({ date: JM(dj), exercice: exo, muscle: mus, charge: c, reps: r, rpe: 8, serie: sr }));
+[13, 9, 6, 2].forEach((dj) => { add('Développé militaire', 'Epaule', dj, 40, 10); add('Squat', 'Quadriceps', dj, 100, 8); });
+const ad = (mot) => ({ historique: { progression_par_exo: RC.buildProgressionParExo(perfs) }, programme: [{ exercice: 'Développé militaire' }, { exercice: 'Squat' }], exo_categories: {}, niveau_experience: 'intermediaire',
+  volume_obti: [{ muscle: 'Epaule', series_min: 10, series_opt: 14 }, { muscle: 'Quadriceps', series_min: 10, series_opt: 16 }], bien_etre: [], cardio: { history: [] }, dashboard: { regularite: { seances_prevues: 2 } }, moteur: mot });
+const rec = (mot) => (RC._bilanRecapV2({ perfs, appData: ad(mot), secByExo: {}, musByExo: {} }, 'semaine', new Date(nowM)).recos || []).join(' | ');
+const r0 = rec({ surcharge: 'Faible', charge_ressenti: { evaluable: false } }), r1 = rec({ surcharge: 'Élevé', charge_ressenti: { evaluable: false } });
+eq(/il manque environ/.test(r0), 'mail : charge habituelle → « il manque environ N séries » (inchangé)', r0);
+eq(!/il manque environ/.test(r1) && /Charge en hausse/.test(r1) && /renseigne ton état du jour/.test(r1), 'mail : pic non interprétable → prudence, pas de séries en plus', r1);
 console.log('-'.repeat(70));
 console.log('cohérence charge ↔ récup : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) process.exit(1);

@@ -47,6 +47,11 @@ function verifier(texte, data) {
   const pou = L.find((l) => /bon moment pour pousser/i.test(l));
   const bloque = niv !== 'Prêt' || al.some((t) => t === 'absence' || t === 'sous_charge' || t === 'douleur') || m.contexte_tag;
   if (pou && bloque) err.push('R5 « bon moment pour pousser » alors que ' + [niv !== 'Prêt' ? 'disponibilité ' + niv : null, al.filter((t) => ['absence', 'sous_charge', 'douleur'].includes(t)).join('+') || null, m.contexte_tag || null].filter(Boolean).join(', ') + ' : ' + pou);
+  // R6 (E, 14/11) — pic de charge non interprétable (surcharge ≠ Faible ET ressenti non évalué ou dégradé) :
+  //          aucune proposition d'AUGMENTATION (séries, RPE 9-10). Maintien / allègement / récup restent permis.
+  const pic = m.surcharge && m.surcharge !== 'Faible' && !(cr.evaluable === true && cr.degrade !== true);
+  const aug = pic ? L.find((l) => /\+\d+ séries? de |jusqu'à RPE 9-10|ajoute 1 série|il manque environ|à pousser \(charge ou \+1 rep\)|Prochaine fois : vise/i.test(l)) : null;
+  if (aug) err.push('R6 augmentation proposée pendant un pic de charge non interprétable : ' + aug);
   return err;
 }
 module.exports = { verifier, acwrAffiche, zoneAcwr };

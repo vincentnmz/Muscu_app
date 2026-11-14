@@ -5977,7 +5977,15 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   }
   if (!_genes.length) { const ga = (() => { try { return _rcGeneAutre(_beG, _nowG) } catch (_) { return null } })(); if (ga) recos.push(`<b>Gêne ${ga.val}/5 signalée le ${ga.date}</b> (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.`) }
   const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_geneMus(v.muscle))
-  if (bas.length) {
+  // E (14/11, validé porteur) = app `_lv3PicCharge` : charge inhabituelle (moteur.surcharge ≠ Faible) dont le ressenti ne permet
+  // pas de dire qu'elle est encaissée (non évalué ou dégradé) → pas de « il manque N séries » ; une phrase de prudence à la place.
+  const _motR = (ad && ad.moteur) || {}, _crR = _motR.charge_ressenti || {}
+  const _picR = !!(_motR.surcharge && _motR.surcharge !== 'Faible' && !(_crR.evaluable === true && _crR.degrade !== true))
+  if (_picR && bas.length) {
+    recos.push(_crR.degrade === true
+      ? `<b>Charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`
+      : `<b>Charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)
+  } else if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
     const nm = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux' } as any)[m] || m.toLowerCase()
