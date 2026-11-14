@@ -15804,7 +15804,7 @@ function _maFiabilite(data) {
 }
 function _maFiabiliteBloc(data) {
   var f = _maFiabilite(data), col = _maFiabCol(f.pct);
-  var lib = f.pct >= 75 ? 'fiable' : f.pct >= 50 ? 'à compléter' : 'incomplet';
+  var lib = f.pct >= 100 ? 'complet' : 'partiel';
   var dash = Math.max(0, Math.min(100, f.pct));
   var ring = '<div style="position:relative;width:76px;height:76px;flex:none">'
     + '<svg width="76" height="76" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface2)" stroke-width="4"/>'
@@ -15815,8 +15815,8 @@ function _maFiabiliteBloc(data) {
     return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0"><span style="width:14px;flex:none;text-align:center">' + (ic[r.s] || ic.ko) + '</span><span style="flex:1;min-width:0">' + _maE(r.l) + '</span><span style="color:var(--text-subtle);font-size:11px;font-variant-numeric:tabular-nums;flex:none">' + r.g + '/' + r.m + '</span></div>';
   }).join('');
   var tip = f.tips.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5"><b style="color:var(--text)">Pour atteindre 100 %</b> : ' + _maE(f.tips.join(' · ')) + '.</div>'
-    : '<div style="font-size:11px;color:#00A854;margin-top:8px">✓ Données complètes — fiabilité maximale.</div>';
-  return _maSec('Fiabilité des données', f.pct + ' / 100', 'fiabilite')
+    : '<div style="font-size:11px;color:#00A854;margin-top:8px">✓ Tout ce que cette lecture utilise est renseigné.</div>';
+  return _maSec('Tes saisies', f.pct + ' / 100', 'fiabilite')
     + '<div class="ma-card" style="padding:14px 15px"><div style="display:flex;gap:14px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + list + '</div></div>' + tip + '</div>';
 }
 
@@ -15986,8 +15986,8 @@ function ouvrirInfoLectureAnalyses() {
   var txt = 'Cette lecture porte sur ton ENTRAÎNEMENT (volume, force, régularité) sur tes 4 dernières semaines, '
     + 'indépendamment du filtre de période en dessous. « Ce que Novalyz lit » = les constats déterministes tirés de tes séances '
     + '(volume, régularité) et le classement de tes exercices sur tes charges, reps et RPE réels : records, progrès, exercices bloqués, séries sous ta fourchette de reps. '
-    + 'Les propositions de charge sont indicatives : c\'est toi qui décides. La « fiabilité » dit à quel point ces constats reposent sur assez de données '
-    + '(plus tu renseignes RPE, bien-être et cibles, plus elle monte). '
+    + 'Les propositions de charge sont indicatives : c\'est toi qui décides. « Tes saisies » dit si tu renseignes ce que cette lecture utilise '
+    + '(séances, RPE, questionnaire du jour, fourchettes de reps) : ce n\'est pas la fiabilité de ton état du jour, affichée sur l\'écran Aujourd\'hui. '
     + 'Pour ton état du jour (récup, charge, fatigue), vois le bloc « Lecture Novalyz » de l\'écran Aujourd\'hui.';
   try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Lecture Novalyz · Analyses', escapeHtml(txt) + '<div style="margin-top:12px"><a href="#" onclick="event.preventDefault();ouvrirInfoProgression()" style="color:var(--accent);font-weight:800;text-decoration:none">Comment Novalyz te fait progresser →</a></div>', true); } catch (e) {}
   try { alert(txt); } catch (e) {}
@@ -16189,7 +16189,7 @@ function _maLectureNovalyzBloc(data) {
     }).join('') + '</div>') : '';
 
   // ── Fiabilité (anneau compact + mini-liste) — sous-box ──
-  var col = _maFiabCol(f.pct), lib = f.pct >= 75 ? 'fiable' : f.pct >= 50 ? 'à compléter' : 'incomplet';
+  var col = _maFiabCol(f.pct), lib = f.pct >= 100 ? 'complet' : 'partiel';   // 14/11 (audit F3) : « Tes saisies », pas une fiabilité
   var dash = Math.max(0, Math.min(100, f.pct));
   var ring = '<div style="position:relative;width:64px;height:64px;flex:none">'
     + '<svg width="64" height="64" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface)" stroke-width="4"/>'
@@ -16199,10 +16199,10 @@ function _maLectureNovalyzBloc(data) {
   var flist = f.rows.map(function (r) {
     return '<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;padding:2px 0"><span style="width:12px;flex:none;text-align:center">' + (ic[r.s] || ic.ko) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(r.l) + '</span><span style="color:var(--text-subtle);font-size:10.5px;font-variant-numeric:tabular-nums;flex:none">' + r.g + '/' + r.m + '</span></div>';
   }).join('');
-  var ftip = f.tips.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:7px;line-height:1.5"><b style="color:var(--text)">Pour fiabiliser</b> : ' + _maE(f.tips.join(' · ')) + '.</div>'
-    : '<div style="font-size:11px;color:#00A854;margin-top:7px">✓ Données complètes — fiabilité maximale.</div>';
+  var ftip = f.tips.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:7px;line-height:1.5"><b style="color:var(--text)">Pour compléter</b> : ' + _maE(f.tips.join(' · ')) + '.</div>'
+    : '<div style="font-size:11px;color:#00A854;margin-top:7px">✓ Tout ce que cette lecture utilise est renseigné.</div>';
   var fiabBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
-    + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Fiabilité des données · ' + f.pct + '/100</div>'
+    + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Tes saisies · ' + f.pct + '/100</div>'
     + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + (function () { try { return (typeof _spHtml === 'function') ? _spHtml(data) : ''   /* 13/11 : couche sommeil → performance (js/sommeil-perf.js, méthode validée) remplace l'ancienne ligne d'apprentissage */; } catch (e) { return ''; } })() + '</div>';
 
   // ── Volume par muscle · cette semaine vs cibles du moteur, au prorata ──

@@ -7,6 +7,7 @@
 ## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
 
 **État prod (13/11 soir)** : serveur `index.ts` **v255** (= commit `dfc59ed`, vérifié caractère pour caractère) · app web `main` = **`76f4a0b`** (13/11 soir, = `dev`, GitHub Pages OK : questionnaire du jour + sommeil → performance) · SW **v586** · 111 suites de tests vertes · migration `20261113160000_decisions.sql` appliquée préprod + prod. **AAB Android** : run n°17 lancé le 14/11 depuis `main` `76f4a0b` (le n°16 du 13/11 = `d9c3a04`, avec journal des décisions, sans questionnaire du jour ni sommeil → performance).
+**Préprod 14/11 (pas en prod)** : Résumé — bloc « Fiabilité des données » renommé **« Tes saisies »** (audit F3 + aide F2), SW v587. Prod + AAB : à regrouper avec les autres changements du jour (porteur).
 **En prod depuis le 13/11 soir (`76f4a0b`)** : Résumé ▸ Fiabilité des données — le critère « Questionnaire du jour (N/28 j) » compte vraiment le questionnaire du jour (audit F1, option a), + **sommeil → performance** : couche séparée `js/sommeil-perf.js`, méthode validée par simulation (`docs/sommeil-performance-methode.md`), SW v586. Limite connue à traiter : 30 dernières dates/exercice envoyées par le serveur (voir § 11 de la méthode).
 
 **Fait aujourd'hui (dans l'ordre)**
@@ -55,7 +56,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Où en est le travail (flux + déploiement)
 - Branche de travail : `claude/pensive-ritchie-5p62gt`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`. Promotion `dev → main` (prod) quand l'utilisateur valide.
-- **SW = `novalyz-shell-v586`** (13/11, prod et préprod ; bumper `sw.js` à CHAQUE modif de `js/app.js` / `js/lecture-v3.js` / `index.html` / `css`).
+- **SW = `novalyz-shell-v587`** (14/11 préprod ; prod = v586 ; bumper `sw.js` à CHAQUE modif de `js/app.js` / `js/lecture-v3.js` / `index.html` / `css`).
 - Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**111 suites vertes** au 13/11, à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
 - **`index.ts` = déploiement MANUEL** (coller tout le fichier dans la fonction Supabase `smooth-service` → Deploy). Supabase `project_id = jhbrvgguybynzeceeceu`.
 
