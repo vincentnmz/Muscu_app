@@ -186,3 +186,42 @@ mérite peut-être d'être signalée ; pour la **Sèche** (objectif : maintenir)
 - Rapporté : sensibilité au choix de T (0,3 / 0,5 / 0,8 %/sem) — **uniquement en rapport**, le T retenu est celui validé avant.
 
 **À valider** : le seuil T, les 5 scénarios (dont la valeur « −0,3 %/sem acceptable » et « −1,5 %/sem forte baisse »), les critères.
+
+## 13. Protocole Sèche v2 — À VALIDER (remplace la proposition du §12 ; rien n'est lancé, aucun code)
+
+Retour porteur (14/11) : ne pas valider −0,5 %/sem avant la simulation ; tester explicitement 7 situations ; critères fixés
+**avant**. Donc le seuil n'est **pas choisi à l'avance** : la simulation en teste plusieurs, et la **règle de choix** est écrite
+ici, avant de voir les résultats.
+
+**Règle simulée** (identique au §9 sauf la tolérance) : chaque semaine, sur les 6 dernières semaines terminées, pente de la
+force estimée (%/sem) + erreur type SE ; moins de 6 séances → « pas assez de données ». « À surveiller » si
+**pente + 1,28 × SE < −T**. Anti-nervosité : 2 semaines. Semaines déclarées reprise / déload exclues (R0).
+**Poids** : lecture **descriptive seulement** (« en baisse » si pente des pesées < −0,1 kg/sem nettement, sinon « stable » ;
+« pas assez de pesées » sous 4 pesées / 6 sem.) ; il **ne déclenche ni n'annule** l'alerte de force.
+**Seuils candidats T** : 0,3 · 0,5 · 0,8 · 1,0 %/sem.
+
+**Scénarios** (10 000 tirages chacun, 6 sem. d'historique + 12 évaluées, 3 séances/sem, 10 % manquées ; bruit de force
+σ = 3,3 % et 5,7 % ; poids : 1 à 2 pesées/sem, bruit 0,4 kg) — vérité de force en %/sem :
+| Id | Situation demandée | Force | Poids | Attendu |
+|---|---|---|---|---|
+| R1 | Sèche réussie, force globalement conservée | −0,3 | −0,5 kg/sem | pas d'alerte |
+| R2 | Perte de poids sans baisse réelle de performance | 0 | −0,5 kg/sem | pas d'alerte |
+| R3 | Fluctuations ponctuelles | 0, + 2 séances isolées à −8 % | −0,5 kg/sem | pas d'alerte |
+| R4 | Reprise / déload (déclaré) | 0, 2 sem. à −5 % marquées R0 | −0,5 kg/sem | pas d'alerte |
+| I1 | Cas intermédiaire | −0,7 | −0,5 kg/sem | **zone grise : rapporté, sans critère** |
+| B1 | Sèche problématique : forte baisse | 0 puis **−1,5 dès la sem. 7** | −0,5 kg/sem | alerte |
+| B2 | Baisse réelle de perf. sans perte de poids suffisante | 0 puis **−1,5 dès la sem. 7** | stable | alerte (poids lu « stable ») |
+
+**Critères (fixés avant)** — pour un T donné :
+- **K1 fausses alertes** (R1, R2, R3, R4) : « à surveiller » au moins une fois sur 12 semaines **≤ 10 %**, à σ 3,3 % **et** 5,7 %.
+- **K2 détection** (B1, B2) : « à surveiller » affiché **≤ 6 semaines** après la bascule dans **≥ 80 %** des tirages (σ 3,3 %) ;
+  à σ 5,7 % : rapporté.
+- **K3 stabilité** (R1, R2) : ≤ 1 changement d'état par mois.
+- **K4 poids** : R1/R2 lus « en baisse » et B2 lu « stable » dans ≥ 80 % des tirages (pesées suffisantes).
+
+**Règle de choix du seuil (écrite avant)** : on retient le **plus petit T qui passe K1 à K4** (le plus sensible parmi les
+fiables). Si aucun T ne passe tout : **on le dit tel quel**, pas d'ajustement, retour au porteur. I1 et σ 5,7 % sur K2 : rapportés
+pour éclairer la décision, jamais pour changer le choix après coup.
+
+**À valider par le porteur** : les 7 scénarios et leurs valeurs, les critères K1-K4 (dont « ≤ 6 semaines » pour K2), la grille
+de T, la règle de choix. Puis : figer (commit) → lancer → rapporter.
