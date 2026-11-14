@@ -242,3 +242,32 @@ Précisions (écrites avant de lancer, `scripts/simulation-seche/sim.js`) :
 - K3 = changements d'état de force affichés sur 12 semaines / 3 (mois), moyenne des tirages, R1 et R2, aux deux σ.
 - Graine fixe 20261114, 10 000 tirages par scénario × σ × T.
 
+
+## 14. Résultats Sèche (14/11, protocole §13 / §13 bis inchangé — `scripts/simulation-seche/sim.js`, commit `1090bab` avant lancement)
+
+| T (%/sem) | K1 fausses alertes ≤ 10 % (R1 · R2 · R3 · R4, σ 3,3 / 5,7) | K2 forte baisse ≤ 6 sem. ≥ 80 % (B1 · B2, σ 3,3) | K3 | K4 |
+|---|---|---|---|---|
+| 0,3 | ❌ R1 35,2 / 35,8 % (R2-R4 ≈ 9-10 % / 17-18 %) | ❌ 71,6 · 72,6 % | ✅ | ✅ |
+| 0,5 | ❌ R1 14,8 / 22,0 % (R2-R4 ≈ 3-4 % / 10-11 %) | ❌ 53,3 · 53,8 % | ✅ | ✅ |
+| 0,8 | ✅ max 9,8 % (R1, σ 5,7) | ❌ 26,9 · 27,1 % | ✅ | ✅ |
+| 1,0 | ✅ max 5,0 % | ❌ 14,1 · 14,2 % | ✅ | ✅ |
+
+Rapportés : I1 (−0,7 %/sem) affiché « à surveiller » au moins une fois : 89 % (T 0,3) → 9 % (T 1,0) ; détection à σ 5,7 % : 44 %
+(T 0,3) → 11 % (T 1,0) ; poids lu correctement ≥ 99 % partout (K4 largement OK ; R1/R2 « en baisse », B2 « stable »).
+
+**Règle de choix (figée) : AUCUN seuil ne passe tous les critères → pas de choix forcé, retour au porteur.** Rien n'a été ajusté.
+
+**Pourquoi** (hors protocole, même règle **sans aucun bruit**) : après la bascule à −1,5 %/sem, la pente vue dans la fenêtre de
+6 semaines vaut 0,00 · −0,15 · −0,45 · −0,82 · −1,17 · −1,43 · −1,50 (évaluations 1 à 7) ; avec l'anti-nervosité (+1 évaluation),
+l'alerte s'afficherait à la 4ᵉ (T 0,3), 5ᵉ (T 0,5 et 0,8) ou 6ᵉ (T 1,0) évaluation. Avec le bruit réel, la marge de prudence
+(1,28 × erreur type ≈ 0,5 à 0,6 %/sem à σ 3,3 %) repousse ce moment au-delà de 6 semaines dans la majorité des tirages.
+**Conflit structurel** : ne pas alerter une sèche à −0,3 %/sem (K1) demande T ≥ ≈ 0,8 ; détecter −1,5 %/sem en 6 semaines (K2)
+demanderait T ≤ ≈ 0,3. Les deux ne sont pas compatibles **avec cette règle** (fenêtre 6 sem. + marge 1,28 × SE + 2 semaines
+d'anti-nervosité) et ce bruit de mesure.
+
+**Options pour le porteur (aucune n'est appliquée)** — chacune demanderait un nouveau protocole figé avant une nouvelle simulation :
+1. Garder la règle prudente (T = 0,8, K1 ✅) et **assumer un délai plus long** pour une forte baisse (critère K2 à redéfinir, ex.
+   ≤ 8-9 semaines), comme pour la force (≈ 5 sem. assumées) — alerte rare mais fiable.
+2. Changer la règle de détection de la forte baisse (ex. comparer le niveau des 2-3 dernières semaines à celui d'avant, au
+   lieu d'une pente sur 6 semaines) — à simuler, risque de fausses alertes sur les fluctuations (R3).
+3. En sèche, rester **descriptif** (« force maintenue / en baisse sur 6 semaines », poids) **sans état « à surveiller »**.
