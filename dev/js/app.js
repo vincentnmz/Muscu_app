@@ -6564,6 +6564,30 @@ function _ctxAttendu(data) {
   return e === 'deload' ? 'déload' : (e === 'retour_vacances' || e === 'retour_blessure') ? 'reprise' : null;
 }
 function _lectureExos(data, nowT) {
+  // L1 (audit 14/11) — partagé avec le serveur (_rcDepasse / _rcPlateau dans index.ts, même algorithme).
+  // pts = séances de l'exercice, la plus récente en [0]. Dépasse les k précédentes : hausse de charge au-dessus de la plus
+  // haute récente (ou égale avec plus de reps), ou à charge égale plus de reps qu'aux séances récentes à cette charge.
+  function _lxDepasse(pts, k) {
+    var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
+    var c0 = num(pts[0].charge), r0 = num(pts[0].reps), c1 = num(pts[1].charge), mc = -1, rc = -1, rAt = -1;
+    for (var i = 1; i <= k && i < pts.length; i++) {
+      var c = num(pts[i].charge), r = num(pts[i].reps);
+      if (c > mc) { mc = c; rc = r; } else if (c === mc && r > rc) rc = r;
+      if (c === c0 && r > rAt) rAt = r;
+    }
+    if (c0 > c1) return c0 > mc || (c0 === mc && r0 > rc);   // hausse de charge : au-dessus de la plus haute récente
+    return r0 > rAt;                                          // même charge : plus de reps qu'à cette charge récemment
+  }
+  // Plateau = nombre de séances, à la charge actuelle, depuis la plus ancienne qui a atteint le meilleur nombre de reps
+  // de la série de séances à cette charge (rien de mieux depuis) ; un progrès secondaire coupe le plateau.
+  function _lxPlateau(pts, prog2) {
+    var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
+    var c0 = num(pts[0].charge), run = 0, M = -1, j = 0, L = 1;
+    while (run < pts.length && num(pts[run].charge) === c0) run++;
+    for (var i = 0; i < run; i++) { var r = num(pts[i].reps); if (r >= M) { M = r; j = i; } }
+    while (L < run && !prog2(pts[L - 1], pts[L])) L++;
+    return Math.min(j + 1, L);
+  }
   var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
   var _ctxA = _ctxAttendu(data);   // déload / reprise : « recule » et « bloqué » = attendus (X1)
   var lignes = (data && Array.isArray(data.programme)) ? data.programme : [];
@@ -6594,22 +6618,22 @@ function _lectureExos(data, nowT) {
     }
     if (pts.length < 2) return;
     var c1 = num(pts[1].charge), r1 = num(pts[1].reps);
-    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+    // Séances identiques avant « bloqué » selon le niveau (03/11) : débutant 2 · intermédiaire 3 · avancé 4.
+    var _NB = (typeof LV3_BLOQUE_N !== 'undefined' && typeof _lv3Niveau === 'function') ? (LV3_BLOQUE_N[_lv3Niveau(data)] || 3) : 3;
+    // L1 (audit 14/11, porteur) : « progresse » seulement si la séance DÉPASSE les max(_NB, 3) précédentes
+    // (pas une simple remontée après une séance plus faible : 9 → 10 → 9 → 10 reps à la même charge = plateau).
+    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1)) && _lxDepasse(pts, Math.max(_NB, 3))) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
     var _p2 = (dj <= 14) ? _progSecondaire(pts[0], pts[1]) : null;
     if (_p2) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1, why: _p2 }); return; }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (_ctxA ? R.attendu : R.recule).push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
-    // Séances identiques avant « bloqué » selon le niveau (03/11) : débutant 2 · intermédiaire 3 · avancé 4.
-    var _NB = (typeof LV3_BLOQUE_N !== 'undefined' && typeof _lv3Niveau === 'function') ? (LV3_BLOQUE_N[_lv3Niveau(data)] || 3) : 3;
     // Audit 06/11 (porteur) : jamais « bloqué » sur les 2 premières séances d'un exercice (compte neuf) — au moins 3 séances.
-    var _memes = pts.length >= Math.max(_NB, 3); for (var q = 1; _memes && q < _NB; q++) { if (!(num(pts[q].charge) === c0 && num(pts[q - 1].reps) <= num(pts[q].reps))) _memes = false; }
-    if (_memes) {
-      if (c0 === c1 && r0 <= r1) {
-        // Bloqué seulement si AUCUN progrès secondaire (plus de séries au top / RPE plus bas) dans la chaîne.
-        for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
-        var n = _NB; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_progSecondaire(pts[n - 1], pts[n])) n++;
-        var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
-        if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
-      }
+    // L1 (14/11) : bloqué = même charge et AUCUNE séance au-dessus du meilleur nombre de reps depuis au moins _NB séances
+    // (couvre les oscillations 9-10-9-10), sans progrès secondaire (plus de séries au top / RPE plus bas).
+    var n = (pts.length >= Math.max(_NB, 3)) ? _lxPlateau(pts, _progSecondaire) : 0;
+    if (n >= _NB) {
+      for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
+      var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
+      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
     }
   });
   return R;
@@ -16173,9 +16197,16 @@ function _maLectureNovalyzBloc(data) {
   // ── Verdict d'entraînement (jamais rouge ici : état-du-jour rouge → Aujourd'hui) ──
   var VB = { 'Prêt': ['#00A854', 'Sur la bonne voie'], 'Vigilance': ['#E07800', 'Ajuste le tir'],
     'À surveiller': ['#E07800', 'Ajuste le tir'] };
-  var vb = VB[niv] || ['var(--accent)', 'Ta lecture d\'entraînement'];
+  // L2 (audit 14/11, porteur) : le titre résume l'ENTRAÎNEMENT des 4 semaines (exercices + constats volume / régularité) et non plus
+  // l'état du jour (qui reste sur Aujourd'hui). Constats d'état du jour / récupération exclus du calcul.
+  var _att = constats.filter(function (c) { return c && c.ton === 'attention' && !/état du jour|récupération est dégradée/i.test(c.texte || ''); }).length;
+  var _nBad = L.bloque.length + L.sous.length + L.recule.length;
+  var vb = (!nProg && !_nBad && !_att) ? ['var(--accent)', 'Ta lecture d\'entraînement']
+    : (nProg > 0 && nProg >= _nBad && !_att) ? ['#00A854', 'Sur la bonne voie']
+    : (_nBad > nProg || (_att && nProg <= _nBad)) ? ['#E07800', 'Ajuste le tir']
+    : ['var(--accent)', 'Des progrès, des points à revoir'];
   var verdict = '<div style="display:flex;gap:10px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ' + vb[0] + ';border-radius:12px;padding:10px 13px">'
-    + '<span style="width:26px;height:26px;border-radius:999px;background:' + vb[0] + ';color:#fff;display:grid;place-items:center;flex:none">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 15) + '</span>'
+    + '<span style="width:26px;height:26px;border-radius:999px;background:' + vb[0] + ';color:#fff;display:grid;place-items:center;flex:none">' + _maSvg(vb[0] === '#00A854' ? '<path d="M20 6 9 17l-5-5"/>' : vb[0] === '#E07800' ? '<path d="M12 7v6"/><path d="M12 17h.01"/>' : '<path d="M12 11v6"/><path d="M12 7h.01"/>', 15) + '</span>'
     + '<div><div style="font-size:14px;font-weight:800;color:var(--text)">' + vb[1] + '</div>'
     + ((nProg || L.bloque.length || L.sous.length) ? '<div style="font-size:11.5px;color:var(--text-muted)">' + [nProg ? nProg + ' exo' + (nProg > 1 ? 's' : '') + ' en progrès' + (L.records.length ? ' (dont ' + L.records.length + ' record' + (L.records.length > 1 ? 's' : '') + ')' : '') : '', L.bloque.length ? L.bloque.length + ' bloqué' + (L.bloque.length > 1 ? 's' : '') : '', L.sous.length ? L.sous.length + ' sous la fourchette' : ''].filter(Boolean).join(' · ') + '</div>' : '')
     + '</div></div>';
