@@ -121,7 +121,7 @@ où un résultat s'affiche** (hors « en apprentissage »).
   simulés de la validation (2 000 tirages) : faux positifs ≤ 7 %, erreurs de sens ≤ 1 %, détection (8 %, ±3,3 %, 30 séances ≥ 95 % ;
   10 %, ±5,7 %, 20 séances ≥ 80 % ; 3 %, ±3,3 %, 60 séances ≥ 70 %) ; cas réel 16/4/11 → apprentissage ; textes.
 - **Toute modification d'un seuil ou du calcul = nouveau contrôle de fiabilité** (refaire § 9-10), pas une retouche des tests.
-- **Limite connue** : le serveur ne transmet que les **30 dernières dates par exercice** (`buildProgressionParExo`,
+- **Limite levée le 14/11 (préprod)** : le serveur transmet maintenant **toutes les dates des 400 derniers jours** (et au moins les 30 dernières), `buildProgressionParExo`. Texte d'origine : le serveur ne transmettait que les **30 dernières dates par exercice** (`buildProgressionParExo`,
   `index.ts`). Sans effet aujourd'hui (max 19 dates/exercice chez le porteur, résultat identique vérifié). Pour un
   exercice fait 3 fois par semaine, la limite est atteinte après ~10 semaines : les séances appariées les plus anciennes
   perdent alors cet exercice dans leur score. À traiter (champ serveur dédié) avant que des testeurs dépassent ~10 semaines.

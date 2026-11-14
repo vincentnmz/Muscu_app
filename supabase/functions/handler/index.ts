@@ -1046,10 +1046,12 @@ async function buildCardioAll(athleteId: string): Promise<any> {
 }
 
 // ── Progression par exo ───────────────────────────────────────────────────────
-function buildProgressionParExo(perfs: any[]): Record<string, any[]> {
+function buildProgressionParExo(perfs: any[], nowMs?: number): Record<string, any[]> {
+  const PROG_FENETRE_JOURS = 400, PROG_MIN_DATES = 30   // historique par exercice envoyé à l'app (14/11)
   // 1 point par DATE : meilleure série du jour (charge/reps/1RM) + volTotal = volume
   // de TOUTES les séries de l'exo ce jour-là (pour la vue « Volume toutes séries »).
-  // 30 dates les plus récentes (assez pour une vraie tendance sur longues périodes).
+  // 14/11 : toutes les dates des 400 derniers jours (vue Année, records, sommeil → performance), et au moins les
+  // 30 plus récentes (avant : 30 dates seulement → année tronquée, faux records au-delà de 30 séances).
   const byExo: Record<string, Record<string, any>> = {}
   for (const r of perfs) {
     const exo = r.exercice; if (!exo) continue
@@ -1076,7 +1078,9 @@ function buildProgressionParExo(perfs: any[]): Record<string, any[]> {
   for (const exo of Object.keys(byExo)) {
     const pts = Object.values(byExo[exo])
     for (const p of pts) p.series.sort((a: any, b: any) => (a.serie || 0) - (b.serie || 0))   // S1, S2, S3…
-    out[exo] = pts.sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 30)
+    const _tri = pts.sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0))
+    const _lim = (nowMs != null ? nowMs : Date.now()) - PROG_FENETRE_JOURS * 864e5
+    out[exo] = _tri.filter((p: any, i: number) => i < PROG_MIN_DATES || (parseFR(p.date)?.getTime() || 0) >= _lim)
   }
   return out
 }
@@ -3001,7 +3005,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     historique: {
       dates_seances: datesSeances,
       exercices: [...new Set(perfs.map(r => r.exercice).filter(Boolean))],
-      progression_par_exo: buildProgressionParExo(perfs),
+      progression_par_exo: buildProgressionParExo(perfs, now.getTime()),
       volume_semaine: buildVolumeSemaineParMuscle(perfs, now, _secAll),
       volume_par_jour: buildVolumeParJour(perfs),
       daily_muscu: buildDailyMuscu(perfs, _secAll),
