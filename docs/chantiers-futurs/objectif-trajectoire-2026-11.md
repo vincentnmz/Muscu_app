@@ -124,3 +124,26 @@ dérive (−1 %/sem) en ≤ 4 semaines dans ≥ 80 % des cas ; **≤ 1 changemen
 - **T3 stabilité** (F+, F0, V+) : **≤ 1 changement d'état par mois** en moyenne.
 - Rapporté sans critère : F0 (stagnation : ce qui est affiché), effet de σ = 5,7 %, délai médian de détection.
 - **Si un critère échoue : on le dit tel quel**, retour au porteur, pas d'ajustement silencieux.
+
+## 10. Résultats (14/11, protocole §9 inchangé — `scripts/simulation-trajectoire/sim.js`)
+
+| Critère | Force σ 3,3 % | Force σ 5,7 % | Volume |
+|---|---|---|---|
+| **T1** faux « à surveiller » quand ça va dans le bon sens (≤ 10 %) | ✅ 0,1 % | ✅ 1,5 % | ✅ 0,0 % |
+| **T2** dérive affichée ≤ 4 sem. après la bascule (≥ 80 %) | ❌ 6,5 % (médiane 6 sem.) | ❌ 8,1 % (médiane 5 sem.) | ❌ 28,7 % (médiane 5 sem.) |
+| **T3** changements d'état / mois (≤ 1) | ✅ 0 (F+) · 0,19 (F0) | ✅ 0,01 · 0,20 | ✅ 0 |
+| Rapporté : fausse alerte avant la bascule (F−) | 1,9 % | 5,9 % | — |
+| Rapporté : stagnation (F0) affichée « à surveiller » au moins une fois sur 12 sem. | **34,9 %** | **35,8 %** | — |
+
+**Verdict** : T1 et T3 passent largement (la règle est **calme et ne crie pas au loup**) ; **T2 échoue partout**.
+
+**Pourquoi T2 échoue — délai sans aucun bruit (hors protocole, même règle)** : 1re alerte affichée **5 semaines** après la
+bascule pour la force comme pour le volume (4 sans l'anti-nervosité). La fenêtre (6 ou 4 semaines terminées) met ~3-4
+semaines à « voir » la baisse, puis l'anti-nervosité ajoute 1 semaine. **T2 (≤ 4 semaines) est donc inatteignable par
+construction** avec les choix validés (fenêtre de 6 semaines, 2 semaines d'anti-nervosité) — même nature que C2 dans la
+boucle. Rien n'a été ajusté.
+
+**Point à trancher révélé par F0** : avec une force **stable**, la règle « baisse nette » s'affiche « à surveiller » au
+moins une fois sur 12 semaines dans **≈ 35 %** des cas. Pour **Force / Recomposition**, une stagnation de 12 semaines
+mérite peut-être d'être signalée ; pour la **Sèche** (objectif : maintenir), une force stable est un **succès** → ces
+35 % seraient de **fausses alertes**. La règle de la Sèche doit donc être distincte (ex. tolérance avant « baisse »).
