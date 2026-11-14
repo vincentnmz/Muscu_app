@@ -1,0 +1,58 @@
+{
+ "N": {
+  "2": {
+   "C1": {
+    "S1": 0.2456,
+    "S6": 0.0669,
+    "S7": 0.2107
+   },
+   "C2": 0.6709,
+   "C3": 0,
+   "C4": {
+    "changementsParMoisS1": 0.24306666666666665,
+    "retourDansFenetre": 0,
+    "retour12semS1": 0,
+    "S8finB": 0.6564
+   },
+   "determinisme": 1,
+   "S3abandon6": 0.6577,
+   "S4abandon6": 0.5181,
+   "S9abandon6": 0.4345,
+   "S3abandon12": 0.9096,
+   "S5": {
+    "changeApresBascule": 0.8313,
+    "delaiMedian": 3,
+    "abandonAvantBascule": 0.1266
+   },
+   "S2dans6": 0.9461,
+   "S6enDernier": 0.9951
+  },
+  "3": {
+   "C1": {
+    "S1": 0.0534,
+    "S6": 0.0072,
+    "S7": 0.0448
+   },
+   "C2": 0.2606,
+   "C3": 0,
+   "C4": {
+    "changementsParMoisS1": 0.052300000000000006,
+    "retourDansFenetre": 0,
+    "retour12semS1": 0,
+    "S8finB": 0.907
+   },
+   "determinisme": 1,
+   "S3abandon6": 0.3231,
+   "S4abandon6": 0.2079,
+   "S9abandon6": 0.1406,
+   "S3abandon12": 0.6198,
+   "S5": {
+    "changeApresBascule": 0.7758,
+    "delaiMedian": 4,
+    "abandonAvantBascule": 0.0193
+   },
+   "S2dans6": 0.777,
+   "S6enDernier": 0.9952
+  }
+ }
+}

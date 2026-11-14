@@ -168,3 +168,31 @@ fréquents (*q* = 0,4, *p* = 0,7) · S8 plusieurs leviers (A = 0,1, B = 0,7, C =
 - Rapporté sans critère : S3, S4, S5 (délai de changement après la bascule), S9 (effet de la détection imparfaite).
 
 **Si un critère échoue** : on le dit tel quel et on revient au porteur (pas d'ajustement silencieux).
+
+## 14. Résultats de la simulation (14/11, protocole §13 inchangé — `scripts/simulation-boucle/sim.js`)
+
+10 000 tirages par scénario, graine fixe. Paramètre non précisé par le protocole : efficacité des leviers suivants
+(B, C, repli) quand le scénario ne la donne pas = 0,5 (« inconnue ») ; il n'intervient dans aucun critère.
+
+| Critère | N = 2 | N = 3 |
+|---|---|---|
+| **C1** abandon injustifié ≤ 10 % (S1 / S6 / S7) | ❌ 24,6 % / 6,7 % / 21,1 % | ✅ 5,3 % / 0,7 % / 4,5 % |
+| **C2** levier inefficace remplacé en ≤ 3 sem. ≥ 80 % | ❌ 67,1 % (≤ 6 sem. : 94,6 %) | ❌ 26,1 % (≤ 6 sem. : 77,7 %) |
+| **C3** aucun changement après 1 seul échec | ✅ 0 % | ✅ 0 % |
+| **C4** stabilité : changements / mois (S1) · retours dans la fenêtre · S8 finit sur B · déterminisme | ❌ 0,24 · 0 · **65,6 %** · 100 % | ✅ 0,05 · 0 · 90,7 % · 100 % |
+| Rapporté : S3 levier moyen abandonné ≤ 6 sem. | 65,8 % | 32,3 % |
+| Rapporté : S4 bruit pur abandonné ≤ 6 sem. | 51,8 % | 20,8 % |
+| Rapporté : S9 conditions peu vues, levier efficace abandonné ≤ 6 sem. | 43,5 % | 14,1 % |
+| Rapporté : S5 abandon avant la bascule · changement après · délai médian | 12,7 % · 83,1 % · 3 sem. | 1,9 % · 77,6 % · 4 sem. |
+| Rapporté : S6 action mise en dernier | 99,5 % | 99,5 % |
+
+**Verdict** : **aucun N ne remplit tous les critères.** N = 3 remplit C1, C3, C4 ; N = 2 n'en remplit que C3.
+
+**Pourquoi C2 échoue (borne théorique, hors protocole, même modèle)** : avec un levier qui échoue **toujours**, la part
+maximale remplaçable en 3 semaines vaut **79,0 % (N = 2)** et **35,0 % (N = 3)** avec les paramètres du protocole
+(adhérence 0,8, perturbation 0,15, vue 0,8) — 96,2 % / 68,4 % seulement si l'athlète tente chaque semaine. C2, exprimé
+en **semaines**, est donc **inatteignable par construction** : il contredit les deux protections voulues (ne compter que
+les échecs **comparables**, ne pas compter les semaines **non tentées**). Rien n'a été ajusté ; décision au porteur.
+
+**S9 (perturbations non déclarées)** reste le point faible : un athlète qui ne remplit pas son questionnaire fait passer
+ses mauvaises semaines pour des échecs comparables (14 % d'abandon à tort avec N = 3, 43 % avec N = 2).
