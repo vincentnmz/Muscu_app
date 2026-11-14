@@ -6,7 +6,7 @@
 
 ## ▶ 13/11 — Point d'étape : audit droits terminé, moteur P0 + journal des décisions EN PROD, phase d'observation
 
-**État prod (13/11 soir)** : serveur `index.ts` **v255** (= commit `dfc59ed`, vérifié caractère pour caractère) · app web `main` = **`76f4a0b`** (13/11 soir, = `dev`, GitHub Pages OK : questionnaire du jour + sommeil → performance) · SW **v586** · 111 suites de tests vertes · migration `20261113160000_decisions.sql` appliquée préprod + prod. ⚠️ L'**AAB Android** date de midi (`57be93c`) : il n'a **pas** le journal des décisions → nouvel AAB à construire depuis `main` seulement si le porteur le demande.
+**État prod (13/11 soir)** : serveur `index.ts` **v255** (= commit `dfc59ed`, vérifié caractère pour caractère) · app web `main` = **`76f4a0b`** (13/11 soir, = `dev`, GitHub Pages OK : questionnaire du jour + sommeil → performance) · SW **v586** · 111 suites de tests vertes · migration `20261113160000_decisions.sql` appliquée préprod + prod. **AAB Android** : run n°17 lancé le 14/11 depuis `main` `76f4a0b` (le n°16 du 13/11 = `d9c3a04`, avec journal des décisions, sans questionnaire du jour ni sommeil → performance).
 **En prod depuis le 13/11 soir (`76f4a0b`)** : Résumé ▸ Fiabilité des données — le critère « Questionnaire du jour (N/28 j) » compte vraiment le questionnaire du jour (audit F1, option a), + **sommeil → performance** : couche séparée `js/sommeil-perf.js`, méthode validée par simulation (`docs/sommeil-performance-methode.md`), SW v586. Limite connue à traiter : 30 dernières dates/exercice envoyées par le serveur (voir § 11 de la méthode).
 
 **Fait aujourd'hui (dans l'ordre)**
