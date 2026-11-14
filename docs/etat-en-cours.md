@@ -13,6 +13,9 @@
 - **E validé et codé (préprod)** : pendant un pic de charge non interprétable, plus aucune augmentation proposée (plan en pause, leviers et cibles de maintien, mail) — §9 bis du doc d'audit.
 - **Trajectoire** : force validée (6 semaines, délai ≈ 5 sem. assumé, jamais « objectif compromis ») ; **Sèche simulée** (aucun seuil
   ne passe : conflit structurel) → **décision : descriptif seulement, pas d'état « à surveiller », ne pas coder T = 0,8** — §14-§15.
+- **Douleur (14/11 soir, préprod)** : tuile « Douleurs & blessures » sans « OK » si douleur (R7) ; **règle H** (douleur forte : maintien partout,
+  +séries hors zone en pause, piste coach « garde tes charges prévues ») ; **D2** douleur modérée : progression hors zone conservée, cibles
+  alignées ; contrôle **R8** (rouge avant, vert après) ; John revérifié sur /dev/ — `docs/chantiers-futurs/douleur-hors-zone-2026-11.md`.
 - **A–D + E** : en préprod ; **prod seulement après les 3 vérifications visuelles du porteur** (fiche coach ▸ Charge & assiduité ;
   Forme avec douleur ; plan en pause pendant un pic de charge), puis redéploiement manuel d'`index.ts` (Croisé A + mail récap E).
 
