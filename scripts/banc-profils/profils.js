@@ -4,9 +4,9 @@
 const NOW = Date.UTC(2026, 10, 12, 17, 0, 0);
 const J = (n) => new Date(NOW - n * 864e5).toISOString().slice(0, 10);   // n jours avant aujourd'hui (0 = aujourd'hui)
 
-const A = { // programme Full body A / B (fourchettes explicites)
+const A = { // programme Full body A / B (fourchettes explicites) — noms EXACTS du catalogue (règle de gêne par exercice)
   A: [['Squat', 'Quadriceps', 6, 10], ['Développé couché barre', 'Pectoraux', 6, 10], ['Rowing barre', 'Dos', 8, 12]],
-  B: [['Soulevé de terre roumain', 'Ischio', 8, 12], ['Développé militaire haltères', 'Epaule', 8, 12], ['Tirage vertical', 'Dos', 8, 12]],
+  B: [['RDL barre', 'Ischio', 8, 12], ['Développé militaire aux haltères', 'Epaule', 8, 12], ['Tirage vertical prise large', 'Dos', 8, 12]],
 };
 function base(id, extra) {
   return Object.assign({ athletes: [], performances: [], indicateurs: [], bien_etre: [], programme: [], exercices: [], volume_obti: [], planning: [], _id: 1, _aid: id }, extra || {});
@@ -82,6 +82,14 @@ const PROFILS = {
     [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
     for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
     bienEtre(st, 0, { douleur: 3, zone_douloureuse: 'autre' });
+    return st;
+  },
+  // 5 ter. Gêne au POIGNET (option B, 14/11) : couché, développé militaire et curls en pause (règle par exercice).
+  gene_poignet() {
+    const st = base('10'); athlete(st, { annees: 5 }); programme(st);
+    [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
+    bienEtre(st, 0, { douleur: 4, zone_douloureuse: 'poignet' });
     return st;
   },
   // 6. Nouveau compte : aucune séance, aucun questionnaire.

@@ -30,21 +30,55 @@ function _lv3ZoneTouche(z, mk) {
   for (var i = 0; i < _LV3_ZONE_MUS.length; i++) if (z.indexOf(_LV3_ZONE_MUS[i][0]) === 0) return _LV3_ZONE_MUS[i][1].indexOf(mk) >= 0 ? 2 : 0;
   return 0;
 }
-// Gêne ACTIVE (14/11, point 1 du banc de profils) : au DERNIER questionnaire (≤ 7 jours), douleur ≥ 3/5 sur une zone
-// sollicitée par ce muscle. Une gêne levée au questionnaire suivant n'est plus active. → { zone, val, date, indir } ou null.
-function _lv3GeneActive(data, muscle, nowT) {
-  nowT = nowT || Date.now();
-  var mk = _lv3Cle(muscle).slice(0, 4);
-  if (!mk) return null;
+// Gêne par EXERCICE (14/11, option B validée par le porteur) : zones sollicitées par chaque exercice du catalogue
+// (docs/gene-par-exercice-proposition.md). Copie identique côté serveur (index.ts _RC_ZONES_EXO, test gene-active).
+var LV3_ZONES_EXO = {"Abduction machine":["hanche"],"Abduction à la poulie":["hanche"],"Adducteur machine":["aine","hanche"],"Adducteur à la poulie":["aine","hanche"],"Arrière épaule haltère":["epaule"],"Arrière épaule à la poulie":["epaule"],"Barre au front":["coude","poignet"],"Belt squat":["genou","hanche"],"Box jump":["genou","cheville","pied"],"Burpees":["poignet","epaule","genou","cheville"],"Coups de masse sur pneu":["epaule","poignet","lombaires"],"Crunch au sol":["nuque"],"Crunch machine":[],"Crunch à la poulie":[],"Curl barre":["coude","poignet"],"Curl barre poulie":["coude","poignet"],"Curl haltère":["coude","poignet"],"Curl incliné au banc":["coude","poignet"],"Curl incliné uni poignée à la poulie":["coude","poignet"],"Curl inversé barre":["poignet","coude"],"Curl machine":["coude","poignet"],"Curl marteau aux haltères":["coude","poignet"],"Curl marteau à la poulie":["coude","poignet"],"Curl poignet barre":["poignet","coude"],"Curl poignet inversé":["poignet","coude"],"Curl pupitre":["coude","poignet"],"Dips machine":["epaule","coude","poignet"],"Dips pectoraux":["epaule","coude","poignet"],"Dips triceps":["epaule","coude","poignet"],"Développé Arnold":["epaule","coude","poignet"],"Développé couché barre":["epaule","coude","poignet"],"Développé couché haltère":["epaule","coude","poignet"],"Développé couché incliné haltère":["epaule","coude","poignet"],"Développé décliné machine":["epaule","coude","poignet"],"Développé décliné à la Smith":["epaule","coude","poignet"],"Développé incliné Hammer":["epaule","coude","poignet"],"Développé incliné à la Smith":["epaule","coude","poignet"],"Développé machine":["epaule","coude","poignet"],"Développé machine Hammer":["epaule","coude","poignet"],"Développé militaire aux haltères":["epaule","coude","poignet"],"Développé militaire à la Smith":["epaule","coude","poignet"],"Développé militaire à la barre":["epaule","coude","poignet","lombaires"],"Développé épaules machine":["epaule","coude","poignet"],"Extension dos à la poulie corde":["coude","epaule"],"Extension lombaire au banc 45°":["lombaires","hanche"],"Extension nuque haltère":["coude","epaule"],"Extension poulie barre":["coude"],"Extension poulie corde":["coude"],"Extension triceps banc":["coude","poignet"],"Face pull":["epaule"],"Fente bulgare":["genou","hanche","cheville"],"Fente courte":["genou","hanche","cheville"],"Fente longue":["genou","hanche","cheville"],"Fentes marchées sac lesté":["genou","hanche","cheville"],"Front squat":["genou","hanche","lombaires","poignet"],"Good morning":["lombaires","hanche"],"Hack squat":["genou","hanche"],"Hip thrust":["hanche"],"Hip thrust machine":["hanche"],"Kettlebell swing":["lombaires","hanche"],"Kick back":["hanche"],"Kickback haltère":["coude"],"Leg curl allongé":["genou"],"Leg curl assis":["genou"],"Leg curl debout":["genou"],"Leg curl unilatéral":["genou"],"Leg extension":["genou"],"Leg extension unilatéral":["genou"],"Mollets assis":["cheville","pied"],"Mollets debout":["cheville","pied","haut_dos","lombaires"],"Mollets unilatéral haltère":["cheville","pied"],"Mollets à la Smith":["cheville","pied","haut_dos","lombaires"],"Mollets à la presse":["cheville","pied"],"Nordic curl":["genou"],"Oiseau machine":["epaule"],"Pallof press":[],"Pendulum":["genou","hanche"],"Pompe":["epaule","coude","poignet"],"Presse circulaire":["genou","hanche"],"Presse horizontale":["genou","hanche"],"Presse inclinée":["genou","hanche"],"Presse sumo":["genou","hanche","aine"],"Presse unilatérale":["genou","hanche"],"Pull over":["epaule","coude"],"Pull-through à la poulie":["hanche"],"RDL barre":["lombaires","hanche"],"RDL haltère":["lombaires","hanche"],"Relevé de bassin":["hanche"],"Relevé de genoux suspendu":["hanche","epaule","poignet"],"Relevé de jambe":["hanche","lombaires"],"Retournement de pneu":["lombaires","hanche","genou"],"Roulette":["lombaires","epaule"],"Rowing banc":["epaule","coude"],"Rowing barre":["epaule","coude","lombaires"],"Rowing bucheron":["epaule","coude","lombaires"],"Rowing machine":["epaule","coude"],"Rowing menton":["epaule","coude","poignet"],"Shrugs barre":["nuque"],"Shrugs haltères":["nuque"],"Sissy squat":["genou","cheville"],"Slam ball":["epaule","lombaires"],"Soulevé de terre":["lombaires","hanche","genou","poignet"],"Squat":["genou","hanche","lombaires"],"Squat gobelet":["genou","hanche"],"Squat gobelet kettlebell":["genou","hanche"],"Squat sac lesté":["genou","hanche"],"Squat sumo haltère":["genou","hanche","aine"],"T-bar row":["epaule","coude","lombaires"],"T-bar row prise basse":["epaule","coude","lombaires"],"T-bar row prise haute":["epaule","coude","lombaires"],"Tirage horizontal machine prise neutre":["epaule","coude"],"Tirage horizontal machine prise pronation":["epaule","coude"],"Tirage horizontal prise large":["epaule","coude"],"Tirage horizontal prise serrée":["epaule","coude"],"Tirage horizontal uni à la poulie":["epaule","coude"],"Tirage trapèze machine":["nuque"],"Tirage vertical machine":["epaule","coude"],"Tirage vertical prise large":["epaule","coude"],"Tirage vertical prise serrée":["epaule","coude"],"Tirage vertical uni à la poignée":["epaule","coude"],"Tirage vertical uni à la poulie":["epaule","coude"],"Traction":["epaule","coude"],"Wall ball":["genou","hanche","epaule"],"Écarté haltères":["epaule","coude"],"Écarté haltères décliné":["epaule","coude"],"Écarté haltères incliné":["epaule","coude"],"Écarté machine":["epaule","coude"],"Écarté machine uni":["epaule","coude"],"Écarté poulie basse":["epaule","coude"],"Écarté poulie haute":["epaule","coude"],"Élévation frontale barre":["epaule","poignet"],"Élévation frontale haltères":["epaule"],"Élévation frontale à la poulie":["epaule"],"Élévation latérale haltère":["epaule"],"Élévation latérale uni à la poulie":["epaule"]};
+var _lv3ZexoIdx = null;
+function _lv3ZonesExo(exo) {
+  if (!_lv3ZexoIdx) { _lv3ZexoIdx = {}; Object.keys(LV3_ZONES_EXO).forEach(function (k) { _lv3ZexoIdx[k.trim().toLowerCase()] = LV3_ZONES_EXO[k]; }); }
+  return _lv3ZexoIdx[String(exo || '').trim().toLowerCase()] || null;
+}
+// Zone du questionnaire → code de la table (avant-bras = poignet ; main = règle par muscle seulement — porteur 14/11).
+function _lv3ZoneCode(z) {
+  var k = String(z || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_-]/g, ' ').trim();
+  var P = [['epaul', 'epaule'], ['coude', 'coude'], ['poign', 'poignet'], ['avant', 'poignet'], ['nuque', 'nuque'], ['cou', 'nuque'], ['haut', 'haut_dos'], ['lomb', 'lombaires'], ['hanch', 'hanche'], ['aine', 'aine'], ['genou', 'genou'], ['chevi', 'cheville'], ['pied', 'pied']];
+  for (var i = 0; i < P.length; i++) if (k.indexOf(P[i][0]) === 0) return P[i][1];
+  return null;
+}
+// Dernier questionnaire (≤ 7 jours) s'il signale une douleur ≥ 3/5 sur une zone ; sinon null.
+function _lv3DerniereGene(data, nowT) {
   var be = ((data && data.bien_etre) || []).filter(function (b) { var t = _lv3T(b && b.date); return t && t <= nowT + 864e5 && (nowT - t) / 864e5 <= 7; });
   if (!be.length) return null;
   be.sort(function (a, b) { return _lv3T(b.date) - _lv3T(a.date); });
-  var b0 = be[0], z = _lv3Cle(b0.zone || b0.zone_douloureuse || '');
-  if (!(_lv3Num(b0.douleur) >= 3) || !z) return null;
-  var tz = _lv3ZoneTouche(z, mk); if (!tz) return null;
-  var z0 = String(b0.zone || b0.zone_douloureuse || ''), lbl = ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(z0.toLowerCase())) : z0).toLowerCase().replace(/_/g, ' ');
+  var b0 = be[0], z0 = String(b0.zone || b0.zone_douloureuse || '');
+  if (!(_lv3Num(b0.douleur) >= 3) || !z0) return null;
   var d = new Date(_lv3T(b0.date));
-  return { zone: lbl, val: _lv3Num(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 };
+  return { z0: z0, zone: ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(z0.toLowerCase())) : z0).toLowerCase().replace(/_/g, ' '),
+    val: _lv3Num(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') };
+}
+// Gêne ACTIVE (14/11) : au DERNIER questionnaire (≤ 7 jours), douleur ≥ 3/5 sur une zone sollicitée par ce muscle
+// (table des zones validée le 09/11) OU par cet exercice (table par exercice, 14/11). Les deux règles s'additionnent.
+// Une gêne levée au questionnaire suivant n'est plus active. → { zone, val, date, indir } ou null.
+function _lv3GeneActive(data, muscle, nowT, exo) {
+  nowT = nowT || Date.now();
+  var g = _lv3DerniereGene(data, nowT); if (!g) return null;
+  var mk = _lv3Cle(muscle).slice(0, 4), z = _lv3Cle(g.z0);
+  var tz = (mk && z) ? _lv3ZoneTouche(z, mk) : 0;
+  if (!tz && exo) { var zc = _lv3ZoneCode(g.z0), ze = _lv3ZonesExo(exo); if (zc && ze && ze.indexOf(zc) >= 0) tz = 2; }
+  if (!tz) return null;
+  return { zone: g.zone, val: g.val, date: g.date, indir: tz === 2 };
+}
+// Gêne active pour un MUSCLE (action de volume « +N séries ») : le muscle est touché, ou un des exercices du programme
+// qui le travaillent sollicite la zone (ex. poignet → développé couché → pectoraux). Même règle côté serveur.
+function _lv3GeneMuscle(data, muscle, nowT) {
+  var g = _lv3GeneActive(data, muscle, nowT); if (g) return g;
+  var k = _lv3Cle(muscle), lignes = (data && Array.isArray(data.programme)) ? data.programme : [];
+  for (var i = 0; i < lignes.length; i++) {
+    var l = lignes[i]; if (!l || l.type === 'cardio' || !l.exercice) continue;
+    var m = (typeof _lv3MuscleExo === 'function') ? _lv3MuscleExo(data, l.exercice) : null;
+    if (m && _lv3Cle(m) === k) { var ge = _lv3GeneActive(data, null, nowT, l.exercice); if (ge) return ge; }
+  }
+  return null;
 }
 // Gêne SANS zone reliée à un muscle (« Autre », zone vide ou inconnue) au dernier questionnaire (≤ 7 j), douleur ≥ 3/5 :
 // rien n'est mis en pause (on ne sait pas quoi), mais le plan affiche une ligne de prudence (14/11, porteur).
@@ -273,7 +307,7 @@ function _lv3Diag(data, exo, kind, nowT) {
     }
   }
   // Gêne ACTIVE sur la zone (14/11) : première cause, et le levier ne propose plus ni charge ni séries en plus.
-  var _gA = null; try { _gA = _lv3GeneActive(data, muscle, nowT); } catch (_) {}
+  var _gA = null; try { _gA = _lv3GeneActive(data, muscle, nowT, exo); } catch (_) {}
   if (_gA) {
     checks = checks.filter(function (c) { return !/^<b>Possible : gêne /.test(c.t); });
     checks.unshift({ s: 'ko', t: '<b>Gêne ' + _maE(_gA.zone) + ' ' + _gA.val + '/5</b> signalée le ' + _gA.date + (_gA.indir ? ' (zone sollicitée par cet exercice)' : '') });
@@ -414,7 +448,7 @@ function _lv3Plan(data, nowT) {
   if (!acts.length) return null;
   // Gêne ACTIVE (14/11) : une action qui chargerait la zone douloureuse est MISE EN PAUSE (affichée comme telle, hors
   // compteur, jamais enregistrée au journal comme proposée). Calculé sur le dernier questionnaire, pas sur lundi.
-  acts.forEach(function (a) { try { var m = a.muscle || (a.exo ? _lv3MuscleExo(data, a.exo) : null); var g = m ? _lv3GeneActive(data, m, nowT) : null; if (g && a.type !== 'reprise') a.gene = g; } catch (_) {} });
+  acts.forEach(function (a) { try { var m = a.muscle || (a.exo ? _lv3MuscleExo(data, a.exo) : null); var g = (a.type === 'series') ? (m ? _lv3GeneMuscle(data, m, nowT) : null) : (m || a.exo ? _lv3GeneActive(data, m, nowT, a.exo) : null); if (g && a.type !== 'reprise') a.gene = g; } catch (_) {} });
   var actifs = acts.filter(function (a) { return !a.gene; });
   return { actions: acts, ok: ok, lundi: isoL, faits: actifs.filter(function (a) { return a.fait; }).length, nActifs: actifs.length };
 }

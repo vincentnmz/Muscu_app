@@ -42,13 +42,13 @@ Full body B
 3 exercices · 2 séances au programme
 CE QUE NOVALYZ VISE
 dernière fois → aujourd'hui
-Soulevé de terre roumain
+RDL barre
 +1 rep (haut de fourchette : 12) · 2 séries à RPE 9-10 gardées telles
 82,5 × 8 82,5 × 9
-Développé militaire haltères
+Développé militaire aux haltères
 +1 rep (haut de fourchette : 12) · 2 séries à RPE 9-10 gardées telles
 102,5 × 8 102,5 × 9
-Tirage vertical
+Tirage vertical prise large
 +1 rep (haut de fourchette : 12) · 2 séries à RPE 9-10 gardées telles
 122,5 × 8 122,5 × 9
 Sur ta série la plus lourde (même calcul que l'écran de saisie). Propositions indicatives : c'est toi qui décides.
@@ -153,13 +153,13 @@ Abdominaux
 0 / 8-14
 Cibles min-optimum du moteur. En cours de semaine, un muscle n'est signalé (orange) que s'il est sous le minimum au prorata des séances déjà faites.
 TA FORCE ESTIMÉE · 6 SEMAINES
-Soulevé de terre roumain
+RDL barre
 sur 5 séances
 +3,1 %
-Développé militaire haltères
+Développé militaire aux haltères
 sur 5 séances
 +2,5 %
-Tirage vertical
+Tirage vertical prise large
 sur 5 séances
 +2,1 %
 Squat
@@ -245,13 +245,13 @@ RECORDS PERSONNELS
 Rowing barre
 122.5 kg
 10/11/2026
-Tirage vertical
+Tirage vertical prise large
 122.5 kg
 07/11/2026
 Développé couché barre
 102.5 kg
 10/11/2026
-Développé militaire haltères
+Développé militaire aux haltères
 102.5 kg
 07/11/2026
 == Forme ==

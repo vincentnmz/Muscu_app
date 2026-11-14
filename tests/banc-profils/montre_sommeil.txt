@@ -140,13 +140,13 @@ Abdominaux
 0 / 6-12
 Cibles min-optimum du moteur. En cours de semaine, un muscle n'est signalé (orange) que s'il est sous le minimum au prorata des séances déjà faites.
 TA FORCE ESTIMÉE · 6 SEMAINES
-Soulevé de terre roumain
+RDL barre
 sur 9 séances
 +9 %
-Développé militaire haltères
+Développé militaire aux haltères
 sur 9 séances
 +8 %
-Tirage vertical
+Tirage vertical prise large
 sur 9 séances
 +7,2 %
 Squat
@@ -232,13 +232,13 @@ RECORDS PERSONNELS
 Rowing barre
 92.5 kg
 12/11/2026
-Tirage vertical
+Tirage vertical prise large
 90 kg
 09/11/2026
 Développé couché barre
 82.5 kg
 12/11/2026
-Développé militaire haltères
+Développé militaire aux haltères
 80 kg
 09/11/2026
 == Forme ==

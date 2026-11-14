@@ -6,8 +6,11 @@ const APP = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const LV3 = fs.readFileSync(path.join(__dirname, '..', 'js', 'lecture-v3.js'), 'utf8');
 function ex(src, n) { const m = src.match(new RegExp('function\\s+' + n + '\\s*\\(')); let i = src.indexOf('{', m.index), d = 0, j = i; for (; j < src.length; j++) { const c = src[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } } return src.slice(m.index, j); }
 const S = {}; vm.createContext(S);
+const MUSEXO = { 'Développé couché barre': 'Pectoraux', 'Écarté machine': 'Pectoraux', 'Squat': 'Quadriceps', 'Leg extension': 'Quadriceps' };
+S._lv3MuscleExo = (d, e) => MUSEXO[e] || null;
 vm.runInContext(['_normTxt', '_musKey'].map((n) => ex(APP, n)).join('\n') + '\n' + LV3.match(/var _LV3_ZONE_MUS = \[[\s\S]*?\];/)[0] + '\n'
-  + ['_lv3Iso', '_lv3T', '_lv3Num', '_lv3Cle', '_lv3ZoneTouche', '_lv3GeneActive', '_lv3GeneAutre'].map((n) => ex(LV3, n)).join('\n'), S);
+  + LV3.match(/var LV3_ZONES_EXO = \{[\s\S]*?\};/)[0] + '\nvar _lv3ZexoIdx = null;\n'
+  + ['_lv3Iso', '_lv3T', '_lv3Num', '_lv3Cle', '_lv3ZoneTouche', '_lv3ZonesExo', '_lv3ZoneCode', '_lv3DerniereGene', '_lv3GeneActive', '_lv3GeneMuscle', '_lv3GeneAutre'].map((n) => ex(LV3, n)).join('\n') + '\nthis.ZEXO = LV3_ZONES_EXO;', S);
 let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n + (g !== undefined ? ' (got ' + JSON.stringify(g) + ')' : '')); } };
 const now = Date.UTC(2026, 10, 12, 17), J = (n) => new Date(now - n * 864e5).toISOString().slice(0, 10);
 const d = (be) => ({ bien_etre: be });
@@ -25,7 +28,7 @@ eq(/P\.actions\.filter\(function \(a\) \{ return !a\.gene; \}\)/.test(LV3), 'jou
 // Serveur (mail récap) : même règle que l'app sur les mêmes cas.
 const { stripTypeScriptTypes } = require('node:module'); const { webcrypto } = require('crypto');
 let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
-js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _rcGeneActive, _rcGeneAutre, _bilanRecapV2, buildProgressionParExo };';
+js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _rcGeneActive, _rcGeneAutre, _bilanRecapV2, buildProgressionParExo, _RC_ZONES_EXO };';
 const SV = { createClient: () => ({ from: () => ({}) }), webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => undefined }, serve: () => {} },
   Response, Request, URLSearchParams, TextEncoder, TextDecoder, console, atob, btoa, setTimeout, clearTimeout, crypto: webcrypto, fetch: async () => ({}) };
 vm.createContext(SV); vm.runInContext(js, SV); const A = SV.__api;
@@ -57,4 +60,27 @@ eq(S._lv3GeneAutre(d(doul), now) === null && A._rcGeneAutre(doul, now) === null,
 eq(S._lv3GeneAutre(d([{ date: J(0), douleur: 2, zone_douloureuse: 'autre' }]), now) === null, '« Autre » à 2/5 → rien');
 const b2 = A._bilanRecapV2({ perfs, appData: Object.assign({}, appData, { bien_etre: [{ date: J(0), douleur: 4, zone_douloureuse: 'autre' }] }), secByExo: {}, musByExo: {} }, 'semaine', new Date(now));
 eq(/zone non précisée/.test((b2.recos || []).join(' ')), 'mail récap : ligne de prudence pour « Autre »', b2.recos);
+// Option B (14/11) : gêne par EXERCICE — table identique app / serveur, décisions du porteur.
+eq(JSON.stringify(S.ZEXO) === JSON.stringify(A._RC_ZONES_EXO) && Object.keys(S.ZEXO).length === 135, 'table exercice → zones : 135 exercices, identique app = serveur');
+const G = (zone, val) => [{ date: J(0), douleur: val || 4, zone_douloureuse: zone }];
+const casB = [
+  ['poignet', 'Développé couché barre', true], ['avant_bras', 'Développé couché barre', true], ['main', 'Développé couché barre', false],
+  ['lombaires', 'Squat', true], ['genou', 'Leg extension', true], ['epaule', 'Curl incliné au banc', false], ['nuque', 'Shrugs barre', true],
+  ['epaule', 'Shrugs barre', false], ['lombaires', 'Mollets debout', true], ['haut_dos', 'Mollets debout', true], ['genou', 'Crunch machine', false],
+];
+for (const [z, e, att] of casB) {
+  const a = !!S._lv3GeneActive(d(G(z)), null, now, e), b = !!A._rcGeneActive(G(z), null, now, e);
+  eq(a === att && b === att, 'gêne ' + z + ' → ' + e + ' : ' + (att ? 'en pause' : 'non concerné') + ' (app et serveur)', { app: a, serveur: b });
+}
+eq(S._lv3GeneActive(d(G('poignet')), null, now, 'Développé couché barre').indir === true, 'gêne par exercice marquée « zone sollicitée par cet exercice »');
+eq(S._lv3GeneActive(d(G('poignet', 2)), null, now, 'Développé couché barre') === null, '2/5 → pas une gêne');
+// Action de volume : poignet + programme avec le développé couché → « +N séries de pectoraux » en pause ; sans exercice sollicitant, non.
+eq(!!S._lv3GeneMuscle({ bien_etre: G('poignet'), programme: [{ exercice: 'Développé couché barre' }] }, 'Pectoraux', now), 'volume pectoraux en pause (poignet, programme = développé couché)');
+eq(S._lv3GeneMuscle({ bien_etre: G('poignet'), programme: [{ exercice: 'Écarté machine' }] }, 'Pectoraux', now) === null, 'volume pectoraux libre si le programme ne sollicite pas le poignet');
+// Mail récap : gêne poignet → pas de « séries pour atteindre le minimum » aux pectoraux quand le programme passe par le couché.
+const perfsP = []; [13, 9, 6, 2].forEach((dj) => [1, 2, 3].forEach((sr) => { perfsP.push({ date: J(dj), exercice: 'Développé couché barre', muscle: 'Pectoraux', charge: 80, reps: 8, rpe: 8, serie: sr }); perfsP.push({ date: J(dj), exercice: 'Squat', muscle: 'Quadriceps', charge: 100, reps: 8, rpe: 8, serie: sr }); }));
+const adP = { historique: { progression_par_exo: A.buildProgressionParExo(perfsP) }, programme: [{ exercice: 'Développé couché barre' }, { exercice: 'Squat' }], exo_categories: {}, niveau_experience: 'intermediaire',
+  volume_obti: [{ muscle: 'Pectoraux', series_min: 10, series_opt: 16 }, { muscle: 'Quadriceps', series_min: 10, series_opt: 16 }], bien_etre: G('poignet'), cardio: { history: [] }, dashboard: { regularite: { seances_prevues: 2 } } };
+const rP = (A._bilanRecapV2({ perfs: perfsP, appData: adP, secByExo: {}, musByExo: {} }, 'semaine', new Date(now)).recos || []).join(' | ');
+eq(/Gêne poignet signalée/.test(rP) && !/pectoraux [0-9]/.test(rP.replace(/Gêne[^|]*/, '')) && !/Développé couché barre<\/b> :/.test(rP), 'mail récap : poignet → rien en plus sur le couché ni les pectoraux', rP);
 console.log(`gene-active : ${ok} OK / ${ko} KO`); process.exit(ko ? 1 : 0);

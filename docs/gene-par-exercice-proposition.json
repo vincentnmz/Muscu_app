@@ -1,0 +1,1361 @@
+{
+ "Crunch à la poulie": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [],
+  "note": ""
+ },
+ "Crunch au sol": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "nuque"
+  ],
+  "note": "nuque si on tire sur la tête"
+ },
+ "Crunch machine": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [],
+  "note": ""
+ },
+ "Pallof press": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [],
+  "note": ""
+ },
+ "Relevé de genoux suspendu": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "hanche",
+   "épaule",
+   "poignet"
+  ],
+  "note": "suspendu à la barre"
+ },
+ "Relevé de jambe": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "hanche",
+   "lombaires"
+  ],
+  "note": ""
+ },
+ "Roulette": {
+  "muscle": "Abdominaux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "lombaires",
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Adducteur à la poulie": {
+  "muscle": "Adducteur",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "aine",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Adducteur machine": {
+  "muscle": "Adducteur",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "aine",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Squat sumo haltère": {
+  "muscle": "Adducteur",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche",
+   "aine"
+  ],
+  "note": ""
+ },
+ "Curl inversé barre": {
+  "muscle": "Avant-bras",
+  "secondaire": "Biceps",
+  "utilise": false,
+  "articulations": [
+   "poignet",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Curl poignet barre": {
+  "muscle": "Avant-bras",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "poignet",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Curl poignet inversé": {
+  "muscle": "Avant-bras",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "poignet",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Curl barre": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl barre poulie": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl haltère": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl incliné au banc": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl incliné uni poignée à la poulie": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl machine": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl marteau à la poulie": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl marteau aux haltères": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Curl pupitre": {
+  "muscle": "Biceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Burpees": {
+  "muscle": "Corps entier",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "poignet",
+   "épaule",
+   "genou",
+   "cheville"
+  ],
+  "note": ""
+ },
+ "Coups de masse sur pneu": {
+  "muscle": "Corps entier",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "poignet",
+   "lombaires"
+  ],
+  "note": ""
+ },
+ "Retournement de pneu": {
+  "muscle": "Corps entier",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "lombaires",
+   "hanche",
+   "genou"
+  ],
+  "note": ""
+ },
+ "Slam ball": {
+  "muscle": "Corps entier",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "lombaires"
+  ],
+  "note": ""
+ },
+ "Pull over": {
+  "muscle": "Dos",
+  "secondaire": "Pectoraux",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Rowing banc": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Rowing barre": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "lombaires"
+  ],
+  "note": "buste penché : bas du dos sous charge"
+ },
+ "Rowing bucheron": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "lombaires"
+  ],
+  "note": ""
+ },
+ "Rowing machine": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Soulevé de terre": {
+  "muscle": "Dos",
+  "secondaire": "Ischio",
+  "utilise": false,
+  "articulations": [
+   "lombaires",
+   "hanche",
+   "genou",
+   "poignet"
+  ],
+  "note": "poignet / mains : prise de la barre"
+ },
+ "T-bar row": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "lombaires"
+  ],
+  "note": "buste penché : bas du dos sous charge"
+ },
+ "T-bar row prise basse": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "lombaires"
+  ],
+  "note": "buste penché : bas du dos sous charge"
+ },
+ "T-bar row prise haute": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "lombaires"
+  ],
+  "note": "buste penché : bas du dos sous charge"
+ },
+ "Tirage horizontal machine prise neutre": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage horizontal machine prise pronation": {
+  "muscle": "Dos",
+  "secondaire": "Epaule",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage horizontal prise large": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage horizontal prise serrée": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage horizontal uni à la poulie": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage vertical machine": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage vertical prise large": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage vertical prise serrée": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage vertical uni à la poignée": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Tirage vertical uni à la poulie": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Traction": {
+  "muscle": "Dos",
+  "secondaire": "Biceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Arrière épaule à la poulie": {
+  "muscle": "Epaule",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Arrière épaule haltère": {
+  "muscle": "Epaule",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Développé Arnold": {
+  "muscle": "Epaule",
+  "secondaire": "Triceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé épaules machine": {
+  "muscle": "Epaule",
+  "secondaire": "Triceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé militaire à la barre": {
+  "muscle": "Epaule",
+  "secondaire": "Triceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet",
+   "lombaires"
+  ],
+  "note": "debout : bas du dos gainé sous charge"
+ },
+ "Développé militaire à la Smith": {
+  "muscle": "Epaule",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé militaire aux haltères": {
+  "muscle": "Epaule",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Élévation frontale à la poulie": {
+  "muscle": "Epaule",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Élévation frontale barre": {
+  "muscle": "Epaule",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Élévation frontale haltères": {
+  "muscle": "Epaule",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Élévation latérale haltère": {
+  "muscle": "Epaule",
+  "secondaire": "Trapèze",
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Élévation latérale uni à la poulie": {
+  "muscle": "Epaule",
+  "secondaire": "Trapèze",
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Face pull": {
+  "muscle": "Epaule",
+  "secondaire": "Trapèze",
+  "utilise": true,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Oiseau machine": {
+  "muscle": "Epaule",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Rowing menton": {
+  "muscle": "Epaule",
+  "secondaire": "Trapèze",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": "mouvement souvent irritant pour une épaule sensible"
+ },
+ "Abduction à la poulie": {
+  "muscle": "Fessier",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Abduction machine": {
+  "muscle": "Fessier",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Fente bulgare": {
+  "muscle": "Fessier",
+  "secondaire": "Quadriceps",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche",
+   "cheville"
+  ],
+  "note": ""
+ },
+ "Fente longue": {
+  "muscle": "Fessier",
+  "secondaire": "Quadriceps",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche",
+   "cheville"
+  ],
+  "note": ""
+ },
+ "Hip thrust": {
+  "muscle": "Fessier",
+  "secondaire": "Ischio",
+  "utilise": false,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Hip thrust machine": {
+  "muscle": "Fessier",
+  "secondaire": "Ischio",
+  "utilise": true,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Kettlebell swing": {
+  "muscle": "Fessier",
+  "secondaire": "Ischio",
+  "utilise": false,
+  "articulations": [
+   "lombaires",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Kick back": {
+  "muscle": "Fessier",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Presse sumo": {
+  "muscle": "Fessier",
+  "secondaire": "Ischio",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche",
+   "aine"
+  ],
+  "note": ""
+ },
+ "Pull-through à la poulie": {
+  "muscle": "Fessier",
+  "secondaire": "Ischio",
+  "utilise": false,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Leg curl allongé": {
+  "muscle": "Ischio",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "Leg curl assis": {
+  "muscle": "Ischio",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "Leg curl debout": {
+  "muscle": "Ischio",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "Leg curl unilatéral": {
+  "muscle": "Ischio",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "Nordic curl": {
+  "muscle": "Ischio",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "RDL barre": {
+  "muscle": "Ischio",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "lombaires",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "RDL haltère": {
+  "muscle": "Ischio",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "lombaires",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Relevé de bassin": {
+  "muscle": "Ischio",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Extension lombaire au banc 45°": {
+  "muscle": "Lombaires",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "lombaires",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Good morning": {
+  "muscle": "Lombaires",
+  "secondaire": "Ischio",
+  "utilise": false,
+  "articulations": [
+   "lombaires",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Mollets à la presse": {
+  "muscle": "Mollets",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "cheville",
+   "pied"
+  ],
+  "note": ""
+ },
+ "Mollets à la Smith": {
+  "muscle": "Mollets",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "cheville",
+   "pied",
+   "haut du dos",
+   "lombaires"
+  ],
+  "note": "charge posée sur les épaules : colonne sous charge (validé porteur 14/11)"
+ },
+ "Mollets assis": {
+  "muscle": "Mollets",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "cheville",
+   "pied"
+  ],
+  "note": ""
+ },
+ "Mollets debout": {
+  "muscle": "Mollets",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "cheville",
+   "pied",
+   "haut du dos",
+   "lombaires"
+  ],
+  "note": "charge posée sur les épaules : colonne sous charge (validé porteur 14/11)"
+ },
+ "Mollets unilatéral haltère": {
+  "muscle": "Mollets",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "cheville",
+   "pied"
+  ],
+  "note": ""
+ },
+ "Développé couché barre": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé couché haltère": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé couché incliné haltère": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé décliné à la Smith": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé décliné machine": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé incliné à la Smith": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé incliné Hammer": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé machine": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Développé machine Hammer": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Dips pectoraux": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": "dips : épaule très sollicitée en bas du mouvement"
+ },
+ "Écarté haltères": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Écarté haltères décliné": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Écarté haltères incliné": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Écarté machine": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Écarté machine uni": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Écarté poulie basse": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Écarté poulie haute": {
+  "muscle": "Pectoraux",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude"
+  ],
+  "note": ""
+ },
+ "Pompe": {
+  "muscle": "Pectoraux",
+  "secondaire": "Triceps",
+  "utilise": true,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Belt squat": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Box jump": {
+  "muscle": "Quadriceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "cheville",
+   "pied"
+  ],
+  "note": ""
+ },
+ "Fente courte": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche",
+   "cheville"
+  ],
+  "note": ""
+ },
+ "Fentes marchées sac lesté": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche",
+   "cheville"
+  ],
+  "note": ""
+ },
+ "Front squat": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche",
+   "lombaires",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Hack squat": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Leg extension": {
+  "muscle": "Quadriceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "Leg extension unilatéral": {
+  "muscle": "Quadriceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "genou"
+  ],
+  "note": ""
+ },
+ "Pendulum": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Presse circulaire": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Presse horizontale": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Presse inclinée": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Presse unilatérale": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Sissy squat": {
+  "muscle": "Quadriceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "cheville"
+  ],
+  "note": "genou très sollicité"
+ },
+ "Squat": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche",
+   "lombaires"
+  ],
+  "note": "barre sur le dos : bas du dos sous charge"
+ },
+ "Squat gobelet": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": true,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Squat gobelet kettlebell": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Squat sac lesté": {
+  "muscle": "Quadriceps",
+  "secondaire": "Fessier",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche"
+  ],
+  "note": ""
+ },
+ "Wall ball": {
+  "muscle": "Quadriceps",
+  "secondaire": "Epaule",
+  "utilise": false,
+  "articulations": [
+   "genou",
+   "hanche",
+   "épaule"
+  ],
+  "note": ""
+ },
+ "Shrugs barre": {
+  "muscle": "Trapèze",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "nuque"
+  ],
+  "note": ""
+ },
+ "Shrugs haltères": {
+  "muscle": "Trapèze",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "nuque"
+  ],
+  "note": ""
+ },
+ "Tirage trapèze machine": {
+  "muscle": "Trapèze",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "nuque"
+  ],
+  "note": ""
+ },
+ "Barre au front": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Dips machine": {
+  "muscle": "Triceps",
+  "secondaire": "Pectoraux",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": "dips : épaule très sollicitée en bas du mouvement"
+ },
+ "Dips triceps": {
+  "muscle": "Triceps",
+  "secondaire": "Pectoraux",
+  "utilise": false,
+  "articulations": [
+   "épaule",
+   "coude",
+   "poignet"
+  ],
+  "note": "dips : épaule très sollicitée en bas du mouvement"
+ },
+ "Extension dos à la poulie corde": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude",
+   "épaule"
+  ],
+  "note": "bras au-dessus de la tête"
+ },
+ "Extension nuque haltère": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "coude",
+   "épaule"
+  ],
+  "note": "bras au-dessus de la tête"
+ },
+ "Extension poulie barre": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude"
+  ],
+  "note": ""
+ },
+ "Extension poulie corde": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude"
+  ],
+  "note": ""
+ },
+ "Extension triceps banc": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": false,
+  "articulations": [
+   "coude",
+   "poignet"
+  ],
+  "note": ""
+ },
+ "Kickback haltère": {
+  "muscle": "Triceps",
+  "secondaire": null,
+  "utilise": true,
+  "articulations": [
+   "coude"
+  ],
+  "note": ""
+ }
+}

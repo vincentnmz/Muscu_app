@@ -5817,14 +5817,26 @@ function _rcZoneTouche(z: string, mk: string): number {
   for (const [zz, mus] of _RC_ZONE_MUS) if (z.indexOf(zz) === 0) return mus.indexOf(mk) >= 0 ? 2 : 0
   return 0
 }
-function _rcGeneActive(be: any[], muscle: any, nowT: number): any {
-  const mk = _rcCle(muscle).slice(0, 4); if (!mk) return null
+// Gêne par EXERCICE (14/11, option B validée) — copie IDENTIQUE de js/lecture-v3.js LV3_ZONES_EXO (test gene-active).
+const _RC_ZONES_EXO: Record<string, string[]> = {"Abduction machine":["hanche"],"Abduction à la poulie":["hanche"],"Adducteur machine":["aine","hanche"],"Adducteur à la poulie":["aine","hanche"],"Arrière épaule haltère":["epaule"],"Arrière épaule à la poulie":["epaule"],"Barre au front":["coude","poignet"],"Belt squat":["genou","hanche"],"Box jump":["genou","cheville","pied"],"Burpees":["poignet","epaule","genou","cheville"],"Coups de masse sur pneu":["epaule","poignet","lombaires"],"Crunch au sol":["nuque"],"Crunch machine":[],"Crunch à la poulie":[],"Curl barre":["coude","poignet"],"Curl barre poulie":["coude","poignet"],"Curl haltère":["coude","poignet"],"Curl incliné au banc":["coude","poignet"],"Curl incliné uni poignée à la poulie":["coude","poignet"],"Curl inversé barre":["poignet","coude"],"Curl machine":["coude","poignet"],"Curl marteau aux haltères":["coude","poignet"],"Curl marteau à la poulie":["coude","poignet"],"Curl poignet barre":["poignet","coude"],"Curl poignet inversé":["poignet","coude"],"Curl pupitre":["coude","poignet"],"Dips machine":["epaule","coude","poignet"],"Dips pectoraux":["epaule","coude","poignet"],"Dips triceps":["epaule","coude","poignet"],"Développé Arnold":["epaule","coude","poignet"],"Développé couché barre":["epaule","coude","poignet"],"Développé couché haltère":["epaule","coude","poignet"],"Développé couché incliné haltère":["epaule","coude","poignet"],"Développé décliné machine":["epaule","coude","poignet"],"Développé décliné à la Smith":["epaule","coude","poignet"],"Développé incliné Hammer":["epaule","coude","poignet"],"Développé incliné à la Smith":["epaule","coude","poignet"],"Développé machine":["epaule","coude","poignet"],"Développé machine Hammer":["epaule","coude","poignet"],"Développé militaire aux haltères":["epaule","coude","poignet"],"Développé militaire à la Smith":["epaule","coude","poignet"],"Développé militaire à la barre":["epaule","coude","poignet","lombaires"],"Développé épaules machine":["epaule","coude","poignet"],"Extension dos à la poulie corde":["coude","epaule"],"Extension lombaire au banc 45°":["lombaires","hanche"],"Extension nuque haltère":["coude","epaule"],"Extension poulie barre":["coude"],"Extension poulie corde":["coude"],"Extension triceps banc":["coude","poignet"],"Face pull":["epaule"],"Fente bulgare":["genou","hanche","cheville"],"Fente courte":["genou","hanche","cheville"],"Fente longue":["genou","hanche","cheville"],"Fentes marchées sac lesté":["genou","hanche","cheville"],"Front squat":["genou","hanche","lombaires","poignet"],"Good morning":["lombaires","hanche"],"Hack squat":["genou","hanche"],"Hip thrust":["hanche"],"Hip thrust machine":["hanche"],"Kettlebell swing":["lombaires","hanche"],"Kick back":["hanche"],"Kickback haltère":["coude"],"Leg curl allongé":["genou"],"Leg curl assis":["genou"],"Leg curl debout":["genou"],"Leg curl unilatéral":["genou"],"Leg extension":["genou"],"Leg extension unilatéral":["genou"],"Mollets assis":["cheville","pied"],"Mollets debout":["cheville","pied","haut_dos","lombaires"],"Mollets unilatéral haltère":["cheville","pied"],"Mollets à la Smith":["cheville","pied","haut_dos","lombaires"],"Mollets à la presse":["cheville","pied"],"Nordic curl":["genou"],"Oiseau machine":["epaule"],"Pallof press":[],"Pendulum":["genou","hanche"],"Pompe":["epaule","coude","poignet"],"Presse circulaire":["genou","hanche"],"Presse horizontale":["genou","hanche"],"Presse inclinée":["genou","hanche"],"Presse sumo":["genou","hanche","aine"],"Presse unilatérale":["genou","hanche"],"Pull over":["epaule","coude"],"Pull-through à la poulie":["hanche"],"RDL barre":["lombaires","hanche"],"RDL haltère":["lombaires","hanche"],"Relevé de bassin":["hanche"],"Relevé de genoux suspendu":["hanche","epaule","poignet"],"Relevé de jambe":["hanche","lombaires"],"Retournement de pneu":["lombaires","hanche","genou"],"Roulette":["lombaires","epaule"],"Rowing banc":["epaule","coude"],"Rowing barre":["epaule","coude","lombaires"],"Rowing bucheron":["epaule","coude","lombaires"],"Rowing machine":["epaule","coude"],"Rowing menton":["epaule","coude","poignet"],"Shrugs barre":["nuque"],"Shrugs haltères":["nuque"],"Sissy squat":["genou","cheville"],"Slam ball":["epaule","lombaires"],"Soulevé de terre":["lombaires","hanche","genou","poignet"],"Squat":["genou","hanche","lombaires"],"Squat gobelet":["genou","hanche"],"Squat gobelet kettlebell":["genou","hanche"],"Squat sac lesté":["genou","hanche"],"Squat sumo haltère":["genou","hanche","aine"],"T-bar row":["epaule","coude","lombaires"],"T-bar row prise basse":["epaule","coude","lombaires"],"T-bar row prise haute":["epaule","coude","lombaires"],"Tirage horizontal machine prise neutre":["epaule","coude"],"Tirage horizontal machine prise pronation":["epaule","coude"],"Tirage horizontal prise large":["epaule","coude"],"Tirage horizontal prise serrée":["epaule","coude"],"Tirage horizontal uni à la poulie":["epaule","coude"],"Tirage trapèze machine":["nuque"],"Tirage vertical machine":["epaule","coude"],"Tirage vertical prise large":["epaule","coude"],"Tirage vertical prise serrée":["epaule","coude"],"Tirage vertical uni à la poignée":["epaule","coude"],"Tirage vertical uni à la poulie":["epaule","coude"],"Traction":["epaule","coude"],"Wall ball":["genou","hanche","epaule"],"Écarté haltères":["epaule","coude"],"Écarté haltères décliné":["epaule","coude"],"Écarté haltères incliné":["epaule","coude"],"Écarté machine":["epaule","coude"],"Écarté machine uni":["epaule","coude"],"Écarté poulie basse":["epaule","coude"],"Écarté poulie haute":["epaule","coude"],"Élévation frontale barre":["epaule","poignet"],"Élévation frontale haltères":["epaule"],"Élévation frontale à la poulie":["epaule"],"Élévation latérale haltère":["epaule"],"Élévation latérale uni à la poulie":["epaule"]}
+const _rcZexoIdx: Record<string, string[]> = {}
+for (const k of Object.keys(_RC_ZONES_EXO)) _rcZexoIdx[k.trim().toLowerCase()] = _RC_ZONES_EXO[k]
+function _rcZoneCode(z: any): string | null {
+  const k = String(z || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_-]/g, ' ').trim()
+  const P = [['epaul', 'epaule'], ['coude', 'coude'], ['poign', 'poignet'], ['avant', 'poignet'], ['nuque', 'nuque'], ['cou', 'nuque'], ['haut', 'haut_dos'], ['lomb', 'lombaires'], ['hanch', 'hanche'], ['aine', 'aine'], ['genou', 'genou'], ['chevi', 'cheville'], ['pied', 'pied']]
+  for (const [pre, c] of P) if (k.indexOf(pre) === 0) return c
+  return null
+}
+function _rcGeneActive(be: any[], muscle: any, nowT: number, exo?: any): any {
   const t = (x: any) => { const d = normDate(x && x.date); return d ? new Date(d + 'T12:00:00').getTime() : 0 }
   const rec = (be || []).filter((b: any) => { const tb = t(b); return tb && tb <= nowT + 864e5 && (nowT - tb) / 864e5 <= 7 }).sort((a: any, b: any) => t(b) - t(a))
   if (!rec.length) return null
   const b0 = rec[0], zr = String(b0.zone || b0.zone_douloureuse || ''), z = _rcCle(zr)
   if (!(Number(b0.douleur) >= 3) || !z) return null
-  const tz = _rcZoneTouche(z, mk); if (!tz) return null
+  const mk = _rcCle(muscle).slice(0, 4)
+  let tz = mk ? _rcZoneTouche(z, mk) : 0
+  if (!tz && exo) { const zc = _rcZoneCode(zr), ze = _rcZexoIdx[String(exo).trim().toLowerCase()]; if (zc && ze && ze.indexOf(zc) >= 0) tz = 2 }
+  if (!tz) return null
   const d = new Date(t(b0))
   return { zone: zr.toLowerCase().replace(/_/g, ' '), val: Number(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 }
 }
@@ -5934,15 +5946,24 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   // Gêne active (14/11) : aucune séance / charge en plus proposée sur un muscle touché par la zone douloureuse.
   const _beG = Array.isArray(ad.bien_etre) ? ad.bien_etre : [], _nowG = now.getTime()
   const _gene = (m: any) => { try { return _rcGeneActive(_beG, m, _nowG) } catch (_) { return null } }
+  // Action de volume : muscle touché, ou un exercice du programme qui le travaille sollicite la zone (= app _lv3GeneMuscle).
+  const _geneMus = (m: any) => {
+    const g = _gene(m); if (g) return g
+    for (const l of (ad.programme || [])) {
+      if (!l || l.type === 'cardio' || !l.exercice) continue
+      if (_rcCle(_musExo(l.exercice)) === _rcCle(m)) { const ge = (() => { try { return _rcGeneActive(_beG, null, _nowG, l.exercice) } catch (_) { return null } })(); if (ge) return ge }
+    }
+    return null
+  }
   const _musExo = (exo: any) => { const k = String(exo || '').trim().toLowerCase(); const r = perfsAll.find((x: any) => String(x.exercice || '').trim().toLowerCase() === k); return (r && r.muscle) || (in_.musByExo || {})[k] || null }
-  const _genes = out.volume.map((v: any) => ({ m: v.muscle, g: _gene(v.muscle) })).filter((x: any) => x.g)
+  const _genes = out.volume.map((v: any) => ({ m: v.muscle, g: _geneMus(v.muscle) })).filter((x: any) => x.g)
   if (_genes.length) {
     const g0 = _genes[0].g
     const _nmG = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux', Pectoraux: 'pectoraux', Dos: 'dos' } as any)[m] || String(m).toLowerCase()
     recos.push(`<b>Gêne ${_escHtml(g0.zone)} signalée le ${g0.date}</b> : n'ajoute ni séries ni charge pour : ${_genes.map((x: any) => _escHtml(_nmG(x.m))).join(', ')}, tant qu'elle revient (avis kiné si ça persiste).`)
   }
   if (!_genes.length) { const ga = (() => { try { return _rcGeneAutre(_beG, _nowG) } catch (_) { return null } })(); if (ga) recos.push(`<b>Gêne ${ga.val}/5 signalée le ${ga.date}</b> (zone non précisée) : allège les exercices qui la réveillent, avis kiné si ça persiste.`) }
-  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_gene(v.muscle))
+  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_geneMus(v.muscle))
   if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
@@ -5950,7 +5971,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
     recos.push(`<b>${titre}</b> : ` + bas.map((v: any) => `${nm(v.muscle)} ${_frNum(v.parSem)} séries/sem. (min. ${v.min})`).join(', ') + '. Pour atteindre le minimum, il manque environ ' + bas.map((v: any) => `${Math.max(1, Math.round(v.min - v.parSem))} séries/sem. ${['Ischio', 'Fessier'].indexOf(v.muscle) >= 0 ? 'aux' : 'aux'} ${nm(v.muscle)}`).join(', ').replace(/, ([^,]*)$/, ' et $1') + '.')
   }
   const L = out.lecture
-  const _libre = (x: any) => !_gene(_musExo(x.exo))
+  const _libre = (x: any) => { try { return !_rcGeneActive(_beG, _musExo(x.exo), _nowG, x.exo) } catch (_) { return true } }
   const sous = (L.sous || []).filter(_libre).slice().sort((a: any, b: any) => (b.rpe - a.rpe) || (a.r - b.r))[0]
   if (sous) {
     const same = (sous.hist || []).filter((h: any) => h.c === sous.c).map((h: any) => h.r)

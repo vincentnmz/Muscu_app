@@ -13,6 +13,7 @@ figés, réseau coupé). Tout le texte affiché sur **Aujourd'hui**, **Analyses 
 | `avance_pause` | avancé, pause dans la période de comparaison |
 | `montre_sommeil` | montre, 30 séances avec nuit, épisodes de nuits courtes (sommeil → performance) |
 | `douleur_vigilance` | douleur forte à l'épaule + fatigue déclarées aujourd'hui |
+| `gene_poignet` | gêne 4/5 au poignet : règle par exercice (couché, militaire en pause) |
 | `douleur_autre` | gêne 3/5 zone « Autre » : rien en pause, ligne de prudence |
 | `nouveau_vide` | compte neuf, aucune donnée |
 | `sous_fourchette` | saut de charge, séries sous la fourchette à RPE 10 |
@@ -59,3 +60,8 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
   conditions… », erreur attrapée par le banc pendant la correction) · B5 muscles lisibles (« épaules », « ischios ») ·
   B6 « ACWR 0,97 », milliers séparés, unité expliquée sous « Forme de fond / Fatigue récente » · B7 pas un défaut : le bloc
   Ressenti est replié par défaut et le « — » était le bloc Poids ; le banc déplie maintenant Ressenti (couvert).
+- **Gêne par exercice (option B, 14/11, préprod)** : table exercice → zones (135 exercices, validée) branchée dans l'app
+  (diagnostic, plan, « Ce que Novalyz vise ») et le mail récap ; s'ajoute à la règle par muscle. Volume « +N séries » en pause
+  si un exercice du programme pour ce muscle sollicite la zone. Profil `gene_poignet`. Les profils du banc utilisent
+  désormais les **noms exacts du catalogue** (le banc a montré qu'un nom hors catalogue n'est protégé que par la règle par
+  muscle — limite connue : exercices privés de coach ou renommés).
