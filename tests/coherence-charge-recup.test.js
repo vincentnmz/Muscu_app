@@ -75,6 +75,16 @@ eq(verifier('Douleurs & blessures\nAucune blessure active\nOK', D({ alertes: [{ 
 eq(verifier('Douleurs & blessures\nDouleur forte signalée (épaule)\nà évaluer', D({ alertes: [{ type: 'douleur' }] })).length === 0, 'R7 : douleur affichée « à évaluer » → permis');
 eq(verifier('Douleurs & blessures\nAucune douleur ni blessure signalée\nOK', D({})).length === 0, 'R7 : aucune douleur → « OK » permis');
 eq(/a\.type === 'douleur'[\s\S]{0,200}blPill = \{ txt: 'à évaluer'/.test(fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8')), 'R7 code : tuile « à évaluer » branchée sur l\'alerte douleur du moteur');
+// H (14/11) : douleur forte → aucune fuite de progression (R8a), accueil coach compris ; douleur modérée hors zone : permis (D2).
+const DF = D({ alertes: [{ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée (épaule)' }] });
+eq(verifier('RDL barre : bloqué · +4 séries de RDL barre', DF).some((e) => e.startsWith('R8a')), 'R8a : accueil coach « +4 séries » avec douleur forte → contradiction');
+eq(verifier('Levier : hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d\'aller à l\'échec.', DF).length === 0, 'R8a : phrase de maintien (« pas besoin… à l\'échec ») → permise');
+eq(verifier('Levier : +4 séries de Squat.', D({ alertes: [{ type: 'douleur', severite: 'moyenne' }] })).length === 0, 'R8a : douleur modérée hors zone → progression permise (D2)');
+vm.runInContext(fnSrc(LV3, '_lv3DouleurForte') + '\nthis.df = _lv3DouleurForte;', P);
+eq(P.df({ moteur: { alertes: [{ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée (épaule)' }] } }).zone === 'épaule', 'H app : douleur forte reconnue (zone lue)');
+eq(P.df({ moteur: { alertes: [{ type: 'douleur', severite: 'moyenne' }] } }) === null, 'H app : douleur modérée → pas de règle H');
+const r2 = rec({ surcharge: 'Faible', charge_ressenti: { evaluable: true }, alertes: [{ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée (genou)' }] });
+eq(!/il manque environ/.test(r2) && /Douleur forte/.test(r2), 'mail : douleur forte → pas de séries en plus hors zone', r2);
 console.log('-'.repeat(70));
 console.log('cohérence charge ↔ récup : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) process.exit(1);

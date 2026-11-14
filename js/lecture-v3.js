@@ -174,9 +174,19 @@ function _lv3PicCharge(data) {
   if (cr.evaluable === true && cr.degrade !== true) return null;
   return { pic: true, degrade: cr.degrade === true };
 }
+// H (14/11, validé porteur) : douleur FORTE signalée (alerte moteur « douleur », sévérité haute). Hors zone : maintien,
+// aucune progression (pas de +séries, RPE 9-10, échec) — la zone garde son garde-fou propre (gêne). Moteur de douleur inchangé.
+function _lv3DouleurForte(data) {
+  var a = (((data && data.moteur) || {}).alertes || []).filter(function (x) { return x && x.type === 'douleur' && x.severite === 'haute'; })[0];
+  if (!a) return null;
+  var z = (String(a.message || '').match(/\(([^)]+)\)/) || [])[1] || '';
+  return { df: true, zone: z };
+}
+var LV3_HORS_ZONE = 'hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d\'aller à l\'échec.';
 // Raison d'une action en pause (gêne ou pic de charge) — courte (liste) et longue (plan détaillé).
-function _lv3PauseCourt(g) { return (g && g.pic) ? 'charge en hausse' : ('gêne ' + ((g && g.zone) || '')); }
+function _lv3PauseCourt(g) { return (g && g.df) ? 'douleur forte' : (g && g.pic) ? 'charge en hausse' : ('gêne ' + ((g && g.zone) || '')); }
 function _lv3PauseLong(g) {
+  if (g && g.df) return 'Douleur forte signalée' + (g.zone ? ' (' + _maE(g.zone) + ')' : '') + ' : hors zone, garde tes charges et tes séries prévues. Pas besoin de forcer ni d\'aller à l\'échec. L\'action revient d\'elle-même quand la douleur est levée.';
   if (g && g.pic) return g.degrade
     ? 'Ta charge est en hausse et ton ressenti baisse : on n\'ajoute rien cette semaine, priorité à la récupération. L\'action revient d\'elle-même quand ta charge redevient habituelle.'
     : 'Ta charge est en hausse et ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses : on n\'ajoute rien tant qu\'on ne sait pas. Renseigne ton état du jour ; l\'action revient d\'elle-même.';
@@ -334,7 +344,13 @@ function _lv3Diag(data, exo, kind, nowT) {
   }
   // E (14/11) : pic de charge non interprétable → le levier ne demande pas d'en rajouter (séries, RPE 9-10, série en plus).
   // L'action reste (le plan la met en pause, visible) ; la gêne, garde-fou explicite, reste prioritaire.
-  var _pic = null; try { _pic = _gA ? null : _lv3PicCharge(data); } catch (_) {}
+  // H (14/11) : douleur forte, exercice HORS zone (la zone est déjà traitée ci-dessus) → maintien, prioritaire sur le pic.
+  var _dF = null; try { _dF = _gA ? null : _lv3DouleurForte(data); } catch (_) {}
+  if (_dF && levier) {
+    if (cause !== 'charge' && cause !== 'effort' && cause !== 'repos') levier = LV3_HORS_ZONE;
+    else levier = levier.replace(/ Et sur ta dernière série, va jusqu'à RPE 9-10[^.]*\./, '');
+  }
+  var _pic = null; try { _pic = (_gA || _dF) ? null : _lv3PicCharge(data); } catch (_) {}
   if (_pic && levier) {
     var _prud = 'ta charge est en hausse ' + (_pic.degrade ? 'et ton ressenti baisse' : 'et ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses')
       + ' : garde tes séries et ta charge prévues, sans aller à l\'échec' + (_pic.degrade ? ', et priorise la récupération.' : ', et renseigne ton état du jour.');
@@ -479,6 +495,8 @@ function _lv3Plan(data, nowT) {
   acts.forEach(function (a) { try { var m = a.muscle || (a.exo ? _lv3MuscleExo(data, a.exo) : null); var g = (a.type === 'series') ? (m ? _lv3GeneMuscle(data, m, nowT) : null) : (m || a.exo ? _lv3GeneActive(data, m, nowT, a.exo) : null); if (g && a.type !== 'reprise') a.gene = g; } catch (_) {} });
   // E (14/11) : pic de charge non interprétable → les actions d'AUGMENTATION (séries, cible « à pousser ») passent en pause
   // (même mécanique que la gêne : affichées barrées, hors compteur, jamais au journal). Maintien / allègement restent.
+  // H (14/11) : douleur forte → actions d'augmentation hors zone en pause (maintien) ; la zone garde sa raison « gêne ».
+  try { var _dfP = _lv3DouleurForte(data); if (_dfP) acts.forEach(function (a) { if (!a.gene && !a.fait && (a.type === 'series' || a.type === 'cible')) a.gene = _dfP; }); } catch (_) {}
   try { var _picP = _lv3PicCharge(data); if (_picP) acts.forEach(function (a) { if (!a.gene && !a.fait && (a.type === 'series' || a.type === 'cible')) a.gene = _picP; if (a.fait && a.type === 'series' && a.raison) a.raison = String(a.raison).replace(/ ?Tous tes exercices .*? comptent \(ex\. [^)]*\)\./, ' Objectif atteint cette semaine : n\'en rajoute pas tant que ta charge est en hausse.'); });   /* déjà fait = acquis, pas une proposition */ } catch (_) {}
   var actifs = acts.filter(function (a) { return !a.gene; });
   return { actions: acts, ok: ok, lundi: isoL, faits: actifs.filter(function (a) { return a.fait; }).length, nActifs: actifs.length };

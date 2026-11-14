@@ -65,3 +65,46 @@ profils ; banc complet + `npm test` verts ; puis vérification réelle sur /dev/
   reco distincte ?).
 - Rowing / tirage avec douleur **poignet** proposés « +4 séries » (banc `gene_poignet`) : la table zone ↔ exercice validée le 14/11 ne
   relie pas ces exercices au poignet ; avec H (douleur forte), ils ne seraient de toute façon plus poussés.
+
+## 7. Décisions du porteur (14/11) — FIGÉES avant le test R8
+
+| Point | Décision |
+|---|---|
+| **D1** cibles hors zone, douleur forte | 🟢 **(a) maintien partout** : zone → garde-fou inchangé ; hors zone → maintien, aucune progression ; coach = athlète. |
+| **D2** douleur modérée (3/5) | 🟢 **Pas de règle H.** La progression existante reste valable **hors zone** ; les **cibles de séance doivent afficher la même décision que le plan / coach** (aujourd'hui elles sont en maintien sur tous les exercices). Pas de nouvelle règle médicale. |
+| **D3** volume hors zone, douleur forte | 🟢 **Pause** des « +N séries » ; RPE 9-10 et échec supprimés ; maintien des charges / séries prévues OK. |
+| Phrase (douleur forte, hors zone) | « **Hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.** » (pas « progression possible », contradictoire avec D1). |
+
+**Règle H figée (douleur forte)** : 1. zone → garde-fou inchangé · 2. hors zone → maintien, aucune progression · 3. +N séries → pause ·
+4. RPE 9-10 supprimé · 5. échec supprimé · 6. une bonne récupération ne rouvre pas la progression · 7. athlète = coach ·
+8. moteur de douleur inchangé.
+
+**R8** (deux contrôles indépendants) :
+- **R8a — pas de fuite de progression** (douleur forte) : aucun « +N série(s) de », « RPE 9-10 », « à pousser », « Prochaine fois : vise »,
+  « aller à l'échec » (hors « pas besoin… / sans aller à l'échec »).
+- **R8b — même décision** : pour chaque exercice dont la cible athlète dit « pas de progression aujourd'hui », aucune action active du plan
+  ni levier / piste n'augmente cet exercice (séries, charge, RPE 9-10).
+- **H4** (aucune douleur) : textes **strictement identiques** au banc actuel.
+Profils : H1 + H2 + H6 = `douleur_forte_recup_ok` (épaule 4/5, récup normale, jambes et épaule au programme) ; H3 = `douleur_moderee`
+(épaule 3/5) ; H4 = profils sans douleur existants ; H5 = `douleur_vigilance` existant (4/5 + sommeil 2, fatigue 4).
+
+## 8. Réalisé (14/11, en préprod)
+
+**R8 d'abord** : sur le code d'avant, R8 était rouge sur `douleur_vigilance` (H5), `douleur_forte_recup_ok` (H1/H2/H6), `douleur_moderee` (H3),
+`douleur_autre`, `gene_poignet` + fiches coach (pistes « +4 séries de RDL / Squat ») ; profils sans douleur (H4) : verts.
+**Après correction** : R8a / R8b verts partout ; H4 **textes strictement identiques** (debutant, plateau, pause, montre, sous-fourchette,
+coach sans propositions, charge, pic, reprise : inchangés).
+
+| Profil | Cibles (vraies fonctions) | Plan |
+|---|---|---|
+| H1/H2/H6 `douleur_forte_recup_ok` | maintien sur **tous** les exercices | zone : en pause « gêne épaule » ; jambes : en pause « douleur forte » |
+| H5 `douleur_vigilance` | maintien partout | idem |
+| H3 `douleur_moderee` | zone (pecs, dos, épaule) : maintien ; **jambes : progression existante** | zone en pause « gêne » ; Ischios **actif** (aligné) |
+| H4 sans douleur | inchangé | inchangé |
+
+Code : `_lv3DouleurForte` (lecture de l'alerte moteur, rien de recalculé) ; plan (actions séries / cible non faites → pause
+« douleur forte ») ; levier / piste hors zone → « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à
+l'échec. » ; recos de secours et mail récap alignés ; **D2** : `_vigilanceDuJour(data, exo)` — Vigilance due seulement à une douleur
+modérée → maintien dans la zone, progression existante hors zone. Moteur de douleur inchangé.
+Trouvés en route et corrigés : l'**accueil coach** (« Entraînement à regarder ») citait encore « +4 séries » (désormais contrôlé par le banc,
+athlète par athlète, contre son moteur) ; compteur « Plan 0/0 fait » → « Plan en pause » (accueil coach ordi et mobile).

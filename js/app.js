@@ -5123,6 +5123,8 @@ function _coachEntrLigne(d) {
     var pt = (((d.historique || {}).progression_par_exo || {})[g.exo] || [])[0];
     var der = pt ? ' (' + _cdFmtKg(pt.charge) + ' kg × ' + pt.reps + ')' : '';
     var act = g.action && g.action.titre ? String(g.action.titre).split(' : ').slice(1).join(' : ') : '';
+    // H / E (14/11) : douleur forte ou pic de charge → l'action d'augmentation est EN PAUSE dans le plan : on ne la cite pas ici.
+    try { if (act && g.action && (g.action.type === 'series' || g.action.type === 'cible') && ((typeof _lv3DouleurForte === 'function' && _lv3DouleurForte(d)) || (typeof _lv3PicCharge === 'function' && _lv3PicCharge(d)))) act = ''; } catch (e) {}
     txt = '<b>' + escapeHtml(g.exo) + '</b> : ' + (KIND[g.kind] || g.kind) + (g.kind === 'sous' ? der : '') + (act ? ' · ' + escapeHtml(act) : '');
   } else if (P) {
     if (_toutFait) return null;
@@ -5594,7 +5596,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
     + _entr.map(({ e, L }) => {
       const P = L.P, n = P ? (P.nActifs != null ? P.nActifs : P.actions.length) : 0;
       const _ok = P && n && P.faits >= n;
-      const tag = P ? (_ok ? `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A);">✓ Plan de la semaine fait</span>` : `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--surface2);color:var(--text-muted);">Plan ${P.faits}/${n} fait${n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : ''}</span>`) : '';
+      const tag = P ? (_ok ? `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A);">✓ Plan de la semaine fait</span>` : `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;background:var(--surface2);color:var(--text-muted);">${n ? 'Plan ' + P.faits + '/' + n + ' fait' : 'Plan en pause'}${n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : ''}</span>`) : '';
       const _ex = L.exo ? String(L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
       return `<div onclick="coachOuvrirProgression('${e.i}'${_ex ? `,'${_ex}'` : ''})" style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);">
           ${_coachAv(e.a, 'var(--accent-a12)', 'var(--accent-strong)', 36)}
@@ -8546,7 +8548,7 @@ function _coachDeskAujourdhui() {
     var P = x.L.P, n = P ? (P.nActifs != null ? P.nActifs : P.actions.length) : 0, ex = x.L.exo ? String(x.L.exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
     return '<div class="cs-wrow" onclick="coachOuvrirProgression(\'' + x.e.i + '\'' + (ex ? ',\'' + ex + '\'' : '') + ')"><span class="cs-av2">' + _coachDeskInit(x.e.a.nom) + '</span><div class="cs-wn"><b>' + escapeHtml(x.e.a.nom) + '</b><div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px">' + x.L.txt.replace(/<b>/g, '<strong style="font-weight:700;color:var(--text)">').replace(/<\/b>/g, '</strong>') + '</div>'
       + (P && n && P.faits >= n ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--good-a12,#E7F8EF);color:var(--good,#12B76A)">✓ Plan de la semaine fait</span></div>' : '')
-      + (P && !(n && P.faits >= n) ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">Plan ' + P.faits + '/' + n + ' fait' + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
+      + (P && !(n && P.faits >= n) ? '<div class="cs-wal"><span class="cs-chip" style="background:var(--surface2);color:var(--text-muted)">' + (n ? 'Plan ' + P.faits + '/' + n + ' fait' : 'Plan en pause') + (n > 1 ? ' · +' + (n - 1) + ' autre' + (n > 2 ? 's' : '') + ' action' + (n > 2 ? 's' : '') : '') + '</span></div>' : '') + '</div><span class="cs-chev">›</span></div>';
   }).join('') + '</div></div>';
   return kpis + '<div class="cs-grid2"><div><div class="cs-panel"><div class="cs-pt">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + (watch || '<div class="cs-empty" style="padding:4px 0;text-align:left">Tout le monde est à jour.</div>') + '</div></div>' + entrHtml + '</div>'
     + '<aside>' + questPanel
@@ -13492,9 +13494,16 @@ function _joursSansSeance(data, nowT) {
   } catch (e) { return null; }
 }
 // Jour en Vigilance (verdict du moteur) → pas de progression proposée ce jour-là (01/11).
-function _vigilanceDuJour(data) {
+function _vigilanceDuJour(data, exo) {
   try {
     var m = (data && data.moteur) || {}, niv = m.disponibilite && m.disponibilite.niveau;
+    // D2 (14/11, décision porteur) : Vigilance due SEULEMENT à une douleur modérée → la progression existante reste valable
+    // HORS zone (les cibles s'alignent sur le plan / coach) ; dans la zone, maintien comme avant. Moteur de douleur inchangé.
+    if (exo && niv === 'Vigilance' && Array.isArray(m.causes) && m.causes.length && m.causes.every(function (c) { return /^Douleur modérée/.test(String(c)); })) {
+      var _mu = null; try { _mu = (typeof _lv3MuscleExo === 'function') ? _lv3MuscleExo(data, exo) : null; } catch (e) {}
+      var _ga = null; try { _ga = (typeof _lv3GeneActive === 'function') ? _lv3GeneActive(data, _mu, Date.now(), exo) : null; } catch (e) {}
+      if (!_ga) return { on: false, txt: '' };
+    }
     if (niv !== 'Vigilance' && niv !== 'À surveiller') {
       // E (14/11, validé porteur) : charge en hausse dont le ressenti ne dit pas qu'elle est encaissée → cibles de MAINTIEN
       // (mêmes charges que la dernière fois), pas de progression proposée. Vérité = moteur (_lv3PicCharge).
@@ -13544,7 +13553,7 @@ function majPlanSeries() {
   var _fch = _exoFourchette(exoEnCours.exerciceNom, rminP, rmaxP); rminP = _fch.rmin; rmaxP = _fch.rmax;
   var _niv = 'debutant'; try { _niv = (typeof _lv3Niveau === 'function') ? _lv3Niveau(_saisieCoach && typeof coachAthleteData !== 'undefined' ? coachAthleteData : dernierAppData) : getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
-  var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData);
+  var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData, exoEnCours && exoEnCours.exerciceNom);
   var _jss = _joursSansSeance((typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData);
   var _dlData = (typeof _saisieCoach !== 'undefined' && _saisieCoach && typeof coachAthleteData !== 'undefined') ? coachAthleteData : dernierAppData;
   var _offNv = !_nvPropsAthlete(_dlData);   // D2 (écran 6) : le coach a la main → pas de charge proposée par Novalyz
@@ -15923,7 +15932,7 @@ function _lxRecos(L, V, niveau, data) {
       + (sous.length > 1 ? ' <span style="color:var(--text-subtle)">(+' + (sous.length - 1) + ' autre' + (sous.length > 2 ? 's' : '') + ' sous la fourchette)</span>' : ''));
   }
   // E (14/11) : pic de charge non interprétable → ni « à pousser » ni volume en plus (maintien / allègement restent).
-  var _picR = null; try { _picR = (typeof _lv3PicCharge === 'function') ? _lv3PicCharge(data) : null; } catch (e) {}
+  var _picR = null; try { _picR = ((typeof _lv3DouleurForte === 'function') ? _lv3DouleurForte(data) : null) || ((typeof _lv3PicCharge === 'function') ? _lv3PicCharge(data) : null); } catch (e) {}   // H (14/11) : douleur forte d'abord
   // 2) À pousser : un exercice en record / en progrès → la cible de la prochaine fois (même calcul que la saisie).
   if (!_picR) try {
     var pool = L.records.concat(L.progresse);
@@ -15945,7 +15954,8 @@ function _lxRecos(L, V, niveau, data) {
   // 4) Volume en retard, sinon régularité.
   var ret = _ctxAttendu(data) ? [] : V.rows.filter(function (r) { return r.retard; });   // X1 : pas de « priorise » en déload / reprise
   if (_picR && out.length < 3) {
-    out.push('<b>Charge en hausse</b> : ' + (_picR.degrade ? 'ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l\'échec, et priorise la récupération.' : 'ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses — garde tes séries et ta charge prévues, sans aller à l\'échec, et renseigne ton état du jour.'));
+    if (_picR.df) out.push('<b>Douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d\'aller à l\'échec.');
+    else out.push('<b>Charge en hausse</b> : ' + (_picR.degrade ? 'ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l\'échec, et priorise la récupération.' : 'ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses — garde tes séries et ta charge prévues, sans aller à l\'échec, et renseigne ton état du jour.'));
   } else if (ret.length && out.length < 3) {
     var noms = ret.slice(0, 3).map(function (r) { return _maE(r.muscle) + ' ' + r.fait + '/' + r.min; }).join(', ');
     out.push('<b>Volume</b> : ' + noms + ' séries cette semaine (' + V.faites + '/' + V.prevues + ' séances faites) — ' + ((V.prevues > 0 && V.faites >= V.prevues) ? 'semaine complète : priorise ces muscles la semaine prochaine.' : 'à compléter sur les séances qui restent.'));
@@ -18670,7 +18680,7 @@ function _tjCibles(data, exos) {
     var f = _exoFourchette(nom, _numOk(p.reps_mini) ? Number(p.reps_mini) : null, _numOk(p.reps_max) ? Number(p.reps_max) : null, cats);
     if (!last || !last.length) return { exo: nom, mode: 'premier', f: f, np: _numOk(p.series_prevues) ? Number(p.series_prevues) : null };
     var pas = _petitPas(nom);
-    var _vg = _vigilanceDuJour(data);
+    var _vg = _vigilanceDuJour(data, nom);
     var _bqC = null; try { _bqC = _blocageCtx(data, nom); } catch (e) {}
     var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, joursSansSeance: _joursSansSeance(data), deload: _ctxAttendu(data) === 'déload', bloque: _bqC, nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
     // Série de référence = la plus LOURDE (puis le plus de reps) : la 1re est souvent une

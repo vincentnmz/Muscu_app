@@ -58,6 +58,21 @@ try {
           return '\n\n== Analyses ▸ Croisé ==\n' + el.innerText; })();
     }, { data, a, ECRANS });
     await pg.clock.runFor(2500);
+    // R8b (H, 14/11) — même décision : un exercice dont la cible athlète dit « pas de progression aujourd'hui » (mode vigilance)
+    // n'a aucune action active du plan ni levier qui l'augmente (séries, charge, RPE 9-10). Calcul sur les VRAIES fonctions de l'app.
+    const r8b = await pg.evaluate(() => { const out = [];
+      try {
+        const rows = _tjCibles(dernierAppData, dernierAppData.programme || []);
+        const vig = rows.filter((r) => r.mode === 'vigilance').map((r) => r.exo.trim());
+        const mus = (e) => { try { return _lv3MuscleExo(dernierAppData, e); } catch (x) { return null; } };
+        const P = _lv3Plan(dernierAppData); const act = P ? P.actions.filter((a) => !a.gene && !a.fait && (a.type === 'series' || a.type === 'cible' || a.type === 'charge')) : [];
+        vig.forEach((e) => {
+          act.forEach((a) => { if ((a.exo && a.exo.trim() === e && a.type !== 'charge') || (a.type === 'series' && a.muscle && mus(e) && _musKey(a.muscle) === _musKey(mus(e)))) out.push('plan « ' + a.titre + ' » actif alors que la cible de ' + e + ' dit « pas de progression »'); });
+          _lv3Diags(dernierAppData).filter((d) => d.exo.trim() === e).forEach((d) => { if (/\+\d+ séries? de |RPE 9-10|ajoute 1 série/i.test(d.levier || '')) out.push('levier « ' + d.levier.slice(0, 70) + '… » sur ' + e + ' (cible : pas de progression)'); });
+        });
+      } catch (e) { out.push('R8b non calculable : ' + e.message); }
+      return out; });
+    if (r8b.length) { ko++; console.error('  ✗ ' + id + ' : décision athlète ≠ plan / levier'); r8b.forEach((e) => console.error('      ⚠ R8b ' + e)); }
     const sortie = normaliser(txt) + (erreurs.length ? '\n\n== Erreurs JavaScript ==\n' + erreurs.join('\n') : '') + '\n';
     if (erreurs.length) { ko++; console.error('  ✗ ' + id + ' : erreur JavaScript — ' + erreurs[0]); }   // bloquant même en --maj (14/11)
     const inc = verifier(normaliser(txt), data);   // cohérence inter-écrans (14/11) : bloquant même en --maj
@@ -102,6 +117,12 @@ try {
     await pg.evaluate(async () => { coach = { coach_id: 'C1', login: '0808', nom: 'Coach Banc', role: 'coach', sport: 'muscu' }; await ouvrirEspaceCoach(); });
     for (let i = 0; i < 20; i++) { await pg.clock.runFor(1000); if (await pg.evaluate(() => { const t = (document.getElementById('view-coach') || {}).innerText || ''; return /athlètes suivis/.test(t) && !/Analyse des athlètes…/.test(t); })) break; }
     let txt = '== Coach ▸ Accueil ==\n' + await lire('view-coach');
+    // Accueil coach (14/11) : la ligne « Entraînement à regarder » de chaque athlète est contrôlée contre SON moteur.
+    for (const aid of E.athleteIds) {
+      const ligne = await pg.evaluate((d) => { try { const L = _coachEntrLigne(d); return L ? L.txt.replace(/<[^>]+>/g, '') : ''; } catch (e) { return 'ERREUR ' + e.message; } }, D.fiches[aid]);
+      const incA = ligne ? verifier(ligne, D.fiches[aid]) : [];
+      if (incA.length) { ko++; console.error('  ✗ coach ▸ accueil, athlète ' + aid + ' : ' + incA.join(' | ')); }
+    }
     for (const aid of E.athleteIds) {
       await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a); }, aid);
       await pg.clock.runFor(2500);

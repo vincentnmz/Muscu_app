@@ -5981,7 +5981,11 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   // pas de dire qu'elle est encaissée (non évalué ou dégradé) → pas de « il manque N séries » ; une phrase de prudence à la place.
   const _motR = (ad && ad.moteur) || {}, _crR = _motR.charge_ressenti || {}
   const _picR = !!(_motR.surcharge && _motR.surcharge !== 'Faible' && !(_crR.evaluable === true && _crR.degrade !== true))
-  if (_picR && bas.length) {
+  // H (14/11, validé porteur) = app `_lv3DouleurForte` : douleur forte → hors zone, maintien ; pas de séries en plus proposées.
+  const _dfR = ((_motR.alertes || []) as any[]).some((x: any) => x && x.type === 'douleur' && x.severite === 'haute')
+  if (_dfR && bas.length) {
+    recos.push(`<b>Douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.`)
+  } else if (_picR && bas.length) {
     recos.push(_crR.degrade === true
       ? `<b>Charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`
       : `<b>Charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)

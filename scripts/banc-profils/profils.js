@@ -76,6 +76,23 @@ const PROFILS = {
     bienEtre(st, 0, { sommeil: 2, energie: 2, fatigue_musculaire: 4, douleur: 4, zone_douloureuse: 'Épaule', stress: 4 });
     return st;
   },
+  // 5 quater (H, 14/11). Douleur FORTE épaule 4/5 avec récupération NORMALE : zone (épaule, pecs, dos) en garde-fou ;
+  //          hors zone (jambes) → maintien, pas de « +N séries / RPE 9-10 » (H1 · H2 · H6).
+  douleur_forte_recup_ok() {
+    const st = base('14'); athlete(st, { annees: 5 }); programme(st);
+    [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
+    bienEtre(st, 0, { douleur: 4, zone_douloureuse: 'Épaule' });
+    return st;
+  },
+  // 5 quinquies (H3, 14/11). Douleur MODÉRÉE épaule 3/5 : progression existante hors zone, cibles alignées sur le plan (D2).
+  douleur_moderee() {
+    const st = base('15'); athlete(st, { annees: 5 }); programme(st);
+    [27, 24, 20, 17, 13, 10, 6, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60 + i * 10, 9, 8)])));
+    for (let d = 1; d < 27; d += 3) bienEtre(st, d, {});
+    bienEtre(st, 0, { douleur: 3, zone_douloureuse: 'Épaule' });
+    return st;
+  },
   // 5 bis. Gêne 3/5 sans zone reliée à un muscle (« Autre ») : rien en pause, ligne de prudence (14/11).
   douleur_autre() {
     const st = base('9'); athlete(st, { annees: 5 }); programme(st);
@@ -145,7 +162,7 @@ const PROFILS = {
   },
 };
 // Équipe coach (14/11) : un coach fictif + 5 athlètes tirés des profils ci-dessus (mêmes données, reliés au coach).
-const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet', 'charge_hausse_sans_ressenti', 'reprise_apres_pause'];
+const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet', 'charge_hausse_sans_ressenti', 'reprise_apres_pause', 'douleur_forte_recup_ok', 'douleur_moderee'];
 function equipe() {
   const st = { athletes: [], performances: [], indicateurs: [], bien_etre: [], programme: [], exercices: [], volume_obti: [], planning: [], coachs: [{ coach_id: 'C1', login: '0808', nom: 'Coach Banc', sport: 'muscu' }] };
   let id = 1;

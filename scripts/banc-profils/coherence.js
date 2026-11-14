@@ -56,6 +56,10 @@ function verifier(texte, data) {
   //          « Douleurs & blessures » ne dit jamais « Aucune blessure active · OK ».
   const okBl = al.includes('douleur') ? L.find((l, i) => /^Aucune (douleur ni )?blessure/i.test(l) && /^OK$/.test(L[i + 1] || '')) : null;
   if (okBl) err.push('R7 « ' + okBl + ' · OK » alors qu\'une douleur est signalée au questionnaire');
+  // R8a (H, 14/11) — douleur FORTE (alerte douleur sévérité haute) : aucune fuite de progression nulle part.
+  const dForte = (m.alertes || []).some((x) => x && x.type === 'douleur' && x.severite === 'haute');
+  const fuite = dForte ? L.find((l) => /\+\d+ séries? de |RPE 9-10|à pousser \(charge|Prochaine fois : vise|aller à l'échec/i.test(l) && !/pas besoin|sans aller à l'échec|ni d'aller à l'échec/i.test(l)) : null;
+  if (fuite) err.push('R8a progression proposée pendant une douleur forte : ' + fuite);
   return err;
 }
 module.exports = { verifier, acwrAffiche, zoneAcwr };
