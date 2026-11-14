@@ -174,3 +174,18 @@ Hors champ (question ouverte) : charge en hausse **bien encaissée** (ressenti �
   de ma part a été attrapée ainsi pendant ce lot, avant tout envoi). Tests : `tests/coherence-charge-recup.test.js` (26 vérifs).
 - **Choix à confirmer** : ressenti **dégradé** inclus dans la règle (le moteur dit déjà « allège ») ; charge en hausse **bien
   encaissée** laissée hors règle (le moteur dit « sans empiler davantage de volume » — à trancher).
+
+### 9 ter. Décision du porteur sur les deux choix (14/11)
+
+| Situation | + séries | + RPE / pousser |
+|---|---|---|
+| Charge en hausse + ressenti insuffisant | ❌ | ❌ |
+| Charge en hausse + ressenti **dégradé** | ❌ | ❌ (🟢 inclus) |
+| Charge en hausse + **bien encaissée** | ⚠️ selon le diagnostic | ✅ si justifié |
+| Charge normale + bien encaissée | ✅ | ✅ |
+| Gêne | ❌ | ❌ |
+
+🟠 Charge en hausse **bien encaissée** : **pas de pause** — le code actuel ne la met pas en pause (vérifié : `_lv3PicCharge`
+renvoie null si ressenti évalué et non dégradé ; test « E app : Élevé + évalué stable → pas de pic »). Ne pas confondre volume et
+progression. Piste produit notée (non codée) : « Ta charge monte et tu l'encaisses bien. Pas besoin d'ajouter du volume ; si le
+critère de progression est atteint, tu peux progresser sur la performance. »

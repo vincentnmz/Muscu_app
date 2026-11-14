@@ -225,3 +225,20 @@ pour éclairer la décision, jamais pour changer le choix après coup.
 
 **À valider par le porteur** : les 7 scénarios et leurs valeurs, les critères K1-K4 (dont « ≤ 6 semaines » pour K2), la grille
 de T, la règle de choix. Puis : figer (commit) → lancer → rapporter.
+
+### 13 bis. Décision du porteur (14/11) et précisions d'implémentation — FIGÉ AVANT LANCEMENT
+
+🟢 Scénarios, critères K1-K4, grille T = 0,3 / 0,5 / 0,8 / 1,0 %/sem, règle « plus petit T passant tout ; aucun → on ne force
+pas », I1 hors calibrage, poids qui ne déclenche ni n'annule l'alerte, aucun ajustement après les résultats.
+
+Précisions (écrites avant de lancer, `scripts/simulation-seche/sim.js`) :
+- Bascule B1/B2 en semaine 7 des 12 évaluées ; détection = 1re semaine affichée « à surveiller » à partir de la bascule,
+  délai compté comme au §9 (≤ 6 → dans les 6 évaluations qui suivent).
+- R3 : 2 séances tirées au hasard parmi toutes les séances (18 semaines), score − 8 points.
+- R4 : semaines 9 et 10 des 12 évaluées à − 5 points, déclarées déload → exclues de la fenêtre de calcul.
+- Poids : 80 kg au départ, 1 ou 2 pesées par semaine (jours au hasard), bruit gaussien 0,4 kg ; fenêtre = 6 dernières
+  semaines terminées ; « en baisse » si pente + 1,28 × SE < − 0,1 kg/sem ; < 4 pesées → « pas assez de pesées ». Pas
+  d'anti-nervosité sur le poids (lecture descriptive). **K4 lu à la dernière évaluation** de chaque tirage.
+- K3 = changements d'état de force affichés sur 12 semaines / 3 (mois), moyenne des tirages, R1 et R2, aux deux σ.
+- Graine fixe 20261114, 10 000 tirages par scénario × σ × T.
+
