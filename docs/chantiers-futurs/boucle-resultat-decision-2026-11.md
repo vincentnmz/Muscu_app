@@ -1,4 +1,4 @@
-# Boucle « résultat → décision suivante » — spécification (14/11/2026, à valider, AUCUN CODE)
+# Boucle « résultat → décision suivante » — spécification (14/11/2026, VALIDÉE par le porteur, AUCUN CODE)
 
 > Demande du porteur (14/11). Prolonge `moteur-decision-mission-2026-11.md` (§8 boucle décision → résultat, §9 mémoire)
 > et l'audit `docs/audit-moteur-decision-2026-11-13.md` (P1-1 journal, P1-2 résultat observé : en prod).
@@ -102,3 +102,69 @@ calcul des statuts existants (`_lv3JournalEvaluer`, `_lv3JournalSuite`) · vue c
 2. Mémoire de **6 semaines**, remise à zéro après un succès.
 3. Textes du §5.
 4. Lancer le **contrôle de fiabilité (§7)** maintenant (sans code app), le code après le 23/11.
+
+
+---
+
+## 11. Décisions du porteur (14/11) — font foi sur les §3 à §7
+
+| Point | Décision |
+|---|---|
+| R1 succès | 🟢 Validé. Le succès **remet à zéro le compteur d'échecs** de l'action, **sans effacer** son historique (le journal reste la mémoire, « Tes décisions » le montre). |
+| R2 deux échecs | 🟢 Validé **seulement si les deux échecs sont comparables** (définition §12) et qu'**aucun garde-fou R0** ne peut expliquer le résultat. Hiérarchie : ① levier déjà identifié par le diagnostic ; ② sinon levier de repli explicitement défini ; ③ **jamais** de modification arbitraire. |
+| R3 deux « pas faite » | 🟢 **Garder, en dernier**. Pas faite ≠ échec. |
+| R4 un échec | 🟢 Rien ne change : 1 échec = observation, pas verdict. |
+| R5 coach | 🟢 La boucle ne modifie jamais le plan quand le coach a la main ; elle peut l'informer (« Proposition précédente : non atteinte deux semaines de suite »). |
+| Mémoire | 🟢 6 semaines = **fenêtre de décision**, pas suppression : l'historique reste consultable. |
+| Textes | 🟢 Trois niveaux (ci-dessous), toujours « résultat observé », jamais « grâce à ». |
+| Calendrier | 🟢 Simulation maintenant ; 🔴 aucun code app / base / moteur avant la simulation ; 🔴 aucun code avant le 23/11. Puis observation réelle jusqu'au 23/11, puis décision de coder. |
+| Stabilité | 🟢 Test ajouté : du bruit ne doit pas faire alterner les leviers (A → B → A → C). |
+
+Textes validés :
+- Succès : « Objectif atteint la semaine dernière. Novalyz passe à l'étape suivante. »
+- Deux échecs comparables : « Cet objectif n'a pas été atteint deux fois malgré deux tentatives comparables. Novalyz change de levier. » puis « Résultat observé, pas preuve de cause. »
+- Deux « pas faits » : « Cette proposition n'a pas encore été suffisamment testée. Novalyz la conserve, mais la place derrière les autres priorités. »
+
+## 12. « Échec comparable » — définition calculable [P, figée pour la simulation]
+
+Une semaine compte comme **échec comparable** pour une action seulement si **toutes** les conditions sont vraies :
+1. **Tentée et évaluable** : statut `pas_atteint` (l'exercice / le muscle a été fait, le critère est connu).
+2. **Même action, même objectif** : même `type_action` + `cle`, et même critère (charge visée à ± 2,5 kg près ;
+   même minimum de séries pour `series`).
+3. **Aucun garde-fou R0 cette semaine-là** : pas de pause, pas de contexte déload / reprise / retour (vacances, blessure),
+   pas de gêne active sur une zone sollicitée par l'action.
+4. **Au moins une tentative dans des conditions normales** : au moins une séance de l'exercice / du muscle sans
+   questionnaire « perturbé » le jour même ou la veille (perturbé = fatigue musculaire ≥ 4/5, sommeil ≤ 2/5 ou
+   douleur ≥ 3/5).
+Une semaine qui échoue sans remplir 3 et 4 est **non comparable** : elle ne compte ni comme échec ni comme succès.
+**Limite assumée** : un athlète qui ne remplit pas son questionnaire ne déclare pas ses perturbations → la simulation
+mesure ce cas (détection imparfaite).
+
+## 13. Protocole de simulation (FIGÉ AVANT LANCEMENT — aucun paramètre modifié après avoir vu les résultats)
+
+**Modèle** (par action suivie, 12 semaines, 10 000 tirages par scénario, graine fixe) :
+- Chaque semaine : l'athlète **tente** l'action avec la probabilité *a* (adhérence) ; la semaine est **perturbée** (R0
+  ou fatigue) avec la probabilité *q* ; une perturbation est **vue** par Novalyz avec la probabilité *d* = 0,8.
+- Si tentée : réussite avec la probabilité *p* du levier en cours (divisée par 3 si la semaine est perturbée).
+- Leviers : le diagnostic en fournit jusqu'à 3 (A, B, C) puis un levier de repli R ; chacun a sa propre *p*.
+- Le moteur applique R1-R4 et §12 : compteur d'échecs comparables par levier, remis à zéro par un succès ; au N-ième
+  échec comparable consécutif → levier suivant ; un levier abandonné n'est pas reproposé pendant la fenêtre de 6 semaines ;
+  non tentée 2 fois → l'action passe en dernier (aucun changement de levier).
+- Valeurs par défaut : *a* = 0,8 · *q* = 0,15 · *d* = 0,8.
+
+**Scénarios** (demandés par le porteur) :
+S1 levier efficace (*p* = 0,7) · S2 inefficace (0,1) · S3 moyen (0,4) · S4 bruit pur (0,5) · S5 succès puis échec
+(0,8 les 6 premières semaines, puis 0,1) · S6 deux « pas faits » répétés (*a* = 0,3, *p* = 0,7) · S7 reprise / déload
+fréquents (*q* = 0,4, *p* = 0,7) · S8 plusieurs leviers (A = 0,1, B = 0,7, C = 0,4) · S9 conditions qui changent sans
+être vues (*q* = 0,4, *d* = 0,3, *p* = 0,7).
+
+**Mesures et critères (fixés avant)** — comparés pour **N = 2** et **N = 3** ; on retient le plus petit N qui les respecte tous :
+- **C1 abandon injustifié** d'un levier efficace (S1, S6, S7) sur 6 semaines : **≤ 10 %**.
+- **C2 remplacement d'un levier inefficace** (S2) en **≤ 3 semaines** dans **≥ 80 %** des cas.
+- **C3 aucun changement après un seul échec** : **0 %** (tous scénarios).
+- **C4 stabilité** : sur 12 semaines avec un levier efficace (S1), **≤ 1 changement de levier par mois** en moyenne et
+  **aucun retour** à un levier abandonné dans la fenêtre de 6 semaines ; et S8 doit finir sur B (le bon levier) dans
+  ≥ 80 % des cas. Déterminisme : mêmes données d'entrée → mêmes décisions (100 %).
+- Rapporté sans critère : S3, S4, S5 (délai de changement après la bascule), S9 (effet de la détection imparfaite).
+
+**Si un critère échoue** : on le dit tel quel et on revient au porteur (pas d'ajustement silencieux).
