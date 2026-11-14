@@ -5801,6 +5801,32 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
 }
 // Bilan v2 (PUR, testable). `in_` = { perfs (brutes), appData (getAppData), secByExo
 // (exercice→muscle secondaire), musByExo (exercice→muscle) }.
+// Gêne ACTIVE (14/11, constat B1 du banc de profils) — même règle que l'app (js/lecture-v3.js _lv3GeneActive, _lv3Cle,
+// _lv3ZoneTouche, table _LV3_ZONE_MUS validée le 09/11) : douleur ≥ 3/5 au DERNIER questionnaire (≤ 7 j) sur une zone
+// sollicitée par le muscle → le mail récap ne propose ni séries ni charge en plus sur ce muscle.
+const _RC_ZONE_MUS: [string, string[]][] = [
+  ['epaul', ['epau', 'pect', 'dos']], ['coude', ['bice', 'tric']], ['poign', ['avan', 'bice']], ['main', ['avan', 'bice']],
+  ['avant', ['avan', 'bice']], ['haut', ['dos', 'trap']], ['lomb', ['dos', 'isch', 'lomb']], ['hanch', ['fess', 'addu', 'quad']],
+  ['aine', ['fess', 'addu', 'quad']], ['genou', ['quad', 'isch']], ['chevi', ['moll']], ['pied', ['moll']]
+]
+function _rcCle(x: any): string { const k = String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().replace(/s$/, ''); return k === 'do' ? 'dos' : k }
+function _rcZoneTouche(z: string, mk: string): number {
+  if (!z || !mk) return 0
+  if (z.indexOf(mk) >= 0) return 1
+  for (const [zz, mus] of _RC_ZONE_MUS) if (z.indexOf(zz) === 0) return mus.indexOf(mk) >= 0 ? 2 : 0
+  return 0
+}
+function _rcGeneActive(be: any[], muscle: any, nowT: number): any {
+  const mk = _rcCle(muscle).slice(0, 4); if (!mk) return null
+  const t = (x: any) => { const d = normDate(x && x.date); return d ? new Date(d + 'T12:00:00').getTime() : 0 }
+  const rec = (be || []).filter((b: any) => { const tb = t(b); return tb && tb <= nowT + 864e5 && (nowT - tb) / 864e5 <= 7 }).sort((a: any, b: any) => t(b) - t(a))
+  if (!rec.length) return null
+  const b0 = rec[0], zr = String(b0.zone || b0.zone_douloureuse || ''), z = _rcCle(zr)
+  if (!(Number(b0.douleur) >= 3) || !z) return null
+  const tz = _rcZoneTouche(z, mk); if (!tz) return null
+  const d = new Date(t(b0))
+  return { zone: zr.toLowerCase().replace(/_/g, ' '), val: Number(b0.douleur), date: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), indir: tz === 2 }
+}
 function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const B = _recapBornes(per, now)
   const d0 = fmtYMD(B.debut), d1 = fmtYMD(B.fin), dp = fmtYMD(B.precDebut)
@@ -5895,7 +5921,17 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   out.cardio = { n: chP.length, duree: chP.reduce((s: number, x: any) => s + (Number(x.duree) || 0), 0), types: chP.map((s: any) => String(s.type_cardio || 'autre')), derniere }
   // Recos (max 3) — mêmes règles que l'app, chiffres réels.
   const recos: string[] = []
-  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0)
+  // Gêne active (14/11) : aucune séance / charge en plus proposée sur un muscle touché par la zone douloureuse.
+  const _beG = Array.isArray(ad.bien_etre) ? ad.bien_etre : [], _nowG = now.getTime()
+  const _gene = (m: any) => { try { return _rcGeneActive(_beG, m, _nowG) } catch (_) { return null } }
+  const _musExo = (exo: any) => { const k = String(exo || '').trim().toLowerCase(); const r = perfsAll.find((x: any) => String(x.exercice || '').trim().toLowerCase() === k); return (r && r.muscle) || (in_.musByExo || {})[k] || null }
+  const _genes = out.volume.map((v: any) => ({ m: v.muscle, g: _gene(v.muscle) })).filter((x: any) => x.g)
+  if (_genes.length) {
+    const g0 = _genes[0].g
+    const _nmG = (m: string) => ({ Ischio: 'ischios', Fessier: 'fessiers', Epaule: 'épaules', Abdominaux: 'abdominaux', Pectoraux: 'pectoraux', Dos: 'dos' } as any)[m] || String(m).toLowerCase()
+    recos.push(`<b>Gêne ${_escHtml(g0.zone)} signalée le ${g0.date}</b> : n'ajoute ni séries ni charge pour : ${_genes.map((x: any) => _escHtml(_nmG(x.m))).join(', ')}, tant qu'elle revient (avis kiné si ça persiste).`)
+  }
+  const bas = out.volume.filter((v: any) => v.statut === 'bas' && v.min > 0 && !_gene(v.muscle))
   if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
@@ -5903,15 +5939,16 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
     recos.push(`<b>${titre}</b> : ` + bas.map((v: any) => `${nm(v.muscle)} ${_frNum(v.parSem)} séries/sem. (min. ${v.min})`).join(', ') + '. Pour atteindre le minimum, il manque environ ' + bas.map((v: any) => `${Math.max(1, Math.round(v.min - v.parSem))} séries/sem. ${['Ischio', 'Fessier'].indexOf(v.muscle) >= 0 ? 'aux' : 'aux'} ${nm(v.muscle)}`).join(', ').replace(/, ([^,]*)$/, ' et $1') + '.')
   }
   const L = out.lecture
-  const sous = (L.sous || []).slice().sort((a: any, b: any) => (b.rpe - a.rpe) || (a.r - b.r))[0]
+  const _libre = (x: any) => !_gene(_musExo(x.exo))
+  const sous = (L.sous || []).filter(_libre).slice().sort((a: any, b: any) => (b.rpe - a.rpe) || (a.r - b.r))[0]
   if (sous) {
     const same = (sous.hist || []).filter((h: any) => h.c === sous.c).map((h: any) => h.r)
     const desc = same.length >= 2 ? `à ${_frNum(sous.c)} kg tu es passé de ${same.slice(0, -1).join(' à ')} puis ${same[same.length - 1]} rep${same[same.length - 1] > 1 ? 's' : ''} (RPE ${_frNum(sous.rpe)})` : `${_frNum(sous.c)} kg × ${sous.r} à RPE ${_frNum(sous.rpe)}, sous ta fourchette (${sous.rmin}-${sous.rmax})`
     recos.push(`<b>${_escHtml(sous.exo)}</b> : ${desc}. Au choix : alléger un peu pour revenir à ${sous.rmin} reps, ou garder ${_frNum(sous.c)} kg et viser +1 rep.`)
-  } else if ((L.recule || []).length) {
-    const x = L.recule[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
-  } else if ((L.bloque || []).length) {
-    const x = L.bloque[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
+  } else if ((L.recule || []).filter(_libre).length) {
+    const x = L.recule.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
+  } else if ((L.bloque || []).filter(_libre).length) {
+    const x = L.bloque.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
   }
   const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')

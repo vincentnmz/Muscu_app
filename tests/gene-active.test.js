@@ -22,4 +22,25 @@ eq(S._lv3GeneActive(d([{ date: J(0), douleur: 2, zone_douloureuse: 'Épaule' }])
 eq(S._lv3GeneActive(d([{ date: J(1), douleur: 3, zone_douloureuse: 'Dos' }]), 'Dos', now) !== null, 'zone « Dos » déclarée → muscle Dos concerné');
 eq(/if \(_gA\) \{[\s\S]*?cause = 'gene';[\s\S]*?n\\'ajoute ni charge ni séries/.test(LV3), 'diagnostic : gêne active = 1re cause, levier sans charge ni séries');
 eq(/P\.actions\.filter\(function \(a\) \{ return !a\.gene; \}\)/.test(LV3), 'journal : action en pause jamais envoyée');
+// Serveur (mail récap) : même règle que l'app sur les mêmes cas.
+const { stripTypeScriptTypes } = require('node:module'); const { webcrypto } = require('crypto');
+let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
+js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _rcGeneActive, _bilanRecapV2, buildProgressionParExo };';
+const SV = { createClient: () => ({ from: () => ({}) }), webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => undefined }, serve: () => {} },
+  Response, Request, URLSearchParams, TextEncoder, TextDecoder, console, atob, btoa, setTimeout, clearTimeout, crypto: webcrypto, fetch: async () => ({}) };
+vm.createContext(SV); vm.runInContext(js, SV); const A = SV.__api;
+const cas = [[doul, 'Epaule'], [doul, 'Pectoraux'], [doul, 'Dos'], [doul, 'Ischio'], [[{ date: J(2), douleur: 4, zone_douloureuse: 'Épaule' }, { date: J(0), douleur: 1 }], 'Epaule'],
+  [[{ date: J(9), douleur: 5, zone_douloureuse: 'Épaule' }], 'Epaule'], [[{ date: J(0), douleur: 2, zone_douloureuse: 'Épaule' }], 'Epaule'], [[{ date: J(1), douleur: 3, zone_douloureuse: 'Dos' }], 'Dos'],
+  [[{ date: J(1), douleur: 4, zone_douloureuse: 'Genou' }], 'Quadriceps'], [[{ date: J(1), douleur: 4, zone_douloureuse: 'Lombaires' }], 'Ischio']];
+cas.forEach(([be, m], i) => { const a = S._lv3GeneActive(d(be), m, now), b = A._rcGeneActive(be, m, now);
+  eq(!!a === !!b && (!a || (a.val === b.val && a.date === b.date && a.indir === b.indir)), 'cas ' + (i + 1) + ' (' + m + ') : serveur = app', { app: a, serveur: b }); });
+// Mail récap : gêne épaule déclarée → pas de « séries pour atteindre le minimum » sur épaule / dos / pectoraux.
+const perfs = []; const add = (exo, mus, dj, c, r) => [1, 2, 3].forEach((sr) => perfs.push({ date: J(dj), exercice: exo, muscle: mus, charge: c, reps: r, rpe: 8, serie: sr }));
+[13, 9, 6, 2].forEach((dj) => { add('Développé militaire', 'Epaule', dj, 40, 10); add('Squat', 'Quadriceps', dj, 100, 8); });
+const appData = { historique: { progression_par_exo: A.buildProgressionParExo(perfs) }, programme: [{ exercice: 'Développé militaire' }, { exercice: 'Squat' }], exo_categories: {}, niveau_experience: 'intermediaire',
+  volume_obti: [{ muscle: 'Epaule', series_min: 10, series_opt: 14 }, { muscle: 'Quadriceps', series_min: 10, series_opt: 16 }], bien_etre: [{ date: J(0), douleur: 4, zone_douloureuse: 'Épaule' }], cardio: { history: [] }, dashboard: { regularite: { seances_prevues: 2 } } };
+const b = A._bilanRecapV2({ perfs, appData, secByExo: {}, musByExo: {} }, 'semaine', new Date(now));
+const txt = (b.recos || []).join(' | ');
+eq(/Gêne épaule signalée/.test(txt), 'mail récap : la gêne est signalée en premier', txt);
+eq(!/épaules? [0-9]/.test(txt.replace(/Gêne[^|]*/, '')), 'mail récap : pas de séries en plus proposées sur l\'épaule', txt);
 console.log(`gene-active : ${ok} OK / ${ko} KO`); process.exit(ko ? 1 : 0);

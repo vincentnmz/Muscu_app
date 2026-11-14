@@ -44,5 +44,6 @@ certifient pas que tout est juste. Première relecture (14/11) — constats à t
   actions sur la zone sont **en pause** (affichées, hors compteur, jamais envoyées au journal), elles reviennent quand le
   questionnaire ne signale plus la gêne. Défaut trouvé au passage : « Dos » devenait « do » (`_musKey`) → la gêne n'était
   jamais reliée au dos ; corrigé (`_lv3Cle`). Tests `gene-active` + référence du banc mise à jour (profil douleur_vigilance).
-- **Reste lié à B1** : le **mail récap** (serveur, `index.ts` ~l. 5903) propose encore « +N séries pour atteindre le
-  minimum » sans tenir compte d'une gêne — à aligner (modification serveur, déploiement manuel).
+- **Mail récap aligné (14/11, préprod)** : `_rcGeneActive` (serveur) = même règle que l'app (test : mêmes réponses sur
+  10 cas). Le mail signale d'abord la gêne (« n'ajoute ni séries ni charge pour : épaules… ») et ne propose plus de séries,
+  de « débloquer » ni de charge sur un muscle touché. **`index.ts` : déploiement prod manuel** (même lot que L1).
