@@ -43,3 +43,13 @@ actuelle. »**) + éventuellement « Séance du jour (…) : N exercices à pous
 - **R1-R2** : remplacer le défaut « RAS » par la **première action concrète du jour** déjà calculée ailleurs (séance du jour :
   exercices à pousser ; sinon plan de la semaine ; sinon « jour de repos prévu »), ou **masquer** la reco quand il n'y a rien
   à dire. Ne jamais dire « maintenir » quand le moteur classe en sous-charge.
+
+## Suivi — 14/11 (décision porteur : L3 + Reco du jour d'abord) — préprod, moteur inchangé
+
+- **L3** : « Pourquoi (Développé couché barre) : … » quand la ligne cite plusieurs exercices bloqués / qui reculent.
+- **R1-R2** : `_nvRecoUtile` masque le défaut « RAS — maintenir la charge actuelle » (Aujourd'hui ▸ Reco du jour, Forme ▸
+  reco et en-tête). Aujourd'hui : il reste la ligne « Séance du jour (…) : N exercices à pousser » s'il y en a une, sinon
+  le bloc disparaît (le plan de la semaine est déjà affiché à côté : pas de doublon). Forme : la phrase d'état
+  (« Bonnes conditions pour t'entraîner comme prévu aujourd'hui. ») remplace « RAS ». Vues coach / foot inchangées.
+- Vérifié [V] : John → « Séance du jour (Full Body A) : 3 exercices à pousser » ; A et Lucas → reco de signal conservée.
+  Test `tests/reco-du-jour.test.js`. SW v589. **Restent à décider : L1 (progresse), L2 (titre).**

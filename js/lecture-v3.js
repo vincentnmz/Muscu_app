@@ -422,10 +422,10 @@ function _lv3PlanHtml(data, compact) {
     }).join('')
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div></div>';
 }
-function _lv3PourquoiHtml(d) {
+function _lv3PourquoiHtml(d, nom) {   // nom : exercice concerné, affiché quand la ligne en cite plusieurs (audit L3, 14/11)
   if (!d) return '';
   return '<div style="margin:5px 0 0;padding:7px 9px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.06));border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);line-height:1.45">'
-    + '<b style="color:var(--text)">Pourquoi :</b> ' + (d.pourquoi || 'aucune cause visible dans tes données') + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<br><b style="color:var(--text)">Levier :</b> ' + _maE(d.levier)) + '</div>';
+    + '<b style="color:var(--text)">Pourquoi' + (nom ? ' (' + _maE(String(nom).trim()) + ')' : '') + ' :</b> ' + (d.pourquoi || 'aucune cause visible dans tes données') + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<br><b style="color:var(--text)">Levier :</b> ' + _maE(d.levier)) + '</div>';
 }
 function _lv3DiagCardHtml(d) {
   if (!d) return '';

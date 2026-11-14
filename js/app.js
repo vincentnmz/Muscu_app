@@ -16137,12 +16137,12 @@ function _maLectureNovalyzBloc(data) {
   // Lecture v3 (02/11) : « Pourquoi » + levier sous chaque exercice qui coince (rappel de la carte d'Évolution).
   try {
     var _dgs = (typeof _lv3Diags === 'function') ? _lv3Diags(data) : [], _dgOf = {}; _dgs.forEach(function (d) { _dgOf[d.exo] = d; });
-    var _pq = function (exo) { var d = _dgOf[exo]; return d ? (_lv3PourquoiHtml(d) + '<div onclick="maVoirPourquoi(\'' + _maOnc(exo) + '\')" style="font-size:11px;color:var(--accent);font-weight:700;cursor:pointer;margin-top:3px">Voir le détail →</div>') : ''; };
+    var _pq = function (exo, nommer) { var d = _dgOf[exo]; return d ? (_lv3PourquoiHtml(d, nommer ? exo : null) + '<div onclick="maVoirPourquoi(\'' + _maOnc(exo) + '\')" style="font-size:11px;color:var(--accent);font-weight:700;cursor:pointer;margin-top:3px">Voir le détail →</div>') : ''; };
     cls.forEach(function (c) {
       var t = c.html || '';
       if (/^<b>Sous ta fourchette<\/b>/.test(t)) { var ex1 = (L.sous.filter(function (x) { return t.indexOf(_maE(x.exo)) >= 0; })[0] || {}).exo; if (ex1) c.html += _pq(ex1); }
-      else if (/^<b>Bloqué<\/b>/.test(t) && L.bloque[0]) c.html += _pq(L.bloque[0].exo);
-      else if (/^<b>Recule<\/b>/.test(t) && L.recule[0]) c.html += _pq(L.recule[0].exo);
+      else if (/^<b>Bloqué<\/b>/.test(t) && L.bloque[0]) c.html += _pq(L.bloque[0].exo, L.bloque.length > 1);
+      else if (/^<b>Recule<\/b>/.test(t) && L.recule[0]) c.html += _pq(L.recule[0].exo, L.recule.length > 1);
     });
     _dgs.filter(function (d) { return d.kind === 'effort'; }).slice(0, 1).forEach(function (d) {
       var rd = ((data.moteur && data.moteur.charge_ressenti && data.moteur.charge_ressenti.rpe_details) || []).filter(function (x) { return x.exo === d.exo; })[0];
@@ -19097,6 +19097,13 @@ function _normaleBloc(data, poss) {
   return '<div style="margin:0 0 12px">' + h + '<div style="font-size:10.5px;color:var(--tj-subtle,var(--text-subtle));margin-top:4px;line-height:1.4">« ' + (poss === 'ta' ? 'Ta' : 'Sa') + ' normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).</div></div>';
 }
 function _fmtHmin(m) { m = Math.round(m); return Math.floor(m / 60) + ' h ' + ((m % 60) < 10 ? '0' : '') + (m % 60); }
+// 14/11 (audit R1-R2, porteur) : la reco du moteur d'état n'est affichée que si elle dit quelque chose.
+// « RAS — maintenir la charge actuelle » (cas par défaut, aucun signal) est masqué : jargon, rien d'actionnable,
+// et « maintenir » pouvait contredire le plan de la semaine ou une sous-charge. Le moteur n'est pas modifié.
+function _nvRecoUtile(r) {
+  var t = r ? String(r).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
+  return /^RAS\b/i.test(t) ? '' : t;
+}
 function renderChargeFatigueJour(data) {
   var el = document.getElementById('tj-chargefatigue'); if (!el) return;
   var m = (data && data.moteur) || {};
@@ -19185,7 +19192,7 @@ function renderChargeFatigueJour(data) {
   // Reco : on retire toute mention « (ACWR x) » du texte affiché — l'ACWR est
   // un repère secondaire peu fiable, pas le motif à mettre en avant (modèle
   // fitness-fatigue = référence). L'action (ex. « réduire le volume 48 h ») reste.
-  var reco = m.reco ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
+  var reco = _nvRecoUtile(m.reco);
   // Lien état ↔ séance du jour (décision 29/10) : on ne pousse que si l'état est « Prêt » ;
   // une baisse indicative (sous la fourchette) est toujours signalée. Propositions indicatives.
   var recoSeance = '';
@@ -19962,7 +19969,7 @@ function renderEtat(data) {
       // Explication : la reco réelle du moteur (data-driven), cohérente avec le bloc
       // « Charge & fraîcheur » ci-dessous. On retire toute mention « (ACWR x) » du texte
       // affiché (repère secondaire) — filet de sécurité si un ancien backend tourne encore.
-      var recoHero = (m.reco && String(m.reco).trim()) ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
+      var recoHero = _nvRecoUtile(m.reco);   // 14/11 : « RAS » → texte de l'état (EX) à la place
       var ex = recoHero || (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
       var dashArc = (score != null) ? (score + ' 100') : '0 100';
       var ringTxt = (score != null) ? String(score) : '—';
@@ -20176,8 +20183,8 @@ function renderEtat(data) {
   try {
     var elR2 = document.getElementById('et-reco');
     if (elR2) {
-      var reco = m.reco || null;
-      if (reco && String(reco).trim() && String(reco).indexOf('Données insuffisantes') === -1) {
+      var reco = _nvRecoUtile(m.reco);
+      if (reco && String(reco).indexOf('Données insuffisantes') === -1) {
         elR2.style.display = '';
         elR2.innerHTML =
           '<svg width="19" height="19" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>'
