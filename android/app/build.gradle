@@ -36,8 +36,11 @@ android {
             // 15/11 : Play Console « optimisation du code DEX » (obscurcissement 1 %, seuil 25 %, échéance févr. 2027)
             // → R8 activé sur le RELEASE uniquement (le debug/APK de test ne change pas). Règles de conservation des
             // extensions Capacitor : proguard-rules.pro. Ressources non réduites (shrinkResources) pour limiter le risque.
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 15/11 (soir) : R8 DÉSACTIVÉ à nouveau — versions 23 et 24 : barre de titre « Novalyz » + splash écrasé
+            // en haut de l'app (24 = sans EdgeToEdge, bandeau toujours là → R8 suspecté). Retour à la config de la 21.
+            // À réactiver seulement après diagnostic sur appareil (obscurcissement Play Console : échéance févr. 2027).
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -51,7 +54,6 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.activity:activity:$androidxActivityVersion"   // EdgeToEdge.enable (MainActivity)
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
