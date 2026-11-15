@@ -33,8 +33,11 @@ android {
             signingConfig signingConfigs.testfixed
         }
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // 15/11 : Play Console « optimisation du code DEX » (obscurcissement 1 %, seuil 25 %, échéance févr. 2027)
+            // → R8 activé sur le RELEASE uniquement (le debug/APK de test ne change pas). Règles de conservation des
+            // extensions Capacitor : proguard-rules.pro. Ressources non réduites (shrinkResources) pour limiter le risque.
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
