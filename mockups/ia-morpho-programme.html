@@ -3,190 +3,302 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maquette — Analyse morpho IA + programme</title>
+<title>Maquette — Analyse morpho IA + programme (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
     --text:#070B14; --muted:#4A5980; --subtle:#8595B8; --accent:#1A5FFF;
     --good:#00A854; --good-a:rgba(0,168,84,.12); --warn:#E07800; --warn-a:rgba(224,120,0,.12);
-    --bad:#DC3545; --bad-a:rgba(220,53,69,.10); --acc-a:rgba(26,95,255,.08);
+    --bad:#DC3545; --bad-a:rgba(220,53,69,.10); --acc-a:rgba(26,95,255,.08); --acc-b:rgba(26,95,255,.16);
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:#E6ECFA; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--text); }
-  h1 { font-size:20px; margin:24px 24px 4px; }
-  .lead { margin:0 24px 18px; color:var(--muted); font-size:13px; max-width:1100px; line-height:1.5; }
-  .row { display:flex; gap:22px; flex-wrap:wrap; padding:0 24px 32px; align-items:flex-start; }
-  .phone { width:360px; background:var(--bg); border:1px solid var(--border); border-radius:28px; overflow:hidden; box-shadow:0 10px 30px rgba(20,40,90,.12); }
-  .cap { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); padding:12px 18px 0; }
-  .top { padding:6px 18px 12px; border-bottom:1px solid var(--border); background:var(--surface); }
-  .top b { font-size:17px; } .top div { font-size:12px; color:var(--muted); margin-top:2px; }
-  .body { padding:14px 14px 18px; display:flex; flex-direction:column; gap:10px; }
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 13px; font-size:13px; line-height:1.45; }
-  .sec { font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
-  .btn { display:block; text-align:center; background:var(--accent); color:#fff; font-weight:700; border-radius:12px; padding:11px; font-size:14px; }
-  .btn.ghost { background:var(--surface2); color:var(--accent); }
-  .views { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .view { border:2px dashed var(--border); border-radius:12px; height:118px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; color:var(--muted); gap:6px; background:var(--surface); }
-  .view.ok { border:2px solid var(--good); background:var(--good-a); color:var(--good); }
-  .view.ko { border:2px solid var(--warn); background:var(--warn-a); color:var(--warn); }
-  .sil { width:34px; height:64px; border-radius:16px 16px 8px 8px; background:currentColor; opacity:.35; }
-  ul { margin:4px 0 0; padding-left:16px; } li { margin:3px 0; }
-  .chk { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; margin-top:6px; }
-  .box { width:16px; height:16px; border-radius:4px; border:2px solid var(--accent); flex:none; margin-top:1px; display:grid; place-items:center; color:#fff; font-size:11px; }
+  body { margin:0; background:linear-gradient(180deg,#E9EEFB,#DCE5FA); font-family:var(--font); color:var(--text); }
+  header.page { padding:26px 28px 6px; }
+  header.page h1 { font-family:var(--head); font-size:18px; margin:0 0 6px; letter-spacing:.02em; }
+  header.page p { margin:0; color:var(--muted); font-size:13.5px; max-width:1180px; line-height:1.55; font-weight:500; }
+  .legend-chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .row { display:flex; gap:24px; flex-wrap:wrap; padding:18px 28px 10px; align-items:flex-start; }
+  .slot { display:flex; flex-direction:column; gap:8px; }
+  .step { font-family:var(--head); font-size:11px; color:var(--accent); letter-spacing:.06em; padding-left:6px; }
+  .step span { color:var(--muted); font-family:var(--font); font-weight:600; letter-spacing:0; font-size:12px; margin-left:4px; }
+  .phone { width:340px; height:790px; background:var(--bg); border-radius:38px; border:10px solid #0B1222; overflow:hidden; position:relative; box-shadow:0 18px 44px rgba(7,11,20,.22); display:flex; flex-direction:column; }
+  .status { height:28px; display:flex; justify-content:space-between; align-items:center; padding:0 22px; font-size:11.5px; font-weight:700; flex:none; }
+  .appbar { padding:6px 18px 12px; display:flex; align-items:center; gap:10px; flex:none; }
+  .back { width:30px; height:30px; border-radius:10px; background:var(--surface2); display:grid; place-items:center; color:var(--accent); font-weight:700; }
+  .appbar h2 { font-family:var(--head); font-size:14.5px; margin:0; letter-spacing:.01em; }
+  .appbar small { display:block; font-size:11px; color:var(--muted); font-weight:600; margin-top:2px; }
+  .scroll { flex:1; overflow:hidden; padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+  .nav { height:58px; border-top:1px solid var(--border); background:var(--surface); display:flex; justify-content:space-around; align-items:center; flex:none; font-size:10px; font-weight:700; color:var(--subtle); }
+  .nav div { display:flex; flex-direction:column; align-items:center; gap:3px; } .nav i { width:20px; height:20px; border-radius:6px; background:var(--surface2); display:block; }
+  .nav .on { color:var(--accent); } .nav .on i { background:var(--accent); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:12px 13px; font-size:13px; line-height:1.45; box-shadow:0 1px 2px rgba(7,11,20,.05); font-weight:500; }
+  .sec { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; display:flex; justify-content:space-between; align-items:center; }
+  .btn { display:block; text-align:center; background:var(--accent); color:#fff; font-weight:700; border-radius:14px; padding:12px; font-size:14px; box-shadow:0 6px 16px rgba(26,95,255,.28); }
+  .btn.ghost { background:var(--surface2); color:var(--accent); box-shadow:none; }
+  .note { font-size:11px; color:var(--subtle); font-weight:600; line-height:1.4; }
+  .chip { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .c-vis { background:var(--good-a); color:var(--good); } .c-pro { background:var(--warn-a); color:var(--warn); } .c-mes { background:var(--surface2); color:var(--muted); }
+  .c-acc { background:var(--acc-a); color:var(--accent); }
+  .p-warn { background:var(--warn-a); color:var(--warn); } .p-bad { background:var(--bad-a); color:var(--bad); }
+  .tile { display:flex; gap:11px; align-items:center; padding:11px 12px; border-radius:14px; background:var(--surface); border:1px solid var(--border); }
+  .ico { width:36px; height:36px; border-radius:11px; display:grid; place-items:center; font-size:17px; flex:none; }
+  .tile b { font-size:13.5px; display:block; } .tile small { color:var(--muted); font-size:11.5px; font-weight:600; }
+  .tile.hl { border:1.5px solid var(--accent); background:linear-gradient(135deg,#FFFFFF,#EEF3FF); box-shadow:0 8px 20px rgba(26,95,255,.14); }
+  .new { margin-left:auto; font-size:10px; font-weight:800; color:#fff; background:var(--accent); padding:2px 7px; border-radius:999px; }
+  .viewfinder { height:236px; border-radius:18px; background:radial-gradient(ellipse at 50% 35%,#2B3756,#141B2E); position:relative; overflow:hidden; flex:none; }
+  .viewfinder svg { position:absolute; inset:0; margin:auto; }
+  .vf-top { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; }
+  .vf-top span { background:rgba(255,255,255,.14); color:#fff; font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; }
+  .vf-ok { position:absolute; bottom:10px; left:10px; right:10px; display:flex; flex-direction:column; gap:5px; }
+  .vf-ok div { background:rgba(0,168,84,.9); color:#fff; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:10px; }
+  .vf-ok div.w { background:rgba(224,120,0,.92); }
+  .thumbs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .th { border-radius:12px; padding:8px 6px; text-align:center; font-size:11px; font-weight:700; border:1.5px solid var(--border); background:var(--surface); color:var(--muted); }
+  .th.ok { border-color:var(--good); color:var(--good); background:var(--good-a); }
+  .th.cur { border-color:var(--accent); color:var(--accent); background:var(--acc-a); }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; font-size:12px; }
+  .seg div { display:flex; justify-content:space-between; background:var(--surface2); border-radius:9px; padding:5px 9px; font-weight:600; }
+  .chk { display:flex; gap:9px; align-items:flex-start; font-size:12.5px; margin-top:7px; font-weight:600; }
+  .chk:first-child { margin-top:0; }
+  .box { width:17px; height:17px; border-radius:5px; border:2px solid var(--accent); flex:none; margin-top:1px; display:grid; place-items:center; color:#fff; font-size:11px; }
   .box.on { background:var(--accent); }
-  .badge { display:inline-block; font-size:10px; font-weight:800; padding:1px 7px; border-radius:20px; margin-left:4px; vertical-align:1px; }
-  .b-vis { background:var(--good-a); color:var(--good); } .b-pro { background:var(--warn-a); color:var(--warn); } .b-mes { background:var(--surface2); color:var(--muted); }
-  .line { display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid var(--border); font-size:12.5px; }
-  .line:first-of-type { border-top:0; }
-  .pill { font-size:11px; font-weight:800; padding:1px 8px; border-radius:20px; white-space:nowrap; }
-  .p-good { background:var(--good-a); color:var(--good); } .p-warn { background:var(--warn-a); color:var(--warn); } .p-bad { background:var(--bad-a); color:var(--bad); }
+  .ring { width:138px; height:138px; margin:14px auto 4px; position:relative; flex:none; }
+  .ring svg { transform:rotate(-90deg); }
+  .ring b { position:absolute; inset:0; display:grid; place-items:center; font-family:var(--head); font-size:20px; }
+  .steps { display:flex; flex-direction:column; gap:9px; }
+  .st { display:flex; gap:10px; align-items:flex-start; font-size:13px; font-weight:600; }
+  .dot { width:22px; height:22px; border-radius:999px; flex:none; display:grid; place-items:center; font-size:11px; font-weight:800; color:#fff; background:var(--good); }
+  .dot.run { background:var(--accent); box-shadow:0 0 0 5px var(--acc-b); } .dot.wait { background:var(--surface2); color:var(--subtle); }
+  .st small { display:block; color:var(--muted); font-size:11.5px; font-weight:600; }
+  .hero { background:linear-gradient(135deg,#1A5FFF,#1248D4); color:#fff; border:0; }
+  .hero .sec { color:rgba(255,255,255,.75); }
+  .hero b { font-size:14.5px; }
+  .bodymap { display:flex; justify-content:space-around; align-items:flex-end; }
+  .bodymap figure { margin:0; text-align:center; font-size:10.5px; color:var(--muted); font-weight:700; }
+  .keys { display:flex; gap:10px; justify-content:center; margin-top:4px; flex-wrap:wrap; }
+  .keys span { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; color:var(--muted); }
+  .keys i { width:10px; height:10px; border-radius:3px; display:inline-block; }
+  .line { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:12.5px; font-weight:600; }
+  .line:first-of-type { border-top:0; padding-top:0; }
   .data { background:var(--acc-a); border-color:rgba(26,95,255,.25); }
-  .note { font-size:11px; color:var(--subtle); }
-  .zone { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid var(--border); border-radius:11px; margin-top:6px; background:var(--surface); font-size:13px; }
+  .data .sec { color:var(--accent); }
+  .zone { display:flex; align-items:center; gap:10px; padding:9px 10px; border:1.5px solid var(--border); border-radius:13px; margin-top:7px; background:var(--surface); font-size:13px; font-weight:700; }
   .zone.on { border-color:var(--accent); background:var(--acc-a); }
-  .zone small { display:block; color:var(--muted); font-size:11.5px; }
-  .day { display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0; border-top:1px solid var(--border); }
-  .day:first-of-type { border-top:0; }
-  .star { color:var(--accent); font-weight:800; }
-  .warnbox { background:var(--warn-a); border-color:rgba(224,120,0,.35); }
-  .legend { margin:0 24px 30px; font-size:12px; color:var(--muted); max-width:1100px; line-height:1.55; }
+  .zone small { display:block; color:var(--muted); font-size:11.5px; font-weight:600; }
+  .week { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:4px; }
+  .d { border-radius:10px; padding:6px 0; text-align:center; font-size:10px; font-weight:800; background:var(--surface2); color:var(--subtle); line-height:1.3; }
+  .d.b { background:var(--accent); color:#fff; } .d.h { background:#C9D8FF; color:var(--accent); }
+  .why { border-left:3px solid var(--accent); }
+  .who { display:flex; gap:10px; align-items:center; }
+  .av { width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,#5C9AFF,#1A5FFF); color:#fff; font-weight:800; display:grid; place-items:center; flex:none; }
+  .lock { display:flex; gap:9px; align-items:center; background:var(--surface2); border-radius:12px; padding:9px 11px; font-size:12px; font-weight:600; color:var(--muted); }
+  footer { padding:6px 28px 34px; font-size:12.5px; color:var(--muted); max-width:1180px; line-height:1.6; font-weight:500; }
+  footer b { color:var(--text); }
 </style>
 </head>
 <body>
-<h1>Analyse morpho IA → compte rendu → programme (maquette, données fictives)</h1>
-<p class="lead">Spec : <code>docs/chantiers-futurs/ia-morpho-programme-2026-11.md</code>. L'IA (Claude Opus 5.5) <b>lit les photos et explique</b> ;
-le <b>programme vient du générateur Novalyz</b> (zones prioritaires choisies par l'athlète) ; les <b>chiffres viennent des données</b>.
-Badges : <span class="badge b-vis">visible</span> clair sur la photo · <span class="badge b-pro">probable</span> à confirmer · <span class="badge b-mes">à mesurer</span>.</p>
+
+<header class="page">
+  <h1>Analyse morpho IA → compte rendu → programme · maquette v2</h1>
+  <p>Données <b>fictives</b>. Spec : <code>docs/chantiers-futurs/ia-morpho-programme-2026-11.md</code>. L'IA (Claude Opus 5.5) <b>lit les photos et explique</b> ;
+  le <b>programme est construit par le générateur Novalyz</b> avec les zones que l'athlète choisit ; <b>chaque chiffre vient de ses données</b>.
+  Réservé aux 18 ans et plus · photos jamais conservées · le coach voit le compte rendu, les photos seulement si l'athlète l'accepte.</p>
+  <div class="legend-chips">
+    <span class="chip c-vis">● visible — clair sur la photo</span>
+    <span class="chip c-pro">● probable — à confirmer</span>
+    <span class="chip c-mes">● à mesurer — la photo ne suffit pas</span>
+    <span class="chip c-acc">◆ tes données — chiffre réel, pas l'IA</span>
+  </div>
+</header>
 
 <div class="row">
 
-  <!-- 1. Démarrer -->
+  <div class="slot"><div class="step">00 <span>Point d'entrée (Forme ▸ Mes suivis)</span></div>
   <div class="phone">
-    <div class="cap">① Démarrer</div>
-    <div class="top"><b>Analyse morpho</b><div>3 photos · environ 1 minute · 1 analyse par jour</div></div>
-    <div class="body">
-      <div class="card">
-        <div class="sec">Pour une lecture fiable</div>
-        <ul>
-          <li>Lumière de face, pas de contre-jour</li>
-          <li>Tenue près du corps (short, brassière ou torse nu)</li>
-          <li>Téléphone à hauteur de poitrine, corps entier dans le cadre</li>
-          <li>Debout, relâché, bras le long du corps</li>
-        </ul>
+    <div class="status"><span>9:41</span><span>●●● 5G ▮</span></div>
+    <div class="appbar"><div><h2>Forme</h2><small>Samedi 14 novembre</small></div></div>
+    <div class="scroll">
+      <div class="card" style="display:flex;gap:12px;align-items:center">
+        <svg width="54" height="54" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#EEF3FF" stroke-width="5"/><circle cx="18" cy="18" r="15" fill="none" stroke="#00A854" stroke-width="5" stroke-dasharray="78 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="22" text-anchor="middle" font-size="10" font-weight="700" fill="#070B14" font-family="Quicksand">82</text></svg>
+        <div><b style="color:var(--good)">Prêt</b><div class="note" style="font-size:12px">Bonnes conditions pour t'entraîner.</div></div>
       </div>
-      <div class="views">
-        <div class="view"><div class="sil"></div>Face</div>
-        <div class="view"><div class="sil"></div>Profil</div>
-        <div class="view"><div class="sil"></div>Dos</div>
-      </div>
-      <div class="card">
-        <div class="sec">Mesures de segments (facultatif)</div>
-        Bras, avant-bras, fémur, tibia, tronc… <b>rendent l'analyse plus précise</b> sur les proportions. Sans elles, Novalyz ne devine aucune longueur.
-      </div>
-      <div class="card">
-        <div class="sec">Ton accord</div>
-        <div class="chk"><span class="box on">✓</span><span>J'accepte que mes photos, mon sexe et mes mesures soient envoyés à notre service d'IA (Anthropic) <b>uniquement pour cette analyse</b>.</span></div>
-        <div class="chk"><span class="box"></span><span>Montrer aussi mes photos à mon coach (sinon il ne voit que le compte rendu).</span></div>
-        <div class="note" style="margin-top:6px">Tes photos ne sont jamais conservées : elles sont effacées dès l'analyse terminée. Réservé aux 18 ans et plus.</div>
-      </div>
-      <span class="btn">Lancer l'analyse</span>
-      <div class="note">Lecture de photos, pas une mesure. Aucun diagnostic médical.</div>
+      <div class="sec" style="margin:4px 2px 0">Mes suivis</div>
+      <div class="tile hl"><div class="ico" style="background:var(--acc-a)">🧍</div><div><b>Analyse morpho</b><small>3 photos · compte rendu · programme adapté</small></div><span class="new">NOUVEAU</span></div>
+      <div class="tile"><div class="ico" style="background:var(--good-a)">🥗</div><div><b>Nutrition</b><small>Rien saisi aujourd'hui</small></div></div>
+      <div class="tile"><div class="ico" style="background:var(--surface2)">📏</div><div><b>Photos &amp; mensurations</b><small>Mesures mises à jour le 02/11</small></div></div>
+      <div class="tile"><div class="ico" style="background:var(--surface2)">🎯</div><div><b>Mes objectifs</b><small>Prise de masse</small></div></div>
+      <div class="tile"><div class="ico" style="background:var(--bad-a)">🩹</div><div><b>Douleurs &amp; blessures</b><small>Aucune douleur ni blessure signalée</small></div></div>
     </div>
-  </div>
+    <div class="nav"><div><i></i>Aujourd'hui</div><div><i></i>Séance</div><div><i></i>Analyses</div><div class="on"><i></i>Forme</div></div>
+  </div></div>
 
-  <!-- 2. Contrôle photo -->
+  <div class="slot"><div class="step">01 <span>Photos guidées + accord</span></div>
   <div class="phone">
-    <div class="cap">② Contrôle des photos</div>
-    <div class="top"><b>Vérification avant analyse</b><div>Aucune analyse sur une photo inexploitable</div></div>
-    <div class="body">
-      <div class="views">
-        <div class="view ok"><div class="sil"></div>Face ✓</div>
-        <div class="view ko"><div class="sil"></div>Profil ⚠</div>
-        <div class="view ok"><div class="sil"></div>Dos ✓</div>
+    <div class="status"><span>9:41</span><span>●●● 5G ▮</span></div>
+    <div class="appbar"><div class="back">‹</div><div><h2>Analyse morpho</h2><small>Photo 2 sur 3 · profil</small></div></div>
+    <div class="scroll">
+      <div class="viewfinder">
+        <div class="vf-top"><span>Profil droit</span><span>⏱ 5 s</span></div>
+        <svg width="118" height="228" viewBox="0 0 140 270" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-dasharray="6 5">
+          <circle cx="72" cy="30" r="17"/><path d="M60 50 Q48 60 52 100 L56 150 Q58 170 54 200 L52 255 M84 50 Q94 62 90 100 L86 150 Q84 175 88 205 L90 255"/>
+          <line x1="70" y1="6" x2="70" y2="264" stroke="rgba(92,154,255,.6)" stroke-dasharray="2 6"/>
+        </svg>
+        <div class="vf-ok"><div>✓ Corps entier dans le cadre</div><div>✓ Lumière de face</div><div class="w">⚠ Tenue ample au niveau du buste</div></div>
       </div>
-      <div class="card warnbox">
-        <div class="sec" style="color:var(--warn)">Photo de profil insuffisante</div>
-        Contre-jour : la silhouette n'est pas lisible. <b>Reprends-la face à la lumière.</b><br>
-        <span class="note">Sans profil, la posture (dos, bassin) ne sera pas analysée.</span>
-      </div>
-      <span class="btn">Reprendre la photo de profil</span>
-      <span class="btn ghost">Continuer sans le profil</span>
-      <div class="note">Ton analyse du jour n'est pas consommée tant que rien n'a été analysé.</div>
-    </div>
-  </div>
-
-  <!-- 3. Compte rendu -->
-  <div class="phone">
-    <div class="cap">③ Compte rendu</div>
-    <div class="top"><b>Ta lecture morpho</b><div>14/11 · 3 vues · Claude Opus 5.5 · consigne v1</div></div>
-    <div class="body">
+      <div class="thumbs"><div class="th ok">Face ✓</div><div class="th cur">Profil</div><div class="th">Dos</div></div>
       <div class="card">
-        <div class="sec">Vue d'ensemble</div>
-        Carrure plutôt en V, haut du corps plus développé que le bas.
+        <div class="sec">Mesures de segments <span class="chip c-mes">facultatif</span></div>
+        <div class="seg"><div>Bras <b>34 cm</b></div><div>Avant-bras <b>28 cm</b></div><div>Fémur <b>—</b></div><div>Tibia <b>—</b></div></div>
+        <div class="note" style="margin-top:6px">Sans mesure, Novalyz ne devine aucune longueur.</div>
+      </div>
+      <div class="card">
+        <div class="chk"><span class="box on">✓</span><span>J'accepte l'envoi de mes photos, sexe et mesures à notre service d'IA (Anthropic) <b>pour cette analyse uniquement</b>.</span></div>
+        <div class="chk"><span class="box"></span><span>Montrer aussi mes photos à mon coach.</span></div>
+        <div class="note" style="margin-top:7px">🔒 Photos effacées dès l'analyse terminée · 18 ans et plus.</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="slot"><div class="step">02 <span>Contrôle des photos puis lecture</span></div>
+  <div class="phone">
+    <div class="status"><span>9:42</span><span>●●● 5G ▮</span></div>
+    <div class="appbar"><div class="back">‹</div><div><h2>Analyse en cours</h2><small>Environ 1 minute</small></div></div>
+    <div class="scroll">
+      <div class="ring">
+        <svg width="138" height="138" viewBox="0 0 138 138"><circle cx="69" cy="69" r="58" fill="none" stroke="#EEF3FF" stroke-width="11"/><circle cx="69" cy="69" r="58" fill="none" stroke="#1A5FFF" stroke-width="11" stroke-linecap="round" stroke-dasharray="180 365"/></svg>
+        <b>2 / 4</b>
+      </div>
+      <div class="card"><div class="steps">
+        <div class="st"><span class="dot">✓</span><div>Qualité des 3 photos<small>Face ✓ · Profil ✓ · Dos ✓ — aucune vue écartée</small></div></div>
+        <div class="st"><span class="dot run">2</span><div>Lecture de la morphologie<small>Carrure, équilibre, posture — avec niveau de confiance</small></div></div>
+        <div class="st"><span class="dot wait">3</span><div>Comparaison avec tes séances<small>Volume par muscle des 4 dernières semaines</small></div></div>
+        <div class="st"><span class="dot wait">4</span><div>Compte rendu<small>Constats, priorités, ce qu'il faut mesurer</small></div></div>
+      </div></div>
+      <div class="card" style="background:var(--warn-a);border-color:rgba(224,120,0,.3)">
+        <div class="sec" style="color:var(--warn)">Si une photo est inexploitable</div>
+        L'analyse de cette vue s'arrête et te demande de la reprendre (« contre-jour : mets-toi face à la lumière »). <b>Ton analyse du jour n'est pas décomptée.</b>
+      </div>
+    </div>
+  </div></div>
+
+</div>
+<div class="row">
+
+  <div class="slot"><div class="step">03 <span>Compte rendu</span></div>
+  <div class="phone">
+    <div class="status"><span>9:43</span><span>●●● 5G ▮</span></div>
+    <div class="appbar"><div class="back">‹</div><div><h2>Ta lecture morpho</h2><small>14/11 · 3 vues · Opus 5.5 · consigne v1</small></div></div>
+    <div class="scroll">
+      <div class="card hero"><div class="sec">Vue d'ensemble</div><b>Carrure en V : le haut du corps est plus développé que le bas.</b></div>
+      <div class="card">
+        <div class="sec">Équilibre sur photo</div>
+        <div class="bodymap">
+          <figure>
+            <svg width="74" height="138" viewBox="0 0 92 170">
+              <circle cx="46" cy="14" r="11" fill="#D8E2FF"/>
+              <path d="M24 30 Q46 24 68 30 L66 44 Q46 40 26 44Z" fill="#00A854"/>
+              <path d="M28 44 Q46 40 64 44 L62 70 Q46 74 30 70Z" fill="#D8E2FF"/>
+              <path d="M30 70 Q46 74 62 70 L60 88 Q46 92 32 88Z" fill="#D8E2FF"/>
+              <path d="M20 32 L12 80 L18 82 L27 46Z M72 32 L80 80 L74 82 L65 46Z" fill="#D8E2FF"/>
+              <path d="M32 88 L46 92 L44 140 L34 140Z M60 88 L46 92 L48 140 L58 140Z" fill="#E07800"/>
+              <path d="M34 140 L44 140 L43 164 L36 164Z M48 140 L58 140 L56 164 L49 164Z" fill="#D8E2FF"/>
+            </svg>
+            Face
+          </figure>
+          <figure>
+            <svg width="74" height="138" viewBox="0 0 92 170">
+              <circle cx="46" cy="14" r="11" fill="#D8E2FF"/>
+              <path d="M24 30 Q46 24 68 30 L66 44 Q46 40 26 44Z" fill="#00A854"/>
+              <path d="M28 44 Q46 40 64 44 L62 74 Q46 78 30 74Z" fill="#E07800"/>
+              <path d="M20 32 L12 80 L18 82 L27 46Z M72 32 L80 80 L74 82 L65 46Z" fill="#D8E2FF"/>
+              <path d="M30 74 Q46 78 62 74 L62 96 Q46 102 30 96Z" fill="#DC3545"/>
+              <path d="M31 96 L46 100 L44 140 L34 140Z M61 96 L46 100 L48 140 L58 140Z" fill="#D8E2FF"/>
+              <path d="M34 140 L44 140 L43 164 L36 164Z M48 140 L58 140 L56 164 L49 164Z" fill="#D8E2FF"/>
+            </svg>
+            Dos
+          </figure>
+        </div>
+        <div class="keys"><span><i style="background:#00A854"></i>développé</span><span><i style="background:#E07800"></i>moyen</span><span><i style="background:#DC3545"></i>en retard</span><span><i style="background:#D8E2FF"></i>non jugé</span></div>
       </div>
       <div class="card">
         <div class="sec">Constats</div>
-        Épaules larges par rapport aux hanches <span class="badge b-vis">visible</span><br>
-        Haut du dos moins dense que les épaules <span class="badge b-pro">probable</span><br>
-        Proportions des jambes <span class="badge b-mes">à mesurer</span>
-      </div>
-      <div class="card">
-        <div class="sec">Équilibre par groupe (photos)</div>
-        <div class="line"><span>Épaules</span><span class="pill p-good">développé</span></div>
-        <div class="line"><span>Dos</span><span class="pill p-warn">moyen</span></div>
-        <div class="line"><span>Fessiers</span><span class="pill p-bad">en retard</span></div>
-        <div class="line"><span>Quadriceps</span><span class="pill p-warn">moyen</span></div>
+        <div class="line"><span>Épaules larges / hanches</span><span class="chip c-vis">visible</span></div>
+        <div class="line"><span>Fessiers peu marqués</span><span class="chip c-vis">visible</span></div>
+        <div class="line"><span>Haut du dos moins dense</span><span class="chip c-pro">probable</span></div>
+        <div class="line"><span>Proportions des jambes</span><span class="chip c-mes">à mesurer</span></div>
       </div>
       <div class="card data">
-        <div class="sec" style="color:var(--accent)">Ce que Novalyz sait déjà (tes données, pas l'IA)</div>
-        Fessiers : <b>4,5 séries/sem</b> sur 4 semaines (minimum 10).<br>
-        Dos : <b>16 séries/sem</b>, déjà dans ta zone → priorité = exécution, pas plus de séries.
+        <div class="sec">◆ Tes données (pas l'IA)</div>
+        Fessiers : <b>4,5 séries/sem</b> sur 4 sem. (minimum 10).<br>
+        Dos : <b>16 séries/sem</b>, déjà dans ta zone → priorité à l'exécution, pas plus de séries.
       </div>
-      <div class="card">
-        <div class="sec">Posture</div>
-        Légère antéversion du bassin <span class="badge b-pro">probable</span> — à confirmer par un bilan de mouvement.
-      </div>
-      <div class="card">
-        <div class="sec">À mesurer pour fiabiliser</div>
-        Longueur du fémur et du tibia (proportions des jambes) · tour de cuisse.
-      </div>
-      <div class="note">Lecture de photos, pas une mesure. Aucun % de masse grasse, aucun diagnostic.</div>
     </div>
-  </div>
+  </div></div>
 
-  <!-- 4. Priorités → programme -->
+  <div class="slot"><div class="step">04 <span>Priorités → programme du générateur</span></div>
   <div class="phone">
-    <div class="cap">④ Priorités → programme</div>
-    <div class="top"><b>Ton programme proposé</b><div>Construit par le générateur Novalyz · tu valides</div></div>
-    <div class="body">
+    <div class="status"><span>9:44</span><span>●●● 5G ▮</span></div>
+    <div class="appbar"><div class="back">‹</div><div><h2>Ton programme</h2><small>Construit par Novalyz · tu valides</small></div></div>
+    <div class="scroll">
       <div class="card">
-        <div class="sec">Zones prioritaires (2 maximum)</div>
-        <div class="zone on"><span class="box on">✓</span><span>Fessiers<small>en retard sur photo · 4,5 séries/sem (min. 10)</small></span></div>
+        <div class="sec">Tes zones prioritaires <span class="chip c-acc">2 max</span></div>
+        <div class="zone on"><span class="box on">✓</span><span>Fessiers<small>en retard sur photo · ◆ 4,5 séries/sem (min. 10)</small></span></div>
         <div class="zone on"><span class="box on">✓</span><span>Jambes<small>quadriceps moyens sur photo</small></span></div>
-        <div class="zone"><span class="box"></span><span>Dos<small>déjà dans ta zone de volume</small></span></div>
+        <div class="zone"><span class="box"></span><span>Dos<small>◆ déjà dans ta zone de volume</small></span></div>
       </div>
       <div class="card">
-        <div class="sec">Programme · Upper / Lower · 4 jours · 60 min</div>
-        <div class="day"><span>Lundi — Bas <span class="star">★</span></span><span>6 exercices</span></div>
-        <div class="day"><span>Mardi — Haut</span><span>6 exercices</span></div>
-        <div class="day"><span>Jeudi — Bas <span class="star">★</span></span><span>6 exercices</span></div>
-        <div class="day"><span>Samedi — Haut</span><span>6 exercices</span></div>
-        <div class="note" style="margin-top:6px">★ zone prioritaire : minimum de volume relevé (fessiers 10 → 13 séries/sem).</div>
+        <div class="sec">Upper / Lower · 4 jours · 60 min</div>
+        <div class="week"><div class="d b">L<br>Bas★</div><div class="d h">M<br>Haut</div><div class="d">M</div><div class="d b">J<br>Bas★</div><div class="d">V</div><div class="d h">S<br>Haut</div><div class="d">D</div></div>
+        <div class="note" style="margin-top:7px">★ zone prioritaire : minimum de volume relevé (fessiers 10 → 13 séries/sem) — règle Novalyz.</div>
       </div>
-      <div class="card">
+      <div class="card why">
         <div class="sec">Pourquoi ce programme (IA)</div>
-        Tes photos montrent des fessiers en retard et tes séances le confirment (4,5 séries/sem). Le programme prévoit 2 séances du bas par semaine
-        et place les fessiers en premier dans chacune. Ton dos est déjà bien travaillé : on garde son volume actuel.
+        Tes photos montrent des fessiers peu marqués et tes séances le confirment (◆ 4,5 séries/sem). Le programme prévoit 2 séances du bas par semaine, fessiers en premier. Ton dos est déjà bien travaillé : son volume reste le même.
       </div>
       <span class="btn">Valider ce programme</span>
       <span class="btn ghost">Ajuster dans l'éditeur</span>
-      <div class="note">Rien n'est appliqué sans ta validation. Suivi par un coach : la proposition va d'abord à ton coach.</div>
+      <div class="note" style="text-align:center">Rien n'est appliqué sans ta validation.</div>
     </div>
-  </div>
+  </div></div>
+
+  <div class="slot"><div class="step">05 <span>Ce que voit le coach</span></div>
+  <div class="phone">
+    <div class="status"><span>9:50</span><span>●●● 5G ▮</span></div>
+    <div class="appbar"><div class="back">‹</div><div><h2>Fiche athlète</h2><small>Espace coach</small></div></div>
+    <div class="scroll">
+      <div class="card who"><div class="av">LM</div><div><b>Lucas M.</b><div class="note" style="font-size:11.5px">Analyse morpho du 14/11 · tu as la main sur ses propositions</div></div></div>
+      <div class="lock">🔒 Photos non partagées par l'athlète : tu vois le compte rendu seul.</div>
+      <div class="card">
+        <div class="sec">Compte rendu (résumé)</div>
+        <div class="line"><span>Carrure en V, bas en retrait</span><span class="chip c-vis">visible</span></div>
+        <div class="line"><span>Fessiers</span><span class="chip p-bad">en retard</span></div>
+        <div class="line"><span>Dos</span><span class="chip p-warn">moyen</span></div>
+        <div class="line"><span>Antéversion du bassin</span><span class="chip c-pro">probable</span></div>
+      </div>
+      <div class="card data">
+        <div class="sec">◆ Ses données</div>
+        Fessiers <b>4,5</b> séries/sem (min. 10) · Dos <b>16</b> (dans la zone).
+      </div>
+      <div class="card">
+        <div class="sec">Proposition (non montrée à l'athlète)</div>
+        Zones : <b>Fessiers, Jambes</b> → Upper / Lower 4 j construit par Novalyz.
+      </div>
+      <span class="btn">Proposer à l'athlète</span>
+      <span class="btn ghost">Modifier avant de proposer</span>
+    </div>
+  </div></div>
 
 </div>
-<p class="legend"><b>Règles visibles dans la maquette</b> : badge de confiance sur chaque constat · photo inexploitable = pas d'analyse (② ) ·
-chiffres uniquement dans le bloc « tes données » et le programme (③ ④) · cohérence photo ↔ données (dos déjà dans la zone → pas de séries en plus) ·
-programme construit par le générateur avec les zones choisies par l'athlète, l'IA ne fait qu'expliquer · validation obligatoire.</p>
+
+<footer>
+  <b>Règles visibles</b> : un badge de confiance sur chaque constat (03) · une photo inexploitable n'est pas analysée et ne consomme pas l'analyse (02) ·
+  les chiffres ◆ viennent des données de l'athlète, jamais de l'IA (03, 04, 05) · cohérence photo ↔ données : dos déjà dans la zone → pas de séries en plus (03, 04) ·
+  le programme est construit par le générateur avec les zones choisies, l'IA ne fait qu'expliquer (04) · validation obligatoire (04) ·
+  athlète suivi : la proposition passe par le coach, qui ne voit les photos qu'avec l'accord de l'athlète (05) · 18 ans et plus, photos effacées après l'analyse (01).
+</footer>
 </body>
 </html>
