@@ -19,6 +19,7 @@ eq(!/minimum|maximum|minLength|maxLength/.test(JSON.stringify(MORPHO_SCHEMA)), '
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'supabase/functions/handler/index.ts'), 'utf8');
 eq(/output_config: \{ effort: 'high', format: \{ type: 'json_schema', schema: MORPHO_SCHEMA \} \}/.test(SRC), 'appel morpho : effort high + format json_schema');
 eq(!/claude-(haiku|sonnet)-5-5/.test(SRC), 'plus aucun appel Haiku / Sonnet');
+eq(/Lx\.bloque\.slice\(\)\.sort\(\(a: any, b: any\) => \(Number\(b\.n\) \|\| 0\) - \(Number\(a\.n\) \|\| 0\)\)/.test(SRC) && /_bq\.slice\(0, 6\)/.test(SRC) && /du plus long au plus court/.test(SRC), 'contexte IA : tous les exercices bloqués (6 max), triés du plus long au plus court (constat préprod 15/11)');
 // ── App : bloc zones → programme ──
 const APP = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8'), LV3 = fs.readFileSync(path.join(__dirname, '..', 'js', 'lecture-v3.js'), 'utf8');
 const ex = (src, n) => { const i0 = src.indexOf('function ' + n + '('); let i = src.indexOf('{', i0), d = 0, j = i; for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}') { d--; if (!d) { j++; break; } } } return src.slice(i0, j); };

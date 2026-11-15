@@ -7433,7 +7433,9 @@ function _iaContexte(d: any, now: Date = new Date()): string {
     const kg = (x: any) => String(x).replace('.', ',')
     if (Lx.records.length) L.push(`- Records récents : ${Lx.records.slice(0, 4).map((x: any) => x.exo.trim() + ' ' + kg(x.c) + ' kg × ' + x.r).join(' ; ')}.`)
     if (Lx.progresse.length) L.push(`- En progrès : ${Lx.progresse.slice(0, 4).map((x: any) => x.exo.trim()).join(', ')}.`)
-    if (Lx.bloque.length) L.push(`- Bloqués : ${Lx.bloque.slice(0, 3).map((x: any) => x.exo.trim() + ' à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances').join(' ; ')}.`)
+    // 15/11 (constaté en préprod) : avant, seulement les 3 premiers dans un ordre quelconque → l'IA a nommé « le plus bloqué »
+    // un exercice qui ne l'était pas. Désormais : TOUS (6 max), triés du plus long blocage au plus court, et dit.
+    if (Lx.bloque.length) { const _bq = Lx.bloque.slice().sort((a: any, b: any) => (Number(b.n) || 0) - (Number(a.n) || 0)); L.push(`- Bloqués (${_bq.length}, du plus long au plus court${_bq.length > 6 ? ', 6 premiers' : ''}) : ${_bq.slice(0, 6).map((x: any) => x.exo.trim() + ' à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances').join(' ; ')}.`) }
     if (Lx.recule.length) L.push(`- En recul : ${Lx.recule.slice(0, 3).map((x: any) => x.exo.trim()).join(', ')}.`)
     if (Lx.sous.length) L.push(`- Sous la fourchette de reps : ${Lx.sous.slice(0, 3).map((x: any) => x.exo.trim() + ' (fourchette ' + x.rmin + '-' + x.rmax + ' reps ; dernière fois ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ')').join(' ; ')}.`)
     if ((Lx.attendu || []).length) L.push(`- Baisse attendue (${Lx.ctx}) : ${Lx.attendu.slice(0, 3).map((x: any) => x.exo.trim()).join(', ')}.`)
