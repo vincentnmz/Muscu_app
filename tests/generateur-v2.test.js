@@ -16,7 +16,7 @@ const block = SRC.slice(start, end);
 
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(block + '\nthis._G2_BLOCKS=_G2_BLOCKS; this._g2VolLignes=_g2VolLignes; this._g2Mus=_g2Mus; this._genProgramme2=_genProgramme2; this._genProgrammeForce=_genProgrammeForce; this._g2Reps=_g2Reps; this._g2GenDays=_g2GenDays;', sandbox);
+vm.runInContext(block + '\nthis._G2_BLOCKS=_G2_BLOCKS; this._g2VolLignes=_g2VolLignes; this._g2Mus=_g2Mus; this._genProgramme2=_genProgramme2; this._g2AxialLourd=_g2AxialLourd; this._genProgrammeForce=_genProgrammeForce; this._g2Reps=_g2Reps; this._g2GenDays=_g2GenDays;', sandbox);
 const gen = sandbox._genProgramme2, force = sandbox._genProgrammeForce, reps = sandbox._g2Reps;
 
 let ok = 0, ko = 0, fails = [];
@@ -123,6 +123,21 @@ check('P3: 4 séries max par exercice (interméd.)', p1.every(function (l) { ret
   const Li = gen('masse', 'fb', 3, 60, 'intermediaire', { targets: Ti, cat: CAT });
   check('Zone prioritaire fessiers (intermédiaire FB 3 j) : un exercice fessiers ajouté (bloc absent du Full Body)', Li.some(function (l) { return /Hip thrust/i.test(l.exercice); }));
   check('Zone prioritaire intermédiaire : la durée choisie reste respectée (≤ 6 exos/séance à 60 min)', Object.values(Li.reduce(function (o, l) { o[l.seance_id] = (o[l.seance_id] || 0) + 1; return o; }, {})).every(function (n) { return n <= 6; }));
+}
+
+// 15/11 — Antécédent dos signalé dans la morpho : pas de squat barre / soulevé de terre quand une variante existe.
+{
+  const noms = function (L) { return L.map(function (l) { return l.exercice; }); };
+  const base = noms(gen('hypertrophie', 'ul', 4, 60, 'intermediaire'));
+  sandbox._genState = { dos: true };
+  const Ld = gen('hypertrophie', 'ul', 4, 60, 'intermediaire'), dos = noms(Ld);
+  sandbox._genState = { dos: false };
+  check('Dos : sans antécédent, le squat barre est proposé (témoin)', base.indexOf('Squat') >= 0);
+  check('Dos : avec antécédent, aucun exercice à charge axiale lourde', !dos.some(function (e) { return sandbox._g2AxialLourd(e); }));
+  check('Dos : le squat barre est remplacé par le hack squat', dos.indexOf('Hack squat') >= 0);
+  check('Dos : le squat barre reste en variante (choix possible, pas supprimé)', Ld.some(function (l) { return (l.variantes || []).indexOf('Squat') >= 0; }));
+  check('Dos : même nombre d\'exercices qu\'avant', dos.length === base.length);
+  check('Dos : le gobelet n\'est pas considéré comme axial lourd', !sandbox._g2AxialLourd('Squat gobelet'));
 }
 
 console.log((ko === 0 ? '✓' : '✗') + ' generateur-v2 : ' + ok + ' OK / ' + ko + ' KO');

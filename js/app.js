@@ -11724,7 +11724,7 @@ function _morphoFichier(input, which) {
   var img = new Image(), url = URL.createObjectURL(f);
   img.onload = function () {
     try {
-      var max = 1024, w = img.width, h = img.height;
+      var max = 1568, /* 15/11 : taille traitée par Claude sans réduction (meilleur détail) */  w = img.width, h = img.height;
       if (w > h && w > max) { h = Math.round(h * max / w); w = max; } else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
       var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
       cv.getContext('2d').drawImage(img, 0, 0, w, h);
@@ -11738,6 +11738,64 @@ function _morphoFichier(input, which) {
   img.onerror = function () { URL.revokeObjectURL(url); showToast('Image illisible', '#DC3545'); };
   img.src = url;
 }
+// ── 15/11 (spec ia-morpho §3.2-3.3) : priorités de l'IA → zones de l'app → programme du GÉNÉRATEUR ──
+// Les chiffres affichés ici viennent des séances (moteur, _lv3Volume), jamais de l'IA. Une zone dont tous les muscles
+// sont déjà à l'optimum n'est pas pré-cochée (cohérence photo ↔ données : pas de séries en plus, priorité à l'exécution).
+var _morphoZonesSel = [];
+function _morphoData() { return _morphoFromCoach ? ((typeof coachAthleteData !== 'undefined') ? coachAthleteData : null) : ((typeof dernierAppData !== 'undefined') ? dernierAppData : null); }
+function _morphoZoneVol(data, zone) {
+  var Z = ZONES_PRIO_UI.filter(function (x) { return x[0] === zone; })[0]; if (!Z || !data || typeof _lv3Volume !== 'function') return [];
+  return Z[2].map(function (m) { var V = _lv3Volume(data, m, Date.now()); return { m: m, parSem: V.parSem, min: V.min, opt: V.opt, recul: V.recul }; });
+}
+function _morphoZonesHtml(d) {
+  var zones = []; (d.priorites || []).forEach(function (p) { var z = p && p.zone; if (z && z !== 'aucune' && zones.indexOf(z) < 0 && ZONES_PRIO_UI.some(function (x) { return x[0] === z; })) zones.push(z); });
+  if (!zones.length) return '';
+  var data = _morphoData(), esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
+  var fmt = function (n) { return String(Math.round(n * 10) / 10).replace('.', ','); };
+  var info = zones.map(function (z) {
+    var vs = _morphoZoneVol(data, z), lignes = [], plein = vs.length > 0;
+    vs.forEach(function (v) {
+      if (v.recul < 2 || v.min == null) { plein = false; lignes.push(esc(_lv3MusNom ? _lv3MusNom(v.m) : v.m) + ' : pas encore assez de séances pour comparer'); return; }
+      var dejaOpt = v.opt != null && v.parSem >= v.opt; if (!dejaOpt) plein = false;
+      lignes.push(esc(_lv3MusNom ? _lv3MusNom(v.m) : v.m) + ' : <b>' + fmt(v.parSem) + ' séries/sem</b> (min. ' + v.min + (v.opt != null ? ', optimum ' + v.opt : '') + ')' + (dejaOpt ? ' → déjà dans ta zone : priorité à l\'exécution, pas plus de séries' : ''));
+    });
+    return { z: z, lignes: lignes, plein: plein };
+  });
+  _morphoZonesSel = info.filter(function (x) { return !x.plein; }).slice(0, 2).map(function (x) { return x.z; });
+  var _propsOff = !_morphoFromCoach && data && data.coach_lie && data.propositions_novalyz === false;
+  var rows = info.map(function (x) {
+    var lbl = _zpLabels([x.z])[0] || x.z, on = _morphoZonesSel.indexOf(x.z) >= 0;
+    return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';border-radius:12px;margin-top:7px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text)" data-mz="' + x.z + '">'
+      + '<input type="checkbox" ' + (on ? 'checked ' : '') + 'onchange="_morphoZoneToggle(\'' + x.z + '\', this)" style="margin-top:3px;accent-color:var(--accent)">'
+      + '<span style="font-size:13px;font-weight:700">' + esc(lbl) + '<span style="display:block;font-size:11.5px;font-weight:600;color:var(--text-muted);line-height:1.45;margin-top:2px">◆ ' + (x.lignes.join('<br>◆ ') || 'pas de données de volume') + '</span></span></label>';
+  }).join('');
+  var action = _propsOff
+    ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:9px">Ton coach a la main sur ton programme : parle-lui de ces priorités.</div>'
+    : '<button onclick="_morphoVersProgramme()" style="width:100%;margin-top:11px;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:800;cursor:pointer">Construire ' + (_morphoFromCoach ? 'son' : 'mon') + ' programme avec ces zones</button>'
+      + '<div style="font-size:10.5px;color:var(--text-subtle);text-align:center;margin-top:6px">Le programme est construit par le générateur Novalyz. Rien n\'est appliqué sans validation.</div>';
+  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px;margin-bottom:11px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px">Zones prioritaires → programme (2 max)</div>'
+    + '<div style="font-size:11px;color:var(--text-subtle)">◆ = tes données (séances des 4 dernières semaines), pas l\'IA.</div>' + rows + action + '</div>';
+}
+function _morphoZoneToggle(z, el) {
+  var i = _morphoZonesSel.indexOf(z);
+  if (el.checked) { if (i < 0) { if (_morphoZonesSel.length >= 2) { el.checked = false; try { showToast('2 zones maximum'); } catch (e) {} return; } _morphoZonesSel.push(z); } }
+  else if (i >= 0) _morphoZonesSel.splice(i, 1);
+  var lab = el.closest && el.closest('label'); if (lab) lab.style.borderColor = el.checked ? 'var(--accent)' : 'var(--border)';
+}
+async function _morphoVersProgramme() {
+  var cibleId = _morphoCibleId || ((typeof athlete !== 'undefined' && athlete) ? athlete.athlete_id : null);
+  if (!cibleId) return;
+  var ok = await _zpSave(cibleId, _morphoZonesSel.slice(0, 2));
+  if (!ok) { try { showToast('Erreur : zones non enregistrées', '#DC3545'); } catch (e) {} return; }
+  var data = _morphoData(); if (data) data.zones_prio = _morphoZonesSel.slice(0, 2);
+  try { showToast(_morphoZonesSel.length ? 'Zones prioritaires : ' + _zpLabels(_morphoZonesSel).join(', ') : 'Programme équilibré'); } catch (e) {}
+  // 15/11 : antécédent dos déclaré dans la morpho (hernie, disque, sciatique) → le générateur écarte les charges axiales
+  // lourdes (squat barre, soulevé de terre…) quand une variante existe — même règle que les pistes de l'analyse (serveur).
+  try { var _ant = (_morphoQ && _morphoQ.antecedents) || []; _g2DosArme = _ant.indexOf('hernie') >= 0 || _ant.indexOf('disque') >= 0 || _ant.indexOf('sciatique') >= 0; } catch (e) { _g2DosArme = false; }
+  fermerMorpho();
+  try { if (typeof ouvrirGenProgramme === 'function') ouvrirGenProgramme(); } catch (e) {}
+}
 // Rendu structuré de l'analyse morpho (objet { morphotype, synthese[], equilibre[],
 // posture[], priorites[], reco, mesures }). Chaque constat porte un niveau de confiance.
 function _morphoRender(d) {
@@ -11746,10 +11804,11 @@ function _morphoRender(d) {
     c = String(c || '').toLowerCase();
     if (c === 'visible') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Visible</span>';
     if (c === 'probable') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(224,120,0,.16);color:var(--warn)">À confirmer</span>';
-    if (c === 'mesure') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text-subtle)">À mesurer</span>';
+    if (c === 'mesure_fournie') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--accent-a12,rgba(26,95,255,.12));color:var(--accent)">Mesuré</span>';   // 15/11 : mesure fournie ≠ à mesurer
+    if (c === 'mesure' || c === 'a_mesurer') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text-subtle)">À mesurer</span>';
     return '';
   }
-  function dotCol(c) { c = String(c || '').toLowerCase(); return c === 'visible' ? 'var(--good)' : c === 'mesure' ? 'var(--text-subtle)' : 'var(--warn)'; }
+  function dotCol(c) { c = String(c || '').toLowerCase(); return c === 'visible' ? 'var(--good)' : c === 'mesure_fournie' ? 'var(--accent)' : (c === 'mesure' || c === 'a_mesurer') ? 'var(--text-subtle)' : 'var(--warn)'; }
   function barW(n) { n = String(n || '').toLowerCase(); return n.indexOf('dévelop') >= 0 ? 82 : n === 'correct' ? 66 : n === 'moyen' ? 50 : n.indexOf('retard') >= 0 ? 36 : 55; }
   function tonCol(t) { t = String(t || '').toLowerCase(); return t === 'good' ? 'var(--good)' : t === 'bad' ? 'var(--bad)' : 'var(--warn)'; }
   var card = function (title, inner) { return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px;margin-bottom:11px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text-subtle);margin-bottom:9px">' + title + '</div>' + inner + '</div>'; };
@@ -11764,6 +11823,9 @@ function _morphoRender(d) {
     out += card('Équilibre musculaire', eq);
   }
   if (d.posture && d.posture.length) out += card('Posture', d.posture.map(rowItem).join(''));
+  // 15/11 (spec ia-morpho §3.1) : vues écartées par le contrôle des photos (aucun constat n'en est tiré).
+  try { var _qk = (d.qualite_photos || []).filter(function (q) { return q && q.statut === 'insuffisante'; });
+    if (_qk.length) out += '<div style="background:var(--warn-a,rgba(224,120,0,.12));border:1px solid rgba(224,120,0,.3);border-radius:14px;padding:11px 13px;margin-bottom:11px;font-size:12.5px;line-height:1.45"><b style="color:var(--warn)">Vue' + (_qk.length > 1 ? 's' : '') + ' non analysée' + (_qk.length > 1 ? 's' : '') + '</b> : ' + _qk.map(function (q) { return esc(q.vue) + ' (' + esc(q.raison || 'inexploitable') + ')'; }).join(' · ') + '. Reprends ' + (_qk.length > 1 ? 'ces photos' : 'cette photo') + ' pour une lecture complète.</div>'; } catch (e) {}
   if (d.priorites && d.priorites.length) {
     var pr = d.priorites.map(function (p, i) {
       var chips = (p.ex && p.ex.length) ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">' + p.ex.map(function (x) { return '<span style="font-size:10.5px;font-weight:700;border-radius:7px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text)">' + esc(x) + '</span>'; }).join('') + '</div>' : '';
@@ -11771,6 +11833,7 @@ function _morphoRender(d) {
     }).join('');
     out += card('Priorités d\'entraînement', pr);
   }
+  try { out += _morphoZonesHtml(d); } catch (e) {}   // 15/11 : priorités → zones → programme du générateur
   if (d.reco) out += '<div style="background:var(--accent-a12,rgba(26,95,255,.12));border:1px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:11px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px">Reco Novalyz</div><div style="font-size:12.5px;line-height:1.5">' + esc(d.reco) + '</div></div>';
   if (d.mesures) out += card('Fiabilité', '<div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;margin-bottom:9px"><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--good)"></i>Visible</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--warn)"></i>À confirmer</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--text-subtle)"></i>À mesurer</span></div><div style="font-size:11.5px;color:var(--text-muted);line-height:1.5">' + esc(d.mesures) + '</div>');
   // Exercices selon les leviers (segments) + garde-fous antécédents — DÉTERMINISTE (backend).
@@ -21169,6 +21232,9 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
 }
 // Hypertrophie / organisation → lignes genererProgramme.
 // vol (facultatif) = { targets: { Muscle: {min, opt}, _defaut: {min, opt} }, cat: catalogue } → répartition P3.
+var _g2DosArme = false;
+// Charge axiale lourde sur la colonne (même liste que le serveur, recoMorphoExercices) — le gobelet reste permis.
+function _g2AxialLourd(e) { return /^squat$|soulev[ée] de terre|rack pull|good morning|deadlift/i.test(String(e || '')) && !/gobelet/i.test(String(e || '')); }
 function _genProgramme2(objectif, organisation, jours, temps, niveau, vol) {
   var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
   // Maintien = volume allégé (une série de moins, un exercice de moins par séance).
@@ -21190,6 +21256,8 @@ function _genProgramme2(objectif, organisation, jours, temps, niveau, vol) {
       // Débutant (porteur 09/11) : un exercice exigeant au poids du corps (traction, dips) passe en variante ;
       // c'est une question de niveau de force, pas de sexe — le tirage / l'extension à la poulie se dosent.
       if (niveau === 'debutant' && _G2_DUR_DEBUTANT[exos[0]] && exos.length > 1) exos = exos.slice(1).concat([exos[0]]);
+      // 15/11 : antécédent dos (morpho) → les variantes sans charge axiale lourde passent devant (ex. Squat → Hack squat).
+      if (typeof _genState !== 'undefined' && _genState && _genState.dos) { var _sur = exos.filter(function (e) { return !_g2AxialLourd(e); }); if (_sur.length) exos = _sur.concat(exos.filter(_g2AxialLourd)); }
       if (prioBks[x.bk]) { var ku = x.bk + '|' + x.si, nu = slotUse[ku] || 0; slotUse[ku] = nu + 1; var r0 = nu % exos.length; exos = exos.slice(r0).concat(exos.slice(0, r0)); }
       // Jamais deux fois le même exercice dans une séance (deux angles peuvent partager un exercice).
       var libres = exos.filter(function (e) { return !dejaSeance[e]; }); if (libres.length && libres[0] !== exos[0]) exos = libres.concat(exos.filter(function (e) { return dejaSeance[e]; }));
@@ -21272,7 +21340,8 @@ function ouvrirGenProgramme() {
   var _nivIni = 'debutant'; try { var _dn = _gc.coach ? coachAthleteData : dernierAppData; var _ne = _dn && _dn.niveau_experience;
     if (!_ne) { var _ann = _gc.coach ? (coachAthleteCourant && coachAthleteCourant.annees_pratique) : (athlete && athlete.annees_pratique); if (_ann != null && _ann !== '') _ne = getNiveauExperience(_ann); }
     if (_ne === 'intermediaire') _nivIni = 'intermediaire'; else if (_ne === 'avance' || _ne === 'expert') _nivIni = 'avance'; } catch (e) {}
-  _genState = { niv: _nivIni, nivFixe: !_gc.coach, obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni, exclus: _exIni };
+  _genState = { niv: _nivIni, nivFixe: !_gc.coach, obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni, exclus: _exIni, dos: !!_g2DosArme };
+  _g2DosArme = false;
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -21292,7 +21361,7 @@ function ouvrirGenProgramme() {
   try { document.body.classList.add('gen-open'); } catch (e) {}
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { chargerExercices().then(_genRender); } else { _genRender(); }
 }
-function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('gen-open'); } catch (e) {} if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
+function fermerGenProgramme() { try { if (_genState) _genState.dos = false; } catch (e) {} var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('gen-open'); } catch (e) {} if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
 // « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
 // (Reste toujours accessible via le bouton « Novalyz me propose un programme ».)
 function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
@@ -21358,7 +21427,8 @@ function _g2ZonesHtml(st) {
   try { var T = _g2VolCtx(st.niv, z).targets; var m0 = Object.keys(P)[0]; if (m0 && T[m0]) ex = ' (' + _zpLabels([z[0]])[0].toLowerCase() + ' ' + T[m0].min + '-' + T[m0].opt + ' séries/sem au lieu de ' + Math.round(2 * T[m0].min - T[m0].opt) + '-' + T[m0].opt + ')'; } catch (e) {}
   return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">Zones à développer en priorité <span style="text-transform:none;letter-spacing:0;font-weight:700">· 2 max</span></div>'
     + _zpChipsHtml(z, '_g2Zone')
-    + '<div style="font-size:11.5px;color:var(--text-subtle);margin:7px 2px 2px;line-height:1.45">Rien n\'est choisi d\'avance : c\'est toi qui dis. Une zone prioritaire vise le haut de ta fourchette' + ex + ' et reçoit un exercice de plus.</div>';
+    + '<div style="font-size:11.5px;color:var(--text-subtle);margin:7px 2px 2px;line-height:1.45">Rien n\'est choisi d\'avance : c\'est toi qui dis. Une zone prioritaire vise le haut de ta fourchette' + ex + ' et reçoit un exercice de plus.</div>'
+    + (st.dos ? '<div style="font-size:11.5px;color:var(--text);background:var(--surface-2,rgba(0,0,0,.04));border-radius:10px;padding:8px 10px;margin:8px 2px 2px;line-height:1.45"><b>Dos :</b> tu as signalé un antécédent (morpho). Le squat barre et le soulevé de terre sont remplacés par des variantes moins chargées pour la colonne (ex. hack squat), à valider avec ton kiné.' + (st.but === 'force' ? ' <b>Attention : le programme Force repose sur ces mouvements — préfère un autre objectif.</b>' : '') + '</div>' : '');
 }
 function _g2Zone(k) { _genState.zones = _zpToggle(_genState.zones, k); _genState.garde = null; _genRender(); }
 // Option b (03/11) : la plus petite modification (durée, jour, organisation) qui fait atteindre tous les minimums.

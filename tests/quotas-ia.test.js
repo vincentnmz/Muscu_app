@@ -43,10 +43,10 @@ function load(store, opts = {}, src) {
   let handler = null;
   let js = stripTypeScriptTypes(src || fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
   js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n');
-  const env = { ANTHROPIC_API_KEY: 'cle-de-test' };
-  const fakeFetch = async (url) => {
+  const env = Object.assign({ ANTHROPIC_API_KEY: 'cle-de-test' }, opts.env || {});
+  const fakeFetch = async (url, init) => {
     if (String(url).includes('api.anthropic.com')) {
-      opts.nbIA = (opts.nbIA || 0) + 1;
+      opts.nbIA = (opts.nbIA || 0) + 1; try { opts.dernier = { body: JSON.parse(init.body), headers: init.headers }; } catch (_) {}
       await new Promise((r) => setTimeout(r, 15));   // l'IA met du temps → fenêtre de concurrence
       if (opts.iaEnPanne) return { ok: false, status: 500, json: async () => ({ error: 'x' }) };
       return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: opts.texte || 'Continue comme ça.' }] }) };
@@ -62,7 +62,7 @@ function load(store, opts = {}, src) {
 }
 const U = 'https://x.supabase.co/functions/v1/smooth-service';
 const post = (h, body) => h(new Request(U, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) })).then((r) => r.json());
-const base = () => ({ athletes: [{ id: 'A1', login: '1001', nom: 'Un Test', coach_id: 'C1', sport: 'muscu', prefs: {} }],
+const base = () => ({ athletes: [{ id: 'A1', login: '1001', nom: 'Un Test', coach_id: 'C1', sport: 'muscu', prefs: {}, ddn: '1995-04-12' }],
   coachs: [{ coach_id: 'C1', login: 'c1', nom: 'Coach', prefs: {} }],
   indicateurs: [], performances: [], bien_etre: [], programme: [], exercices: [], planning: [], objectif: [] });
 const Q = (aid = 'A1') => ({ action: 'chatIA', athlete_id: aid, messages: [{ role: 'user', content: 'Comment je progresse ?' }] });
@@ -130,11 +130,42 @@ let nOK = 0, nKO = 0; const eq = (c, n, g) => { if (c) nOK++; else { nKO++; cons
     await post(handler, M);
     eq(cpt(st, 'A1', 'morpho') === 0, 'morpho en échec : analyse rendue', cpt(st, 'A1', 'morpho')); }
 
+  // 6 bis) 15/11 : morpho réservée aux 18 ans et plus (date de naissance du compte) — refus SANS consommer d'analyse.
+  { const st = base(); st.athletes[0].ddn = '2011-01-01'; const o = { texte: '{"reco":"ok"}' }; const { handler } = load(st, o);
+    const r = await post(handler, { action: 'analyseMorpho', athlete_id: 'A1', consent: true, images: [{ data: 'AAAA', media_type: 'image/jpeg' }] });
+    eq(r.limited === true && /18 ans/.test(r.analyse || '') && cpt(st, 'A1', 'morpho') === 0, 'mineur → refus, aucune analyse consommée', [r, cpt(st, 'A1', 'morpho')]); }
+  { const st = base(); delete st.athletes[0].ddn; const o = { texte: '{"reco":"ok"}' }; const { handler } = load(st, o);
+    const r = await post(handler, { action: 'analyseMorpho', athlete_id: 'A1', consent: true, images: [{ data: 'AAAA', media_type: 'image/jpeg' }] });
+    eq(r.limited === true && /date de naissance/.test(r.analyse || '') && cpt(st, 'A1', 'morpho') === 0, 'date de naissance absente → demandée, rien consommé', [r, cpt(st, 'A1', 'morpho')]); }
+  // 6 ter) 15/11 : aucune vue exploitable → pas d'analyse, analyse du jour rendue.
+  { const st = base(); const o = { texte: JSON.stringify({ qualite_photos: [{ vue: 'face', statut: 'insuffisante', raison: 'contre-jour' }], analysable: false, morphotype: '', synthese: [], equilibre: [], posture: [], priorites: [], reco: '', mesures: '' }) }; const { handler } = load(st, o);
+    const r = await post(handler, { action: 'analyseMorpho', athlete_id: 'A1', consent: true, images: [{ data: 'AAAA', media_type: 'image/jpeg' }] });
+    eq(r.photos_insuffisantes === true && /contre-jour/.test(r.analyse || '') && cpt(st, 'A1', 'morpho') === 0, 'photos inexploitables → message de reprise, analyse rendue', [r, cpt(st, 'A1', 'morpho')]); }
   // 7) Compatibilité : migration pas appliquée → ancien stockage, même comportement qu'avant.
   { const st = base(); const { handler } = load(st, { sansFonction: true });
     const r1 = await post(handler, Q()), r2 = await post(handler, Q()), r3 = await post(handler, Q());
     const l = st.indicateurs.find((x) => x.seance_id === 'ia_quota');
     eq(ok(r1) && ok(r2) && r3.limited === true && l && l.valeur === '2', 'sans migration : quota dans indicateurs comme avant (2/jour)', [r1.success, r2.success, r3.limited, l && l.valeur]); }
+
+  // 9) 15/11 : accès IA réservé aux testeurs (IA_RESTREINTE=1 + prefs.ia_testeur) ; morpho sur Fable 5.2 + fallback.
+  { const st = base(); const o = { env: { IA_RESTREINTE: '1' }, texte: '{"reco":"ok"}' }; const { handler } = load(st, o);
+    const r = await post(handler, Q());
+    const m = await post(handler, { action: 'analyseMorpho', athlete_id: 'A1', consent: true, images: [{ data: 'AAAA', media_type: 'image/jpeg' }] });
+    const d = await (await handler(new Request(U + '?action=getAppData&athlete_id=A1'))).json();
+    eq(r.disabled === true && m.disabled === true && !o.nbIA && cpt(st, 'A1', 'ia') === 0 && cpt(st, 'A1', 'morpho') === 0, 'restreint, non testeur : chat et morpho refusés, aucun appel IA, rien consommé', [r.disabled, m.disabled, o.nbIA]);
+    eq(d.recompenses && d.recompenses.ia_active === false, 'restreint, non testeur : ia_active = false (badge « Bientôt »)', d.recompenses && d.recompenses.ia_active);
+    const c = await post(handler, { action: 'chatIA', mode: 'coach', coach_id: 'C1', athlete_id: 'A1', messages: [{ role: 'user', content: 'x' }] });
+    eq(c.disabled === true && !o.nbIA, 'restreint : chat coach coupé pendant le pilote', c); }
+  { const st = base(); st.athletes[0].prefs = { ia_testeur: true }; const o = { env: { IA_RESTREINTE: '1' }, texte: '{"reco":"ok"}' }; const { handler } = load(st, o);
+    const r = await post(handler, Q());
+    const d = await (await handler(new Request(U + '?action=getAppData&athlete_id=A1'))).json();
+    eq(ok(r) && d.recompenses.ia_active === true, 'restreint, testeur : chat ouvert, ia_active = true', [r.success, d.recompenses.ia_active]);
+    eq(o.dernier.body.model === 'claude-opus-5-5', 'chat : Opus 5.5', o.dernier.body.model);
+    await post(handler, { action: 'analyseMorpho', athlete_id: 'A1', consent: true, images: [{ data: 'AAAA', media_type: 'image/jpeg' }] });
+    eq(o.dernier.body.model === 'claude-fable-5-2' && o.dernier.body.fallbacks === 'default' && o.dernier.headers['anthropic-beta'] === 'server-side-fallback-2026-07-01' && o.dernier.body.max_tokens === 16000, 'morpho : Fable 5.2 + reprise serveur, max_tokens 16000', [o.dernier.body.model, o.dernier.body.fallbacks, o.dernier.body.max_tokens]); }
+  { const st = base(); const o = {}; const { handler } = load(st, o);
+    const r = await post(handler, Q());
+    eq(ok(r), 'sans IA_RESTREINTE (préprod) : ouvert à tous comme avant', r.success); }
 
   console.log(`quotas-ia : ${nOK} OK / ${nKO} KO`);
   process.exit(nKO ? 1 : 0);

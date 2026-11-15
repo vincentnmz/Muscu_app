@@ -3064,7 +3064,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
     // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
-    recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY'), ia_credits: await _iaCreditsRestants(athleteId) },
+    recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') && ((Deno.env.get('IA_RESTREINTE') || '') !== '1' || ((athData as any)?.prefs?.ia_testeur === true)), ia_credits: await _iaCreditsRestants(athleteId) },
     pas_quotidiens,
     sante_historique,
     montre_sync,
@@ -3309,7 +3309,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     }
   })
 
-  return jsonResp({ ok: true, athletes: result, ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') })
+  return jsonResp({ ok: true, athletes: result, ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') && (Deno.env.get('IA_RESTREINTE') || '') !== '1' })
 }
 
 async function handleGetCommentaires(params: URLSearchParams): Promise<Response> {
@@ -7387,9 +7387,19 @@ async function handleSaveNutrition(body: any): Promise<Response> {
 // COACH IA (chat groundé) — couche langage branchée sur le moteur. Répond
 // UNIQUEMENT à partir des données réelles de l'athlète (jamais de chiffre
 // inventé). Base gratuite = quota/jour ; au-delà = premium (à venir, C5).
-// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Haiku 5.5 (éco). Morpho = Sonnet 5.5 (vision fine).
+// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Opus 5.5 (15/11, porteur) pour le chat et la morpho (IA_MODELE).
 // ===========================================================================
 const IA_QUOTA_JOUR = 2
+// Modèle IA (15/11, décision porteur) : Claude Opus 5.5 pour le chat ET l'analyse morpho.
+const IA_MODELE = 'claude-opus-5-5'
+// 15/11 (porteur : « plus puissant » pour l'analyse) : morpho = Claude Fable 5.2 (le plus capable) ; une analyse par jour,
+// coût faible. Reprise automatique côté serveur si le modèle refuse (fallbacks « default », bêta server-side-fallback).
+const MORPHO_MODELE = 'claude-fable-5-2'
+// Accès IA réservé (prod, pilote) : si IA_RESTREINTE = 1, seuls les comptes marqués prefs.ia_testeur = true y ont accès.
+async function _iaAutorise(athlete_id: string): Promise<boolean> {
+  if ((Deno.env.get('IA_RESTREINTE') || '') !== '1') return true
+  try { const { data } = await sb().from('athletes').select('prefs').eq('id', athlete_id).limit(1); return !!(data && data[0] && data[0].prefs && data[0].prefs.ia_testeur === true) } catch (_) { return false }
+}
 
 // Contexte envoyé à l'IA (audit Novalyz IA I1/I2, 01/11) : les MÊMES données que l'app,
 // chacune DATÉE (« il y a N j »), rien de périmé présenté comme actuel, rien de masqué dans l'app.
@@ -7431,7 +7441,9 @@ function _iaContexte(d: any, now: Date = new Date()): string {
     const kg = (x: any) => String(x).replace('.', ',')
     if (Lx.records.length) L.push(`- Records récents : ${Lx.records.slice(0, 4).map((x: any) => x.exo.trim() + ' ' + kg(x.c) + ' kg × ' + x.r).join(' ; ')}.`)
     if (Lx.progresse.length) L.push(`- En progrès : ${Lx.progresse.slice(0, 4).map((x: any) => x.exo.trim()).join(', ')}.`)
-    if (Lx.bloque.length) L.push(`- Bloqués : ${Lx.bloque.slice(0, 3).map((x: any) => x.exo.trim() + ' à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances').join(' ; ')}.`)
+    // 15/11 (constaté en préprod) : avant, seulement les 3 premiers dans un ordre quelconque → l'IA a nommé « le plus bloqué »
+    // un exercice qui ne l'était pas. Désormais : TOUS (6 max), triés du plus long blocage au plus court, et dit.
+    if (Lx.bloque.length) { const _bq = Lx.bloque.slice().sort((a: any, b: any) => (Number(b.n) || 0) - (Number(a.n) || 0)); L.push(`- Bloqués (${_bq.length}, du plus long au plus court${_bq.length > 6 ? ', 6 premiers' : ''}) : ${_bq.slice(0, 6).map((x: any) => x.exo.trim() + ' à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances').join(' ; ')}.`) }
     if (Lx.recule.length) L.push(`- En recul : ${Lx.recule.slice(0, 3).map((x: any) => x.exo.trim()).join(', ')}.`)
     if (Lx.sous.length) L.push(`- Sous la fourchette de reps : ${Lx.sous.slice(0, 3).map((x: any) => x.exo.trim() + ' (fourchette ' + x.rmin + '-' + x.rmax + ' reps ; dernière fois ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ')').join(' ; ')}.`)
     if ((Lx.attendu || []).length) L.push(`- Baisse attendue (${Lx.ctx}) : ${Lx.attendu.slice(0, 3).map((x: any) => x.exo.trim()).join(', ')}.`)
@@ -7474,6 +7486,7 @@ async function handleChatIA(body: any): Promise<Response> {
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, reply: "L'assistant IA n'est pas encore activé côté serveur (clé manquante). Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
+  if (coachMode ? (Deno.env.get('IA_RESTREINTE') || '') === '1' : !(await _iaAutorise(athlete_id))) return jsonResp({ success: true, reply: "Novalyz IA est en test auprès de quelques athlètes : elle arrive bientôt pour tout le monde. Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
 
   // Quota jour (base gratuite) — RÉSERVÉ avant l'appel (quotas_jour, 10/11), rendu si l'appel échoue.
   const jour = fmtYMD(new Date())
@@ -7523,7 +7536,9 @@ ${ctxTxt}`
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 700, system, messages: msgs }),
+      // 15/11 (porteur) : Opus 5.5 au lieu de Haiku. Le raisonnement est toujours actif sur ce modèle et compte dans
+      // max_tokens → marge à 4000 (la réponse elle-même reste courte, consigne système) ; effort explicite « medium ».
+      body: JSON.stringify({ model: IA_MODELE, max_tokens: 4000, output_config: { effort: 'medium' }, system, messages: msgs }),
     })
     const j = await r.json()
     if (!r.ok) return null
@@ -7558,6 +7573,22 @@ ${ctxTxt}`
 // Sonnet 5.5. Photos JAMAIS stockées (RGPD-minimal) : analysées puis jetées, on ne
 // garde que le texte renvoyé (non persisté non plus). Consentement obligatoire.
 const MORPHO_QUOTA_JOUR = 1
+// 15/11 (spec ia-morpho §3.1) : version de la consigne (traçabilité) + schéma de sortie STRICT (sorties structurées Claude :
+// JSON toujours valide et complet). Zones = mêmes clés que ZONES_PRIO (fessiers … abdos) + « aucune ».
+const MORPHO_PROMPT_VERSION = 'morpho-2026-11-15b'
+const _MS_CONF = { type: 'string', enum: ['visible', 'probable', 'mesure_fournie', 'a_mesurer'] }   // 15/11 : « mesure » était ambigu (badge « À mesurer » sur une mesure fournie)
+const _MS_TXT = (props: Record<string, any>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false })
+const MORPHO_SCHEMA = _MS_TXT({
+  qualite_photos: { type: 'array', items: _MS_TXT({ vue: { type: 'string', enum: ['face', 'profil', 'dos'] }, statut: { type: 'string', enum: ['ok', 'insuffisante'] }, raison: { type: 'string' } }) },
+  analysable: { type: 'boolean' },
+  morphotype: { type: 'string' },
+  synthese: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, c: _MS_CONF }) },
+  equilibre: { type: 'array', items: _MS_TXT({ g: { type: 'string' }, n: { type: 'string', enum: ['développé', 'correct', 'moyen', 'en retard'] }, ton: { type: 'string', enum: ['good', 'warn', 'bad'] } }) },
+  posture: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, c: _MS_CONF }) },
+  priorites: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, d: { type: 'string' }, ex: { type: 'array', items: { type: 'string' } }, zone: { type: 'string', enum: ['fessiers', 'jambes', 'pectoraux', 'dos', 'epaules', 'bras', 'abdos', 'aucune'] } }) },
+  reco: { type: 'string' },
+  mesures: { type: 'string' },
+})
 
 // Recommandations d'exercices DÉTERMINISTES à partir des leviers (segments mesurés)
 // et des antécédents déclarés. Règles biomécaniques figées — AUCUNE invention, aucun
@@ -7641,6 +7672,19 @@ function recoMorphoExercices(seg: any, q: any): any[] {
   if (has('cardiaque') || has('hta') || has('asthme')) out.push({ t: 'Garde-fou — cœur / tension / respiration', d: 'Éviter l’hyperpression (blocage respiratoire) : respire, séries modérées, récup suffisante. Avis médical recommandé.', bons: ['Séries 8–15 reps', 'Récupération suffisante', 'Cardio progressif'], eviter: ['Charges maximales en apnée (Valsalva)', 'Isométries longues maximales'], src: 'antecedent' })
   if (has('prothese')) out.push({ t: 'Garde-fou — arthrose / prothèse', d: 'Travail sans douleur, amplitudes maîtrisées, machines guidées.', bons: ['Machines guidées', 'Amplitudes confortables'], eviter: ['Chocs / sauts', 'Amplitudes extrêmes douloureuses'], src: 'antecedent' })
   if (has('chirurgie') || has('blessure')) out.push({ t: 'Garde-fou — zone en récupération', d: 'Reprise progressive sur la zone concernée, sans douleur ; suis les consignes du pro qui te suit.', bons: ['Charges légères progressives', 'Amplitude indolore', 'Renforcement contrôlé'], eviter: ['Charges lourdes sur la zone', 'Mouvements douloureux'], src: 'antecedent' })
+  // 15/11 (constaté en préprod) : avec un antécédent dos, les cartes « leviers » recommandaient encore back squat, soulevé de
+  // terre, rack pull… en contradiction avec le garde-fou du même compte rendu. Les charges axiales lourdes sont retirées
+  // des « bons » choix des cartes leviers (le garde-fou dit pourquoi), sans rien inventer d'autre.
+  if (has('hernie') || has('disque') || has('sciatique')) {
+    const AXIAL = /squat|soulevé|rack pull|good morning|deadlift/i, LEGER = /gobelet/i   // squat gobelet : recommandé par le garde-fou lui-même
+    out.forEach((e: any) => {
+      if (e.src !== 'mesure' && e.src !== 'piste') return
+      const retires = (e.bons || []).filter((x: string) => AXIAL.test(x) && !LEGER.test(x))
+      if (!retires.length) return
+      e.bons = (e.bons || []).filter((x: string) => !(AXIAL.test(x) && !LEGER.test(x)))
+      e.d = String(e.d || '') + ' Mis de côté tant que ton dos n\'est pas validé par un professionnel (voir garde-fou dos / colonne) : ' + retires.join(', ') + '.'
+    })
+  }
   if (femmeFlags.indexOf('grossesse') >= 0 || femmeFlags.indexOf('postpartum') >= 0) out.push({ t: 'Garde-fou — grossesse / post-partum', d: 'Priorité sécurité : avis médical / sage-femme requis (rien de médical ici).', bons: ['Renforcement doux', 'Plancher pelvien', 'Travail debout'], eviter: ['Décubitus dorsal prolongé', 'Hyperpression abdominale', 'Charges maximales'], src: 'antecedent' })
 
   return out
@@ -7654,6 +7698,17 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   if (!images.length) return jsonResp({ success: false, error: 'aucune photo' })
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho n'est pas encore activée côté serveur (clé manquante)." })
+
+  if (!(await _iaAutorise(athlete_id))) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho est en test auprès de quelques athlètes : elle arrive bientôt pour tout le monde." })
+  // 15/11 (décision porteur, spec ia-morpho §9) : réservée aux 18 ans et plus — contrôle sur la date de naissance du compte
+  // analysé, AVANT de réserver le quota (aucune analyse consommée). Date absente → on la demande (pas de supposition).
+  try {
+    const { data: aRow } = await sb().from('athletes').select('ddn').eq('id', athlete_id).limit(1)
+    const ddnM = aRow && aRow[0] && aRow[0].ddn ? new Date(String(aRow[0].ddn).slice(0, 10) + 'T00:00:00') : null
+    const ageM = ddnM && !isNaN(ddnM.getTime()) ? (Date.now() - ddnM.getTime()) / (365.25 * 864e5) : NaN
+    if (!isFinite(ageM)) return jsonResp({ success: true, limited: true, analyse: "Renseigne ta date de naissance (Réglages ▸ Profil) : l'analyse morpho est réservée aux 18 ans et plus." })
+    if (ageM < 18) return jsonResp({ success: true, limited: true, analyse: "L'analyse morpho est réservée aux 18 ans et plus." })
+  } catch (_) { return jsonResp({ success: false, error: 'profil_indisponible', analyse: "Service indisponible pour le moment. Réessaie dans un instant." }) }
 
   const jour = fmtYMD(new Date())
   // Quota RÉSERVÉ avant l'analyse (quotas_jour, 10/11), rendu si elle échoue.
@@ -7705,13 +7760,18 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   content.push({
     type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${sexeTxt ? ` La personne est ${sexeTxt}.` : ''}${objTxt ? ` Objectif : ${objTxt}.` : ''}${segTxt ? ` Longueurs de segments fournies (cm) : ${segTxt} — tu PEUX donc affirmer les proportions correspondantes (confiance "mesure").` : (mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mesure de segment fournie (les proportions restent à confirmer, confiance "mesure").')}${antTxt ? ` Antécédents/état signalés : ${antTxt} — tiens-en compte avec prudence (jamais d'avis médical).` : ''}
 
-Réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, aucune balise markdown), EXACTEMENT cette forme :
+ÉTAPE 1 — CONTRÔLE DES PHOTOS (obligatoire, avant toute lecture) : pour chaque vue reçue, "qualite_photos" dit "ok" ou "insuffisante" avec la raison courte (flou, contre-jour, tenue trop ample, cadrage incomplet, posture non relâchée, vue illisible). Une vue "insuffisante" n'est PAS utilisée : aucun constat n'en est tiré. Si AUCUNE vue n'est "ok" : "analysable" = false, et tous les autres champs restent vides (chaînes vides, listes vides).
+ÉTAPE 2 — LECTURE (seulement sur les vues "ok").
+Chaque priorité porte "zone" = la zone de l'app qu'elle concerne : fessiers, jambes, pectoraux, dos, epaules, bras, abdos, ou "aucune" si elle ne correspond à aucune (posture, mobilité…).
+Réponds avec un objet JSON de cette forme :
 {
+ "qualite_photos": [ {"vue":"face|profil|dos","statut":"ok|insuffisante","raison":"courte raison, vide si ok"} ],
+ "analysable": true,
  "morphotype": "une courte phrase (type de carrure / répartition de la masse)",
- "synthese": [ {"t":"constat général","c":"visible|probable|mesure"} ],
+ "synthese": [ {"t":"constat général","c":"visible|probable|mesure_fournie|a_mesurer"} ],
  "equilibre": [ {"g":"nom du groupe musculaire","n":"développé|correct|moyen|en retard","ton":"good|warn|bad"} ],
- "posture": [ {"t":"observation posturale","c":"visible|probable|mesure"} ],
- "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"]} ],
+ "posture": [ {"t":"observation posturale","c":"visible|probable|mesure_fournie|a_mesurer"} ],
+ "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"],"zone":"fessiers|jambes|pectoraux|dos|epaules|bras|abdos|aucune"} ],
  "reco": "une phrase de synthèse actionnable",
  "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les segments/mensurations fournis apportent"
 }
@@ -7722,7 +7782,8 @@ N'inclus PAS de recommandations d'exercices basées sur les LEVIERS (longueurs d
 
 RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au format demandé :
 - Base tes constats sur des PRINCIPES RECONNUS (biomécanique, correctif postural, pratique de la musculation). N'INVENTE RIEN.
-- Niveau de confiance OBLIGATOIRE sur chaque constat de "synthese" et "posture" : "visible" (clair sur la photo), "probable" (tendance à confirmer), "mesure" (nécessite une mesure).
+- Niveau de confiance OBLIGATOIRE sur chaque constat de "synthese" et "posture" : "visible" (clair sur la photo), "probable" (tendance à confirmer), "mesure_fournie" (le constat s'appuie sur une mesure FOURNIE par l'athlète), "a_mesurer" (il faudrait une mesure qui n'a pas été fournie).
+- N'effectue AUCUN calcul (pourcentage, rapport, différence, moyenne) : cite uniquement les valeurs fournies, telles quelles. Les rapports entre segments sont calculés séparément par Novalyz.
 - AUCUN chiffre inventé : jamais de % de masse grasse ni de longueur de segment estimée. Les proportions/longueurs ne sont affirmées QUE si des mensurations sont fournies ; sinon confiance "mesure" et dis-le dans "mesures".
 - Pas de jugement esthétique ni sur le poids / le gras. Ton factuel et bienveillant.
 - Tu n'es PAS médecin : aucun diagnostic. Un doute postural → formule « à confirmer par un bilan de mouvement ».
@@ -7734,8 +7795,10 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1800, system, messages: [{ role: 'user', content }] }),
+      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+      // 15/11 : Fable 5.2 (raisonnement toujours actif, compté dans max_tokens → 16000), effort « high », schéma strict,
+      // reprise serveur si refus (fallbacks « default »).
+      body: JSON.stringify({ model: MORPHO_MODELE, max_tokens: 16000, output_config: { effort: 'high', format: { type: 'json_schema', schema: MORPHO_SCHEMA } }, fallbacks: 'default', system, messages: [{ role: 'user', content }] }),
     })
     const j = await r.json()
     if (!r.ok) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." }) }
@@ -7756,6 +7819,13 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
     resultat = JSON.parse(s)
   } catch (_) { resultat = null }
 
+  // 15/11 : aucune vue exploitable → pas d'analyse, quota RENDU, message de reprise des photos (spec ia-morpho §3.1 point 3).
+  if (resultat && resultat.analysable === false) {
+    await _quotaRendre(athlete_id, 'morpho', jour, resaM)
+    const ko = (Array.isArray(resultat.qualite_photos) ? resultat.qualite_photos : []).filter((q: any) => q && q.statut === 'insuffisante').map((q: any) => `${q.vue} : ${q.raison || 'inexploitable'}`)
+    return jsonResp({ success: true, photos_insuffisantes: true, qualite_photos: resultat.qualite_photos || [], analyse: `Photos inexploitables (${ko.join(' · ') || 'aucune vue lisible'}). Reprends-les face à la lumière, tenue près du corps, corps entier dans le cadre. Ton analyse du jour n'a pas été décomptée.` })
+  }
+  if (resultat) { (resultat as any).modele = MORPHO_MODELE; (resultat as any).consigne = MORPHO_PROMPT_VERSION }
   // Recos d'exercices DÉTERMINISTES (leviers + antécédents) attachées au résultat.
   // Source de vérité = les règles ci-dessus, pas l'IA.
   if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }
