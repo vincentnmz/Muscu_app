@@ -4,6 +4,11 @@
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
 > Dernière mise à jour : **14 nov. 2026 soir** (prod A–E + douleur, puis gel du code — blocs juste en dessous).
 
+## ▶ 15/11 — IA morpho + chat en Opus 5.5 : EN PRÉPROD pour le pilote (gel levé pour cette seule fonctionnalité)
+
+- Clé `ANTHROPIC_API_KEY` en préprod uniquement (retirée de la prod, aucune utilisation prod). Spec + état : `docs/chantiers-futurs/ia-morpho-programme-2026-11.md` §10-§11.
+- Testeurs (1-2) : sur **/dev/** (préprod), pas en prod. Prod seulement après le pilote (M1-M7) et `privacy.html`.
+
 ## ▶ PROD 14/11 soir (20:32 UTC) — A–E + douleur (R7, H, D2) EN PROD · GEL DU CODE
 
 - `main` = `9537ff1` (fusion dev, contenu identique à dev) · front prod **SW v599** (vérifié servi par app.novalyz.fr) ·

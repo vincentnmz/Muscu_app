@@ -155,3 +155,19 @@ aux testeurs en même temps, le dire avant l'étape 5 (le couper demande une pet
 - La clé avait d'abord été mise **en prod par erreur** → à supprimer du projet prod (demandé au porteur). Aucune utilisation de l'IA en
   prod constatée (table `quotas_jour` vide depuis le 14/11).
 - L'analyse morpho reste sur le code actuel (Sonnet 5.5) jusqu'au code de la spec, après la période d'observation.
+
+## 11. Réalisé le 15/11 (préprod uniquement — gel levé pour cette seule fonctionnalité, décision porteur)
+
+- **Modèle** : Claude Opus 5.5 pour le chat IA et l'analyse morpho (`IA_MODELE`). Chat : effort medium, max 4000 ; morpho : effort high, max 8000.
+- **Morpho** : 18 ans et plus (date de naissance du compte, rien consommé sinon) ; **sortie au schéma JSON strict** ; contrôle des photos
+  vue par vue (aucune vue exploitable → pas d'analyse, analyse du jour rendue) ; priorités reliées aux zones ; modèle + version de consigne
+  (`morpho-2026-11-15`) joints au résultat ; photos jamais stockées (inchangé).
+- **App** : vues écartées affichées ; bloc « Zones prioritaires → programme » avec les chiffres des séances (◆ moteur, jamais l'IA), zone déjà
+  à l'optimum non pré-cochée ; « Construire mon programme avec ces zones » → zones enregistrées → **générateur Novalyz** (validation requise) ;
+  athlète dont le coach a la main → « parle-lui de ces priorités » ; consentement complété.
+- **Vérifié en préprod (vrais appels)** : chat Opus ~5 s ; morpho sur image grise → refusée avec la raison, analyse rendue ; serveur préprod
+  = commit (vérifié caractère pour caractère).
+- **Défaut trouvé et corrigé** : le chat ne recevait que 3 exercices bloqués dans un ordre quelconque → réponse « le plus bloqué » fausse ;
+  désormais tous (6 max), triés du plus long au plus court ; revérifié sur un 2ᵉ compte : juste.
+- **Pas encore fait** : explication IA du programme généré (§3.3 point 3) ; compte rendu visible par le coach (nécessite de stocker le
+  résultat, sans photo) ; protocole M1-M7 (pilote) avec de vraies photos de testeurs.
