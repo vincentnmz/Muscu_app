@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — Analyse morpho IA + programme</title>
+<style>
+  :root {
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --muted:#4A5980; --subtle:#8595B8; --accent:#1A5FFF;
+    --good:#00A854; --good-a:rgba(0,168,84,.12); --warn:#E07800; --warn-a:rgba(224,120,0,.12);
+    --bad:#DC3545; --bad-a:rgba(220,53,69,.10); --acc-a:rgba(26,95,255,.08);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#E6ECFA; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--text); }
+  h1 { font-size:20px; margin:24px 24px 4px; }
+  .lead { margin:0 24px 18px; color:var(--muted); font-size:13px; max-width:1100px; line-height:1.5; }
+  .row { display:flex; gap:22px; flex-wrap:wrap; padding:0 24px 32px; align-items:flex-start; }
+  .phone { width:360px; background:var(--bg); border:1px solid var(--border); border-radius:28px; overflow:hidden; box-shadow:0 10px 30px rgba(20,40,90,.12); }
+  .cap { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); padding:12px 18px 0; }
+  .top { padding:6px 18px 12px; border-bottom:1px solid var(--border); background:var(--surface); }
+  .top b { font-size:17px; } .top div { font-size:12px; color:var(--muted); margin-top:2px; }
+  .body { padding:14px 14px 18px; display:flex; flex-direction:column; gap:10px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 13px; font-size:13px; line-height:1.45; }
+  .sec { font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .btn { display:block; text-align:center; background:var(--accent); color:#fff; font-weight:700; border-radius:12px; padding:11px; font-size:14px; }
+  .btn.ghost { background:var(--surface2); color:var(--accent); }
+  .views { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .view { border:2px dashed var(--border); border-radius:12px; height:118px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; color:var(--muted); gap:6px; background:var(--surface); }
+  .view.ok { border:2px solid var(--good); background:var(--good-a); color:var(--good); }
+  .view.ko { border:2px solid var(--warn); background:var(--warn-a); color:var(--warn); }
+  .sil { width:34px; height:64px; border-radius:16px 16px 8px 8px; background:currentColor; opacity:.35; }
+  ul { margin:4px 0 0; padding-left:16px; } li { margin:3px 0; }
+  .chk { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; margin-top:6px; }
+  .box { width:16px; height:16px; border-radius:4px; border:2px solid var(--accent); flex:none; margin-top:1px; display:grid; place-items:center; color:#fff; font-size:11px; }
+  .box.on { background:var(--accent); }
+  .badge { display:inline-block; font-size:10px; font-weight:800; padding:1px 7px; border-radius:20px; margin-left:4px; vertical-align:1px; }
+  .b-vis { background:var(--good-a); color:var(--good); } .b-pro { background:var(--warn-a); color:var(--warn); } .b-mes { background:var(--surface2); color:var(--muted); }
+  .line { display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid var(--border); font-size:12.5px; }
+  .line:first-of-type { border-top:0; }
+  .pill { font-size:11px; font-weight:800; padding:1px 8px; border-radius:20px; white-space:nowrap; }
+  .p-good { background:var(--good-a); color:var(--good); } .p-warn { background:var(--warn-a); color:var(--warn); } .p-bad { background:var(--bad-a); color:var(--bad); }
+  .data { background:var(--acc-a); border-color:rgba(26,95,255,.25); }
+  .note { font-size:11px; color:var(--subtle); }
+  .zone { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid var(--border); border-radius:11px; margin-top:6px; background:var(--surface); font-size:13px; }
+  .zone.on { border-color:var(--accent); background:var(--acc-a); }
+  .zone small { display:block; color:var(--muted); font-size:11.5px; }
+  .day { display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0; border-top:1px solid var(--border); }
+  .day:first-of-type { border-top:0; }
+  .star { color:var(--accent); font-weight:800; }
+  .warnbox { background:var(--warn-a); border-color:rgba(224,120,0,.35); }
+  .legend { margin:0 24px 30px; font-size:12px; color:var(--muted); max-width:1100px; line-height:1.55; }
+</style>
+</head>
+<body>
+<h1>Analyse morpho IA → compte rendu → programme (maquette, données fictives)</h1>
+<p class="lead">Spec : <code>docs/chantiers-futurs/ia-morpho-programme-2026-11.md</code>. L'IA (Claude Opus 5.5) <b>lit les photos et explique</b> ;
+le <b>programme vient du générateur Novalyz</b> (zones prioritaires choisies par l'athlète) ; les <b>chiffres viennent des données</b>.
+Badges : <span class="badge b-vis">visible</span> clair sur la photo · <span class="badge b-pro">probable</span> à confirmer · <span class="badge b-mes">à mesurer</span>.</p>
+
+<div class="row">
+
+  <!-- 1. Démarrer -->
+  <div class="phone">
+    <div class="cap">① Démarrer</div>
+    <div class="top"><b>Analyse morpho</b><div>3 photos · environ 1 minute · 1 analyse par jour</div></div>
+    <div class="body">
+      <div class="card">
+        <div class="sec">Pour une lecture fiable</div>
+        <ul>
+          <li>Lumière de face, pas de contre-jour</li>
+          <li>Tenue près du corps (short, brassière ou torse nu)</li>
+          <li>Téléphone à hauteur de poitrine, corps entier dans le cadre</li>
+          <li>Debout, relâché, bras le long du corps</li>
+        </ul>
+      </div>
+      <div class="views">
+        <div class="view"><div class="sil"></div>Face</div>
+        <div class="view"><div class="sil"></div>Profil</div>
+        <div class="view"><div class="sil"></div>Dos</div>
+      </div>
+      <div class="card">
+        <div class="sec">Mesures de segments (facultatif)</div>
+        Bras, avant-bras, fémur, tibia, tronc… <b>rendent l'analyse plus précise</b> sur les proportions. Sans elles, Novalyz ne devine aucune longueur.
+      </div>
+      <div class="card">
+        <div class="sec">Ton accord</div>
+        <div class="chk"><span class="box on">✓</span><span>J'accepte que mes photos, mon sexe et mes mesures soient envoyés à notre service d'IA (Anthropic) <b>uniquement pour cette analyse</b>.</span></div>
+        <div class="chk"><span class="box"></span><span>Garder mes photos dans « Photos &amp; mensurations » (sinon elles sont effacées après l'analyse).</span></div>
+      </div>
+      <span class="btn">Lancer l'analyse</span>
+      <div class="note">Lecture de photos, pas une mesure. Aucun diagnostic médical.</div>
+    </div>
+  </div>
+
+  <!-- 2. Contrôle photo -->
+  <div class="phone">
+    <div class="cap">② Contrôle des photos</div>
+    <div class="top"><b>Vérification avant analyse</b><div>Aucune analyse sur une photo inexploitable</div></div>
+    <div class="body">
+      <div class="views">
+        <div class="view ok"><div class="sil"></div>Face ✓</div>
+        <div class="view ko"><div class="sil"></div>Profil ⚠</div>
+        <div class="view ok"><div class="sil"></div>Dos ✓</div>
+      </div>
+      <div class="card warnbox">
+        <div class="sec" style="color:var(--warn)">Photo de profil insuffisante</div>
+        Contre-jour : la silhouette n'est pas lisible. <b>Reprends-la face à la lumière.</b><br>
+        <span class="note">Sans profil, la posture (dos, bassin) ne sera pas analysée.</span>
+      </div>
+      <span class="btn">Reprendre la photo de profil</span>
+      <span class="btn ghost">Continuer sans le profil</span>
+      <div class="note">Ton analyse du jour n'est pas consommée tant que rien n'a été analysé.</div>
+    </div>
+  </div>
+
+  <!-- 3. Compte rendu -->
+  <div class="phone">
+    <div class="cap">③ Compte rendu</div>
+    <div class="top"><b>Ta lecture morpho</b><div>14/11 · 3 vues · Claude Opus 5.5 · consigne v1</div></div>
+    <div class="body">
+      <div class="card">
+        <div class="sec">Vue d'ensemble</div>
+        Carrure plutôt en V, haut du corps plus développé que le bas.
+      </div>
+      <div class="card">
+        <div class="sec">Constats</div>
+        Épaules larges par rapport aux hanches <span class="badge b-vis">visible</span><br>
+        Haut du dos moins dense que les épaules <span class="badge b-pro">probable</span><br>
+        Proportions des jambes <span class="badge b-mes">à mesurer</span>
+      </div>
+      <div class="card">
+        <div class="sec">Équilibre par groupe (photos)</div>
+        <div class="line"><span>Épaules</span><span class="pill p-good">développé</span></div>
+        <div class="line"><span>Dos</span><span class="pill p-warn">moyen</span></div>
+        <div class="line"><span>Fessiers</span><span class="pill p-bad">en retard</span></div>
+        <div class="line"><span>Quadriceps</span><span class="pill p-warn">moyen</span></div>
+      </div>
+      <div class="card data">
+        <div class="sec" style="color:var(--accent)">Ce que Novalyz sait déjà (tes données, pas l'IA)</div>
+        Fessiers : <b>4,5 séries/sem</b> sur 4 semaines (minimum 10).<br>
+        Dos : <b>16 séries/sem</b>, déjà dans ta zone → priorité = exécution, pas plus de séries.
+      </div>
+      <div class="card">
+        <div class="sec">Posture</div>
+        Légère antéversion du bassin <span class="badge b-pro">probable</span> — à confirmer par un bilan de mouvement.
+      </div>
+      <div class="card">
+        <div class="sec">À mesurer pour fiabiliser</div>
+        Longueur du fémur et du tibia (proportions des jambes) · tour de cuisse.
+      </div>
+      <div class="note">Lecture de photos, pas une mesure. Aucun % de masse grasse, aucun diagnostic.</div>
+    </div>
+  </div>
+
+  <!-- 4. Priorités → programme -->
+  <div class="phone">
+    <div class="cap">④ Priorités → programme</div>
+    <div class="top"><b>Ton programme proposé</b><div>Construit par le générateur Novalyz · tu valides</div></div>
+    <div class="body">
+      <div class="card">
+        <div class="sec">Zones prioritaires (2 maximum)</div>
+        <div class="zone on"><span class="box on">✓</span><span>Fessiers<small>en retard sur photo · 4,5 séries/sem (min. 10)</small></span></div>
+        <div class="zone on"><span class="box on">✓</span><span>Jambes<small>quadriceps moyens sur photo</small></span></div>
+        <div class="zone"><span class="box"></span><span>Dos<small>déjà dans ta zone de volume</small></span></div>
+      </div>
+      <div class="card">
+        <div class="sec">Programme · Upper / Lower · 4 jours · 60 min</div>
+        <div class="day"><span>Lundi — Bas <span class="star">★</span></span><span>6 exercices</span></div>
+        <div class="day"><span>Mardi — Haut</span><span>6 exercices</span></div>
+        <div class="day"><span>Jeudi — Bas <span class="star">★</span></span><span>6 exercices</span></div>
+        <div class="day"><span>Samedi — Haut</span><span>6 exercices</span></div>
+        <div class="note" style="margin-top:6px">★ zone prioritaire : minimum de volume relevé (fessiers 10 → 13 séries/sem).</div>
+      </div>
+      <div class="card">
+        <div class="sec">Pourquoi ce programme (IA)</div>
+        Tes photos montrent des fessiers en retard et tes séances le confirment (4,5 séries/sem). Le programme prévoit 2 séances du bas par semaine
+        et place les fessiers en premier dans chacune. Ton dos est déjà bien travaillé : on garde son volume actuel.
+      </div>
+      <span class="btn">Valider ce programme</span>
+      <span class="btn ghost">Ajuster dans l'éditeur</span>
+      <div class="note">Rien n'est appliqué sans ta validation. Suivi par un coach : la proposition va d'abord à ton coach.</div>
+    </div>
+  </div>
+
+</div>
+<p class="legend"><b>Règles visibles dans la maquette</b> : badge de confiance sur chaque constat · photo inexploitable = pas d'analyse (② ) ·
+chiffres uniquement dans le bloc « tes données » et le programme (③ ④) · cohérence photo ↔ données (dos déjà dans la zone → pas de séries en plus) ·
+programme construit par le générateur avec les zones choisies par l'athlète, l'IA ne fait qu'expliquer · validation obligatoire.</p>
+</body>
+</html>
