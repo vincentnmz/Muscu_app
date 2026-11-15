@@ -7566,8 +7566,8 @@ ${ctxTxt}`
 const MORPHO_QUOTA_JOUR = 1
 // 15/11 (spec ia-morpho §3.1) : version de la consigne (traçabilité) + schéma de sortie STRICT (sorties structurées Claude :
 // JSON toujours valide et complet). Zones = mêmes clés que ZONES_PRIO (fessiers … abdos) + « aucune ».
-const MORPHO_PROMPT_VERSION = 'morpho-2026-11-15'
-const _MS_CONF = { type: 'string', enum: ['visible', 'probable', 'mesure'] }
+const MORPHO_PROMPT_VERSION = 'morpho-2026-11-15b'
+const _MS_CONF = { type: 'string', enum: ['visible', 'probable', 'mesure_fournie', 'a_mesurer'] }   // 15/11 : « mesure » était ambigu (badge « À mesurer » sur une mesure fournie)
 const _MS_TXT = (props: Record<string, any>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false })
 const MORPHO_SCHEMA = _MS_TXT({
   qualite_photos: { type: 'array', items: _MS_TXT({ vue: { type: 'string', enum: ['face', 'profil', 'dos'] }, statut: { type: 'string', enum: ['ok', 'insuffisante'] }, raison: { type: 'string' } }) },
@@ -7663,6 +7663,19 @@ function recoMorphoExercices(seg: any, q: any): any[] {
   if (has('cardiaque') || has('hta') || has('asthme')) out.push({ t: 'Garde-fou — cœur / tension / respiration', d: 'Éviter l’hyperpression (blocage respiratoire) : respire, séries modérées, récup suffisante. Avis médical recommandé.', bons: ['Séries 8–15 reps', 'Récupération suffisante', 'Cardio progressif'], eviter: ['Charges maximales en apnée (Valsalva)', 'Isométries longues maximales'], src: 'antecedent' })
   if (has('prothese')) out.push({ t: 'Garde-fou — arthrose / prothèse', d: 'Travail sans douleur, amplitudes maîtrisées, machines guidées.', bons: ['Machines guidées', 'Amplitudes confortables'], eviter: ['Chocs / sauts', 'Amplitudes extrêmes douloureuses'], src: 'antecedent' })
   if (has('chirurgie') || has('blessure')) out.push({ t: 'Garde-fou — zone en récupération', d: 'Reprise progressive sur la zone concernée, sans douleur ; suis les consignes du pro qui te suit.', bons: ['Charges légères progressives', 'Amplitude indolore', 'Renforcement contrôlé'], eviter: ['Charges lourdes sur la zone', 'Mouvements douloureux'], src: 'antecedent' })
+  // 15/11 (constaté en préprod) : avec un antécédent dos, les cartes « leviers » recommandaient encore back squat, soulevé de
+  // terre, rack pull… en contradiction avec le garde-fou du même compte rendu. Les charges axiales lourdes sont retirées
+  // des « bons » choix des cartes leviers (le garde-fou dit pourquoi), sans rien inventer d'autre.
+  if (has('hernie') || has('disque') || has('sciatique')) {
+    const AXIAL = /squat|soulevé|rack pull|good morning|deadlift/i, LEGER = /gobelet/i   // squat gobelet : recommandé par le garde-fou lui-même
+    out.forEach((e: any) => {
+      if (e.src !== 'mesure' && e.src !== 'piste') return
+      const retires = (e.bons || []).filter((x: string) => AXIAL.test(x) && !LEGER.test(x))
+      if (!retires.length) return
+      e.bons = (e.bons || []).filter((x: string) => !(AXIAL.test(x) && !LEGER.test(x)))
+      e.d = String(e.d || '') + ' Mis de côté tant que ton dos n\'est pas validé par un professionnel (voir garde-fou dos / colonne) : ' + retires.join(', ') + '.'
+    })
+  }
   if (femmeFlags.indexOf('grossesse') >= 0 || femmeFlags.indexOf('postpartum') >= 0) out.push({ t: 'Garde-fou — grossesse / post-partum', d: 'Priorité sécurité : avis médical / sage-femme requis (rien de médical ici).', bons: ['Renforcement doux', 'Plancher pelvien', 'Travail debout'], eviter: ['Décubitus dorsal prolongé', 'Hyperpression abdominale', 'Charges maximales'], src: 'antecedent' })
 
   return out
@@ -7745,9 +7758,9 @@ Réponds avec un objet JSON de cette forme :
  "qualite_photos": [ {"vue":"face|profil|dos","statut":"ok|insuffisante","raison":"courte raison, vide si ok"} ],
  "analysable": true,
  "morphotype": "une courte phrase (type de carrure / répartition de la masse)",
- "synthese": [ {"t":"constat général","c":"visible|probable|mesure"} ],
+ "synthese": [ {"t":"constat général","c":"visible|probable|mesure_fournie|a_mesurer"} ],
  "equilibre": [ {"g":"nom du groupe musculaire","n":"développé|correct|moyen|en retard","ton":"good|warn|bad"} ],
- "posture": [ {"t":"observation posturale","c":"visible|probable|mesure"} ],
+ "posture": [ {"t":"observation posturale","c":"visible|probable|mesure_fournie|a_mesurer"} ],
  "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"],"zone":"fessiers|jambes|pectoraux|dos|epaules|bras|abdos|aucune"} ],
  "reco": "une phrase de synthèse actionnable",
  "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les segments/mensurations fournis apportent"
@@ -7759,7 +7772,8 @@ N'inclus PAS de recommandations d'exercices basées sur les LEVIERS (longueurs d
 
 RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au format demandé :
 - Base tes constats sur des PRINCIPES RECONNUS (biomécanique, correctif postural, pratique de la musculation). N'INVENTE RIEN.
-- Niveau de confiance OBLIGATOIRE sur chaque constat de "synthese" et "posture" : "visible" (clair sur la photo), "probable" (tendance à confirmer), "mesure" (nécessite une mesure).
+- Niveau de confiance OBLIGATOIRE sur chaque constat de "synthese" et "posture" : "visible" (clair sur la photo), "probable" (tendance à confirmer), "mesure_fournie" (le constat s'appuie sur une mesure FOURNIE par l'athlète), "a_mesurer" (il faudrait une mesure qui n'a pas été fournie).
+- N'effectue AUCUN calcul (pourcentage, rapport, différence, moyenne) : cite uniquement les valeurs fournies, telles quelles. Les rapports entre segments sont calculés séparément par Novalyz.
 - AUCUN chiffre inventé : jamais de % de masse grasse ni de longueur de segment estimée. Les proportions/longueurs ne sont affirmées QUE si des mensurations sont fournies ; sinon confiance "mesure" et dis-le dans "mesures".
 - Pas de jugement esthétique ni sur le poids / le gras. Ton factuel et bienveillant.
 - Tu n'es PAS médecin : aucun diagnostic. Un doute postural → formule « à confirmer par un bilan de mouvement ».

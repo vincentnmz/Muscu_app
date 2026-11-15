@@ -11801,10 +11801,11 @@ function _morphoRender(d) {
     c = String(c || '').toLowerCase();
     if (c === 'visible') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Visible</span>';
     if (c === 'probable') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(224,120,0,.16);color:var(--warn)">À confirmer</span>';
-    if (c === 'mesure') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text-subtle)">À mesurer</span>';
+    if (c === 'mesure_fournie') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--accent-a12,rgba(26,95,255,.12));color:var(--accent)">Mesuré</span>';   // 15/11 : mesure fournie ≠ à mesurer
+    if (c === 'mesure' || c === 'a_mesurer') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text-subtle)">À mesurer</span>';
     return '';
   }
-  function dotCol(c) { c = String(c || '').toLowerCase(); return c === 'visible' ? 'var(--good)' : c === 'mesure' ? 'var(--text-subtle)' : 'var(--warn)'; }
+  function dotCol(c) { c = String(c || '').toLowerCase(); return c === 'visible' ? 'var(--good)' : c === 'mesure_fournie' ? 'var(--accent)' : (c === 'mesure' || c === 'a_mesurer') ? 'var(--text-subtle)' : 'var(--warn)'; }
   function barW(n) { n = String(n || '').toLowerCase(); return n.indexOf('dévelop') >= 0 ? 82 : n === 'correct' ? 66 : n === 'moyen' ? 50 : n.indexOf('retard') >= 0 ? 36 : 55; }
   function tonCol(t) { t = String(t || '').toLowerCase(); return t === 'good' ? 'var(--good)' : t === 'bad' ? 'var(--bad)' : 'var(--warn)'; }
   var card = function (title, inner) { return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px;margin-bottom:11px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text-subtle);margin-bottom:9px">' + title + '</div>' + inner + '</div>'; };
