@@ -11793,6 +11793,7 @@ async function _morphoVersProgramme() {
   // 15/11 : antécédent dos déclaré dans la morpho (hernie, disque, sciatique) → le générateur écarte les charges axiales
   // lourdes (squat barre, soulevé de terre…) quand une variante existe — même règle que les pistes de l'analyse (serveur).
   try { var _ant = (_morphoQ && _morphoQ.antecedents) || []; _g2DosArme = _ant.indexOf('hernie') >= 0 || _ant.indexOf('disque') >= 0 || _ant.indexOf('sciatique') >= 0; } catch (e) { _g2DosArme = false; }
+  try { _g2HancheArme = ((_morphoQ && _morphoQ.antecedents) || []).indexOf('hanche') >= 0; } catch (e) { _g2HancheArme = false; }
   fermerMorpho();
   try { if (typeof ouvrirGenProgramme === 'function') ouvrirGenProgramme(); } catch (e) {}
 }
@@ -21240,7 +21241,7 @@ function _g2Allouer(days, cap, sets, vol, niveau) {
 }
 // Hypertrophie / organisation → lignes genererProgramme.
 // vol (facultatif) = { targets: { Muscle: {min, opt}, _defaut: {min, opt} }, cat: catalogue } → répartition P3.
-var _g2DosArme = false;
+var _g2DosArme = false, _g2HancheArme = false;
 // Charge axiale lourde sur la colonne (même liste que le serveur, recoMorphoExercices) — le gobelet reste permis.
 function _g2AxialLourd(e) { return /^squat$|soulev[ée] de terre|rack pull|good morning|deadlift/i.test(String(e || '')) && !/gobelet/i.test(String(e || '')); }
 function _genProgramme2(objectif, organisation, jours, temps, niveau, vol) {
@@ -21348,8 +21349,8 @@ function ouvrirGenProgramme() {
   var _nivIni = 'debutant'; try { var _dn = _gc.coach ? coachAthleteData : dernierAppData; var _ne = _dn && _dn.niveau_experience;
     if (!_ne) { var _ann = _gc.coach ? (coachAthleteCourant && coachAthleteCourant.annees_pratique) : (athlete && athlete.annees_pratique); if (_ann != null && _ann !== '') _ne = getNiveauExperience(_ann); }
     if (_ne === 'intermediaire') _nivIni = 'intermediaire'; else if (_ne === 'avance' || _ne === 'expert') _nivIni = 'avance'; } catch (e) {}
-  _genState = { niv: _nivIni, nivFixe: !_gc.coach, obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni, exclus: _exIni, dos: !!_g2DosArme };
-  _g2DosArme = false;
+  _genState = { niv: _nivIni, nivFixe: !_gc.coach, obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0, zones: _zIni, exclus: _exIni, dos: !!_g2DosArme, hanche: !!_g2HancheArme };
+  _g2DosArme = false; _g2HancheArme = false;
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -21369,7 +21370,7 @@ function ouvrirGenProgramme() {
   try { document.body.classList.add('gen-open'); } catch (e) {}
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { chargerExercices().then(_genRender); } else { _genRender(); }
 }
-function fermerGenProgramme() { try { if (_genState) _genState.dos = false; } catch (e) {} var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('gen-open'); } catch (e) {} if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
+function fermerGenProgramme() { try { if (_genState) { _genState.dos = false; _genState.hanche = false; } } catch (e) {} var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('gen-open'); } catch (e) {} if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
 // « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
 // (Reste toujours accessible via le bouton « Novalyz me propose un programme ».)
 function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
@@ -21436,7 +21437,8 @@ function _g2ZonesHtml(st) {
   return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">Zones à développer en priorité <span style="text-transform:none;letter-spacing:0;font-weight:700">· 2 max</span></div>'
     + _zpChipsHtml(z, '_g2Zone')
     + '<div style="font-size:11.5px;color:var(--text-subtle);margin:7px 2px 2px;line-height:1.45">Rien n\'est choisi d\'avance : c\'est toi qui dis. Une zone prioritaire vise le haut de ta fourchette' + ex + ' et reçoit un exercice de plus.</div>'
-    + (st.dos ? '<div style="font-size:11.5px;color:var(--text);background:var(--surface-2,rgba(0,0,0,.04));border-radius:10px;padding:8px 10px;margin:8px 2px 2px;line-height:1.45"><b>Dos :</b> tu as signalé un antécédent (morpho). Le squat barre et le soulevé de terre sont remplacés par des variantes moins chargées pour la colonne (ex. hack squat), à valider avec ton kiné.' + (st.but === 'force' ? ' <b>Attention : le programme Force repose sur ces mouvements — préfère un autre objectif.</b>' : '') + '</div>' : '');
+    + (st.dos ? '<div style="font-size:11.5px;color:var(--text);background:var(--surface-2,rgba(0,0,0,.04));border-radius:10px;padding:8px 10px;margin:8px 2px 2px;line-height:1.45"><b>Dos :</b> tu as signalé un antécédent (morpho). Le squat barre et le soulevé de terre sont remplacés par des variantes moins chargées pour la colonne (ex. hack squat), à valider avec ton kiné.' + (st.but === 'force' ? ' <b>Attention : le programme Force repose sur ces mouvements — préfère un autre objectif.</b>' : '') + '</div>' : '')
+    + (st.hanche ? '<div style="font-size:11.5px;color:var(--text);background:var(--surface-2,rgba(0,0,0,.04));border-radius:10px;padding:8px 10px;margin:8px 2px 2px;line-height:1.45"><b>Hanche :</b> tu as signalé un problème de hanche (morpho). Sur les squats, la presse et les fentes, reste dans l\'amplitude sans douleur (pas de flexion profonde, cuisse vers la poitrine) ; ajuste les exercices dans le programme si besoin, à valider avec ton médecin ou ton kiné.</div>' : '');
 }
 function _g2Zone(k) { _genState.zones = _zpToggle(_genState.zones, k); _genState.garde = null; _genRender(); }
 // Option b (03/11) : la plus petite modification (durée, jour, organisation) qui fait atteindre tous les minimums.
