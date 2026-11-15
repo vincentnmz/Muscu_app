@@ -144,3 +144,14 @@ aux testeurs en même temps, le dire avant l'étape 5 (le couper demande une pet
   différents) ;
 - M2 / M7 : **rapportés** (avis du coach et des testeurs, cas par cas), sans conclusion générale ;
 - la prod reste limitée aux testeurs tant qu'un échantillon plus large n'a pas validé M2 / M7.
+
+## 10. Mise en place de la clé — état (15/11)
+
+- Console Anthropic : compte individuel (renommage = conversion en organisation d'équipe, non nécessaire) ; espaces **Novalyz Préprod**
+  et **Novalyz Prod** créés ; pas de plafond en argent par espace sur ce type de compte → protection = **crédit prépayé sans recharge
+  automatique** (+ limites de tokens en préprod).
+- Clé `ANTHROPIC_API_KEY` **en préprod** : vérifiée par Claude sans voir la clé — `ia_active: true`, chat IA (Haiku 5.5) répond en ~4 s,
+  réponse exacte au contrôle (0 séance cette semaine, objectif 4, dernière séance 05/11 — conforme à la base préprod).
+- La clé avait d'abord été mise **en prod par erreur** → à supprimer du projet prod (demandé au porteur). Aucune utilisation de l'IA en
+  prod constatée (table `quotas_jour` vide depuis le 14/11).
+- L'analyse morpho reste sur le code actuel (Sonnet 5.5) jusqu'au code de la spec, après la période d'observation.
