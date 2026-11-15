@@ -2117,6 +2117,12 @@ function buildRespectProgramme(programme: any[], seancesDetail: any[], perfs: an
   return { nCible, nEval, nOk }
 }
 function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any, extras?: any): any {
+  function _volNonComparable(nCur: any, nPrev: any, pausePrev: number): string {
+    const sx = (n: number) => n + ' séance' + (n > 1 ? 's' : '')
+    if (typeof nPrev === 'number' && nPrev < 3) return `Trop peu de séances pour juger l'évolution de ton volume${typeof nCur === 'number' ? ` (${sx(nCur)} ces 4 dernières semaines, ${sx(nPrev)} les 4 précédentes)` : ''} : il en faut au moins 3 sur chaque période.`
+    if (pausePrev >= 10) return `Ta période de comparaison (les 4 semaines précédentes) contient une pause de ${pausePrev} jours : l'évolution de ton volume n'est pas comparable pour l'instant.`
+    return `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).`
+  }
   // Normalisé SANS accents : des valeurs héritées existent (« séche » vs « sèche »),
   // la détection doit rester robuste à l'orthographe (sinon le cadrage saute).
   const obj = String(objectif || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -2175,9 +2181,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     }
   } else if (tonEvolRaw != null) {
     // Une évolution existe mais la base est trop courte pour l'affirmer honnêtement.
-    constats.push({ ton: 'neutre', texte: pausePrev >= 10
-      ? `Volume ${tonEvolRaw >= 0 ? 'en hausse' : 'en baisse'} sur 4 semaines, mais la période de comparaison inclut une pause de ${pausePrev} jours : l'évolution n'est pas représentative.`
-      : `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).` })
+    // 15/11 (retour testeur, cas réel : 1 séance vs 1 séance) : on ne nomme AUCUNE tendance (« en hausse ») quand la
+    // comparaison n'est pas valable, et la cause citée est la vraie : trop peu de séances d'abord, la pause ensuite.
+    constats.push({ ton: 'neutre', texte: _volNonComparable(nCur, nPrev, pausePrev) })
   }
   // Respect du programme (exécution vs cible charge %1RM / RPE), si des cibles existent.
   if (execCible && execCible.nEval > 0) {
@@ -2290,7 +2296,7 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   // volume_fiable : la comparaison de tonnage 28 j vs 28 j est-elle représentative ? (l'onglet
   // Tendances l'affiche aussi — il doit porter la même réserve que la lecture, audit 30/10).
   const volume_fiable = tonEvol != null
-  const volume_raison = (!volume_fiable && tonEvolRaw != null) ? (pausePrev >= 10 ? `pause de ${pausePrev} jours dans la période précédente` : 'période précédente trop courte') : null
+  const volume_raison = (!volume_fiable && tonEvolRaw != null) ? ((typeof nPrev === 'number' && nPrev < 3) ? `trop peu de séances (${nPrev} sur les 4 semaines précédentes)` : (pausePrev >= 10 ? `pause de ${pausePrev} jours dans la période précédente` : 'période précédente trop courte')) : null
   return { objectif: objectif || null, constats: constats.slice(0, 3), reco, reco_pool, confiance, volume_fiable, volume_raison }
 }
 
@@ -2976,7 +2982,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const ds = [...new Set(perfs.map((r: any) => normDate(r.date)).filter((d: any) => d && d >= c56p))].sort() as string[]
     let prev = c56p
     for (const d of ds) {
-      if (prev < c28p) { const g = (_joursDepuis(prev, new Date(d + 'T12:00:00Z')) ?? 0) - 1; if (g > pausePrevJours) pausePrevJours = g }
+      // 15/11 : seuls les jours DANS la période précédente comptent (une pause qui déborde sur les 4 dernières semaines
+      // est coupée à J-28 — avant, une coupure de 27 j surtout récente était attribuée à la période de comparaison).
+      if (prev < c28p) { const g = d < c28p ? (_joursDepuis(prev, new Date(d + 'T12:00:00Z')) ?? 0) - 1 : (_joursDepuis(prev, new Date(c28p + 'T12:00:00Z')) ?? 0); if (g > pausePrevJours) pausePrevJours = g }
       prev = d
     }
   }

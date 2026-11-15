@@ -73,7 +73,12 @@ check('D: reco toujours présente', !!d.reco);
 // progression, constat « pas assez de recul », confiance moyenne (fiabilité).
 let l = buildSyntheseMuscu('Prise de masse', cmp(500, 0, 6, 1), { recup: 'Bon' }, reg(3, 3));
 check('L: aucune fausse progression de volume', !l.constats.some(c => c.ton === 'positif' && /volume progresse/i.test(c.texte)));
-check('L: constat « pas assez de recul »', l.constats.some(c => /recul/i.test(c.texte)));
+check('L: constat « trop peu de séances » (6 vs 1, au moins 3 par période)', l.constats.some(c => /Trop peu de séances pour juger l'évolution de ton volume \(6 séances ces 4 dernières semaines, 1 séance les 4 précédentes\)/.test(c.texte)));
+// L2 (15/11, cas réel testeur) : 1 séance vs 1 séance + coupure de 27 j → aucune tendance nommée, cause = trop peu de séances.
+let l2 = buildSyntheseMuscu('Prise de masse', cmp(40, 0, 1, 1), { recup: 'Bon' }, reg(3, 3), null, { pausePrevJours: 27 });
+check('L2: pas de « en hausse » sur une comparaison non valable', !l2.constats.some(c => /en hausse|en baisse/i.test(c.texte)));
+check('L2: cause citée = trop peu de séances (pas la pause)', l2.constats.some(c => /Trop peu de séances/.test(c.texte)) && !l2.constats.some(c => /pause/i.test(c.texte)));
+check('L2: volume_raison cohérente', /trop peu de séances \(1 sur les 4 semaines précédentes\)/.test(l2.volume_raison || ''));
 check('L: confiance moyenne (base non fiable)', l.confiance === 'moyenne');
 
 // M — respect du programme (exécution vs cible) intégré à la synthèse
