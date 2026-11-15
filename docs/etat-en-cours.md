@@ -23,6 +23,14 @@ Le moteur a été rendu cohérent (A–E, douleur, R1-R8 au banc). La question s
 `docs/tests-utilisateurs-journal-2026-11.md`). Pas de nouvelle règle ; seules exceptions : un bug bloquant ou une phrase fausse
 constatée en réel (corrigée par le même processus banc → test → préprod → validation).
 
+**À traiter APRÈS la période d'observation (noté le 15/11, décision porteur)** :
+- **« Bloqué depuis N séances » vs graphique** (constaté en réel, compte Vincent, élévation latérale uni à la poulie) : meilleure série
+  7,5 × 11 le 29/10, puis 10, 10, 11 → la règle (pas de nouveau record depuis 4 séances) est **vraie**, mais le graphique commence au
+  02/11 et cache la séance de référence → le texte et le graphique ne montrent pas la même période (l'athlète voit 10 → 10 → 11 et lit
+  une progression). Correction envisagée : citer la séance de référence (« 7,5 × 11 déjà atteint le 29/10, pas dépassé depuis
+  3 séances ») et/ou inclure cette séance dans le graphique. Processus habituel : banc → test → préprod → validation.
+- Cardio proposé par Croisé pendant un pic de charge (chantier séparé, noté le 14/11).
+
 ## ▶ 14/11 soir — Cohérence charge ↔ récupération (A-D) en PRÉPROD · trajectoire force validée
 
 - **Audit charge ↔ récup** (`docs/audit-charge-recuperation-2026-11-14.md`) : A-D validés et codés selon le processus porteur
