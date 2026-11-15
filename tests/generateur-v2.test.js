@@ -16,7 +16,7 @@ const block = SRC.slice(start, end);
 
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(block + '\nthis._G2_BLOCKS=_G2_BLOCKS; this._g2VolLignes=_g2VolLignes; this._g2Mus=_g2Mus; this._genProgramme2=_genProgramme2; this._g2AxialLourd=_g2AxialLourd; this._genProgrammeForce=_genProgrammeForce; this._g2Reps=_g2Reps; this._g2GenDays=_g2GenDays;', sandbox);
+vm.runInContext(block + '\nthis._G2_BLOCKS=_G2_BLOCKS; this._g2VolLignes=_g2VolLignes; this._g2Mus=_g2Mus; this._genProgramme2=_genProgramme2; this._g2AxialLourd=_g2AxialLourd; this._g2Correspond=_g2Correspond; this._genProgrammeForce=_genProgrammeForce; this._g2Reps=_g2Reps; this._g2GenDays=_g2GenDays;', sandbox);
 const gen = sandbox._genProgramme2, force = sandbox._genProgrammeForce, reps = sandbox._g2Reps;
 
 let ok = 0, ko = 0, fails = [];
@@ -138,6 +138,21 @@ check('P3: 4 séries max par exercice (interméd.)', p1.every(function (l) { ret
   check('Dos : le squat barre reste en variante (choix possible, pas supprimé)', Ld.some(function (l) { return (l.variantes || []).indexOf('Squat') >= 0; }));
   check('Dos : même nombre d\'exercices qu\'avant', dos.length === base.length);
   check('Dos : le gobelet n\'est pas considéré comme axial lourd', !sandbox._g2AxialLourd('Squat gobelet'));
+}
+
+// 15/11 — Exercices prescrits par l'analyse morpho : conseillés devant, « à éviter » derrière (catalogue uniquement).
+{
+  const noms = function (L) { return L.map(function (l) { return l.exercice; }); };
+  sandbox._genState = { pref: { fav: ['Hip thrust barre', 'Élévation latérale uni poulie', 'Exercice inventé XYZ'], evi: ['Squat profond sous la parallèle'] } };
+  const P = noms(gen('hypertrophie', 'ul', 4, 60, 'intermediaire'));
+  sandbox._genState = { pref: null };
+  const B = noms(gen('hypertrophie', 'ul', 4, 60, 'intermediaire'));
+  check('Morpho : sans analyse, programme inchangé (témoin contient Squat)', B.indexOf('Squat') >= 0);
+  check('Morpho : « Squat profond » à éviter → le squat barre passe derrière', P.indexOf('Squat') < 0);
+  check('Morpho : « Hip thrust barre » conseillé → Hip thrust prescrit', P.indexOf('Hip thrust') >= 0);
+  check('Morpho : un nom inventé n\'entre jamais dans le programme', !P.some(function (e) { return /XYZ/.test(e); }));
+  check('Morpho : même nombre d\'exercices', P.length === B.length);
+  check('Correspondance : « Hip thrust barre » ↔ « Hip thrust », pas « Curl » ↔ « Curl barre »', sandbox._g2Correspond('Hip thrust', ['Hip thrust barre']) && !sandbox._g2Correspond('Curl', ['Curl barre']));
 }
 
 console.log((ko === 0 ? '✓' : '✗') + ' generateur-v2 : ' + ok + ' OK / ' + ko + ' KO');
