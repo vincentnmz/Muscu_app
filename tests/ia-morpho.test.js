@@ -10,6 +10,9 @@ js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__
 const sb = { createClient: () => ({}), webpush: { setVapidDetails() {} }, Deno: { env: { get: () => 'x' }, serve: () => {} }, Response, Request, URL, URLSearchParams, TextEncoder, TextDecoder, crypto, console, setTimeout, clearTimeout, fetch: async () => ({}) };
 vm.createContext(sb); vm.runInContext(js, sb);
 const { MORPHO_SCHEMA, IA_MODELE, MORPHO_PROMPT_VERSION, recoMorphoExercices, _morphoEntrainement } = sb.__api;
+// 15/11 — Antécédent hanche (conflit fémoro-acétabulaire) : garde-fou prudent, sans flexion profonde chargée.
+{ const h = recoMorphoExercices({}, { antecedents: ['hanche'] }).find((e) => /hanche/i.test(e.t));
+  eq(!!h && h.src === 'antecedent' && h.eviter.some((x) => /profond/i.test(x)) && /médecin ou ton kiné/.test(h.d), 'hanche : garde-fou « amplitude sans douleur », flexion profonde écartée, validation médicale', h); }
 // 15/11 — Croisement photos × entraînement : mêmes règles de volume que l'app (_lv3Volume : 28 j avant aujourd'hui,
 // ÷ semaines réellement couvertes, < 2 semaines → non interprété).
 {
