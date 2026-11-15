@@ -3064,7 +3064,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
     // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
-    recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY'), ia_credits: await _iaCreditsRestants(athleteId) },
+    recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') && ((Deno.env.get('IA_RESTREINTE') || '') !== '1' || ((athData as any)?.prefs?.ia_testeur === true)), ia_credits: await _iaCreditsRestants(athleteId) },
     pas_quotidiens,
     sante_historique,
     montre_sync,
@@ -3309,7 +3309,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     }
   })
 
-  return jsonResp({ ok: true, athletes: result, ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') })
+  return jsonResp({ ok: true, athletes: result, ia_active: !!Deno.env.get('ANTHROPIC_API_KEY') && (Deno.env.get('IA_RESTREINTE') || '') !== '1' })
 }
 
 async function handleGetCommentaires(params: URLSearchParams): Promise<Response> {
@@ -7392,6 +7392,14 @@ async function handleSaveNutrition(body: any): Promise<Response> {
 const IA_QUOTA_JOUR = 2
 // Modèle IA (15/11, décision porteur) : Claude Opus 5.5 pour le chat ET l'analyse morpho.
 const IA_MODELE = 'claude-opus-5-5'
+// 15/11 (porteur : « plus puissant » pour l'analyse) : morpho = Claude Fable 5.2 (le plus capable) ; une analyse par jour,
+// coût faible. Reprise automatique côté serveur si le modèle refuse (fallbacks « default », bêta server-side-fallback).
+const MORPHO_MODELE = 'claude-fable-5-2'
+// Accès IA réservé (prod, pilote) : si IA_RESTREINTE = 1, seuls les comptes marqués prefs.ia_testeur = true y ont accès.
+async function _iaAutorise(athlete_id: string): Promise<boolean> {
+  if ((Deno.env.get('IA_RESTREINTE') || '') !== '1') return true
+  try { const { data } = await sb().from('athletes').select('prefs').eq('id', athlete_id).limit(1); return !!(data && data[0] && data[0].prefs && data[0].prefs.ia_testeur === true) } catch (_) { return false }
+}
 
 // Contexte envoyé à l'IA (audit Novalyz IA I1/I2, 01/11) : les MÊMES données que l'app,
 // chacune DATÉE (« il y a N j »), rien de périmé présenté comme actuel, rien de masqué dans l'app.
@@ -7478,6 +7486,7 @@ async function handleChatIA(body: any): Promise<Response> {
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, reply: "L'assistant IA n'est pas encore activé côté serveur (clé manquante). Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
+  if (coachMode ? (Deno.env.get('IA_RESTREINTE') || '') === '1' : !(await _iaAutorise(athlete_id))) return jsonResp({ success: true, reply: "Novalyz IA est en test auprès de quelques athlètes : elle arrive bientôt pour tout le monde. Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
 
   // Quota jour (base gratuite) — RÉSERVÉ avant l'appel (quotas_jour, 10/11), rendu si l'appel échoue.
   const jour = fmtYMD(new Date())
@@ -7690,6 +7699,7 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho n'est pas encore activée côté serveur (clé manquante)." })
 
+  if (!(await _iaAutorise(athlete_id))) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho est en test auprès de quelques athlètes : elle arrive bientôt pour tout le monde." })
   // 15/11 (décision porteur, spec ia-morpho §9) : réservée aux 18 ans et plus — contrôle sur la date de naissance du compte
   // analysé, AVANT de réserver le quota (aucune analyse consommée). Date absente → on la demande (pas de supposition).
   try {
@@ -7785,9 +7795,10 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      // 15/11 (porteur, spec ia-morpho §3.1) : Opus 5.5, effort « high » ; raisonnement compté dans max_tokens → 8000.
-      body: JSON.stringify({ model: IA_MODELE, max_tokens: 8000, output_config: { effort: 'high', format: { type: 'json_schema', schema: MORPHO_SCHEMA } }, system, messages: [{ role: 'user', content }] }),
+      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+      // 15/11 : Fable 5.2 (raisonnement toujours actif, compté dans max_tokens → 16000), effort « high », schéma strict,
+      // reprise serveur si refus (fallbacks « default »).
+      body: JSON.stringify({ model: MORPHO_MODELE, max_tokens: 16000, output_config: { effort: 'high', format: { type: 'json_schema', schema: MORPHO_SCHEMA } }, fallbacks: 'default', system, messages: [{ role: 'user', content }] }),
     })
     const j = await r.json()
     if (!r.ok) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." }) }
@@ -7814,7 +7825,7 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
     const ko = (Array.isArray(resultat.qualite_photos) ? resultat.qualite_photos : []).filter((q: any) => q && q.statut === 'insuffisante').map((q: any) => `${q.vue} : ${q.raison || 'inexploitable'}`)
     return jsonResp({ success: true, photos_insuffisantes: true, qualite_photos: resultat.qualite_photos || [], analyse: `Photos inexploitables (${ko.join(' · ') || 'aucune vue lisible'}). Reprends-les face à la lumière, tenue près du corps, corps entier dans le cadre. Ton analyse du jour n'a pas été décomptée.` })
   }
-  if (resultat) { (resultat as any).modele = IA_MODELE; (resultat as any).consigne = MORPHO_PROMPT_VERSION }
+  if (resultat) { (resultat as any).modele = MORPHO_MODELE; (resultat as any).consigne = MORPHO_PROMPT_VERSION }
   // Recos d'exercices DÉTERMINISTES (leviers + antécédents) attachées au résultat.
   // Source de vérité = les règles ci-dessus, pas l'IA.
   if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }
