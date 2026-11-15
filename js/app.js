@@ -11826,6 +11826,14 @@ function _morphoRender(d) {
   // 15/11 (spec ia-morpho §3.1) : vues écartées par le contrôle des photos (aucun constat n'en est tiré).
   try { var _qk = (d.qualite_photos || []).filter(function (q) { return q && q.statut === 'insuffisante'; });
     if (_qk.length) out += '<div style="background:var(--warn-a,rgba(224,120,0,.12));border:1px solid rgba(224,120,0,.3);border-radius:14px;padding:11px 13px;margin-bottom:11px;font-size:12.5px;line-height:1.45"><b style="color:var(--warn)">Vue' + (_qk.length > 1 ? 's' : '') + ' non analysée' + (_qk.length > 1 ? 's' : '') + '</b> : ' + _qk.map(function (q) { return esc(q.vue) + ' (' + esc(q.raison || 'inexploitable') + ')'; }).join(' · ') + '. Reprends ' + (_qk.length > 1 ? 'ces photos' : 'cette photo') + ' pour une lecture complète.</div>'; } catch (e) {}
+  // 15/11 : photos × entraînement réel (volume 4 semaines + exercices bloqués calculés par Novalyz).
+  if (d.croisement && d.croisement.length) {
+    var LB = { coherent: ['Cohérent', 'rgba(0,168,84,.14)', 'var(--good)'], a_creuser: ['À creuser', 'rgba(224,120,0,.16)', 'var(--warn)'], entrainement_seul: ['Entraînement', 'var(--surface2)', 'var(--text-subtle)'] };
+    var cr = d.croisement.map(function (c, i) { var b = LB[c.lien] || LB.entrainement_seul;
+      return '<div style="padding:8px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div style="font-size:12.5px;font-weight:700">' + esc(c.t) + '<span style="display:inline-block;white-space:nowrap;font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:' + b[1] + ';color:' + b[2] + '">' + b[0] + '</span></div>' + (c.d ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45">' + esc(c.d) + '</div>' : '') + '</div>';
+    }).join('');
+    out += card('Photos × ton entraînement', cr + '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.45;margin-top:6px">Volume et exercices : calculés par Novalyz sur tes séances des 4 dernières semaines (mêmes chiffres que l\'onglet Analyses).</div>');
+  }
   if (d.priorites && d.priorites.length) {
     var pr = d.priorites.map(function (p, i) {
       var chips = (p.ex && p.ex.length) ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">' + p.ex.map(function (x) { return '<span style="font-size:10.5px;font-weight:700;border-radius:7px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text)">' + esc(x) + '</span>'; }).join('') + '</div>' : '';
