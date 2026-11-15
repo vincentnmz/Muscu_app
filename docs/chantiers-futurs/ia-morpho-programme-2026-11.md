@@ -127,3 +127,20 @@ Ordre : préprod (comptes de démo + photos de testeurs) → critères → prod 
 
 Note : le chat IA existant (Haiku 5.5, quota 2/jour) s'activera **en même temps** que la clé (même secret). S'il ne doit pas être ouvert
 aux testeurs en même temps, le dire avant l'étape 5 (le couper demande une petite modification de code, à faire après le gel). **[D]**
+
+## 9. Décisions du porteur (15/11)
+
+| Point | Décision |
+|---|---|
+| Mineurs | 🟢 **Exclus** de l'analyse morpho (contrôle de la date de naissance avant l'envoi des photos). |
+| Photos | 🟢 **Jamais conservées** par Novalyz après l'analyse (pas d'option « garder », retirée de la maquette). |
+| Coach | 🟢 **Compte rendu seul** ; les photos seulement si l'athlète y consent explicitement. |
+| Testeurs | 🟢 **1 ou 2.** |
+
+**Conséquence sur le protocole §6 (dit tel quel, pas d'ajustement silencieux)** : avec 1 ou 2 testeurs, M2 (accord avec un coach sur
+15-20 cas) et M7 (≥ 80 % de testeurs) ne sont **pas mesurables** statistiquement. Le test devient un **pilote**, pas une validation :
+- mesurables quand même : **M1** constance (3 analyses des mêmes photos), **M3** 6 photos volontairement mauvaises, **M4** zéro chiffre
+  non tracé, **M5** interdits, **M6** cohérence photo ↔ données — sur plusieurs séries de photos par testeur (jours et lumières
+  différents) ;
+- M2 / M7 : **rapportés** (avis du coach et des testeurs, cas par cas), sans conclusion générale ;
+- la prod reste limitée aux testeurs tant qu'un échantillon plus large n'a pas validé M2 / M7.
