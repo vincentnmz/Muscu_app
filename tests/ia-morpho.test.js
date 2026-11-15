@@ -6,14 +6,35 @@ const { stripTypeScriptTypes } = require('node:module');
 let ok = 0, ko = 0; const eq = (c, n, g) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n + (g !== undefined ? ' (obtenu ' + JSON.stringify(g) + ')' : '')); } };
 // ── Serveur ──
 let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase/functions/handler/index.ts'), 'utf8'));
-js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { MORPHO_SCHEMA, IA_MODELE, MORPHO_PROMPT_VERSION, recoMorphoExercices };';
+js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { MORPHO_SCHEMA, IA_MODELE, MORPHO_PROMPT_VERSION, recoMorphoExercices, _morphoEntrainement };';
 const sb = { createClient: () => ({}), webpush: { setVapidDetails() {} }, Deno: { env: { get: () => 'x' }, serve: () => {} }, Response, Request, URL, URLSearchParams, TextEncoder, TextDecoder, crypto, console, setTimeout, clearTimeout, fetch: async () => ({}) };
 vm.createContext(sb); vm.runInContext(js, sb);
-const { MORPHO_SCHEMA, IA_MODELE, MORPHO_PROMPT_VERSION, recoMorphoExercices } = sb.__api;
+const { MORPHO_SCHEMA, IA_MODELE, MORPHO_PROMPT_VERSION, recoMorphoExercices, _morphoEntrainement } = sb.__api;
+// 15/11 — Croisement photos × entraînement : mêmes règles de volume que l'app (_lv3Volume : 28 j avant aujourd'hui,
+// ÷ semaines réellement couvertes, < 2 semaines → non interprété).
+{
+  const NOW = new Date('2026-11-15T12:00:00Z');
+  const ymd = (k) => new Date(NOW.getTime() - k * 864e5).toISOString().slice(0, 10);
+  const VO = [{ muscle: 'Epaule', series_min: 8, series_opt: 12 }, { muscle: 'Pectoraux', series_min: 8, series_opt: 12 }, { muscle: 'Biceps', series_min: 6, series_opt: 10 }];
+  const vide = _morphoEntrainement({ historique: { daily_muscu: {} }, volume_obti: VO }, NOW);
+  eq(/Aucune séance/.test(vide.txt) && vide.vol.length === 0, 'aucune séance → aucun croisement possible (dit)', vide.txt);
+  const dm1 = {}; [1, 3, 5, 8, 10].forEach((k) => { dm1[ymd(k)] = { spm: { Epaules: 3 } }; });
+  const court = _morphoEntrainement({ historique: { daily_muscu: dm1 }, volume_obti: VO }, NOW);
+  eq(/PAS interprétable/.test(court.txt) && court.vol.length === 0, 'historique < 2 semaines → volume non interprété', court.txt);
+  const dm = {}; for (let k = 1; k <= 40; k += 3) dm[ymd(k)] = { spm: { Epaules: 2, Pectoraux: 4, Biceps: 1.5 } };
+  dm[ymd(0)] = { spm: { Epaules: 50 } };   // aujourd'hui : exclu (comme l'app)
+  const r = _morphoEntrainement({ historique: { daily_muscu: dm }, volume_obti: VO }, NOW);
+  // 28 j avant aujourd'hui : jours 1,4,…,28 = 10 jours ; 4 semaines couvertes → Épaule 20/4 = 5, Pectoraux 40/4 = 10, Biceps 15/4 = 3,8
+  const g = (m) => r.vol.find((v) => v.muscle === m) || {};
+  eq(g('Epaule').parSem === 5 && g('Epaule').etat === 'sous le minimum', 'Épaule : 5 séries/sem < 8 → sous le minimum (« Epaules » du catalogue = « Epaule » de la cible)', g('Epaule'));
+  eq(g('Pectoraux').parSem === 10 && g('Pectoraux').etat === 'dans la fourchette', 'Pectoraux : 10 séries/sem → dans la fourchette 8-12', g('Pectoraux'));
+  eq(g('Biceps').parSem === 3.8 && /Biceps 3,8 séries\/sem/.test(r.txt), 'arrondi au dixième, virgule française (Biceps 3,8)', g('Biceps'));
+  eq(!/50/.test(r.txt), 'la séance du jour n\'est pas comptée (même règle que l\'app)', r.txt);
+}
 eq(IA_MODELE === 'claude-opus-5-5', 'modèle IA = Claude Opus 5.5', IA_MODELE);
 eq(/^morpho-\d{4}-\d{2}-\d{2}[a-z]?$/.test(MORPHO_PROMPT_VERSION), 'version de consigne datée (traçabilité)', MORPHO_PROMPT_VERSION);
 const objets = []; (function walk(n) { if (!n || typeof n !== 'object') return; if (n.type === 'object') objets.push(n); Object.values(n).forEach(walk); })(MORPHO_SCHEMA);
-eq(objets.length === 6 && objets.every((o) => o.additionalProperties === false && JSON.stringify(Object.keys(o.properties).sort()) === JSON.stringify(o.required.slice().sort())), 'schéma strict : additionalProperties false + tous les champs requis, partout', objets.length);
+eq(objets.length === 7 && objets.every((o) => o.additionalProperties === false && JSON.stringify(Object.keys(o.properties).sort()) === JSON.stringify(o.required.slice().sort())), 'schéma strict : additionalProperties false + tous les champs requis, partout', objets.length);
 eq(JSON.stringify(MORPHO_SCHEMA.properties.priorites.items.properties.zone.enum) === JSON.stringify(['fessiers', 'jambes', 'pectoraux', 'dos', 'epaules', 'bras', 'abdos', 'aucune']), 'priorités reliées aux zones de l\'app (+ aucune)');
 eq(!/minimum|maximum|minLength|maxLength/.test(JSON.stringify(MORPHO_SCHEMA)), 'aucune contrainte non supportée par les sorties structurées');
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'supabase/functions/handler/index.ts'), 'utf8');

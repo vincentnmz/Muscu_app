@@ -1860,6 +1860,7 @@ function _morphoMailHTML(nom: string, r: any, seg: any): string {
   let b = ''
   if (r.morphotype) b += card("Vue d'ensemble", `<div style="font-size:14px;color:#e9eef8">${_mEsc(r.morphotype)}</div>`)
   if (Array.isArray(r.equilibre) && r.equilibre.length) b += card('Équilibre musculaire', r.equilibre.map((e: any) => `<div style="font-size:13px;color:#e9eef8;margin:3px 0">${_mEsc(e.g)} — <b>${_mEsc(e.n)}</b></div>`).join(''))
+  if (Array.isArray(r.croisement) && r.croisement.length) { const LBm: Record<string, string> = { coherent: 'cohérent', a_creuser: 'à creuser', entrainement_seul: 'entraînement' }; b += card('Photos × entraînement', r.croisement.map((c: any) => `<div style="font-size:13px;color:#e9eef8;margin:5px 0"><b>${_mEsc(c.t)}</b> <span style="color:#8b96b0">(${_mEsc(LBm[c.lien] || 'entraînement')})</span>${c.d ? ` — <span style="color:#8b96b0">${_mEsc(c.d)}</span>` : ''}</div>`).join('')) }
   if (Array.isArray(r.priorites) && r.priorites.length) b += card("Priorités d'entraînement", r.priorites.map((p: any, i: number) => `<div style="font-size:13px;color:#e9eef8;margin:5px 0"><b>${i + 1}. ${_mEsc(p.t)}</b>${p.d ? ` — <span style="color:#8b96b0">${_mEsc(p.d)}</span>` : ''}${Array.isArray(p.ex) && p.ex.length ? `<div style="color:#8b96b0;font-size:12px">${p.ex.map((x: any) => _mEsc(x)).join(' · ')}</div>` : ''}</div>`).join(''))
   if (Array.isArray(r.exercices) && r.exercices.length) b += card('Exercices selon les leviers', r.exercices.map((e: any) => `<div style="font-size:13px;color:#e9eef8;margin:6px 0"><b>${_mEsc(e.t)}</b>${e.d ? ` — <span style="color:#8b96b0">${_mEsc(e.d)}</span>` : ''}${Array.isArray(e.bons) && e.bons.length ? `<div style="color:#37d3b5;font-size:12px">À privilégier : ${e.bons.map((x: any) => _mEsc(x)).join(', ')}</div>` : ''}${Array.isArray(e.eviter) && e.eviter.length ? `<div style="color:#ff8a8d;font-size:12px">À éviter : ${e.eviter.map((x: any) => _mEsc(x)).join(', ')}</div>` : ''}</div>`).join(''))
   if (r.reco) b += card('Reco Novalyz', `<div style="font-size:13px;color:#e9eef8">${_mEsc(r.reco)}</div>`)
@@ -7575,7 +7576,7 @@ ${ctxTxt}`
 const MORPHO_QUOTA_JOUR = 1
 // 15/11 (spec ia-morpho §3.1) : version de la consigne (traçabilité) + schéma de sortie STRICT (sorties structurées Claude :
 // JSON toujours valide et complet). Zones = mêmes clés que ZONES_PRIO (fessiers … abdos) + « aucune ».
-const MORPHO_PROMPT_VERSION = 'morpho-2026-11-15b'
+const MORPHO_PROMPT_VERSION = 'morpho-2026-11-15c'
 const _MS_CONF = { type: 'string', enum: ['visible', 'probable', 'mesure_fournie', 'a_mesurer'] }   // 15/11 : « mesure » était ambigu (badge « À mesurer » sur une mesure fournie)
 const _MS_TXT = (props: Record<string, any>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false })
 const MORPHO_SCHEMA = _MS_TXT({
@@ -7586,9 +7587,52 @@ const MORPHO_SCHEMA = _MS_TXT({
   equilibre: { type: 'array', items: _MS_TXT({ g: { type: 'string' }, n: { type: 'string', enum: ['développé', 'correct', 'moyen', 'en retard'] }, ton: { type: 'string', enum: ['good', 'warn', 'bad'] } }) },
   posture: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, c: _MS_CONF }) },
   priorites: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, d: { type: 'string' }, ex: { type: 'array', items: { type: 'string' } }, zone: { type: 'string', enum: ['fessiers', 'jambes', 'pectoraux', 'dos', 'epaules', 'bras', 'abdos', 'aucune'] } }) },
+  // 15/11 : croisement photos × entraînement réel (2 à 4 items, vide si aucune donnée exploitable).
+  croisement: { type: 'array', items: _MS_TXT({ zone: { type: 'string', enum: ['fessiers', 'jambes', 'pectoraux', 'dos', 'epaules', 'bras', 'abdos', 'aucune'] }, t: { type: 'string' }, d: { type: 'string' }, lien: { type: 'string', enum: ['coherent', 'a_creuser', 'entrainement_seul'] } }) },
   reco: { type: 'string' },
   mesures: { type: 'string' },
 })
+
+// 15/11 (porteur) : la morpho croise les PHOTOS avec l'ENTRAÎNEMENT réel. Mêmes calculs que l'app (aucun chiffre neuf) :
+// volume = _lv3Volume (js/lecture-v3.js) — 28 j avant aujourd'hui, ÷ semaines réellement couvertes (max 4), recul < 2 sem → non
+// interprété ; repères = volume_obti (min/opt du niveau) ; bloqués = _rcLectureExos (mêmes règles que l'assistant et le mail).
+function _morphoMusKey(m: any): string { return String(m || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().replace(/s$/, '') }
+function _morphoEntrainement(d: any, now: Date = new Date()): { txt: string, vol: any[] } {
+  if (!d || d.erreur) return { txt: '', vol: [] }
+  const dm = (d.historique && d.historique.daily_muscu) || {}
+  const fin = fmtYMD(now), deb = fmtYMD(minus(now, 28))
+  const t = (x: string) => Date.parse(x + 'T00:00:00Z')
+  const L: string[] = [], vol: any[] = []
+  let prem: string | null = null, nbJ = 0
+  for (const k of Object.keys(dm)) { if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k >= fin) continue; if (prem == null || k < prem) prem = k; if (k >= deb && dm[k] && Object.keys(dm[k].spm || {}).length) nbJ++ }
+  const debEff = (prem && prem > deb) ? prem : deb
+  const sem = prem ? Math.min(4, Math.max(0, (t(fin) - t(debEff)) / 864e5 / 7)) : 0
+  const recul = Math.round(sem * 10) / 10
+  const v1 = (x: number) => String(Math.round(x * 10) / 10).replace('.', ',')
+  if (!prem || nbJ === 0) { L.push("- Aucune séance de musculation enregistrée ces 4 dernières semaines : AUCUN croisement possible avec l'entraînement."); return { txt: L.join('\n'), vol } }
+  L.push(`- ${nbJ} jour(s) d'entraînement muscu enregistrés sur les 4 dernières semaines (historique couvert : ${v1(recul)} semaine(s)).`)
+  const cibles = (d.volume_obti || []).filter((o: any) => o && o.muscle && Number(o.series_min) > 0)
+  if (sem < 2) L.push('- Historique de moins de 2 semaines : le volume par muscle n\'est PAS interprétable (ne conclus rien sur le volume).')
+  else if (cibles.length) {
+    const div = Math.max(1, sem)
+    const parts: string[] = []
+    for (const c of cibles) {
+      const k = _morphoMusKey(c.muscle); let tot = 0
+      for (const day of Object.keys(dm)) { if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= fin || day < deb) continue; const spm = (dm[day] && dm[day].spm) || {}; for (const mm of Object.keys(spm)) if (_morphoMusKey(mm) === k) tot += Number(spm[mm]) || 0 }
+      const ps = Math.round(tot / div * 10) / 10, mn = Number(c.series_min), op = Number(c.series_opt) || mn
+      const etat = ps < mn ? 'sous le minimum' : (ps > op ? 'au-dessus du repère haut' : 'dans la fourchette')
+      vol.push({ muscle: String(c.muscle), parSem: ps, min: mn, opt: op, etat })
+      parts.push(`${c.muscle} ${v1(ps)} séries/sem (repère ${mn}-${op} : ${etat})`)
+    }
+    L.push(`- Volume moyen par muscle (séries par semaine, muscle secondaire compté 0,5) : ${parts.join(' ; ')}.`)
+  }
+  try {
+    const Lx = _rcLectureExos((d.historique && d.historique.progression_par_exo) || {}, d.programme || [], d.exo_categories || {}, now.getTime(), d.contexte && d.contexte.etat, d.niveau_experience)
+    if (Lx.bloque.length) { const bq = Lx.bloque.slice().sort((a: any, b: any) => (Number(b.n) || 0) - (Number(a.n) || 0)); L.push(`- Exercices bloqués (même charge, sans dépasser son meilleur nombre de reps depuis plusieurs séances) : ${bq.slice(0, 6).map((x: any) => String(x.exo).trim()).join(', ')}.`) }
+    if (Lx.progresse.length) L.push(`- Exercices en progrès : ${Lx.progresse.slice(0, 6).map((x: any) => String(x.exo).trim()).join(', ')}.`)
+  } catch (_) {}
+  return { txt: L.join('\n'), vol }
+}
 
 // Recommandations d'exercices DÉTERMINISTES à partir des leviers (segments mesurés)
 // et des antécédents déclarés. Règles biomécaniques figées — AUCUNE invention, aucun
@@ -7746,6 +7790,9 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   const femList = Array.isArray((q as any).femme) ? (q as any).femme.map((x: any) => FEM_LBL[String(x)] || String(x)) : []
   const antTxt = [...antList, ...femList].join(', ')
   const exercices = recoMorphoExercices(seg, q)
+  // 15/11 : données d'entraînement (mêmes calculs que l'app) — best-effort : sans elles, l'analyse reste photo seule.
+  let entr = { txt: '', vol: [] as any[] }
+  try { const ra = await handleGetAppData(new URLSearchParams({ athlete_id })); entr = _morphoEntrainement(await ra.json()) } catch (_) {}
 
   // Vues étiquetées (face / profil / dos) dans l'ordre des images envoyées.
   const views = Array.isArray(body.views) ? body.views.map((v: any) => String(v || '')) : []
@@ -7762,7 +7809,18 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
 
 ÉTAPE 1 — CONTRÔLE DES PHOTOS (obligatoire, avant toute lecture) : pour chaque vue reçue, "qualite_photos" dit "ok" ou "insuffisante" avec la raison courte (flou, contre-jour, tenue trop ample, cadrage incomplet, posture non relâchée, vue illisible). Une vue "insuffisante" n'est PAS utilisée : aucun constat n'en est tiré. Si AUCUNE vue n'est "ok" : "analysable" = false, et tous les autres champs restent vides (chaînes vides, listes vides).
 ÉTAPE 2 — LECTURE (seulement sur les vues "ok").
-Chaque priorité porte "zone" = la zone de l'app qu'elle concerne : fessiers, jambes, pectoraux, dos, epaules, bras, abdos, ou "aucune" si elle ne correspond à aucune (posture, mobilité…).
+${entr.txt ? `DONNÉES D'ENTRAÎNEMENT RÉELLES (calculées par Novalyz sur ses séances enregistrées — à citer TELLES QUELLES, jamais recalculées) :
+${entr.txt}
+
+ÉTAPE 3 — CROISEMENT "croisement" (2 à 4 items) : pour chaque groupe où photos et entraînement se répondent, un item {zone, t, d, lien} :
+- "coherent" : la photo et l'entraînement vont dans le même sens (ex. groupe moyen ou en retard sur les photos ET volume sous le minimum → priorité logique ; groupe développé ET volume dans la fourchette).
+- "a_creuser" : ils divergent (ex. groupe en retard alors que le volume est dans la fourchette → pistes possibles, sans trancher : exécution, intensité, progression, ancienneté de l'entraînement, génétique).
+- "entrainement_seul" : un constat d'entraînement utile sur un groupe non jugeable sur les photos (ex. exercice bloqué).
+Dans "d", cite le volume ou l'exercice tel qu'il est écrit ci-dessus. Ne déduis JAMAIS la morphologie du volume, ni le volume de la morphologie. Si le volume n'est pas interprétable ou absent, n'en parle pas. Les "priorites" tiennent compte de ce croisement (un groupe en retard ET sous-entraîné passe en tête).
+
+` : `Aucune donnée d'entraînement disponible : "croisement" = [] (tableau vide).
+
+`}Chaque priorité porte "zone" = la zone de l'app qu'elle concerne : fessiers, jambes, pectoraux, dos, epaules, bras, abdos, ou "aucune" si elle ne correspond à aucune (posture, mobilité…).
 Réponds avec un objet JSON de cette forme :
 {
  "qualite_photos": [ {"vue":"face|profil|dos","statut":"ok|insuffisante","raison":"courte raison, vide si ok"} ],
@@ -7772,6 +7830,7 @@ Réponds avec un objet JSON de cette forme :
  "equilibre": [ {"g":"nom du groupe musculaire","n":"développé|correct|moyen|en retard","ton":"good|warn|bad"} ],
  "posture": [ {"t":"observation posturale","c":"visible|probable|mesure_fournie|a_mesurer"} ],
  "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"],"zone":"fessiers|jambes|pectoraux|dos|epaules|bras|abdos|aucune"} ],
+ "croisement": [ {"zone":"fessiers|jambes|pectoraux|dos|epaules|bras|abdos|aucune","t":"titre court","d":"photo + chiffre d'entraînement cité tel quel","lien":"coherent|a_creuser|entrainement_seul"} ],
  "reco": "une phrase de synthèse actionnable",
  "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les segments/mensurations fournis apportent"
 }
@@ -7789,6 +7848,7 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
 - Tu n'es PAS médecin : aucun diagnostic. Un doute postural → formule « à confirmer par un bilan de mouvement ».
 - Si une vue manque ou est inexploitable, signale-le dans "mesures" et baisse la confiance des constats concernés.
 - "equilibre" : liste les principaux groupes jugeables (ex. dos, épaules, pectoraux, bras, fessiers, quadriceps, ischios, mollets). "priorites" : 2 à 4 items, chacun avec des exercices concrets.
+- Les données d'entraînement fournies sont calculées par Novalyz : cite-les telles quelles, sans les recalculer ni en inventer ; aucun chiffre d'entraînement qui n'y figure pas.
 - Si le sexe est précisé, adopte la lecture anatomique correspondante (homme / femme). Si des antécédents/état sont signalés, reste prudent (adaptation, jamais de diagnostic).`
 
   let raw = ''
@@ -7826,6 +7886,11 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
     return jsonResp({ success: true, photos_insuffisantes: true, qualite_photos: resultat.qualite_photos || [], analyse: `Photos inexploitables (${ko.join(' · ') || 'aucune vue lisible'}). Reprends-les face à la lumière, tenue près du corps, corps entier dans le cadre. Ton analyse du jour n'a pas été décomptée.` })
   }
   if (resultat) { (resultat as any).modele = MORPHO_MODELE; (resultat as any).consigne = MORPHO_PROMPT_VERSION }
+  // 15/11 : garde-fou chiffres sur le croisement — un item qui cite un nombre absent des données fournies est retiré.
+  if (resultat && Array.isArray(resultat.croisement)) {
+    const src = entr.txt + ' ' + segTxt + ' ' + mensTxt
+    resultat.croisement = entr.txt ? resultat.croisement.filter((x: any) => x && _iaChiffresInconnus(String(x.t || '') + ' ' + String(x.d || ''), src).length === 0).slice(0, 4) : []
+  }
   // Recos d'exercices DÉTERMINISTES (leviers + antécédents) attachées au résultat.
   // Source de vérité = les règles ci-dessus, pas l'IA.
   if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }

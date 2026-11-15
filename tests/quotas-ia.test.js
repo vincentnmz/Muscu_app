@@ -167,6 +167,18 @@ let nOK = 0, nKO = 0; const eq = (c, n, g) => { if (c) nOK++; else { nKO++; cons
     const r = await post(handler, Q());
     eq(ok(r), 'sans IA_RESTREINTE (préprod) : ouvert à tous comme avant', r.success); }
 
+  // 10) 15/11 : morpho × entraînement — le prompt contient les données calculées par Novalyz ; un croisement qui cite un
+  // chiffre absent de ces données est retiré (garde-fou), les autres restent.
+  { const st = base();
+    const rep = { analysable: true, morphotype: 'x', synthese: [], equilibre: [], posture: [], priorites: [], reco: 'ok', mesures: '', qualite_photos: [],
+      croisement: [{ zone: 'epaules', t: 'Épaules', d: 'en retard, et 12 séries par semaine seulement', lien: 'coherent' }, { zone: 'aucune', t: 'Rien à croiser', d: 'pas de séance enregistrée', lien: 'entrainement_seul' }] };
+    const o = { texte: JSON.stringify(rep) }; const { handler } = load(st, o);
+    const r = await post(handler, { action: 'analyseMorpho', athlete_id: 'A1', consent: true, images: [{ data: 'AAAA', media_type: 'image/jpeg' }] });
+    const txt = (o.dernier.body.messages[0].content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
+    eq(/DONNÉES D'ENTRAÎNEMENT RÉELLES/.test(txt) && /Aucune séance de musculation enregistrée/.test(txt), 'prompt morpho : données d\'entraînement Novalyz incluses (ici : aucune séance)', txt.slice(0, 200));
+    const cr = (r.resultat && r.resultat.croisement) || [];
+    eq(cr.length === 1 && cr[0].t === 'Rien à croiser', 'garde-fou : le croisement citant « 12 séries » (absent des données) est retiré, l\'autre reste', cr); }
+
   console.log(`quotas-ia : ${nOK} OK / ${nKO} KO`);
   process.exit(nKO ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
