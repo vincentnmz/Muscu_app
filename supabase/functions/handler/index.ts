@@ -7387,9 +7387,11 @@ async function handleSaveNutrition(body: any): Promise<Response> {
 // COACH IA (chat groundé) — couche langage branchée sur le moteur. Répond
 // UNIQUEMENT à partir des données réelles de l'athlète (jamais de chiffre
 // inventé). Base gratuite = quota/jour ; au-delà = premium (à venir, C5).
-// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Haiku 5.5 (éco). Morpho = Sonnet 5.5 (vision fine).
+// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Opus 5.5 (15/11, porteur) pour le chat et la morpho (IA_MODELE).
 // ===========================================================================
 const IA_QUOTA_JOUR = 2
+// Modèle IA (15/11, décision porteur) : Claude Opus 5.5 pour le chat ET l'analyse morpho.
+const IA_MODELE = 'claude-opus-5-5'
 
 // Contexte envoyé à l'IA (audit Novalyz IA I1/I2, 01/11) : les MÊMES données que l'app,
 // chacune DATÉE (« il y a N j »), rien de périmé présenté comme actuel, rien de masqué dans l'app.
@@ -7523,7 +7525,9 @@ ${ctxTxt}`
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 700, system, messages: msgs }),
+      // 15/11 (porteur) : Opus 5.5 au lieu de Haiku. Le raisonnement est toujours actif sur ce modèle et compte dans
+      // max_tokens → marge à 4000 (la réponse elle-même reste courte, consigne système) ; effort explicite « medium ».
+      body: JSON.stringify({ model: IA_MODELE, max_tokens: 4000, output_config: { effort: 'medium' }, system, messages: msgs }),
     })
     const j = await r.json()
     if (!r.ok) return null
@@ -7558,6 +7562,22 @@ ${ctxTxt}`
 // Sonnet 5.5. Photos JAMAIS stockées (RGPD-minimal) : analysées puis jetées, on ne
 // garde que le texte renvoyé (non persisté non plus). Consentement obligatoire.
 const MORPHO_QUOTA_JOUR = 1
+// 15/11 (spec ia-morpho §3.1) : version de la consigne (traçabilité) + schéma de sortie STRICT (sorties structurées Claude :
+// JSON toujours valide et complet). Zones = mêmes clés que ZONES_PRIO (fessiers … abdos) + « aucune ».
+const MORPHO_PROMPT_VERSION = 'morpho-2026-11-15'
+const _MS_CONF = { type: 'string', enum: ['visible', 'probable', 'mesure'] }
+const _MS_TXT = (props: Record<string, any>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false })
+const MORPHO_SCHEMA = _MS_TXT({
+  qualite_photos: { type: 'array', items: _MS_TXT({ vue: { type: 'string', enum: ['face', 'profil', 'dos'] }, statut: { type: 'string', enum: ['ok', 'insuffisante'] }, raison: { type: 'string' } }) },
+  analysable: { type: 'boolean' },
+  morphotype: { type: 'string' },
+  synthese: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, c: _MS_CONF }) },
+  equilibre: { type: 'array', items: _MS_TXT({ g: { type: 'string' }, n: { type: 'string', enum: ['développé', 'correct', 'moyen', 'en retard'] }, ton: { type: 'string', enum: ['good', 'warn', 'bad'] } }) },
+  posture: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, c: _MS_CONF }) },
+  priorites: { type: 'array', items: _MS_TXT({ t: { type: 'string' }, d: { type: 'string' }, ex: { type: 'array', items: { type: 'string' } }, zone: { type: 'string', enum: ['fessiers', 'jambes', 'pectoraux', 'dos', 'epaules', 'bras', 'abdos', 'aucune'] } }) },
+  reco: { type: 'string' },
+  mesures: { type: 'string' },
+})
 
 // Recommandations d'exercices DÉTERMINISTES à partir des leviers (segments mesurés)
 // et des antécédents déclarés. Règles biomécaniques figées — AUCUNE invention, aucun
@@ -7655,6 +7675,16 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho n'est pas encore activée côté serveur (clé manquante)." })
 
+  // 15/11 (décision porteur, spec ia-morpho §9) : réservée aux 18 ans et plus — contrôle sur la date de naissance du compte
+  // analysé, AVANT de réserver le quota (aucune analyse consommée). Date absente → on la demande (pas de supposition).
+  try {
+    const { data: aRow } = await sb().from('athletes').select('ddn').eq('id', athlete_id).limit(1)
+    const ddnM = aRow && aRow[0] && aRow[0].ddn ? new Date(String(aRow[0].ddn).slice(0, 10) + 'T00:00:00') : null
+    const ageM = ddnM && !isNaN(ddnM.getTime()) ? (Date.now() - ddnM.getTime()) / (365.25 * 864e5) : NaN
+    if (!isFinite(ageM)) return jsonResp({ success: true, limited: true, analyse: "Renseigne ta date de naissance (Réglages ▸ Profil) : l'analyse morpho est réservée aux 18 ans et plus." })
+    if (ageM < 18) return jsonResp({ success: true, limited: true, analyse: "L'analyse morpho est réservée aux 18 ans et plus." })
+  } catch (_) { return jsonResp({ success: false, error: 'profil_indisponible', analyse: "Service indisponible pour le moment. Réessaie dans un instant." }) }
+
   const jour = fmtYMD(new Date())
   // Quota RÉSERVÉ avant l'analyse (quotas_jour, 10/11), rendu si elle échoue.
   const resaM = await _quotaReserver(athlete_id, 'morpho', jour, MORPHO_QUOTA_JOUR)
@@ -7705,13 +7735,18 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   content.push({
     type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${sexeTxt ? ` La personne est ${sexeTxt}.` : ''}${objTxt ? ` Objectif : ${objTxt}.` : ''}${segTxt ? ` Longueurs de segments fournies (cm) : ${segTxt} — tu PEUX donc affirmer les proportions correspondantes (confiance "mesure").` : (mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mesure de segment fournie (les proportions restent à confirmer, confiance "mesure").')}${antTxt ? ` Antécédents/état signalés : ${antTxt} — tiens-en compte avec prudence (jamais d'avis médical).` : ''}
 
-Réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, aucune balise markdown), EXACTEMENT cette forme :
+ÉTAPE 1 — CONTRÔLE DES PHOTOS (obligatoire, avant toute lecture) : pour chaque vue reçue, "qualite_photos" dit "ok" ou "insuffisante" avec la raison courte (flou, contre-jour, tenue trop ample, cadrage incomplet, posture non relâchée, vue illisible). Une vue "insuffisante" n'est PAS utilisée : aucun constat n'en est tiré. Si AUCUNE vue n'est "ok" : "analysable" = false, et tous les autres champs restent vides (chaînes vides, listes vides).
+ÉTAPE 2 — LECTURE (seulement sur les vues "ok").
+Chaque priorité porte "zone" = la zone de l'app qu'elle concerne : fessiers, jambes, pectoraux, dos, epaules, bras, abdos, ou "aucune" si elle ne correspond à aucune (posture, mobilité…).
+Réponds avec un objet JSON de cette forme :
 {
+ "qualite_photos": [ {"vue":"face|profil|dos","statut":"ok|insuffisante","raison":"courte raison, vide si ok"} ],
+ "analysable": true,
  "morphotype": "une courte phrase (type de carrure / répartition de la masse)",
  "synthese": [ {"t":"constat général","c":"visible|probable|mesure"} ],
  "equilibre": [ {"g":"nom du groupe musculaire","n":"développé|correct|moyen|en retard","ton":"good|warn|bad"} ],
  "posture": [ {"t":"observation posturale","c":"visible|probable|mesure"} ],
- "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"]} ],
+ "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"],"zone":"fessiers|jambes|pectoraux|dos|epaules|bras|abdos|aucune"} ],
  "reco": "une phrase de synthèse actionnable",
  "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les segments/mensurations fournis apportent"
 }
@@ -7735,7 +7770,8 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1800, system, messages: [{ role: 'user', content }] }),
+      // 15/11 (porteur, spec ia-morpho §3.1) : Opus 5.5, effort « high » ; raisonnement compté dans max_tokens → 8000.
+      body: JSON.stringify({ model: IA_MODELE, max_tokens: 8000, output_config: { effort: 'high', format: { type: 'json_schema', schema: MORPHO_SCHEMA } }, system, messages: [{ role: 'user', content }] }),
     })
     const j = await r.json()
     if (!r.ok) { await _quotaRendre(athlete_id, 'morpho', jour, resaM); return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." }) }
@@ -7756,6 +7792,13 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
     resultat = JSON.parse(s)
   } catch (_) { resultat = null }
 
+  // 15/11 : aucune vue exploitable → pas d'analyse, quota RENDU, message de reprise des photos (spec ia-morpho §3.1 point 3).
+  if (resultat && resultat.analysable === false) {
+    await _quotaRendre(athlete_id, 'morpho', jour, resaM)
+    const ko = (Array.isArray(resultat.qualite_photos) ? resultat.qualite_photos : []).filter((q: any) => q && q.statut === 'insuffisante').map((q: any) => `${q.vue} : ${q.raison || 'inexploitable'}`)
+    return jsonResp({ success: true, photos_insuffisantes: true, qualite_photos: resultat.qualite_photos || [], analyse: `Photos inexploitables (${ko.join(' · ') || 'aucune vue lisible'}). Reprends-les face à la lumière, tenue près du corps, corps entier dans le cadre. Ton analyse du jour n'a pas été décomptée.` })
+  }
+  if (resultat) { (resultat as any).modele = IA_MODELE; (resultat as any).consigne = MORPHO_PROMPT_VERSION }
   // Recos d'exercices DÉTERMINISTES (leviers + antécédents) attachées au résultat.
   // Source de vérité = les règles ci-dessus, pas l'IA.
   if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }
