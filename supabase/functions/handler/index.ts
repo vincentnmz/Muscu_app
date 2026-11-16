@@ -7912,6 +7912,16 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
   return jsonResp({ success: true, resultat, analyse: (resultat && resultat.reco) ? String(resultat.reco) : raw })
 }
 
+// 16/11 (porteur) : dernière ouverture de l'app par l'ATHLÈTE (pas le coach qui consulte sa fiche) + plateforme.
+// Appelé par l'app une fois par jour et par appareil. Stocké dans athletes.prefs (fusion atomique, rien d'autre écrasé).
+async function handleMarquerOuverture(body: any): Promise<Response> {
+  const aid = String(body.athlete_id || '')
+  if (!aid) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const pf = ['android', 'ios', 'web'].includes(String(body.plateforme)) ? String(body.plateforme) : 'web'
+  const err = await _prefsAthleteEcrire(aid, { derniere_ouverture: new Date().toISOString(), derniere_plateforme: pf })
+  return jsonResp(err ? { success: false, error: err } : { success: true })
+}
+
 async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
@@ -8381,7 +8391,7 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   // saveEmail : l'e-mail sert à « mot de passe oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte,
   // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
   // P1-1 (13/11) : le journal des décisions n'est créé que depuis le parcours de l'athlète (jamais par le coach).
-  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
+  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan' || action === 'marquerOuverture') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -8550,6 +8560,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerAlerteTraitee':     return handleMarquerAlerteTraitee(body)
         case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
         case 'saveSemaineType':          return handleSaveSemaineType(body)
+        case 'marquerOuverture':         return handleMarquerOuverture(body)
         case 'savePref':                 return handleSavePref(body)
         case 'saveExoCategories':        return handleSaveExoCategories(body)
         case 'saveZonesPrio':            return handleSaveZonesPrio(body)
