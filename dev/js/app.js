@@ -880,6 +880,36 @@ function _nvzSessionExpiree() {
   try { showToast('Session expirée — reconnecte-toi.'); } catch (e) {}
   setTimeout(function () { try { location.reload(); } catch (e) {} }, 1200);
 }
+// ── Couche réseau unique (16/11, audit P3) ─────────────────────────────────────────────────────────────────────
+// Délai maximum par appel (aucun écran ne tourne à l'infini) : 30 s par défaut, plus pour l'IA / la morpho / le
+// générateur. Un appel qui fournit déjà son propre signal (ex. chargement des données) garde le sien.
+var _NVZ_DELAIS = { analyseMorpho: 180000, chatIA: 120000, genererProgramme: 60000, getAppData: 90000, saveSeance: 60000, exporterDonnees: 90000 };
+function _nvzDelaiMax(action, methode) { return _NVZ_DELAIS[action] || (methode === 'POST' ? 45000 : 30000); }
+// Journal des 40 derniers appels (action, méthode, statut, durée — AUCUNE donnée) : joint aux « Signaler un problème ».
+var _nvzJournal = [];
+function _nvzJournaliser(action, methode, statut, ms) {
+  _nvzJournal.push({ t: new Date().toISOString().slice(11, 19), a: action || '?', m: methode, s: statut, ms: ms });
+  if (_nvzJournal.length > 40) _nvzJournal.shift();
+}
+function _nvzJournalTexte(n) {
+  return _nvzJournal.slice(-(n || 8)).map(function (e) { return e.t + ' ' + e.m + ' ' + e.a + ' → ' + e.s + ' (' + (Math.round(e.ms / 100) / 10) + ' s)'; }).join(' · ');
+}
+// Écriture qui échoue (réseau coupé, délai dépassé, erreur serveur) → message visible, 1 à la fois. Exclues : les
+// écritures qui ont déjà leur propre message (séance avec file hors-ligne, connexion, IA) et les annexes sans enjeu.
+var _NVZ_ECRITURE_GEREE = { saveSeance: 1, login: 1, register: 1, loginCoach: 1, registerCoach: 1, chatIA: 1, analyseMorpho: 1, envoyerRetour: 1,
+  marquerOuverture: 1, marquerCommentairesLus: 1, marquerAlerteLue: 1, saveNativePushToken: 1, removeNativePushToken: 1, deleteNativePushToken: 1,
+  savePushSubscription: 1, enregistrerPlan: 1, ping: 1, loginDispo: 1, exporterDonnees: 1 };
+var _NVZ_ECRITURE_SILENCIEUSE = { saveProgrammeJour: 1, saveProgrammeLigne: 1, supprimerProgrammeLigne: 1, saveBlessure: 1, deleteBlessure: 1, saveCommentaire: 1,
+  saveMensuration: 1, saveMusclesExclus: 1, savePref: 1, saveSante: 1, saveNutrition: 1, saveSemaineType: 1, bilanClient: 1, confirmerEmail: 1 };
+var _nvzDernierAvis = 0;
+function _nvzEchecEcriture(action, cause) {
+  if (!action || _NVZ_ECRITURE_GEREE[action]) return;
+  if (Date.now() - _nvzDernierAvis < 8000) return; _nvzDernierAvis = Date.now();
+  var msg = cause === 'delai' ? 'Pas enregistré : le serveur ne répond pas. Vérifie ta connexion et réessaie.'
+    : cause === 'reseau' ? 'Pas enregistré : pas de connexion. Réessaie quand tu as du réseau.'
+    : 'Pas enregistré : erreur du serveur. Réessaie dans un instant.';
+  try { showToast(msg, '#DC3545'); } catch (e) {}
+}
 (function () {
   if (typeof window === 'undefined' || typeof window.fetch !== 'function' || window.__nvzFetchWrapped) return;
   window.__nvzFetchWrapped = true;
@@ -899,7 +929,24 @@ function _nvzSessionExpiree() {
     try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
     var tok = _nvzTok();
     if (tok && !AUTH[action]) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_t=' + encodeURIComponent(tok);
-    return _f(url, init).then(function (r) {
+    // 16/11 (audit P3 « une seule fonction réseau ») : délai maximum, journal, échec d'écriture JAMAIS silencieux.
+    var methode = String((init && init.method) || 'GET').toUpperCase(), t0 = Date.now(), minuteur = null;
+    if (!(init && init.signal) && typeof AbortController === 'function') {
+      var ctl = new AbortController(); init = Object.assign({}, init || {}, { signal: ctl.signal });
+      minuteur = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, _nvzDelaiMax(action, methode));
+    }
+    var _fin = function (st) { if (minuteur) clearTimeout(minuteur); _nvzJournaliser(action, methode, st, Date.now() - t0); };
+    return _f(url, init).catch(function (err) {
+      var expire = err && err.name === 'AbortError';
+      _fin(expire ? 'délai dépassé' : 'réseau');
+      if (methode === 'POST') _nvzEchecEcriture(action, expire ? 'delai' : 'reseau');
+      throw err;
+    }).then(function (r) {
+      _fin(r.status);
+      if (methode === 'POST' && r.status >= 500) _nvzEchecEcriture(action, 'serveur');
+      // Réponse 200 mais refus du serveur ({ success:false } / { erreur }) sur une écriture dont l'écran ignore la réponse
+      // (recensées le 16/11 : catch vide à l'appel) → même message, sinon la modification était perdue sans le savoir.
+      if (methode === 'POST' && r.status < 400 && _NVZ_ECRITURE_SILENCIEUSE[action]) r.clone().json().then(function (d) { if (d && !d.auth && (d.success === false || d.erreur || d.error)) _nvzEchecEcriture(action, 'serveur'); }, function () {});
       // Connexion / inscription : on attend d'avoir rangé le jeton AVANT de rendre la
       // réponse (sinon le 1er appel qui suit partirait sans jeton).
       if (AUTH[action] || JETON_NEUF[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
@@ -2487,7 +2534,7 @@ async function envoyerRetourNovalyz() {
   if (m.length < 3) { showToast('Écris ton message', '#ff4444'); return; }
   var btn = document.getElementById('retour-envoyer'); if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', type: _retourType, message: m, ecran: _ecranRetour(), version: _versionRetour(), plateforme: _plateformeRetour() }) });
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', type: _retourType, message: m + (_nvzJournal.length ? '\n\n— Journal technique (derniers appels) : ' + _nvzJournalTexte(8) : ''), ecran: _ecranRetour(), version: _versionRetour(), plateforme: _plateformeRetour() }) });
     var j = await r.json();
     if (j && j.success) { t.value = ''; fermerRetour(); showToast('Merci ! Ton retour est bien envoyé.'); }
     else showToast('Envoi impossible : ' + ((j && (j.error || j.erreur)) || 'réessaie'), '#ff4444');
