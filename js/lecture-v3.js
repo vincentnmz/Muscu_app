@@ -303,7 +303,11 @@ function _lv3Diag(data, exo, kind, nowT) {
         var gZ0 = String(gen[0].zone || gen[0].zone_douloureuse || nom), gZone = ((typeof _anZoneLabel === 'function') ? String(_anZoneLabel(gZ0.toLowerCase())) : gZ0).toLowerCase().replace(/_/g, ' ');
         var gIndir = _lv3ZoneTouche(_lv3Cle(gZone), mk) === 2;
         checks.push({ s: 'ko', t: '<b>Possible : gêne ' + _maE(gZone) + ' ' + gMax + '/5</b> signalée le ' + gDates.join(', ') + (gIndir ? ' (zone sollicitée par cet exercice)' : '') });
-        if (!cause) { cause = 'gene'; levier = 'surveille la zone : tant que la gêne revient, garde ta charge (avis kiné si ça persiste).'; }
+        // 16/11 (constaté sur le compte démo) : la gêne sur la zone PASSE DEVANT les causes déjà trouvées (repos, réserve
+        // d'effort) — avant, « va jusqu'à RPE 9-10 » était proposé avec une gêne épaule 3/5 signalée 7 fois. Aucun levier
+        // ne pousse alors l'effort, la charge ou le volume (même règle que la gêne active du 14/11).
+        cause = 'gene'; levier = 'gêne ' + gZone + ' signalée pendant ce plateau : tant qu\'elle revient, garde ta charge, sans aller à l\'échec ni ajouter de séries (avis kiné si ça persiste).';
+        if (action && action.type === 'series') action = null;
       }
     } catch (_) {}
     // 9) (validé 06/11) Série plus légère AVANT les séries de travail dont les reps montent (+3 ou plus) pendant que
@@ -331,7 +335,7 @@ function _lv3Diag(data, exo, kind, nowT) {
       var mPct = Math.round(marche * 100);
       checks.push({ s: 'ko', t: '<b>Marche suivante : +' + kg(pas) + ' kg = +' + mPct + ' %</b> de ta charge' });
       if (!cause) { cause = 'marche'; levier = 'la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : trop gros pour cet exercice. Passe-la au plus petit cran possible (micro-disque, cran intermédiaire de poulie) ou ajoute 1 série à ' + kg(c0) + ' kg en attendant de faire ' + rmax + ' reps.'; }
-      else levier += ' Et la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : monte seulement quand tu fais ' + rmax + ' reps sur toutes tes séries.';
+      else if (cause !== 'gene') levier += ' Et la marche suivante (+' + kg(pas) + ' kg) fait +' + mPct + ' % : monte seulement quand tu fais ' + rmax + ' reps sur toutes tes séries.';
     }
   }
   // Gêne ACTIVE sur la zone (14/11) : première cause, et le levier ne propose plus ni charge ni séries en plus.
