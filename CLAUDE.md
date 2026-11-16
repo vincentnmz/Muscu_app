@@ -47,6 +47,7 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 
 - `npm run build:www` (`scripts/build-www.mjs`) : assemble la coquille `www/` pour Capacitor.
 - `npm test` (`scripts/run-tests.mjs`) : suite de tests node (le harness transpile `index.ts` + sandbox moteur Supabase en mémoire).
+- **Parcours navigateur** (`tests/parcours-navigateur.test.js`, inclus dans `npm test` et la CI) : la vraie app dans Chromium + le vrai serveur en mémoire, de la connexion aux Analyses. Captures : `node scripts/parcours-navigateur/run.mjs --captures` (→ `/tmp/parcours-*.png`). À étendre quand un parcours clé change.
 
 ## Modèle de données (tables Supabase — colonnes historiques conservées)
 
