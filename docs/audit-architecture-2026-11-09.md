@@ -18,8 +18,8 @@
 | P1 | Décision hachage (S4) | ✅ fait 10/11 — option C (`w1` = PBKDF2 600 000 tours sur le s2), 53 comptes convertis | `docs/note-hachage-mdp-2026-11-10.md` ; ⏳ supprimer `password_hash_s2` après observation |
 | P2 | Test « chaque route est couverte par les droits » | ✅ audit 10/11 (121 routes, 919 appels) ; 🔴 et 4 🟠 corrigés en prod ; 🟡 traités 13/11 : **test permanent `tests/securite-droits-routes.test.js`** (toutes les routes, 2 473 vérifications) + `claimRecompense` / `saveEmail` réservés à l'athlète (**prod v254**) | `docs/audit-droits-routes-2026-11-10.md`, `scripts/audit-droits/` |
 | P2 | Test Playwright de bout en bout en CI | ✅ fait 16/11 — vraie app dans Chromium + vrai serveur (sessions exigées) : connexion → état du jour → 3 séries saisies → enregistrement → rechargement → Analyses ; échoue sur toute erreur JS / tout appel refusé ; vérifié qu'il détecte une panne d'enregistrement ; 12 s | `tests/parcours-navigateur.test.js`, `scripts/parcours-navigateur/` |
-| P2 | README + carte d'`app.js` + dictionnaire d'`indicateurs` + CLAUDE.md à jour | ⏳ | |
-| P2 | Nouveau code en fichiers séparés (modèle `lecture-v3.js`) | ⏳ (règle à écrire dans CLAUDE.md) | |
+| P2 | README + carte d'`app.js` + dictionnaire d'`indicateurs` + CLAUDE.md à jour | 🟡 16/11 : ✅ carte du code (`docs/carte-du-code.md`, liée depuis CLAUDE.md) · ⏳ dictionnaire d'`indicateurs` (après la fin de leur migration) · ⏳ README | |
+| P2 | Nouveau code en fichiers séparés (modèle `lecture-v3.js`) | ✅ règle écrite 16/11 (`docs/carte-du-code.md` § 5, lien depuis CLAUDE.md) | |
 | P3 | Une seule fonction réseau (délai max, message, trace) ; plus de `catch {}` vides sur réseau / écriture | ⏳ | |
 | P3 | Un seul module de dates ; trancher `_maShortDate` | ⏳ | |
 | P3 | Une seule source de seuils ; ACWR côté serveur seulement | ⏳ | |
