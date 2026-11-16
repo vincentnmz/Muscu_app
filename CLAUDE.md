@@ -4,6 +4,7 @@
 > **➡️ Reprise / état en cours : [`docs/etat-en-cours.md`](./docs/etat-en-cours.md)** (lire en 2ᵉ — ce qui est fait / à faire là tout de suite).
 > **🛠 Fiabilisation : [`docs/audit-architecture-2026-11-09.md`](./docs/audit-architecture-2026-11-09.md)** — audit d'architecture + plan P0→P5 avec son **état d'avancement** (à tenir à jour à chaque étape).
 > **⏳ Chantier futur (après l'audit du code) : [`docs/chantiers-futurs/moteur-decision-mission-2026-11.md`](./docs/chantiers-futurs/moteur-decision-mission-2026-11.md)** — moteur d'analyse → boucle diagnostic → hypothèse → décision → action → résultat → vérification (ne pas remplacer le diagnostic actuel).
+> **🗺 Carte du code : [`docs/carte-du-code.md`](./docs/carte-du-code.md)** — où se trouve quoi (fichiers, zones d'`app.js`, routes et moteur d'`index.ts`, tests) + règle « nouveau module = nouveau fichier ».
 > Réflexions de fond : [`docs/vision-produit.md`](./docs/vision-produit.md) · [`docs/backlog-app.md`](./docs/backlog-app.md) (à faire & vérifier, athlète/coach) · [`docs/roadmap-beta.md`](./docs/roadmap-beta.md) (route vers un test à grande échelle) · [`docs/animations.md`](./docs/animations.md) · archi détaillée : [`docs/`](./docs/).
 
 ## Le projet en une phrase
@@ -47,6 +48,7 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 
 - `npm run build:www` (`scripts/build-www.mjs`) : assemble la coquille `www/` pour Capacitor.
 - `npm test` (`scripts/run-tests.mjs`) : suite de tests node (le harness transpile `index.ts` + sandbox moteur Supabase en mémoire).
+- **Parcours navigateur** (`tests/parcours-navigateur.test.js`, inclus dans `npm test` et la CI) : la vraie app dans Chromium + le vrai serveur en mémoire, de la connexion aux Analyses. Captures : `node scripts/parcours-navigateur/run.mjs --captures` (→ `/tmp/parcours-*.png`). À étendre quand un parcours clé change.
 
 ## Modèle de données (tables Supabase — colonnes historiques conservées)
 

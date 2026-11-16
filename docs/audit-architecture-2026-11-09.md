@@ -17,13 +17,13 @@
 | P1 | Sortie d'`indicateurs` | 🟡 en cours | ✅ `envoi_id` → `envois_recus` · ✅ `pref` → `athletes.prefs` · ✅ quotas IA/morpho → `quotas_jour` · ⏳ récompenses (préprod, après observation ; preuve du verrou PostgreSQL demandée) · ⏳ `alerte_*` · ⏳ suppression des anciennes lignes après observation |
 | P1 | Décision hachage (S4) | ✅ fait 10/11 — option C (`w1` = PBKDF2 600 000 tours sur le s2), 53 comptes convertis | `docs/note-hachage-mdp-2026-11-10.md` ; ⏳ supprimer `password_hash_s2` après observation |
 | P2 | Test « chaque route est couverte par les droits » | ✅ audit 10/11 (121 routes, 919 appels) ; 🔴 et 4 🟠 corrigés en prod ; 🟡 traités 13/11 : **test permanent `tests/securite-droits-routes.test.js`** (toutes les routes, 2 473 vérifications) + `claimRecompense` / `saveEmail` réservés à l'athlète (**prod v254**) | `docs/audit-droits-routes-2026-11-10.md`, `scripts/audit-droits/` |
-| P2 | Test Playwright de bout en bout en CI | ⏳ | |
-| P2 | README + carte d'`app.js` + dictionnaire d'`indicateurs` + CLAUDE.md à jour | ⏳ | |
-| P2 | Nouveau code en fichiers séparés (modèle `lecture-v3.js`) | ⏳ (règle à écrire dans CLAUDE.md) | |
-| P3 | Une seule fonction réseau (délai max, message, trace) ; plus de `catch {}` vides sur réseau / écriture | ⏳ | |
+| P2 | Test Playwright de bout en bout en CI | ✅ fait 16/11 — vraie app dans Chromium + vrai serveur (sessions exigées) : connexion → état du jour → 3 séries saisies → enregistrement → rechargement → Analyses ; échoue sur toute erreur JS / tout appel refusé ; vérifié qu'il détecte une panne d'enregistrement ; 12 s | `tests/parcours-navigateur.test.js`, `scripts/parcours-navigateur/` |
+| P2 | README + carte d'`app.js` + dictionnaire d'`indicateurs` + CLAUDE.md à jour | 🟡 16/11 : ✅ carte du code (`docs/carte-du-code.md`, liée depuis CLAUDE.md) · ⏳ dictionnaire d'`indicateurs` (après la fin de leur migration) · ⏳ README | |
+| P2 | Nouveau code en fichiers séparés (modèle `lecture-v3.js`) | ✅ règle écrite 16/11 (`docs/carte-du-code.md` § 5, lien depuis CLAUDE.md) | |
+| P3 | Une seule fonction réseau (délai max, message, trace) ; plus de `catch {}` vides sur réseau / écriture | ✅ 16/11 (préprod) — dans la couche réseau unique (surcharge de `fetch`) : délai max par appel (30 s, 45 s écriture, plus pour IA/morpho/générateur), message « Pas enregistré » sur toute écriture qui échoue (réseau, délai, erreur 5xx ; + refus `success:false` pour les 14 écritures recensées silencieuses), journal des 40 derniers appels joint aux « Signaler un problème » ; testé dans le navigateur (parcours étape 8). Les `catch {}` locaux restent, mais l'échec n'est plus muet. | `js/app.js` (« Couche réseau unique »), `scripts/parcours-navigateur/run.mjs` |
 | P3 | Un seul module de dates ; trancher `_maShortDate` | ⏳ | |
 | P3 | Une seule source de seuils ; ACWR côté serveur seulement | ⏳ | |
-| P3 | Écriture de séance transactionnelle | ⏳ | |
+| P3 | Écriture de séance transactionnelle | ✅ diagnostic 16/11 : déjà tout-ou-rien (1 seul INSERT des séries) + anti-doublon (identifiant d'envoi réservé, prod : 0 série en double, 18 envois tous confirmés) + file hors-ligne (sortie seulement sur confirmation). Trou corrigé (préprod) : le bilan d'une séance renvoyée depuis la file était abandonné s'il échouait → il reste en file et repart seul (testé navigateur, étape 9 ; l'ancienne version échoue au test). ⏳ agrégats `tonnage_total`… écrits après la séance mais jamais relus → à supprimer avec la sortie d'`indicateurs` (24/11). Saisie coach : sans file (message clair), à décider. | `js/app.js` (`flushSeancesOffline`, `_envoyerBilanFile`) |
 | P4 | Index `(athlete_id, date)` ; minification ; jeton en en-tête | ⏳ | |
 | P5 | Archivage de l'héritage, `Docs/` → `docs/` | ⏳ | |
 
