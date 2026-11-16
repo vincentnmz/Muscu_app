@@ -283,12 +283,15 @@ function _lv3Diag(data, exo, kind, nowT) {
     } else if (rep0 != null) checks.push({ s: 'ok', t: 'Repos : ' + _rt(Math.round(rep0)) + ', stable — pas en cause' });
     // 8) Effort laissé en réserve : séries de travail arrêtées à RPE ≤ 8 (≈ 2 reps ou plus en réserve).
     rpeT = moyK([].concat.apply([], recentes.map(trav)), 'rpe');
-    if (rpeT != null && rpeT < 8.5) {
+    // 16/11 (retour porteur) : pas de « réserve d'effort » quand l'effort MONTE déjà (cause « effort », signe de fatigue)
+    // ou quand la dernière séance était à RPE ≥ 9 — avant : « vise RPE 8 … Et va jusqu'à RPE 9-10 » dans la même phrase.
+    var _rpe0 = moyK(trav(p0), 'rpe');
+    if (rpeT != null && rpeT < 8.5 && cause !== 'effort' && !(_rpe0 != null && _rpe0 >= 9)) {
       var res = Math.round(10 - rpeT);
       checks.push({ s: 'ko', t: '<b>Séries arrêtées à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '</b> (≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve) sur les ' + recentes.length + ' dernières séances' });
       if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Sur ta dernière série, va jusqu\'à RPE 9-10 (0 à 1 rep en réserve) à ' + kg(c0) + ' kg.'; }
       else levier += ' Et sur ta dernière série, va jusqu\'à RPE 9-10 : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve.';
-    } else if (rpeT != null) checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
+    } else if (rpeT != null && cause !== 'effort') checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
     // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
     // 8) (validé 06/11) Gêne ≥ 3/5 signalée sur la zone du muscle pendant le plateau → cause POSSIBLE.
     try {
