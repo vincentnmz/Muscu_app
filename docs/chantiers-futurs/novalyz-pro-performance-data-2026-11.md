@@ -84,4 +84,14 @@ Intégrations directes Hudl/Dartfish/Nacsport, GPS, tracking, vidéo (champ `hor
 1. **Vendredi** : maquette interactive démo (recommandé) **ou** viser déjà un import réel (phases 1-3 en 4 jours = risqué, et rien ne doit partir en prod sans tests) ?
 2. **Sport de la démo** : hockey sur gazon en premier (pour la fédération) + foot ? Il me faut les **types d'événements et zones hockey** que tu utiliserais (ou je propose une liste standard à valider).
 3. **Un vrai CSV** (anonymisé) de ton analyse Torcy → base des gabarits et des tests.
-4. **Rôle analyste / préparateur** : nouveaux comptes, ou rôles donnés à des comptes coach existants ?
+4. ~~Rôle analyste / préparateur~~ → **tranché (16/11)** : le rôle **prépa** existe déjà (`STAFF_ROLES = ['coach','prepa']` dans `index.ts`). **Analyste, kiné, médecin…** viendront plus tard, en ajoutant des valeurs à ce même mécanisme de rôles staff (pas de nouveaux types de comptes).
+
+## 9. Format réel d'un club (exports Nacsport Torcy, reçus le 16/11) — vérifié sur 5 fichiers
+
+- **Une ligne = un clip vidéo** : `Nom` = catégorie + n° (« Possession (17) »), `Position` / `Durée:` = **millisecondes de vidéo**, `MT` = « 1er MT » / « 2éme MT », `Equipe`.
+- **Pas de temps de jeu** (2e MT à 72:55 de vidéo) → calage par mi-temps (heure vidéo du coup d'envoi) pour la minute de jeu.
+- **Pas de colonne joueur** (marquage collectif) → pas de stats individuelles avec ce marquage.
+- **Descripteurs en colonnes** (`Entrée 30m`, `Résultat entrée 30 m`, `Situation dans les 30 m`, `Cadré`, `Finition`, `Zone`…) → rangés tels quels dans `attributs` ; leur sens vient du **gabarit**.
+- `Panneau de score` à 0:0 même sur un but → non fiable, ignoré. Colonne `Position` parfois en double.
+- **Exports filtrés du même match** : 76 lignes → 29 clips ; **désaccords** entre fichiers sur 4 clips (`Passe vers surface`) → l'import multi-fichiers fusionne par clip et fait trancher l'analyste.
+- Intégré à la maquette (foot ▸ Import ▸ « exemple réel », équipes anonymisées). Les fichiers d'origine ne sont **pas** dans le dépôt.

@@ -447,7 +447,10 @@ bind.apercu=()=>{
 };
 
 /* ===================== Match ===================== */
+function selMatch(){const M=D().matchs;return `<label class="row subtle" for="selm">Match <select id="selm" class="f">${st.sport==='foot'&&st.clipMatch?`<option value="clips" ${st.match==='clips'?'selected':''}>Import réel · ${esc(st.clipMatch.F.nous)} – ${esc(st.clipMatch.F.adv)}</option>`:''}${M.map((x,i)=>`<option value="${i}" ${i===st.match?'selected':''}>${dcourt(x.date)} · ${esc(x.adv)}</option>`).reverse().join('')}</select></label>`}
 function rMatch(){
+ if(st.match==='clips'&&st.sport==='foot'&&st.clipMatch)return rClipMatch();
+ if(typeof st.match!=='number')st.match=7;
  const S=Sx(),M=D().matchs,m=M[st.match],c=calc(m),r=resultat(c);
  const autres=M.filter(x=>x!==m).map(x=>calc(x));
  const duels=S.duels.map(([a,b])=>{const va=c[a],vb=b?c[b]:null,tot=(va||0)+(vb||0),dec=V(a).dec||0,ma=moy(autres.map(o=>o[a]));
@@ -467,7 +470,7 @@ function rMatch(){
   <div><div class="subtle">${dfr(m.date)} · Championnat (démo) · ${m.dom?'à domicile':"à l'extérieur"}</div>
   <h1 style="font-size:26px;margin-top:4px">${esc(S.equipe)} <span class="num">${c.buts} – ${c.adv_buts}</span> ${esc(m.adv)}</h1>
   <div class="row" style="margin-top:6px"><span class="pill ${r}">${RLBL[r]}</span><span class="subtle">Source : ${esc(m.source)} · version ${m.version} · ${m.ev.length} événements</span></div></div>
-  <label class="row subtle" for="selm">Match <select id="selm" class="f">${M.map((x,i)=>`<option value="${i}" ${i===st.match?'selected':''}>${dcourt(x.date)} · ${esc(x.adv)}</option>`).reverse().join('')}</select></label>
+  ${selMatch()}
  </div></section>
  <div class="grid g2">
   <section class="card"><header><h2>Chiffres clés</h2><p><span style="color:var(--accent)">■</span> ${esc(S.equipe)} · <span style="color:var(--adv)">■</span> ${esc(m.adv)}</p></header>${duels}</section>
@@ -490,7 +493,8 @@ function rMatch(){
   ${m.ev.length>14?`<div class="row" style="margin-top:10px"><button class="btn s" id="tousev">${st.tousEv?'Réduire':'Voir les '+m.ev.length+' événements'}</button></div>`:''}</section>`;
 }
 bind.match=()=>{
- $('#selm').onchange=e=>{st.match=+e.target.value;st.tousEv=false;render()};
+ $('#selm').onchange=e=>{st.match=e.target.value==='clips'?'clips':+e.target.value;st.tousEv=false;render()};
+ if(st.match==='clips')return;
  $('#ztype').onchange=e=>{st.zoneType=e.target.value;render()};
  const t=$('#tousev');if(t)t.onclick=()=>{st.tousEv=!st.tousEv;render()};
 };
@@ -655,13 +659,15 @@ function valider(){
 }
 function rImport(){
  const S=Sx(),I=st.imp;
+ if(I&&I.mode==='clips')return rImportClips()+histHTML();
  const steps=['Fichier','Correspondance','Vérification','Import'],cur=I?I.step:1;
  let h=`<section class="card"><header><h2>Importer un match</h2><p>Export d'un logiciel d'analyse vidéo (Nacsport, Dartfish, Hudl Sportscode…) au format CSV.</p></header>
  <ol class="steps">${steps.map((s,i)=>`<li class="${i+1===cur?'on':i+1<cur?'ok':''}"><b>${i+1}</b>${s}</li>`).join('')}</ol>`;
  if(!I){
   h+=`<div class="drop"><b>Déposer un fichier CSV</b><span class="muted">Le fichier est lu dans le navigateur. Rien n'est envoyé dans cette démo.</span>
    <div class="row"><button class="btn p" id="ex">Charger l'exemple : match du ${dcourt(D().matchs[7].date)} (${S.csv.delim===';'?'Nacsport':'export standard'})</button>
-   <label class="btn" for="fic" style="cursor:pointer">Choisir mon fichier…</label><input type="file" id="fic" accept=".csv,.txt,.xlsx" hidden></div>
+   <label class="btn" for="fic" style="cursor:pointer">Choisir mes fichiers…</label><input type="file" id="fic" accept=".csv,.txt,.xlsx" multiple hidden></div>
+   ${st.sport==='foot'?`<div class="row"><button class="btn" id="exr">Charger l'exemple réel : 5 exports Nacsport d'un match (équipes anonymisées)</button></div>`:''}
    <span class="subtle">L'exemple contient volontairement ${st.sport==='hockey'?7:7} lignes à problème pour montrer la vérification.</span></div>`;
  }else if(I.step===2){
   const types=Object.keys(S.types),manq=OBLIG.filter(k=>col(k)<0);
@@ -698,6 +704,10 @@ function rImport(){
    <div class="row" style="margin-top:12px">${R.exemple?'<button class="btn p" id="voir">Ouvrir la fiche du match</button>':''}<button class="btn" id="nouv">Importer un autre fichier</button></div>`;
  }
  h+='</section>';
+ return h+histHTML();
+}
+function histHTML(){
+ const S=Sx();let h='';
  const hist=[...st.imports[st.sport].slice().reverse(),...D().matchs.slice().reverse().map(m=>({date:m.date,fichier:(m.source.startsWith('Dartfish')?'dartfish_':'nacsport_')+dcourt(m.date).replace('/','-')+'.csv',gab:m.source.startsWith('Dartfish')?'Dartfish (démo)':S.gabarit,ok:m.ev.length,excl:m.exclues,version:'v1',auteur:'Analyste (démo)'}))];
  h+=`<section class="card"><header><h2>Historique des imports</h2><p>Qui a importé quoi, quand, avec quel gabarit</p></header><div class="tblw"><table><thead><tr><th>Date</th><th>Fichier</th><th>Gabarit</th><th class="n">Importés</th><th class="n">Exclus</th><th>Version</th><th>Par</th></tr></thead><tbody>
  ${hist.map(x=>`<tr><td>${dfr(x.date)}</td><td class="mono" style="font-size:12px">${esc(x.fichier)}</td><td>${esc(x.gab)}</td><td class="n">${x.ok}</td><td class="n">${x.excl}</td><td>${esc(x.version)}</td><td class="subtle">${esc(x.auteur)}</td></tr>`).join('')}
@@ -707,9 +717,13 @@ function rImport(){
 function lignesExclues(iss){const s=new Set();for(const x of iss)if(st.imp.dec[x.k]==='exclure')s.add(x.ri);return s}
 bind.import=()=>{
  const I=st.imp,S=Sx();
+ if(I&&I.mode==='clips'){bindClips();return}
  if(!I){$('#ex').onclick=()=>chargerFichier(S.csv.nom,sampleCSV(),true);
-  $('#fic').onchange=e=>{const f=e.target.files[0];if(!f)return;if(/\.xlsx$/i.test(f.name)){toast('XLSX : prévu dans la version finale. Pour la démo, exporte en CSV.');return}
-   const rd=new FileReader();rd.onload=()=>chargerFichier(f.name,String(rd.result),false);rd.readAsText(f)};return}
+  const xr=$('#exr');if(xr)xr.onclick=()=>chargerClips(CLIPS_EX,true);
+  $('#fic').onchange=async e=>{const fs=[...e.target.files];if(!fs.length)return;if(fs.some(f=>/\.xlsx$/i.test(f.name))){toast('XLSX : prévu dans la version finale. Pour la démo, exporte en CSV.');return}
+   const txts=await Promise.all(fs.map(f=>f.text()));
+   if(txts.every(t=>estClips(parseCSV(t.replace(/^\ufeff/,''))[0]||[]))){if(st.sport!=='foot'){st.sport='foot';try{localStorage.setItem('nvzpro-sport','foot')}catch(e){}}chargerClips(fs.map((f,i)=>[f.name,txts[i]]),false);return}
+   chargerFichier(fs[0].name,txts[0].replace(/^\ufeff/,''),false)};return}
  if(I.step===2){
   document.querySelectorAll('[data-col]').forEach(s=>s.onchange=()=>{I.map[s.dataset.col]=s.value;majVmap();render()});
   document.querySelectorAll('[data-val]').forEach(s=>s.onchange=()=>{I.vmap[s.dataset.val]=s.value;render()});
@@ -731,6 +745,157 @@ bind.import=()=>{
  }else if(I.step===5){const v=$('#voir');if(v)v.onclick=()=>{st.match=7;go('match')};$('#nouv').onclick=()=>{st.imp=null;render()}}
 };
 
+
+/* ===================== Import « par clips » (export Nacsport réel, format club) ===================== */
+const CLIPS_EX=[["entree_30m.csv", "Nom,Position,Durée:,Entrée 30m,Equipe,Liste d'action,MT,Panneau de score,Passe vers surface,Passe surface\nPossession (17),573608,22618,1,Équipe A,Possession,1er MT,0:0,,\nPossession (19),637271,24153,1,Équipe A,Possession,1er MT,0:0,,\nPossession (22),720488,11774,1,Équipe A,Possession,1er MT,0:0,1,\nPossession (26),906407,13776,1,Équipe A,Possession,1er MT,0:0,,\nPossession (44),1274775,9672,1,Équipe A,Possession,1er MT,0:0,1,\nPossession (48),1477411,11807,1,Équipe A,Possession,1er MT,0:0,,1\nPossession (66),1980113,14677,1,Équipe A,Possession,1er MT,0:0,,\nPossession (75),2155255,16979,1,Équipe A,Possession,1er MT,0:0,,\nPossession (77),2260827,25421,1,Équipe A,Possession,1er MT,0:0,,\nPossession (80),2369736,32628,1,Équipe A,Possession,1er MT,0:0,,\nPossession (96),2807139,13642,1,Équipe A,Possession,1er MT,0:0,1,1\nPossession (101),2880779,21784,1,Équipe A,Possession,1er MT,0:0,1,\nPossession (124),4375039,17246,1,Équipe A,Possession,2éme MT,0:0,,\nPossession (137),4845809,19448,1,Équipe A,Possession,2éme MT,0:0,1,\nPossession (143),5175438,19448,1,Équipe A,Possession,2éme MT,0:0,,\nPossession (157),5589550,13111,1,Équipe A,Possession,2éme MT,0:0,,\nPossession (159),5620717,33295,1,Équipe A,Possession,2éme MT,0:0,2,\nPossession (164),5756786,104967,1,Équipe A,Possession,2éme MT,0:0,,\nPossession (169),6062992,15811,1,Équipe A,Possession,2éme MT,0:0,,\nPossession (171),6098461,14377,1,Équipe A,Possession,2éme MT,0:0,1,\nPossession (173),6177373,14343,1,Équipe A,Possession,2éme MT,0:0,1,\nPossession (175),6256552,15044,1,Équipe A,Possession,2éme MT,0:0,1,1\nPossession (179),6358387,17646,1,Équipe A,Possession,2éme MT,0:0,1,\nPossession (191),6644906,48277,2,Équipe A,Possession,2éme MT,0:0,1,\nPossession (193),6760455,21384,1,Équipe A,Possession,2éme MT,0:0,,"], ["occaz.csv", "Nom,Position,Durée:,Entrée 30m,Equipe,Liste d'action,MT,Panneau de score,Passe surface,Passe vers surface,Résultat entrée 30 m,Situation dans les 30 m\nPossession (17),573608,22618,1,Équipe A,Possession,1er MT,0:0,,,Action neutre,Centre\nPossession (19),637271,24153,1,Équipe A,Possession,1er MT,0:0,,,Action neutre,Perte de balle\nPossession (22),720488,11774,1,Équipe A,Possession,1er MT,0:0,,1,Action dangereuse,Entrée surface\nPossession (26),906407,13776,1,Équipe A,Possession,1er MT,0:0,,,Action dangereuse,Tir\nPossession (44),1274775,9672,1,Équipe A,Possession,1er MT,0:0,,1,Action décisive,Tir\nPossession (48),1477411,11807,1,Équipe A,Possession,1er MT,0:0,1,,Action neutre,Centre\nPossession (66),1980113,14677,1,Équipe A,Possession,1er MT,0:0,,,Action neutre,Perte de balle\nPossession (96),2807139,13642,1,Équipe A,Possession,1er MT,0:0,1,1,Action neutre,Centre\nPossession (101),2880779,21784,1,Équipe A,Possession,1er MT,0:0,,1,Action dangereuse,Tir\nPossession (124),4375039,17246,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Perte de balle\nPossession (137),4845809,19448,1,Équipe A,Possession,2éme MT,0:0,,1,Action dangereuse,Tir\nPossession (143),5175438,19448,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Perte de balle\nPossession (157),5589550,13111,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Centre\nPossession (159),5620717,33295,1,Équipe A,Possession,2éme MT,0:0,,2,Action neutre,Entrée surface\nPossession (164),5756786,104967,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Perte de balle\nPossession (169),6062992,15811,1,Équipe A,Possession,2éme MT,0:0,,,Action dangereuse,Tir\nPossession (171),6098461,14377,1,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Perte de balle\nPossession (173),6177373,14343,1,Équipe A,Possession,2éme MT,0:0,,1,Action dangereuse,Centre\nPossession (175),6256552,15044,1,Équipe A,Possession,2éme MT,0:0,1,1,Action dangereuse,Centre\nPossession (179),6358387,17646,1,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Centre\nPossession (191),6644906,48277,2,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Entrée surface\nPossession (193),6760455,21384,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Entrée surface"], ["resultat_30m.csv", "Nom,Position,Durée:,Entrée 30m,Equipe,Liste d'action,MT,Panneau de score,Passe surface,Passe vers surface,Résultat entrée 30 m,Situation dans les 30 m\nPossession (17),573608,22618,1,Équipe A,Possession,1er MT,0:0,,,Action neutre,Centre\nPossession (19),637271,24153,1,Équipe A,Possession,1er MT,0:0,,,Action neutre,Perte de balle\nPossession (22),720488,11774,1,Équipe A,Possession,1er MT,0:0,,1,Action dangereuse,Entrée surface\nPossession (26),906407,13776,1,Équipe A,Possession,1er MT,0:0,,1,Action dangereuse,Tir\nPossession (44),1274775,9672,1,Équipe A,Possession,1er MT,0:0,,1,Action décisive,Tir\nPossession (48),1477411,11807,1,Équipe A,Possession,1er MT,0:0,1,1,Action neutre,Centre\nPossession (66),1980113,14677,1,Équipe A,Possession,1er MT,0:0,,,Action neutre,Perte de balle\nPossession (96),2807139,13642,1,Équipe A,Possession,1er MT,0:0,1,1,Action neutre,Centre\nPossession (101),2880779,21784,1,Équipe A,Possession,1er MT,0:0,,1,Action dangereuse,Tir\nPossession (124),4375039,17246,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Perte de balle\nPossession (137),4845809,19448,1,Équipe A,Possession,2éme MT,0:0,,1,Action dangereuse,Tir\nPossession (143),5175438,19448,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Perte de balle\nPossession (157),5589550,13111,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Centre\nPossession (159),5620717,33295,1,Équipe A,Possession,2éme MT,0:0,,2,Action neutre,Entrée surface\nPossession (164),5756786,104967,1,Équipe A,Possession,2éme MT,0:0,,,Action neutre,Perte de balle\nPossession (169),6062992,15811,1,Équipe A,Possession,2éme MT,0:0,,1,Action dangereuse,Tir\nPossession (171),6098461,14377,1,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Perte de balle\nPossession (173),6177373,14343,1,Équipe A,Possession,2éme MT,0:0,,1,Action dangereuse,Centre\nPossession (175),6256552,15044,1,Équipe A,Possession,2éme MT,0:0,1,1,Action dangereuse,Centre\nPossession (179),6358387,17646,1,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Centre\nPossession (191),6644906,48277,2,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Entrée surface\nPossession (193),6760455,21384,1,Équipe A,Possession,2éme MT,0:0,,1,Action neutre,Entrée surface"], ["passe_dans_la_surface.csv", "Nom,Position,Durée:,Cadré,Entrée 30m,Equipe,Finition,Liste d'action,MT,Panneau de score,Passe vers surface,Position,Resultat Tirs,Situation du tir,Tir,Zone,Passe surface\nPossession (48),1477411,11807,,1,Équipe A,,Possession,1er MT,0:0,,1477411,,,,,1\nPossession (96),2807139,13642,,1,Équipe A,,Possession,1er MT,0:0,1,2807139,,,,,1\nPossession (130),4503667,10606,,,Équipe B,,Possession,2éme MT,0:0,,4503667,,,,,1\nPossession (156),5554651,13342,,,Équipe B,,Possession,2éme MT,0:0,,5554651,,,,,1\nTir (17),5554787,10000,Oui,,Équipe B,Pied,Possession,2éme MT,0:0,,5554787,Pas but,CPA,Tir,Surface axe,2\nPossession (175),6256552,15044,,1,Équipe A,,Possession,2éme MT,0:0,1,6256552,,,,,1"], ["but_encaisse.csv", "Nom,Position,Durée:,Cadré,Equipe,Finition,MT,Panneau de score,Position,Resultat Tirs,Situation du tir,Tir,Zone,Cause principal,Situation avant but\nTir (14),5137303,10000,Oui,Équipe B,Tete,2éme MT,0:0,5137303,But,CPA,Tir,Axe,Duel perdu,Défense de centre"]];
+const GAB_CLUB={nom:'Nacsport — export par clips (format club)',entree:'Entrée 30m',resultat:'Résultat entrée 30 m',situation:'Situation dans les 30 m',pvs:'Passe vers surface',ps:'Passe surface',tir:'Resultat Tirs'};
+const CLIP_ROLES={nom:'Catégorie + n° de clip',position:'Temps vidéo (ms)','duree:':'Durée du clip (ms)',duree:'Durée du clip (ms)',equipe:'Équipe',mt:'Période (mi-temps)','panneau de score':'Ignorée : non fiable (0:0 même sur la ligne du but)',"liste d'action":'Ignorée : redondante avec la catégorie'};
+const estClips=h=>{const n=h.map(norm);return n.includes('nom')&&n.includes('position')&&n.includes('mt')};
+const vms=ms=>{const t=Math.round(ms/1000);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+function chargerClips(files,exemple){
+ const fic=files.map(([nom,txt])=>{const rows=parseCSV(txt.replace(/^﻿/,''));return{nom,h:rows[0].map(x=>x.trim()),data:rows.slice(1)}});
+ st.imp={mode:'clips',step:2,fic,dec:{},ko1:'',ko2:'',exemple};render();
+}
+function fusion(){
+ const I=st.imp,clips=new Map();let lignes=0;const dupCols=[];
+ for(const f of I.fic){
+  const first={};f.h.forEach((h,i)=>{const n=norm(h);if(n in first)dupCols.push({fic:f.nom,col:h,egal:f.data.every(r=>r[i]===r[first[n]])});else first[n]=i});
+  for(const r of f.data){lignes++;const nm=(r[first.nom]||'').trim(),m=nm.match(/^(.*?)\s*\((\d+)\)\s*$/),pos=+r[first.position];
+   const key=nm+'@'+pos;let c=clips.get(key);
+   if(!c){c={key,nom:nm,cat:m?m[1]:nm,no:m?+m[2]:null,pos,dur:+r[first['duree:']??first.duree]||0,eq:'',mt:0,vals:{},src:[]};clips.set(key,c)}
+   c.src.push(f.nom);
+   for(const [n,i] of Object.entries(first)){const h=f.h[i],v=(r[i]||'').trim();
+    if(n==='nom'||n==='position'||n==='duree:'||n==='duree')continue;
+    if(n==='equipe'){c.eq=c.eq||v;continue} if(n==='mt'){const mm=v.match(/^(\d)/);c.mt=c.mt||(mm?+mm[1]:0);continue}
+    if(n in CLIP_ROLES)continue;
+    (c.vals[h]=c.vals[h]||{});(c.vals[h][v]=c.vals[h][v]||[]).push(f.nom)}}
+ }
+ const L=[...clips.values()].sort((a,b)=>a.pos-b.pos),conf=[];
+ for(const c of L)for(const [col,vs] of Object.entries(c.vals))if(Object.keys(vs).length>1)conf.push({k:c.key+'|'+col,c,col,vs});
+ const cnt={};for(const c of L)cnt[c.eq]=(cnt[c.eq]||0)+1;const nous=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+ const adv=Object.keys(cnt).find(e=>e!==nous)||'';
+ return{L,lignes,conf,dupCols,nous,adv};
+}
+function val(c,col){const vs=c.vals[col];if(!vs)return '';const ks=Object.keys(vs);if(ks.length===1)return ks[0];const d=st.imp&&st.imp.dec[c.key+'|'+col];return d!==undefined?d:(c.res?c.res[col]:undefined)}
+function lireVid(s){const m=String(s||'').trim().match(/^(\d{1,3}):(\d{2})$/);return m?(+m[1]*60+ +m[2])*1000:NaN}
+function minuteJeu(c,ko1,ko2){const k=c.mt===2?ko2:ko1;if(!Number.isFinite(k))return NaN;return (c.pos-k)/60000+(c.mt===2?45:0)}
+function rImportClips(){
+ const I=st.imp,F=fusion(),G=GAB_CLUB;
+ const steps=['Fichiers','Correspondance','Vérification','Import'];
+ let h=`<section class="card"><header><h2>Importer un match · plusieurs fichiers</h2><p>${I.fic.length} exports du même match, fusionnés clip par clip.</p></header>
+ <ol class="steps">${steps.map((s,i)=>`<li class="${i+1===I.step?'on':i+1<I.step?'ok':''}"><b>${i+1}</b>${s}</li>`).join('')}</ol>`;
+ if(I.step===2){
+  const cols=new Map();for(const f of I.fic)f.h.forEach(x=>{const n=norm(x);const o=cols.get(n)||{h:x,n:0};o.n++;cols.set(n,o)});
+  h+=`<div class="row" style="margin-bottom:10px"><span class="pill v">Gabarit reconnu : ${esc(G.nom)}</span>${I.exemple?'<span class="pill w">Fichiers réels · équipes anonymisées</span>':''}</div>
+  <div class="grid g2" style="align-items:start"><div><h3 style="margin-bottom:6px">Fichiers</h3><div class="tblw"><table><thead><tr><th>Fichier</th><th class="n">Lignes</th><th class="n">Colonnes</th></tr></thead><tbody>
+  ${I.fic.map(f=>`<tr><td class="mono" style="font-size:12px">${esc(f.nom)}</td><td class="n">${f.data.length}</td><td class="n">${f.h.length}</td></tr>`).join('')}</tbody></table></div>
+  <h3 style="margin:14px 0 6px">Calage du temps (facultatif)</h3>
+  <p class="subtle" style="margin:0 0 6px">La colonne Position est le temps de la <b>vidéo</b>, pas le temps de jeu. Indique où commence chaque mi-temps dans la vidéo (mm:ss) pour obtenir la minute de jeu.</p>
+  <div class="row"><label class="subtle" for="ko1">Coup d'envoi 1re MT</label><input id="ko1" class="f mono" style="width:90px" placeholder="mm:ss" value="${esc(I.ko1)}">
+  <label class="subtle" for="ko2">Coup d'envoi 2e MT</label><input id="ko2" class="f mono" style="width:90px" placeholder="mm:ss" value="${esc(I.ko2)}"></div></div>
+  <div><h3 style="margin-bottom:6px">Colonnes</h3><div class="tblw"><table><thead><tr><th>Colonne</th><th class="n">Fichiers</th><th>Rôle dans Novalyz</th></tr></thead><tbody>
+  ${[...cols.values()].map(o=>{const r=CLIP_ROLES[norm(o.h)];return `<tr><td><b>${esc(o.h)}</b></td><td class="n">${o.n}</td><td>${r?esc(r):'<span class="pill a">Descripteur</span> <span class="subtle">gardé tel quel</span>'}</td></tr>`}).join('')}</tbody></table></div>
+  ${F.dupCols.length?`<p class="note">Colonne en double dans ${F.dupCols.length} fichier(s) (${esc([...new Set(F.dupCols.map(d=>d.col))].join(', '))}) : ${F.dupCols.every(d=>d.egal)?'valeurs identiques, la seconde est ignorée':'valeurs différentes, à vérifier'}.</p>`:''}</div></div>
+  <div class="row" style="margin-top:12px"><span style="flex:1"></span><button class="btn" id="annul">Changer de fichiers</button><button class="btn p" id="suiv">Fusionner et vérifier →</button></div>`;
+ }else if(I.step===3){
+  const ko1=lireVid(I.ko1),ko2=lireVid(I.ko2),reste=F.conf.filter(x=>I.dec[x.k]===undefined).length;
+  const poss=F.L.filter(c=>c.eq===F.nous&&val(c,G.entree)),sansRes=poss.filter(c=>!val(c,G.resultat)).length;
+  const butSans=F.L.filter(c=>val(c,G.tir)==='But').length;
+  const avant=(Number.isFinite(ko1)||Number.isFinite(ko2))?F.L.filter(c=>minuteJeu(c,ko1,ko2)<0).length:0;
+  h+=`<div class="kpis" style="margin-bottom:12px"><div class="kpi"><div class="l">Lignes lues</div><div class="v">${F.lignes}</div><div class="s">${I.fic.length} fichiers</div></div>
+   <div class="kpi"><div class="l">Clips distincts</div><div class="v" style="color:var(--good)">${F.L.length}</div><div class="s">${F.lignes-F.L.length} lignes en double fusionnées</div></div>
+   <div class="kpi"><div class="l">Désaccords</div><div class="v" style="color:var(--warn)">${F.conf.length}</div><div class="s">même clip, valeurs différentes selon le fichier</div></div>
+   <div class="kpi"><div class="l">Équipes</div><div class="v" style="font-size:18px">${esc(F.nous)} · ${esc(F.adv)}</div></div></div>
+   ${F.conf.length?`<h3 style="margin-bottom:6px">Désaccords entre fichiers : à trancher</h3><div class="tblw"><table><thead><tr><th>Clip</th><th>Colonne</th><th>Valeurs selon le fichier</th><th>Décision</th></tr></thead><tbody>
+   ${F.conf.map(x=>`<tr><td><b>${esc(x.c.nom)}</b><div class="subtle">${vms(x.c.pos)} vidéo</div></td><td>${esc(x.col)}</td><td style="font-size:12.5px">${Object.entries(x.vs).map(([v,fs])=>`<div><b>${v===''?'vide':esc(v)}</b> <span class="subtle">${esc(fs.join(', '))}</span></div>`).join('')}</td>
+   <td><select class="f" data-cdec="${esc(x.k)}" aria-label="Décision ${esc(x.c.nom)}"><option value="__" ${I.dec[x.k]===undefined?'selected':''}>— à trancher —</option>${Object.keys(x.vs).map(v=>`<option value="${esc(v)}" ${I.dec[x.k]===v?'selected':''}>Garder « ${v===''?'vide':esc(v)} »</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>`:''}
+   <h3 style="margin:14px 0 6px">À savoir (non bloquant)</h3><ul style="margin:0;padding-left:18px;display:grid;gap:4px">
+    <li>${sansRes} possession(s) avec entrée dans les 30 m sans « ${esc(G.resultat)} » : comptées en « non renseigné », jamais devinées.</li>
+    ${butSans?`<li>${butSans} clip(s) « But » alors que « Panneau de score » reste à 0:0 : le score est recalculé à partir des tirs, pas lu dans cette colonne.</li>`:''}
+    <li>${Number.isFinite(ko1)&&Number.isFinite(ko2)?(avant?`${avant} clip(s) placés avant le coup d'envoi indiqué : vérifie le calage.`:'Temps calé : la minute de jeu sera affichée.'):'Temps non calé : les clips sont placés en temps vidéo.'}</li>
+    <li>Aucune colonne joueur : analyse collective uniquement.</li></ul>
+   <div class="row" style="margin-top:12px"><button class="btn" id="prec">← Correspondance</button><span style="flex:1"></span><button class="btn p" id="go" ${reste?'disabled':''}>${reste?`Tranche ${reste} désaccord${reste>1?'s':''} pour importer`:`Importer ${F.L.length} clips`}</button></div>`;
+ }else if(I.step===4){
+  h+=`<div><p><b>Import en cours…</b> <span class="muted" id="implbl"></span></p><div class="progress"><i id="impbar"></i></div></div>`;
+ }else if(I.step===5){
+  const R=I.res;
+  h+=`<div class="kpis"><div class="kpi"><div class="l">Clips importés</div><div class="v" style="color:var(--good)">${R.ok}</div><div class="s">à partir de ${R.lignes} lignes</div></div>
+   <div class="kpi"><div class="l">Désaccords tranchés</div><div class="v">${R.conf}</div><div class="s">décision gardée dans l'historique</div></div>
+   <div class="kpi"><div class="l">Descripteurs</div><div class="v">${R.desc}</div><div class="s">colonnes gardées telles quelles</div></div>
+   <div class="kpi"><div class="l">Version</div><div class="v">v1</div><div class="s">fichiers bruts conservés</div></div></div>
+   <div class="row" style="margin-top:12px"><button class="btn p" id="voir">Ouvrir la fiche du match</button><button class="btn" id="nouv">Importer d'autres fichiers</button></div>`;
+ }
+ return h+'</section>';
+}
+function bindClips(){
+ const I=st.imp;
+ if(I.step===2){$('#annul').onclick=()=>{st.imp=null;render()};
+  $('#ko1').onchange=e=>{I.ko1=e.target.value};$('#ko2').onchange=e=>{I.ko2=e.target.value};
+  $('#suiv').onclick=()=>{I.ko1=$('#ko1').value;I.ko2=$('#ko2').value;I.step=3;render()}}
+ else if(I.step===3){
+  document.querySelectorAll('[data-cdec]').forEach(s=>s.onchange=()=>{if(s.value==='__')delete I.dec[s.dataset.cdec];else I.dec[s.dataset.cdec]=s.value;render()});
+  $('#prec').onclick=()=>{I.step=2;render()};
+  $('#go').onclick=()=>{const F=fusion();
+   for(const c of F.L){c.res={};for(const col of Object.keys(c.vals))c.res[col]=val(c,col)}
+   const desc=new Set(F.L.flatMap(c=>Object.keys(c.vals))).size;
+   I.step=4;render();let k=0;const tick=()=>{k++;const b=$('#impbar');if(!b)return;b.style.width=(k*50)+'%';$('#implbl').textContent=`lot ${k}/2`;
+    if(k<2)setTimeout(tick,300);else setTimeout(()=>{st.clipMatch={F,ko1:lireVid(I.ko1),ko2:lireVid(I.ko2)};
+     I.res={ok:F.L.length,lignes:F.lignes,conf:F.conf.length,desc};I.step=5;
+     st.imports.foot.push({date:new Date(Date.UTC(2026,10,16)),fichier:I.fic.length+' fichiers ('+I.fic.map(f=>f.nom).join(', ')+')',gab:GAB_CLUB.nom,ok:F.L.length,excl:0,version:'v1',auteur:'Analyste (démo)'});render()},300)};
+   setTimeout(tick,200)}}
+ else if(I.step===5){$('#voir').onclick=()=>{st.match='clips';go('match')};$('#nouv').onclick=()=>{st.imp=null;render()}}
+}
+function rClipMatch(){
+ const {F,ko1,ko2}=st.clipMatch,G=GAB_CLUB,v=(c,col)=>(c.res&&c.res[col])||'';
+ const poss=F.L.filter(c=>c.eq===F.nous&&v(c,G.entree));
+ const entrees=poss.reduce((s,c)=>s+(+v(c,G.entree)||0),0);
+ const compte=(arr,col)=>{const o={};for(const c of arr){const x=v(c,col)||'Non renseigné';o[x]=(o[x]||0)+1}return o};
+ const res=compte(poss,G.resultat),sit=compte(poss,G.situation);
+ const renseig=poss.filter(c=>v(c,G.resultat)).length,dang=poss.filter(c=>/dangereuse|d[ée]cisive/i.test(v(c,G.resultat))).length;
+ const somme=(eq,col)=>F.L.filter(c=>c.eq===eq).reduce((s,c)=>s+(+v(c,col)||0),0);
+ const buts=eq=>F.L.filter(c=>c.eq===eq&&v(c,G.tir)==='But').length;
+ const mts=[1,2].map(mt=>{const p=poss.filter(c=>c.mt===mt);return{mt,poss:p.length,ent:p.reduce((s,c)=>s+(+v(c,G.entree)||0),0),dang:p.filter(c=>/dangereuse|d[ée]cisive/i.test(v(c,G.resultat))).length,rens:p.filter(c=>v(c,G.resultat)).length,pertes:p.filter(c=>v(c,G.situation)==='Perte de balle').length}});
+ const barresH=o=>{const tot=Object.values(o).reduce((s,x)=>s+x,0);return `<div class="zones">${Object.entries(o).sort((a,b)=>(a[0]==='Non renseigné')-(b[0]==='Non renseigné')||b[1]-a[1]).map(([k,n])=>`<div class="zone"><span${k==='Non renseigné'?' class="subtle"':''}>${esc(k)}</span><span class="num" style="text-align:right">${n}</span><span class="b"><i style="width:${n/tot*100}%;${k==='Non renseigné'?'background:var(--subtle)':''}"></i></span></div>`).join('')}</div>`};
+ const cale=Number.isFinite(ko1)&&Number.isFinite(ko2);
+ const t0=Math.min(...F.L.map(c=>c.pos))-60000,t1=Math.max(...F.L.map(c=>c.pos+c.dur))+60000,W=1000,H=130,Lm=58,x=t=>Lm+(W-Lm-12)*(t-t0)/(t1-t0);
+ const fin1=Math.max(...F.L.filter(c=>c.mt===1).map(c=>c.pos)),deb2=Math.min(...F.L.filter(c=>c.mt===2).map(c=>c.pos));
+ const col=r=>/d[ée]cisive/i.test(r)?'var(--good)':/dangereuse/i.test(r)?'var(--accent)':r?'var(--subtle)':'none';
+ let tl=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Clips sur le temps vidéo"><rect x="${x(fin1)+6}" y="14" width="${Math.max(0,x(deb2)-x(fin1)-12)}" height="${H-40}" fill="var(--surface2)"/><text x="${(x(fin1)+x(deb2))/2}" y="${H/2-4}" text-anchor="middle" font-size="11">entre les mi-temps</text>`;
+ for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000)tl+=`<line x1="${x(t)}" x2="${x(t)}" y1="14" y2="${H-26}" stroke="var(--line)"/><text x="${x(t)}" y="${H-10}" text-anchor="middle" font-size="10.5">${vms(t)}</text>`;
+ tl+=`<line x1="${Lm}" x2="${W-12}" y1="62" y2="62" stroke="var(--line)"/><text x="4" y="40" font-size="11.5" font-weight="600">${esc(F.nous)}</text><text x="4" y="94" font-size="11.5">${esc(F.adv)}</text>`;
+ for(const c of F.L){const xx=x(c.pos).toFixed(1),tip=`${c.nom} · ${vms(c.pos)} vidéo${cale?' · '+fmt(minuteJeu(c,ko1,ko2),0)+"' de jeu":''} · ${Object.entries(c.res).filter(([,y])=>y).map(([k,y])=>k+' : '+y).join(' · ')}`;
+  if(c.eq===F.nous){const r=v(c,G.resultat);tl+=`<circle cx="${xx}" cy="38" r="${v(c,G.entree)?6:3}" fill="${v(c,G.entree)?col(r):'var(--adv)'}" stroke="${r?'none':'var(--accent)'}" stroke-width="1.5"><title>${esc(tip)}</title></circle>`}
+  else{const but=v(c,G.tir)==='But';tl+=`<circle cx="${xx}" cy="90" r="${but?7:4}" fill="${but?'var(--bad)':'var(--adv)'}"><title>${esc(tip)}</title></circle>`}}
+ tl+='</svg>';
+ return `
+ <section class="card"><div class="row" style="justify-content:space-between">
+  <div><div class="subtle">Import réel · ${F.L.length} clips · équipes anonymisées</div>
+  <h1 style="font-size:24px;margin-top:4px">${esc(F.nous)} – ${esc(F.adv)}</h1>
+  <div class="row" style="margin-top:6px"><span class="pill w">Score non reconstitué</span><span class="subtle">Les fichiers ne contiennent que ${buts(F.nous)+buts(F.adv)} but(s) (${esc(F.adv)} ${buts(F.adv)}, ${esc(F.nous)} ${buts(F.nous)}) et pas tous les tirs. Le « Panneau de score » reste à 0:0.</span></div></div>
+  ${selMatch()}</div></section>
+ <div class="kpis">
+  <div class="kpi"><div class="l">Entrées dans les 30 m</div><div class="v">${entrees}</div><div class="s">sur ${poss.length} possessions</div></div>
+  <div class="kpi"><div class="l">Entrées dangereuses ou décisives</div><div class="v">${fmt(dang/renseig*100)} %</div><div class="s">${dang} sur ${renseig} renseignées (${poss.length-renseig} sans résultat)</div></div>
+  <div class="kpi"><div class="l">Passes vers la surface</div><div class="v">${somme(F.nous,G.pvs)}</div><div class="s">${esc(F.adv)} : ${somme(F.adv,G.pvs)}</div></div>
+  <div class="kpi"><div class="l">Passes dans la surface</div><div class="v">${somme(F.nous,G.ps)}</div><div class="s">${esc(F.adv)} : ${somme(F.adv,G.ps)}</div></div>
+ </div>
+ <div class="grid g2">
+  <section class="card"><header><h2>Résultat des entrées</h2><p>${esc(G.resultat)}</p></header>${barresH(res)}</section>
+  <section class="card"><header><h2>Ce qui suit l'entrée</h2><p>${esc(G.situation)}</p></header>${barresH(sit)}</section>
+ </div>
+ <section class="card"><header><h2>Par mi-temps · ${esc(F.nous)}</h2></header><div class="tblw"><table><thead><tr><th></th><th class="n">1re MT</th><th class="n">2e MT</th></tr></thead><tbody>
+  <tr><td>Entrées dans les 30 m</td>${mts.map(m=>`<td class="n">${m.ent}</td>`).join('')}</tr>
+  <tr><td>Dangereuses ou décisives</td>${mts.map(m=>`<td class="n">${m.dang} / ${m.rens}</td>`).join('')}</tr>
+  <tr><td>Terminées par une perte de balle</td>${mts.map(m=>`<td class="n">${m.pertes}</td>`).join('')}</tr></tbody></table></div>
+  <p class="note">« Dangereuses ou décisives » est rapporté aux entrées dont le résultat est renseigné, jamais au total.</p></section>
+ <section class="card"><header><h2>Clips dans le temps</h2><p>${cale?'Temps calé sur les coups d’envoi':'Temps vidéo (non calé)'}</p></header><div class="tblw">${tl}</div>
+  <div class="legend"><span><i style="background:var(--good)"></i>Entrée décisive</span><span><i style="background:var(--accent)"></i>Dangereuse</span><span><i style="background:var(--subtle)"></i>Neutre</span><span><i style="border:1.5px solid var(--accent)"></i>Sans résultat</span><span><i style="background:var(--bad)"></i>But adverse</span></div></section>
+ <section class="card"><header><h2>Clips</h2><p>Chaque clip garde ses descripteurs d'origine</p></header><div class="tblw"><table><thead><tr><th>Clip</th><th class="n">Vidéo</th>${cale?'<th class="n">Jeu</th>':''}<th class="n">Durée</th><th>Équipe</th><th>MT</th><th>Descripteurs</th></tr></thead><tbody>
+ ${F.L.map(c=>`<tr><td style="white-space:nowrap"><b>${esc(c.nom)}</b></td><td class="n">${vms(c.pos)}</td>${cale?`<td class="n">${fmt(minuteJeu(c,ko1,ko2),0)}'</td>`:''}<td class="n" style="white-space:nowrap">${fmt(c.dur/1000,0)} s</td><td style="white-space:nowrap">${esc(c.eq)}</td><td>${c.mt}</td><td style="font-size:12px">${Object.entries(c.res).filter(([,y])=>y).map(([k,y])=>`<span class="pill n" style="margin:1px">${esc(k)} : ${esc(y)}</span>`).join(' ')}</td></tr>`).join('')}
+ </tbody></table></div>
+ <p class="note">Pas de colonne joueur dans ce marquage : pas de fiche individuelle pour ce match. Le sens de chaque descripteur (ex. « ${esc(G.resultat)} ») est défini dans le gabarit, pas dans le moteur.</p></section>`;
+}
+
 /* ===================== Analyse IA (exemple de rendu, chiffres calculés par Novalyz) ===================== */
 function rIA(){
  const S=Sx(),M=D().matchs;
@@ -746,7 +911,7 @@ function rIA(){
 }
 function iaReponse(q){
  const S=Sx(),M=D().matchs,src=[],cite=t=>{src.push(t);return `<sup>[${src.length}]</sup>`};
- const m=M[st.match],c=calc(m),autres=M.filter(x=>x!==m).map(x=>calc(x)),mo=k=>moy(autres.map(o=>o[k]));
+ const m=M[typeof st.match==='number'?st.match:7],c=calc(m),autres=M.filter(x=>x!==m).map(x=>calc(x)),mo=k=>moy(autres.map(o=>o[k]));
  const H=st.sport==='hockey',ent=H?'entrees_cercle':'entrees_surface',entL=H?'entrées dans le cercle':'entrées dans la surface';
  const per=[];for(let p=1;p<=S.periodes;p++)per.push(calc(m,e=>e.per===p));
  const solde=per.map(p=>p[ent]-p['adv_'+ent]);const pire=solde.indexOf(Math.min(...solde));
