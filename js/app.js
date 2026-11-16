@@ -9143,7 +9143,12 @@ function _schemaControlsHtml(l, seanceId) {
 }
 function cdSetSchema(rowIndex, seanceId, val) {
   var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  var _ancien = l.schema || 'fixe';
   l.schema = (['fixe', 'double', 'topbackoff', 'pyramidal'].indexOf(val) >= 0) ? val : 'fixe';
+  // 16/11 (retour porteur) : en changeant de schéma, les cibles série par série de l'ANCIEN schéma sont effacées
+  // (avant : passer de top set / back-off à « fixe » gardait des cibles « 8 reps » qui passaient avant la fourchette
+  // de l'exercice → charge proposée à la hausse dès 8 reps sur un exercice léger 8-20).
+  if (l.schema !== _ancien) l.series_json = null;
   if (l.schema === 'pyramidal' && (!Array.isArray(l.series_json) || !l.series_json.length)) {
     var n = Number(l.series_prevues) || 3; l.series_json = [];
     for (var k = 0; k < n; k++) l.series_json.push({ pct: (l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null), reps: (l.reps_mini != null ? Number(l.reps_mini) : null), rpe: null });
