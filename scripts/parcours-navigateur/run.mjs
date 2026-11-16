@@ -28,7 +28,7 @@ const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { 
 // Annonce « Un bug ? Une idée ? » (1 fois par appareil, délai variable 2,5-8 s) marquée déjà vue : test stable.
 await ctx.addInitScript(() => { try { localStorage.setItem('nv_annonce_retour_v1', '1'); } catch (e) {} });
 const page = await ctx.newPage();
-const erreursJS = [], refus = [];
+const erreursJS = [], refus = []; let panne = null;   // { action, type: 'reseau' | 'refus' }
 page.on('pageerror', (e) => erreursJS.push(e.message));
 // Tout appel au serveur Novalyz → le VRAI handler en mémoire. Le reste d'Internet est coupé (polices, CDN…).
 await page.route('**/*', async (route) => {
@@ -36,6 +36,8 @@ await page.route('**/*', async (route) => {
   if (u.startsWith(BASE)) return route.continue();
   if (/\/functions\/v1\/smooth-service/.test(u)) {
     const rq = route.request(), init = { method: rq.method(), headers: rq.headers() }; if (rq.method() !== 'GET') init.body = rq.postData() || '';
+    const act = init.body ? (JSON.parse(init.body || '{}').action || '') : (new URL(u).searchParams.get('action') || '');
+    if (panne && panne.action === act) { if (panne.type === 'reseau') return route.abort('internetdisconnected'); return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ success: false, error: 'base indisponible' }) }); }
     const r = await S.handler(new Request(u, init)); const body = await r.text();
     if (r.status >= 400) refus.push(r.status + ' ' + (init.body ? (JSON.parse(init.body || '{}').action || '') : (new URL(u).searchParams.get('action') || '')) + ' ' + body.slice(0, 120));
     if (DEBUG) console.log('  → ' + (init.body ? JSON.parse(init.body).action : new URL(u).searchParams.get('action')) + ' ' + r.status);
@@ -105,6 +107,20 @@ await etape('7 analyses', async () => {
   await page.evaluate(() => switchTab('historique')); await page.waitForTimeout(1500);
   const t = await page.evaluate(() => document.body.innerText);
   eq(/Développé couché barre/.test(t), 'Analyses : l\'exercice de la séance apparaît', t.slice(0, 200));
+});
+await etape('8 echec ecriture visible', async () => {
+  const toast = async () => { for (let i = 0; i < 20; i++) { const t = await page.evaluate(() => { const e = document.getElementById('toast'); return e && e.classList.contains('show') ? e.textContent : ''; }); if (t) return t; await page.waitForTimeout(100); } return ''; };
+  const ecrire = () => page.evaluate(() => fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveMensuration', athlete_id: 'T1', cle: 'tour_bras', valeur: 35 }) }).then(() => 'ok').catch(() => 'erreur'));
+  panne = { action: 'saveMensuration', type: 'reseau' };
+  await ecrire(); const t1 = await toast();
+  eq(/Pas enregistré : pas de connexion/.test(t1), 'Échec réseau sur une écriture → message « Pas enregistré » affiché (avant : silencieux)', t1);
+  await page.waitForTimeout(8200);   // un seul message à la fois (8 s)
+  panne = { action: 'saveMensuration', type: 'refus' };
+  await ecrire(); const t2 = await toast();
+  eq(/Pas enregistré : erreur du serveur/.test(t2), 'Refus du serveur ({ success:false }) sur une écriture silencieuse → message affiché', t2);
+  panne = null;
+  const j = await page.evaluate(() => _nvzJournalTexte(3));
+  eq(/saveMensuration → réseau/.test(j) && /saveMensuration → 200/.test(j), 'Journal technique : les appels et leur issue sont tracés (sans données)', j);
 });
 console.log('-'.repeat(70));
 console.log('parcours-navigateur : ' + ok.length + ' OK / ' + ko.length + ' KO' + (erreursJS.length ? ' · erreurs JS : ' + erreursJS.slice(0, 3).join(' | ') : '') + (refus.length ? ' · refus serveur : ' + refus.slice(0, 3).join(' | ') : ''));
