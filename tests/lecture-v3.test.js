@@ -66,6 +66,19 @@ eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau 
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
   const g3 = gene(3); eq(g3.cause === 'gene' && /Possible : gêne/.test(g3.pourquoi), 'Bloqué : gêne 3/5 sur la zone → cause possible « gêne »', g3);
   eq(gene(2).cause !== 'gene', 'Bloqué : gêne 2/5 → ne compte pas (seuil 3/5)', gene(2).cause);
+  // 16/11 (constaté sur le compte démo) : effort en réserve (RPE 8) ET gêne 3/5 sur la zone → la gêne passe devant,
+  // aucun levier ne pousse jusqu'à l'échec (avant : « va jusqu'à RPE 9-10 » avec une gêne épaule signalée 7 fois).
+  { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
+    ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 6 } }; });
+    const P = (d) => ({ date: fr(d), seance: 'pec', charge: 50, reps: 10, series: [{ charge: 50, reps: 10, rpe: 8, repos: 120 }, { charge: 50, reps: 10, rpe: 8, repos: 120 }] });
+    dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29'), P('2026-10-22'), P('2026-10-15'), P('2026-10-08')];
+    dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' });
+    const sansG = sb._lv3Diag(JSON.parse(JSON.stringify(dd)), 'Rowing', 'bloque', now);
+    eq(sansG.cause === 'reserve' && /RPE 9-10/.test(sansG.levier), 'Gêne prioritaire (témoin) : sans gêne, RPE 8 → « va jusqu\'à RPE 9-10 »', sansG.levier);
+    dd.bien_etre = [{ date: fr('2026-10-22'), douleur: 3, zone: 'epaule' }];
+    const gR = sb._lv3Diag(dd, 'Rowing', 'bloque', now);
+    eq(gR.cause === 'gene' && !/RPE 9-10|échec\b(?! ni)/.test(gR.levier.replace('sans aller à l\'échec', '')) && /garde ta charge/.test(gR.levier) && /sans aller à l'échec/.test(gR.levier), 'Gêne prioritaire : réserve + gêne épaule 3/5 → cause « gêne », plus aucun « RPE 9-10 »', gR.levier);
+    eq(/Séries arrêtées à RPE 8/.test(gR.checks.map((c) => c.t).join(' ')), 'Gêne prioritaire : le constat « séries à RPE 8 » reste affiché (fait), seul le levier change', gR.checks); }
   // 09/11 : table zone ↔ muscles (validée porteur) — épaule sur un exercice pectoraux = cause possible (zone sollicitée) ; genou sur pectoraux = non.
   const gEp = gene(3, 'epaule'); eq(gEp.cause === 'gene' && /gêne epaule 3\/5/.test(gEp.pourquoi) && /zone sollicitée par cet exercice/.test(gEp.pourquoi), 'Bloqué : gêne épaule 3/5 sur un exercice pectoraux → cause possible (zone sollicitée)', gEp);
   eq(gene(3, 'genou').cause !== 'gene', 'Bloqué : gêne genou 3/5 sur un exercice pectoraux → ne compte pas', gene(3, 'genou').cause);
