@@ -2066,6 +2066,15 @@ async function debugChargerDonnees() {
     out.textContent = JSON.stringify(data, null, 2);
   } catch(e) { out.textContent = 'Erreur : ' + e.message; }
 }
+// 16/11 : signale au serveur la 1re ouverture du jour de l'app par l'athlète (date + plateforme), sans bloquer.
+function _marquerOuverture() {
+  if (!athlete || !athlete.athlete_id || (typeof _saisieCoach !== 'undefined' && _saisieCoach)) return;
+  var j = new Date().toISOString().slice(0, 10), k = 'nvz_ouv_' + athlete.athlete_id;
+  try { if (localStorage.getItem(k) === j) return; } catch (e) {}
+  var pf = 'web'; try { pf = (window.NovalyzPlatform && window.NovalyzPlatform.getPlatform()) || 'web'; } catch (e) {}
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerOuverture', athlete_id: athlete.athlete_id, plateforme: pf }) })
+    .then(function (r) { return r.json(); }).then(function (d) { if (d && d.success) { try { localStorage.setItem(k, j); } catch (e) {} } }).catch(function () {});
+}
 function debugCopier() {
   const out = document.getElementById('debug-output');
   if (!out) return;
@@ -23853,6 +23862,7 @@ async function chargerAppData() {
       return;
     }
     try { localStorage.setItem(_cacheKey, JSON.stringify(data)); localStorage.setItem(_cacheKey + '_ts', String(Date.now())); } catch (_) {}
+    try { _marquerOuverture(); } catch (_) {}
     _horsLigneDepuis = 0; try { _majBandeauHorsLigne(); } catch (e) {}
     // On isole l'AFFICHAGE de la partie réseau : si une donnée fait planter le rendu,
     // on veut le vrai message JS (et savoir que c'est côté affichage), pas le toast
