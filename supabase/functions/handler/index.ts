@@ -7918,7 +7918,9 @@ async function handleMarquerOuverture(body: any): Promise<Response> {
   const aid = String(body.athlete_id || '')
   if (!aid) return jsonResp({ success: false, error: 'athlete_id manquant' })
   const pf = ['android', 'ios', 'web'].includes(String(body.plateforme)) ? String(body.plateforme) : 'web'
-  const err = await _prefsAthleteEcrire(aid, { derniere_ouverture: new Date().toISOString(), derniere_plateforme: pf })
+  // 16/11 : + une date PAR plateforme (sinon une ouverture web efface la trace de l'app Android du même jour).
+  const nowIso = new Date().toISOString()
+  const err = await _prefsAthleteEcrire(aid, { derniere_ouverture: nowIso, derniere_plateforme: pf, ['derniere_ouverture_' + pf]: nowIso })
   return jsonResp(err ? { success: false, error: err } : { success: true })
 }
 
