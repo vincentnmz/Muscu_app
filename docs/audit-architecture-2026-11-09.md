@@ -23,7 +23,7 @@
 | P3 | Une seule fonction réseau (délai max, message, trace) ; plus de `catch {}` vides sur réseau / écriture | ✅ 16/11 (préprod) — dans la couche réseau unique (surcharge de `fetch`) : délai max par appel (30 s, 45 s écriture, plus pour IA/morpho/générateur), message « Pas enregistré » sur toute écriture qui échoue (réseau, délai, erreur 5xx ; + refus `success:false` pour les 14 écritures recensées silencieuses), journal des 40 derniers appels joint aux « Signaler un problème » ; testé dans le navigateur (parcours étape 8). Les `catch {}` locaux restent, mais l'échec n'est plus muet. | `js/app.js` (« Couche réseau unique »), `scripts/parcours-navigateur/run.mjs` |
 | P3 | Un seul module de dates ; trancher `_maShortDate` | ⏳ | |
 | P3 | Une seule source de seuils ; ACWR côté serveur seulement | ⏳ | |
-| P3 | Écriture de séance transactionnelle | ⏳ | |
+| P3 | Écriture de séance transactionnelle | ✅ diagnostic 16/11 : déjà tout-ou-rien (1 seul INSERT des séries) + anti-doublon (identifiant d'envoi réservé, prod : 0 série en double, 18 envois tous confirmés) + file hors-ligne (sortie seulement sur confirmation). Trou corrigé (préprod) : le bilan d'une séance renvoyée depuis la file était abandonné s'il échouait → il reste en file et repart seul (testé navigateur, étape 9 ; l'ancienne version échoue au test). ⏳ agrégats `tonnage_total`… écrits après la séance mais jamais relus → à supprimer avec la sortie d'`indicateurs` (24/11). Saisie coach : sans file (message clair), à décider. | `js/app.js` (`flushSeancesOffline`, `_envoyerBilanFile`) |
 | P4 | Index `(athlete_id, date)` ; minification ; jeton en en-tête | ⏳ | |
 | P5 | Archivage de l'héritage, `Docs/` → `docs/` | ⏳ | |
 

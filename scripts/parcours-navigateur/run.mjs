@@ -122,6 +122,27 @@ await etape('8 echec ecriture visible', async () => {
   const j = await page.evaluate(() => _nvzJournalTexte(3));
   eq(/saveMensuration → réseau/.test(j) && /saveMensuration → 200/.test(j), 'Journal technique : les appels et leur issue sont tracés (sans données)', j);
 });
+await etape('9 file hors-ligne : bilan garde', async () => {
+  const jour = await page.evaluate(() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); });
+  const avant = store.performances.length;
+  await page.evaluate((jour) => {
+    _seanceEnvoiId = 'test-file-' + Date.now();
+    enregistrerSeanceOffline([[jour, 1, 'Haut A', 'Test Parcours', 'T1', 'Développé couché barre', 'Pectoraux', '1', 1, 62.5, 8, 8, 120, 500]],
+      { action: 'saveBienEtre', athlete_id: 'T1', date: jour, seance_id: 'Haut A', ressenti: 4, note: 7 });
+  }, jour);
+  panne = { action: 'saveBienEtre', type: 'reseau' };
+  await page.evaluate(() => flushSeancesOffline());
+  const q1 = await page.evaluate(() => _lireQueueOffline());
+  eq(store.performances.length === avant + 1, 'File : la séance en attente est enregistrée au renvoi', store.performances.length - avant);
+  eq(q1.length === 1 && q1[0].bilan_seul === true, 'File : bilan échoué → il RESTE en file (avant : abandonné en silence)', q1);
+  eq(await page.evaluate(() => _nbSeancesEnAttente()) === 0, 'File : un bilan seul n\'est pas compté comme « séance en attente »');
+  panne = null;
+  await page.evaluate(() => flushSeancesOffline());
+  const q2 = await page.evaluate(() => _lireQueueOffline());
+  const be = store.bien_etre.filter((x) => x.athlete_id === 'T1');
+  eq(q2.length === 0 && be.some((x) => Number(x.note) === 7 && String(x.ressenti_global) === '4'), 'File : au renvoi suivant le bilan arrive, la file est vide', { q2, notes: be.map((x) => [x.note, x.ressenti_global]) });
+  eq(store.performances.length === avant + 1, 'File : aucune séance renvoyée en double', store.performances.length - avant);
+});
 console.log('-'.repeat(70));
 console.log('parcours-navigateur : ' + ok.length + ' OK / ' + ko.length + ' KO' + (erreursJS.length ? ' · erreurs JS : ' + erreursJS.slice(0, 3).join(' | ') : '') + (refus.length ? ' · refus serveur : ' + refus.slice(0, 3).join(' | ') : ''));
 await b.close(); http0.close();
