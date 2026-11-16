@@ -66,6 +66,16 @@ eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau 
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
   const g3 = gene(3); eq(g3.cause === 'gene' && /Possible : gêne/.test(g3.pourquoi), 'Bloqué : gêne 3/5 sur la zone → cause possible « gêne »', g3);
   eq(gene(2).cause !== 'gene', 'Bloqué : gêne 2/5 → ne compte pas (seuil 3/5)', gene(2).cause);
+  // 16/11 (retour porteur) : effort EN HAUSSE à charge égale (RPE 8 → 9) → levier « garde, vise RPE 8 », SANS
+  // « va jusqu'à RPE 9-10 » ni constat « séries arrêtées à RPE 8,x » (avant : les deux dans la même phrase).
+  { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
+    ['2026-10-05', '2026-10-15', '2026-10-22', '2026-10-29'].forEach((x) => { dd.historique.daily_muscu[x] = { series: 10, spm: { Pectoraux: 10 } }; });
+    const P = (d, rpe) => ({ date: fr(d), seance: 'pec', charge: 50, reps: 10, series: [{ charge: 50, reps: 10, rpe, repos: 120 }, { charge: 50, reps: 10, rpe, repos: 120 }] });
+    dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29', 9), P('2026-10-22', 8), P('2026-10-15', 8), P('2026-10-08', 8)];
+    dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' });
+    const dE = sb._lv3Diag(dd, 'Rowing', 'bloque', now);
+    eq(dE.cause === 'effort' && /vise RPE 8/.test(dE.levier) && !/RPE 9-10/.test(dE.levier), 'Effort en hausse : « vise RPE 8 », plus de « va jusqu\'à RPE 9-10 »', dE.levier);
+    eq(!/Séries arrêtées à RPE/.test(dE.checks.map((c) => c.t).join(' ')) && !/tu pousses déjà, pas en cause/.test(dE.checks.map((c) => c.t).join(' ')), 'Effort en hausse : ni « séries arrêtées en réserve » ni « effort pas en cause »', dE.checks); }
   // 16/11 (constaté sur le compte démo) : effort en réserve (RPE 8) ET gêne 3/5 sur la zone → la gêne passe devant,
   // aucun levier ne pousse jusqu'à l'échec (avant : « va jusqu'à RPE 9-10 » avec une gêne épaule signalée 7 fois).
   { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';
