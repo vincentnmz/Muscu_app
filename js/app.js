@@ -880,6 +880,37 @@ function _nvzSessionExpiree() {
   try { showToast('Session expirée — reconnecte-toi.'); } catch (e) {}
   setTimeout(function () { try { location.reload(); } catch (e) {} }, 1200);
 }
+// ── Couche réseau unique (16/11, audit P3) ─────────────────────────────────────────────────────────────────────
+// Délai maximum par appel (aucun écran ne tourne à l'infini) : 30 s par défaut, plus pour l'IA / la morpho / le
+// générateur. Un appel qui fournit déjà son propre signal (ex. chargement des données) garde le sien.
+var _NVZ_DELAIS = { analyseMorpho: 180000, chatIA: 120000, genererProgramme: 60000, getAppData: 90000, saveSeance: 60000, exporterDonnees: 90000 };
+function _nvzDelaiMax(action, methode) { return _NVZ_DELAIS[action] || (methode === 'POST' ? 45000 : 30000); }
+// Journal des 40 derniers appels (action, méthode, statut, durée — AUCUNE donnée) : joint aux « Signaler un problème ».
+var _nvzJournal = [];
+function _nvzJournaliser(action, methode, statut, ms) {
+  _nvzJournal.push({ t: new Date().toISOString().slice(11, 19), a: action || '?', m: methode, s: statut, ms: ms });
+  if (_nvzJournal.length > 40) _nvzJournal.shift();
+}
+function _nvzJournalTexte(n) {
+  return _nvzJournal.slice(-(n || 8)).map(function (e) { return e.t + ' ' + e.m + ' ' + e.a + ' → ' + e.s + ' (' + (Math.round(e.ms / 100) / 10) + ' s)'; }).join(' · ');
+}
+// Écriture qui échoue (réseau coupé, délai dépassé, erreur serveur) → message visible, 1 à la fois. Exclues : les
+// écritures qui ont déjà leur propre message (séance avec file hors-ligne, connexion, IA) et les annexes sans enjeu.
+var _NVZ_ECRITURE_GEREE = { saveSeance: 1, login: 1, register: 1, loginCoach: 1, registerCoach: 1, chatIA: 1, analyseMorpho: 1, envoyerRetour: 1,
+  marquerOuverture: 1, marquerCommentairesLus: 1, marquerAlerteLue: 1, saveNativePushToken: 1, removeNativePushToken: 1, deleteNativePushToken: 1,
+  savePushSubscription: 1, enregistrerPlan: 1, ping: 1, loginDispo: 1, exporterDonnees: 1 };
+var _NVZ_ECRITURE_SILENCIEUSE = { saveProgrammeJour: 1, saveProgrammeLigne: 1, supprimerProgrammeLigne: 1, saveBlessure: 1, deleteBlessure: 1, saveCommentaire: 1,
+  saveMensuration: 1, saveMusclesExclus: 1, savePref: 1, saveSante: 1, saveNutrition: 1, saveSemaineType: 1, bilanClient: 1, confirmerEmail: 1 };
+var _nvzDernierAvis = 0;
+function _nvzEchecEcriture(action, cause) {
+  if (!action || _NVZ_ECRITURE_GEREE[action]) return;
+  if (typeof _flushingOffline !== 'undefined' && _flushingOffline) return;   // renvoi de la file : l'élément y reste, rien n'est perdu
+  if (Date.now() - _nvzDernierAvis < 8000) return; _nvzDernierAvis = Date.now();
+  var msg = cause === 'delai' ? 'Pas enregistré : le serveur ne répond pas. Vérifie ta connexion et réessaie.'
+    : cause === 'reseau' ? 'Pas enregistré : pas de connexion. Réessaie quand tu as du réseau.'
+    : 'Pas enregistré : erreur du serveur. Réessaie dans un instant.';
+  try { showToast(msg, '#DC3545'); } catch (e) {}
+}
 (function () {
   if (typeof window === 'undefined' || typeof window.fetch !== 'function' || window.__nvzFetchWrapped) return;
   window.__nvzFetchWrapped = true;
@@ -899,7 +930,24 @@ function _nvzSessionExpiree() {
     try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
     var tok = _nvzTok();
     if (tok && !AUTH[action]) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_t=' + encodeURIComponent(tok);
-    return _f(url, init).then(function (r) {
+    // 16/11 (audit P3 « une seule fonction réseau ») : délai maximum, journal, échec d'écriture JAMAIS silencieux.
+    var methode = String((init && init.method) || 'GET').toUpperCase(), t0 = Date.now(), minuteur = null;
+    if (!(init && init.signal) && typeof AbortController === 'function') {
+      var ctl = new AbortController(); init = Object.assign({}, init || {}, { signal: ctl.signal });
+      minuteur = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, _nvzDelaiMax(action, methode));
+    }
+    var _fin = function (st) { if (minuteur) clearTimeout(minuteur); _nvzJournaliser(action, methode, st, Date.now() - t0); };
+    return _f(url, init).catch(function (err) {
+      var expire = err && err.name === 'AbortError';
+      _fin(expire ? 'délai dépassé' : 'réseau');
+      if (methode === 'POST') _nvzEchecEcriture(action, expire ? 'delai' : 'reseau');
+      throw err;
+    }).then(function (r) {
+      _fin(r.status);
+      if (methode === 'POST' && r.status >= 500) _nvzEchecEcriture(action, 'serveur');
+      // Réponse 200 mais refus du serveur ({ success:false } / { erreur }) sur une écriture dont l'écran ignore la réponse
+      // (recensées le 16/11 : catch vide à l'appel) → même message, sinon la modification était perdue sans le savoir.
+      if (methode === 'POST' && r.status < 400 && _NVZ_ECRITURE_SILENCIEUSE[action]) r.clone().json().then(function (d) { if (d && !d.auth && (d.success === false || d.erreur || d.error)) _nvzEchecEcriture(action, 'serveur'); }, function () {});
       // Connexion / inscription : on attend d'avoir rangé le jeton AVANT de rendre la
       // réponse (sinon le 1er appel qui suit partirait sans jeton).
       if (AUTH[action] || JETON_NEUF[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
@@ -2487,7 +2535,7 @@ async function envoyerRetourNovalyz() {
   if (m.length < 3) { showToast('Écris ton message', '#ff4444'); return; }
   var btn = document.getElementById('retour-envoyer'); if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', type: _retourType, message: m, ecran: _ecranRetour(), version: _versionRetour(), plateforme: _plateformeRetour() }) });
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerRetour', type: _retourType, message: m + (_nvzJournal.length ? '\n\n— Journal technique (derniers appels) : ' + _nvzJournalTexte(8) : ''), ecran: _ecranRetour(), version: _versionRetour(), plateforme: _plateformeRetour() }) });
     var j = await r.json();
     if (j && j.success) { t.value = ''; fermerRetour(); showToast('Merci ! Ton retour est bien envoyé.'); }
     else showToast('Envoi impossible : ' + ((j && (j.error || j.erreur)) || 'réessaie'), '#ff4444');
@@ -14264,7 +14312,7 @@ function _ecrireQueueOffline(q) {
 }
 // Athlète d'un élément de la file (les anciens éléments n'ont que les lignes : athlete_id en [4]).
 function _queueAthlete(item) { try { return String(item.athlete_id || (item.lignes && item.lignes[0] && item.lignes[0][4]) || ''); } catch (e) { return ''; } }
-function _nbSeancesEnAttente() { try { var id = athlete ? String(athlete.athlete_id) : ''; return id ? _lireQueueOffline().filter(function (it) { return _queueAthlete(it) === id; }).length : 0; } catch (e) { return 0; } }
+function _nbSeancesEnAttente() { try { var id = athlete ? String(athlete.athlete_id) : ''; return id ? _lireQueueOffline().filter(function (it) { return _queueAthlete(it) === id && !it.bilan_seul; }).length : 0; } catch (e) { return 0; } }
 function _construireLignesSeance() {
   const lignes = [];
   seance.forEach(exo => exo.series.forEach(s => {
@@ -14288,6 +14336,15 @@ function enregistrerSeanceOffline(lignes, wellness) {
   try { _majBandeauHorsLigne(); } catch (e) {}
   return ok;
 }
+// Envoi d'un bilan de séance mis en file : 'ok' (confirmé par le serveur), 'session' (401), 'echec' (réseau / refus).
+async function _envoyerBilanFile(w) {
+  try {
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(w) });
+    if (r.status === 401) return 'session';
+    let j = null; try { j = await r.json(); } catch (_) { j = null; }
+    return (r.ok && j && (j.success === true || j.ok === true)) ? 'ok' : 'echec';
+  } catch (_) { return 'echec'; }
+}
 var _flushingOffline = false;        // verrou anti-concurrence (online + load + resume peuvent coïncider)
 var _lastPendingToast = 0;           // throttle de la notice « en attente »
 async function flushSeancesOffline() {
@@ -14301,9 +14358,11 @@ async function flushSeancesOffline() {
   _flushingOffline = true;
   let sessionRefusee = false;
   try {
-    const restantes = [];
+    const restantes = []; let seancesEnvoyees = 0, bilansEnvoyes = 0;
     for (const item of q) {
       if (_queueAthlete(item) !== moi || sessionRefusee) { restantes.push(item); continue; }
+      // 16/11 : bilan resté seul en file (séance déjà enregistrée, bilan échoué) → renvoyé seul ; gardé s'il échoue encore.
+      if (item.bilan_seul) { const rb = await _envoyerBilanFile(item.wellness); if (rb === 'session') sessionRefusee = true; if (rb !== 'ok') restantes.push(item); else bilansEnvoyes++; continue; }
       try {
         // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
         const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -14312,22 +14371,28 @@ async function flushSeancesOffline() {
         if (res.status === 401) { sessionRefusee = true; restantes.push(item); continue; }   // H1 : on garde, sans déconnecter
         const ok = res.ok && j && !j.erreur && !j.error;
         if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
+        seancesEnvoyees++;
+        // 16/11 (diagnostic « tout ou rien ») : avant, un bilan qui échouait ici était ABANDONNÉ en silence (la séance
+        // sortait de la file). Désormais la séance sort, son bilan RESTE en file et repart seul au prochain réseau.
+        // Sans risque de doublon : le serveur fusionne le bien-être du jour (handleSaveBienEtre).
         if (item.wellness) {
-          try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(item.wellness) }); } catch (_) { /* bien-être non bloquant */ }
+          const rb = await _envoyerBilanFile(item.wellness);
+          if (rb === 'session') sessionRefusee = true;
+          if (rb !== 'ok') restantes.push({ bilan_seul: true, wellness: item.wellness, ts: item.ts, envoi_id: item.envoi_id || null, athlete_id: _queueAthlete(item) });
         }
       } catch (e) { restantes.push(item); }
     }
     _ecrireQueueOffline(restantes);
     if (sessionRefusee) showToast('Reconnecte-toi pour envoyer ta séance en attente.', 'var(--warn)');
     try { _majBandeauHorsLigne(); } catch (e) {}
-    const envoyees = q.length - restantes.length;
+    const envoyees = seancesEnvoyees;
     if (envoyees > 0) { showToast(`${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`); try { if (typeof athlete !== 'undefined' && athlete && typeof chargerAppData === 'function') chargerAppData(); } catch (e) {} }
-    else if (restantes.length > 0 && (Date.now() - _lastPendingToast > 30000)) {
+    else if (restantes.filter(function (it) { return !it.bilan_seul; }).length > 0 && (Date.now() - _lastPendingToast > 30000)) {
       // Rien n'est passé alors qu'il y a des séances en attente (serveur injoignable) :
       // on prévient (throttlé) plutôt que de laisser l'athlète dans le flou.
       _lastPendingToast = Date.now();
-      showToast(`⏳ ${restantes.length} séance${restantes.length > 1 ? 's' : ''} en attente — synchro au prochain réseau.`, 'var(--warn)');
+      const nAtt = restantes.filter(function (it) { return !it.bilan_seul; }).length;
+      showToast(`⏳ ${nAtt} séance${nAtt > 1 ? 's' : ''} en attente — synchro au prochain réseau.`, 'var(--warn)');
     }
   } finally { _flushingOffline = false; }
 }
