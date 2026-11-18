@@ -5862,7 +5862,10 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
       let secondaire = false
       for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }
       if (secondaire) continue
-      if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
+      // 18/11 (vérificateur) : « bloqué à C × R » = le MEILLEUR nombre de reps du plateau (la barre à dépasser), pas celui de
+      // la dernière séance (le mail disait « 50 × 7 depuis 3 séances » alors qu'une de ces 3 séances avait fait 8).
+      const rMax = Math.max(...pts.slice(0, n).map((p: any) => num(p.reps)))
+      if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: rMax, rDer: r0, n })
     }
   }
   return R
@@ -6064,7 +6067,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   } else if ((L.bloque || []).filter(_libre).length) {
     const x = L.bloque.filter(_libre)[0]; // 18/11 (audit mail) : plus de levier générique (il pouvait contredire celui de l'app, tiré du diagnostic : repos,
     // effort, volume, fréquence, gêne). Le constat est daté (fin de période) et renvoie au levier de l'app.
-    recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances (au ${fmtFR(minus(B.fin, 1)).slice(0, 5)}, fin de la période). La cause probable et le levier adapté sont dans l'app : Analyses ▸ Évolution ▸ ${_escHtml(x.exo)}.`)
+    recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances (au ${fmtFR(fmtYMD(minus(B.fin, 1))).slice(0, 5)}, fin de la période). La cause probable et le levier adapté sont dans l'app : Analyses ▸ Évolution ▸ ${_escHtml(x.exo)}.`)
   }
   const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')

@@ -20,6 +20,8 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 18/11 : formats « 87.5 kg », « 86.0 », « 8.1h ».
 - 18/11 : **changement d'heure** — l'app comptait les jours en millisecondes ; après le 25/10, la nuit (ou le questionnaire) de J-34 sortait de la fenêtre : normale du sommeil sur 27 nuits au lieu de 28, différente du serveur. Même défaut corrigé dans « ta normale » du bien-être et dans le graphique de régularité (un lundi passait dans la semaine d'avant au printemps).
 - 18/11 : cibles : « RPE 10 sur toutes tes séries » alors que des séries étaient à 9 (Célia ×6, Idris ×4) → plage réelle « RPE 9-10 ».
+- 18/11 : « bloqué à 50 × 7 depuis 3 séances » (mail) alors qu'une des 3 séances avait fait 8 → le palier affiché est le meilleur nombre de reps du plateau (app et serveur).
+- 18/11 : mail : « (au Sun N, fin de la période) » au lieu de la date → corrigé (« au 15/11 »).
 - 18/11 : carte « Charge & fraîcheur » : « tonnage pondéré par l'effort » alors que la source est le tonnage brut (charge × reps) → « tonnage : charge × répétitions ».
 
 ## Ce qu'il vérifie aujourd'hui
@@ -50,11 +52,13 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | volume / fréquence des leviers | « Volume X : N séries/sem », « Fréquence X : F×/sem », « Travaillé F×/sem », « (N → M séries/sem) », « (F×/sem aujourd'hui) » = 4 semaines terminées, divisées par les semaines réellement couvertes |
 | journal des décisions | statut de chaque action (atteint / pas atteint / pas tenté / non évaluable : vacances ou blessure ≥ 3 j), « Réalisé : … », « N / M tentée(s) », jours de pause cités |
 | plan de la semaine | actions affichées = actions enregistrées au journal, compte « N / M fait », « Semaine dernière : … », « Rien à changer : muscle X séries/sem » |
+| fiche coach | Aperçu, Analyses et Forme d'un athlète : mêmes règles que ses propres écrans (dont « Records — … », « Progresse — a→b reps ») |
+| mail récapitulatif | séances, séries, reps, tonnage, RPE, jours de vacances, volume moyen par muscle, équilibres, records de la période, « bloqué » et « sous la fourchette » à la fin de la période ; HTML sans texte cassé ni point décimal |
+| texte cassé (partout) | jamais « undefined », « NaN », « Invalid Date » ni date brute « Sun Nov … » |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert (prochaines règles, dans cet ordre)
-1. La fiche coach (Aperçu, Analyses, Forme) et le mail récapitulatif : mêmes chiffres que l'app.
-2. Le contexte envoyé à l'IA : mêmes chiffres que l'app.
-3. Le cardio.
+1. Le contexte envoyé à l'IA : mêmes chiffres que l'app.
+2. Le cardio.
 
 Tant qu'une ligne de cette liste n'est pas couverte, sa fiabilité n'est **pas démontrée**.

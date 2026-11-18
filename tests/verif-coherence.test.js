@@ -8,7 +8,7 @@ const { stripTypeScriptTypes } = require('node:module');
 const ROOT = path.join(__dirname, '..');
 const T = fs.readFileSync(path.join(__dirname, 'e2e-parcours.test.js'), 'utf8');
 eval(T.slice(T.indexOf('function makeEngine'), T.indexOf('// ── Chargement du VRAI backend')));
-const { verifier } = require('../scripts/verif-coherence/verif.cjs');
+const { verifier, verifierBilan, verifierMailHtml } = require('../scripts/verif-coherence/verif.cjs');
 
 let ok = 0, ko = 0;
 const eq = (c, n, got) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n + (got !== undefined ? ' (got ' + JSON.stringify(got) + ')' : '')); } };
@@ -19,7 +19,7 @@ const TODAY = J(0);
 function charger(store) {
   let js = stripTypeScriptTypes(fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
   js = js.split('\n').filter(l => !/^import\s/.test(l)).join('\n');
-  js += '\n;this.__api = { handleGetAppData };';
+  js += '\n;this.__api = { handleGetAppData, _bilanRecapV2, _emailRecapV2HTML };';
   const sandbox = { createClient: () => makeEngine(store), webpush: { setVapidDetails() {}, sendNotification: async () => {} },
     Deno: { env: { get: () => undefined }, serve: () => {} }, Response, Request, URLSearchParams, TextEncoder, TextDecoder, crypto, console, setTimeout, clearTimeout,
     fetch: async () => ({ ok: false, status: 0, text: async () => '', json: async () => ({}) }) };
@@ -37,7 +37,8 @@ const store = {
 };
 
 (async () => {
-  const ad = await (await charger(store).handleGetAppData(new URLSearchParams({ athlete_id: '5', _sess_role: 'a' }))).json();
+  const API = charger(store);
+  const ad = await (await API.handleGetAppData(new URLSearchParams({ athlete_id: '5', _sess_role: 'a' }))).json();
   let r = verifier({ store, appdata: ad, now: TODAY });
   eq(r.length === 0, 'vrai backend : 0 écart avec le recalcul indépendant', r);
   eq(ad.global.records_par_exo.Presse.date.slice(0, 5) === J(9).slice(8, 10) + '/' + J(9).slice(5, 7), 'record Presse 100 × 10 daté de la 1re fois (J-9), pas de la répétition (J-5)', ad.global.records_par_exo.Presse);
@@ -116,6 +117,20 @@ const store = {
     eq(jr(okStat === 'Atteint' ? 'Pas atteint' : 'Atteint', '').includes('journal.statut'), 'attrape : statut du journal faux');
     eq(jr(okStat, 'Réalisé : 1 kg × 1 (RPE 1).').includes('journal.realise'), 'attrape : « Réalisé » faux');
   }
+  // Mail récapitulatif (18/11) : le VRAI code du mail, vérifié chiffre par chiffre et sans texte cassé.
+  // Base fictive avec un plateau (50 kg : 8, 7, 8, 7 reps) pour forcer « bloqué » dans le mail.
+  const stM = JSON.parse(JSON.stringify(store));
+  [12, 9, 6, 3].forEach((n, i) => stM.performances.push({ id: 500 + i, date: J(n), semaine: 46, seance_id: 'S', exercice: 'Tirage', muscle: 'Dos', exercice_id: 'Tirage', serie: 1, charge: 50, reps: i % 2 ? 7 : 8, rpe: 9, repos: 120, athlete_id: '5', nom: 'A', volume: 50 * (i % 2 ? 7 : 8) }));
+  stM.exercices.push({ exercice_id: 'Tirage', exercice: 'Tirage', muscle: 'Dos', muscle_secondaire: 'Biceps' });
+  const APIM = charger(stM), adM = await (await APIM.handleGetAppData(new URLSearchParams({ athlete_id: '5', _sess_role: 'a' }))).json();
+  const secB = {}, musB = {}; stM.exercices.forEach((e) => { const k = String(e.exercice).trim().toLowerCase(); if (e.muscle_secondaire) secB[k] = e.muscle_secondaire; if (e.muscle) musB[k] = e.muscle; });
+  for (const per of ['semaine', 'mois']) {
+    const bil = APIM._bilanRecapV2({ perfs: stM.performances, appData: adM, secByExo: secB, musByExo: musB }, per, new Date());
+    const o = []; verifierBilan(stM, bil, '5', o); verifierMailHtml(APIM._emailRecapV2HTML('Test', bil), o);
+    eq(o.length === 0, 'mail ' + per + ' (vrai code) : 0 écart avec le recalcul, aucun texte cassé', o.map((x) => x.message));
+  }
+  { const o = []; verifierMailHtml('<p>Tirage : 50 kg × 7 depuis 3 séances (au Sun N, fin de la période)</p>', o); eq(o.length > 0, 'attrape : date brute « Sun N » dans le mail'); }
+  { const o = []; verifierBilan(stM, { per: 'semaine', bornes: { debut: J(13), fin: J(6) }, seances: 99, series: 0, reps: 0, tonnage: 0, volume: [], balance: [], records: [], lecture: {} }, '5', o); eq(o.some((x) => x.code === 'mail.seances'), 'attrape : nombre de séances du mail faux'); }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);
