@@ -833,6 +833,26 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[
   return { degrade: fatDeg || somDeg || rpeDeg || fcDeg, evaluable: F.ok || S.ok, rpeExos, rpeDetails, rpeEvalues, fc, raisons }
 }
 
+// 18/11 (audit Vincent) : périodes de vacances PASSÉES et en cours, [{ debut, fin }] (aaaa-mm-jj).
+// Sources : table pauses + indicateurs cle 'pause' (valeur = début, unite = fin ; valeur 'fin' = arrêt anticipé ce jour-là).
+async function _pausesHist(athleteId: string): Promise<{ debut: string; fin: string }[]> {
+  const out: { debut: string; fin: string }[] = []
+  try {
+    const { data: P } = await sb().from('pauses').select('debut,fin').eq('athlete_id', athleteId)
+    for (const r of (P || []) as any[]) { const d = normDate(r.debut), f = normDate(r.fin) || d; if (d) out.push({ debut: d, fin: f }) }
+  } catch (_) {}
+  try {
+    const { data: I } = await sb().from('indicateurs').select('date,valeur,unite,id').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: true }).order('id', { ascending: true })
+    let cur: { debut: string; fin: string } | null = null
+    for (const r of (I || []) as any[]) {
+      if (String(r.valeur) === 'fin') { const d = normDate(r.date); if (cur && d) { if (d < cur.fin) cur.fin = d; } cur = null; continue }
+      const d = normDate(r.valeur), f = normDate(r.unite)
+      if (d && f) { cur = { debut: d, fin: f }; out.push(cur) }
+    }
+  } catch (_) {}
+  return out
+}
+
 // ── Alertes ───────────────────────────────────────────────────────────────────
 // Porté fidèlement de Code.gs calculerAlertes : champs { type, severite, message }
 function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: number, enPause: boolean): any[] {
@@ -3044,6 +3064,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     bien_etre,
     pause: pauseObj,
     pause_prevue: pausePrevue(pauseRow, now),
+    pauses_hist: await _pausesHist(athleteId),   // 18/11 : vacances passées (journal des décisions : semaine en pause ≠ « pas tenté »)
     contexte,
     sport,
     cardio,
