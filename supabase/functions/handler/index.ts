@@ -2386,7 +2386,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   if (n28 === 0) {
     constats.push({ ton: 'neutre', texte: `Aucune sortie cardio ces 4 dernières semaines.` })
   } else {
-    constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
+    constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${String(Math.round(dist28 * 10) / 10).replace('.', ',')} km au total)` : ''}.` })
     if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
     else if (actEvol != null && actEvol <= -50) constats.push({ ton: 'attention', texte: `Forte baisse de ton activité cardio (${actEvol}% de temps sur 4 semaines) — si l'endurance est un objectif, reprends progressivement.` })
     else if (actEvol != null && actEvol <= -40) constats.push({ ton: 'neutre', texte: `Ton activité cardio a baissé (${actEvol}% de temps sur 4 semaines).` })

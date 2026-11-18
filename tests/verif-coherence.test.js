@@ -138,6 +138,15 @@ const store = {
     eq(o2.some((x) => x.code === 'ia.seance'), 'attrape : nombre de séries faux dans le contexte IA');
     const o3 = []; verifierIA(stM, '- Dernière séance muscu : S hier · 3 séries · RPE moyen 9.2.', TODAY, '5', o3);
     eq(o3.some((x) => x.code === 'ia.format'), 'attrape : point décimal dans le contexte IA'); }
+  // Cardio (18/11) : résumé 4 semaines, tuiles, historique ; micro-sorties exclues ; marche hors charge.
+  { const stC = JSON.parse(JSON.stringify(store)); let id2 = 9000;
+    const cx = (n, sid, t, du, km, rpe) => [['type_cardio', t], ['duree', du], ['distance', km], ['rpe', rpe]].filter((x) => x[1] != null).forEach(([c, v]) => stC.indicateurs.push({ id: id2++, athlete_id: '5', date: J(n), seance_id: sid, cle: c, valeur: String(v) }));
+    cx(2, 'cardio_a', 'footing', 40, 6.5, 6); cx(10, 'cardio_b', 'marche_normale', 60, 4.2, null); cx(3, 'cardio_c', 'footing', 2, 0.1, 5); cx(40, 'cardio_d', 'velo', 60, 20, 7);
+    const vC = (t) => verifier({ store: stC, appdata: adSansMoteur, ecrans: t, now: TODAY }).map((e) => e.code);
+    eq(vC('######## CARDIO ▸ resume\n2 sorties cardio ces 4 semaines (10,7 km au total).\nSORTIES 4 SEM.\n2\nDISTANCE 4 SEM.\n10,7 km\nCHARGE 7 J\n250 UA').length === 0, 'cardio : 2 sorties / 10,7 km (micro-sortie et vélo à J-40 exclus), charge 7 j 250 UA (marche = 0) acceptés');
+    eq(vC('######## CARDIO ▸ resume\n3 sorties cardio ces 4 semaines (10,8 km au total).').includes('cardio.resume'), 'attrape : micro-sortie comptée dans le résumé cardio');
+    eq(vC('######## CARDIO ▸ resume\nCHARGE 7 J\n490 UA').includes('cardio.tuile'), 'attrape : charge 7 j fausse');
+    eq(vC('######## CARDIO ▸ resume\nDISTANCE 4 SEM.\n10.7 km').includes('format.decimal'), 'attrape : « 10.7 km » (point décimal)'); }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

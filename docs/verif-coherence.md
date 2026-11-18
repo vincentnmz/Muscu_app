@@ -23,6 +23,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 18/11 : « bloqué à 50 × 7 depuis 3 séances » (mail) alors qu'une des 3 séances avait fait 8 → le palier affiché est le meilleur nombre de reps du plateau (app et serveur).
 - 18/11 : mail : « (au Sun N, fin de la période) » au lieu de la date → corrigé (« au 15/11 »).
 - 18/11 : contexte IA : « RPE moyen 9.2 » (point décimal que l'IA pouvait recopier) → « 9,2 ».
+- 18/11 : cardio : « 11.6 km », « 1.7 km · 1.5 km/h » → virgule ; fenêtres « 4 sem. » (29 j → 28 j) et « Charge 7 j » (8 j → 7 j) alignées sur le serveur.
 - 18/11 : carte « Charge & fraîcheur » : « tonnage pondéré par l'effort » alors que la source est le tonnage brut (charge × reps) → « tonnage : charge × répétitions ».
 
 ## Ce qu'il vérifie aujourd'hui
@@ -57,9 +58,8 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | mail récapitulatif | séances, séries, reps, tonnage, RPE, jours de vacances, volume moyen par muscle, équilibres, records de la période, « bloqué » et « sous la fourchette » à la fin de la période ; HTML sans texte cassé ni point décimal |
 | texte cassé (partout) | jamais « undefined », « NaN », « Invalid Date » ni date brute « Sun Nov … » |
 | contexte envoyé à l'IA | dernier questionnaire, dernière séance (séries, RPE), séances depuis lundi, records récents, bloqués, sous la fourchette, volume de la semaine (et sa fenêtre), poids ; aucun point décimal |
+| cardio | « N sorties ces 4 semaines (X km) » (28 jours, micro-sorties exclues), tuiles Sorties / Distance 4 sem., Charge 7 j (RPE × durée, marche = 0), chaque ligne d'historique (distance, durée, vitesse) |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
-## Pas encore couvert (prochaines règles, dans cet ordre)
-1. Le cardio.
-
-Tant qu'une ligne de cette liste n'est pas couverte, sa fiabilité n'est **pas démontrée**.
+## Pas encore couvert
+Tous les blocs listés le 18/11 sont couverts. Restent hors vérificateur : la saisie de séance elle-même (formulaire), les écrans foot / multisport, les graphiques (dessin, pas les chiffres affichés à côté). À ajouter dès qu'ils portent un chiffre affiché.

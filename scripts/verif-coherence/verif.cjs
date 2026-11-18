@@ -30,7 +30,7 @@ function recalculer(store, appdata, now, aidForce) {
   const aid = String(aidForce || (store.athletes && store.athletes[0] && store.athletes[0].id) || '');
   const ath = (store.athletes || []).find((a) => String(a.id) === aid) || {};
   const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === aid).map((r) => ({ ...r, d: iso(r.date) })).filter((r) => r.d && r.d <= now);
-  const R = {};
+  const R = { now };
   // Records : meilleure série à vie (charge, puis reps), datée de la PREMIÈRE fois où elle a été atteinte.
   R.records = {};
   for (const r of P.slice().sort((a, b) => a.d.localeCompare(b.d))) {
@@ -185,6 +185,13 @@ function recalculer(store, appdata, now, aidForce) {
     return { statut: fait ? 'atteint' : (tente ? 'pas_atteint' : 'pas_tente'), tente, tot, best };
   };
   R.decisions = (store.decisions || []).filter((d) => !aid || String(d.athlete_id) === aid);
+  // Cardio : séances = indicateurs « cardio_* » regroupés par séance ; micro-sorties (< 5 min et < 0,3 km) hors comptes.
+  // Charge interne = RPE × durée (marche = 0 ; sans RPE : estimé par la FC moyenne, sinon 5).
+  const CX = {};
+  IND.filter((r) => /^cardio_/.test(String(r.seance_id || ''))).forEach((r) => { const k = r.seance_id, d = iso(r.date); const o = CX[k] || (CX[k] = { d, type: 'autre' }); if (d && d < o.d) o.d = d; if (r.cle === 'type_cardio') o.type = String(r.valeur || 'autre'); else { const v = Number(r.valeur); if (!isNaN(v)) o[r.cle] = v; } });
+  R.cardio = Object.values(CX).filter((o) => o.d && o.d <= now);
+  R.cxCharge = (o) => { if (/^marche/i.test(o.type)) return 0; const du = num(o.duree); if (du <= 0) return 0; let rp = num(o.rpe); if (rp <= 0) { const fc = num(o.fc_moy != null ? o.fc_moy : o.fc); rp = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5; } return rp * du; };
+  R.cxMicro = (o) => num(o.duree) < 5 && num(o.distance) < 0.3;
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
   Object.values(R.parExoJour).forEach((x) => { const e = x.series[0].exercice; (R.sessions[e] = R.sessions[e] || []).push({ d: x.series[0].d, best: x.best, series: x.series.slice().sort((a, b) => num(a.serie) - num(b.serie) || num(a.id) - num(b.id)) }); });
@@ -283,7 +290,7 @@ function verifierTexte(R, ad, txt, out) {
   const S = sections(txt);
   // B1. Nombres décimaux au format français (virgule) : « 12.5 kg », « 4.5 / 9 » interdits.
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
-    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/);
+    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|km\/h|km\b|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/);
     if (m && !/^\d{1,2}\.\d{2}$/.test(m[2]) && !/v\d|version/i.test(l)) E('format.decimal', nom + ' : « ' + l.trim().slice(0, 80) + ' » (point au lieu de virgule)');
   }));
   // B0. Texte cassé : valeur absente ou date brute affichée (« undefined », « NaN », « Invalid Date », « Sun Nov … »).
@@ -501,6 +508,31 @@ function verifierTexte(R, ad, txt, out) {
       if ((m = l.match(/^Rien à changer : (.+?) séries\/sem/))) m[1].split(' · ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+)$/); if (!k) return; const mu = R.muscles.find((x) => cle(x) === cle(k[1])); if (mu) { const V = R.vol4(mu); if (num(k[2]) !== V.parSem) E('plan.rien_a_changer', nom + ' : « ' + it + ' séries/sem », recalculé ' + f1(V.parSem)); } });
     });
   });
+  // B15. Cardio : résumé « N sorties ces 4 semaines (X km) », tuiles « Sorties / Distance 4 sem. », « Charge 7 j »,
+  // lignes d'historique (date, distance, durée, vitesse).
+  if (R.cardio && R.cardio.length) {
+    const now = R.now, c28 = plusJ(now, -27), c7 = plusJ(now, -6);
+    const s28 = R.cardio.filter((o) => o.d >= c28 && !R.cxMicro(o)), n28 = s28.length, km28 = Math.round(s28.reduce((a, o) => a + num(o.distance), 0) * 10) / 10;
+    const ua7 = Math.round(R.cardio.filter((o) => o.d >= c7).reduce((a, o) => a + R.cxCharge(o), 0));
+    const hms = (m) => { m = Math.round(m || 0); const h = Math.floor(m / 60); return h ? h + 'h' + String(m % 60).padStart(2, '0') : m + ' min'; };
+    const MOIS = { JANV: '01', 'FÉVR': '02', MARS: '03', AVR: '04', MAI: '05', JUIN: '06', JUIL: '07', 'AOÛT': '08', SEPT: '09', OCT: '10', NOV: '11', 'DÉC': '12' };
+    Object.entries(S).forEach(([nom, L]) => {
+      L.forEach((l0, i) => { const l = l0.trim(); let m;
+        if ((m = l.match(/^(\d+) sorties? cardio ces 4 semaines(?: \(([\d,]+) km au total\))?\.$/))) { if (+m[1] !== n28 || (m[2] && num(m[2]) !== km28)) E('cardio.resume', nom + ' : « ' + l + ' », recalculé ' + n28 + ' sortie(s), ' + f1(km28) + ' km (28 jours, micro-sorties exclues)'); }
+        const v = String(L[i + 1] || '').trim();
+        if (l === 'SORTIES 4 SEM.' && v && +v !== n28) E('cardio.tuile', nom + ' : sorties 4 sem. ' + v + ', recalculé ' + n28);
+        if (l === 'DISTANCE 4 SEM.' && v && Math.abs(num(v.replace(/\s*km$/, '')) - km28) > 0.05) E('cardio.tuile', nom + ' : distance 4 sem. ' + v + ', recalculé ' + f1(km28) + ' km');
+        if (l === 'CHARGE 7 J' && /UA$/.test(v) && Math.abs(num(v.replace(/\D/g, '')) - ua7) > 1) E('cardio.tuile', nom + ' : charge 7 j ' + v + ', recalculé ' + ua7 + ' UA');
+        // Historique : « 13 » / « NOV » / sport / « 1,7 km · 1h10 · 1,5 km/h »
+        if (/^\d{1,2}$/.test(l) && MOIS[String(L[i + 1] || '').trim()] && /CARDIO/.test(nom)) {
+          const mo = MOIS[String(L[i + 1]).trim()], an = (mo > now.slice(5, 7) ? +now.slice(0, 4) - 1 : +now.slice(0, 4)), d = an + '-' + mo + '-' + l.padStart(2, '0');
+          const det = String(L[i + 3] || '').trim(); if (!/km|h\d|min/.test(det)) return;
+          const cand = R.cardio.filter((o) => o.d === d), fmt = (o) => [num(o.distance) ? f1(num(o.distance)) + ' km' : null, num(o.duree) ? hms(o.duree) : null, num(o.vitesse_moy) ? f1(num(o.vitesse_moy)) + ' km/h' : null].filter(Boolean).join(' · ');
+          if (!cand.some((o) => fmt(o) === det)) E('cardio.historique', nom + ' : ' + l + ' ' + String(L[i + 1]).trim() + ' « ' + det + ' », séances ce jour-là : ' + (cand.map(fmt).join(' | ') || 'aucune'));
+        }
+      });
+    });
+  }
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
@@ -615,9 +647,9 @@ function verifierIA(store, txt, now, aid, out) {
   });
 }
 
-function verifier({ store, appdata, ecrans, now }) {
+function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
-  const R = recalculer(store, appdata, jour), out = [];
+  const R = recalculer(store, appdata, jour, aid), out = [];
   if (appdata) verifierDonnees(R, appdata, out);
   if (appdata) verifierTexte(R, appdata, ecrans, out);
   verifierCoach(store, ecrans, jour, out);
@@ -627,8 +659,8 @@ module.exports = { verifier, recalculer, verifierBilan, verifierMailHtml, verifi
 
 if (require.main === module) {
   const fs = require('fs');
-  const [db, ad, ec, j] = process.argv.slice(2);
-  const res = verifier({ store: JSON.parse(fs.readFileSync(db, 'utf8')), appdata: ad && ad !== '-' ? JSON.parse(fs.readFileSync(ad, 'utf8')) : null, ecrans: ec ? fs.readFileSync(ec, 'utf8') : '', now: j });
+  const [db, ad, ec, j, aidCli] = process.argv.slice(2);
+  const res = verifier({ store: JSON.parse(fs.readFileSync(db, 'utf8')), appdata: ad && ad !== '-' ? JSON.parse(fs.readFileSync(ad, 'utf8')) : null, ecrans: ec ? fs.readFileSync(ec, 'utf8') : '', now: j, aid: aidCli });
   if (!res.length) console.log('✓ aucun écart'); else res.forEach((x) => console.log('✗ [' + x.code + '] ' + x.message));
   process.exit(res.length ? 1 : 0);
 }
