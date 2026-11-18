@@ -14,7 +14,10 @@ const { lancerBanc, extraireRoutes } = require('../scripts/audit-droits/banc.js'
 // Routes publiques VOLONTAIRES (connexion / inscription, jetons à usage unique, catalogue, formulaire bêta, crons
 // protégés par CRON_SECRET). En ajouter une ici doit être une décision consciente.
 const PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset',
-  'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages']);
+  'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages',
+  // 18/11 (décision : canal « Message de Novalyz ») : livre UNE fois les notifications de messages déjà écrits par
+  // l'équipe en base (push_at posé avant l'envoi) ; ne renvoie aucune donnée. Appelée depuis le SQL Editor (pg_net).
+  'pushMessagesNovalyz']);
 // Routes réservées au serveur : publiques côté jeton de session mais refusées sans le bon secret.
 const SECRET = ['cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages'];
 

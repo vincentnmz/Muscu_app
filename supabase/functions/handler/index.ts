@@ -3073,7 +3073,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     bien_etre,
     pause: pauseObj,
     pause_prevue: pausePrevue(pauseRow, now),
-    pauses_hist: await _pausesHist(athleteId),   // 18/11 : vacances passées (journal des décisions : semaine en pause ≠ « pas tenté »)
+    pauses_hist: await _pausesHist(athleteId),
+    // 18/11 : canal « Message de Novalyz » — SEULEMENT pour la session de l'athlète (jamais au coach, au cron ni à l'IA).
+    messages_novalyz: params.get('_sess_role') === 'a' ? await _messagesNovalyz(athleteId) : [],   // 18/11 : vacances passées (journal des décisions : semaine en pause ≠ « pas tenté »)
     contexte,
     sport,
     cardio,
@@ -5230,6 +5232,7 @@ function _rythmeAbsence(derniereActivite: string | null, dernierPush: string | n
 async function handleCronPushAlertes(body: any): Promise<Response> {
   const secret = Deno.env.get('CRON_SECRET')
   if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
+  try { await handlePushMessagesNovalyz() } catch (_) {}   // 18/11 : filet — messages Novalyz pas encore notifiés
   const [{ data: nt }, { data: ws }] = await Promise.all([
     sb().from('native_push_tokens').select('athlete_id'),
     sb().from('push_subscriptions').select('athlete_id'),
@@ -6353,6 +6356,57 @@ async function handleEnvoyerRetour(body: any): Promise<Response> {
   return jsonResp(ok || enregistre ? { success: true, enregistre } : { success: false, error: 'Envoi impossible pour le moment' })
 }
 const RETOUR_TYPES = ['bug', 'idee', 'autre']
+
+// ── Canal « Message de Novalyz » (18/11, demande porteur) ─────────────────────
+// L'équipe écrit à un athlète (fonction SQL novalyz_message, migration 20261118160000) ; l'app l'affiche
+// (fil « Novalyz · l'équipe » + carte Aujourd'hui) ; l'athlète peut répondre (rangé ici + e-mail à l'équipe).
+// Table absente (migration pas encore appliquée) → aucun message, rien ne casse.
+async function _messagesNovalyz(athleteId: string): Promise<any[]> {
+  try {
+    const { data, error } = await sb().from('messages_novalyz').select('id,created_at,auteur,message,lu_at').eq('athlete_id', String(athleteId)).order('created_at', { ascending: true }).limit(100)
+    return error ? [] : (data || [])
+  } catch (_) { return [] }
+}
+async function handleLireMessagesNovalyz(body: any): Promise<Response> {
+  if (body._sessRole !== 'a' || !body._sessId) return jsonResp({ success: false, error: 'Réservé à l\'athlète' })
+  const { error } = await sb().from('messages_novalyz').update({ lu_at: new Date().toISOString() }).eq('athlete_id', String(body._sessId)).eq('auteur', 'novalyz').is('lu_at', null)
+  return jsonResp(error ? { success: false, error: 'Lecture impossible' } : { success: true })
+}
+const MSG_NV_REPONSES_JOUR = 10
+async function handleRepondreMessageNovalyz(body: any): Promise<Response> {
+  if (body._sessRole !== 'a' || !body._sessId) return jsonResp({ success: false, error: 'Réservé à l\'athlète' })
+  const aid = String(body._sessId), msg = String(body.message || '').trim().slice(0, 1000)
+  if (msg.length < 3) return jsonResp({ success: false, error: 'Message trop court' })
+  const depuis = new Date(Date.now() - 86_400_000).toISOString()
+  const { data: rec, error: eL } = await sb().from('messages_novalyz').select('id').eq('athlete_id', aid).eq('auteur', 'athlete').gte('created_at', depuis).limit(MSG_NV_REPONSES_JOUR)
+  if (eL) return jsonResp({ success: false, error: 'Envoi impossible pour le moment' })
+  if ((rec || []).length >= MSG_NV_REPONSES_JOUR) return jsonResp({ success: false, error: 'Tu as déjà beaucoup écrit aujourd\'hui. Réessaie demain.' })
+  const { error } = await sb().from('messages_novalyz').insert({ athlete_id: aid, auteur: 'athlete', message: msg })
+  if (error) return jsonResp({ success: false, error: 'Envoi impossible pour le moment' })
+  let qui = 'Athlète ' + aid
+  try { const { data } = await sb().from('athletes').select('nom,login').eq('id', aid).single(); qui = 'Athlète ' + String((data as any)?.nom || aid) + ' (login ' + String((data as any)?.login || '?') + ', id ' + aid + ')' } catch (_) {}
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  try { await _envoyerEmail(CONTACT_NOVALYZ, 'Réponse à un message Novalyz — ' + qui, `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Réponse dans le fil « Novalyz »</b> — ${esc(qui)}</p><p style="white-space:pre-wrap">${esc(msg)}</p><p style="color:#777">Répondre : select novalyz_message('login', 'texte'); puis l'action pushMessagesNovalyz.</p></div>`) } catch (_) {}
+  return jsonResp({ success: true })
+}
+// Notification des messages pas encore notifiés (≤ 7 jours). PUBLIQUE et sans secret : elle ne fait que livrer
+// une fois des messages déjà écrits par l'équipe (push_at posé AVANT l'envoi → jamais deux notifications).
+// Appelée après novalyz_message (SQL : net.http_post) et, en filet, par le cron du matin.
+async function handlePushMessagesNovalyz(): Promise<Response> {
+  try {
+    const depuis = new Date(Date.now() - 7 * 86_400_000).toISOString()
+    const { data, error } = await sb().from('messages_novalyz').select('id,athlete_id,message').eq('auteur', 'novalyz').is('push_at', null).gte('created_at', depuis).order('created_at', { ascending: true }).limit(50)
+    if (error) return jsonResp({ success: true })
+    let envoyes = 0
+    for (const m of (data || []) as any[]) {
+      const { data: claim } = await sb().from('messages_novalyz').update({ push_at: new Date().toISOString() }).eq('id', m.id).is('push_at', null).select('id')
+      if (!claim || !claim.length) continue
+      const txt = String(m.message || '').replace(/\s+/g, ' ').trim()
+      try { envoyes += (await notifyAthlete(String(m.athlete_id), { title: '💬 Message de Novalyz', body: txt.length > 140 ? txt.slice(0, 137) + '…' : txt, tag: 'novalyz-equipe', target: 'novalyz' })) > 0 ? 1 : 0 } catch (_) {}
+    }
+    return jsonResp({ success: true })   // aucune donnée renvoyée (route publique)
+  } catch (_) { return jsonResp({ success: true }) }
+}
 const RETOUR_LIBELLES: Record<string, string> = { bug: 'Problème', idee: 'Idée', autre: 'Autre' }
 const RETOURS_MAX_JOUR = 20
 
@@ -8335,7 +8389,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages', 'pushMessagesNovalyz'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -8440,7 +8494,7 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   // saveEmail : l'e-mail sert à « mot de passe oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte,
   // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
   // P1-1 (13/11) : le journal des décisions n'est créé que depuis le parcours de l'athlète (jamais par le coach).
-  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan' || action === 'marquerOuverture') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
+  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan' || action === 'marquerOuverture' || action === 'lireMessagesNovalyz' || action === 'repondreMessageNovalyz') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -8558,6 +8612,9 @@ Deno.serve(async (req: Request) => {
         case 'saveRecapFreq':            return handleSaveRecapFreq(body)
         case 'saveCoachPref':            return handleSaveCoachPref(body)
         case 'envoyerRetour':            return handleEnvoyerRetour(body)
+        case 'lireMessagesNovalyz':      return handleLireMessagesNovalyz(body)       // 18/11 : canal « Message de Novalyz »
+        case 'repondreMessageNovalyz':   return handleRepondreMessageNovalyz(body)
+        case 'pushMessagesNovalyz':      return handlePushMessagesNovalyz()
         case 'enregistrerPlan':          return handleEnregistrerPlan(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
