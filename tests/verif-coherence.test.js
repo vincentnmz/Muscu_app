@@ -58,6 +58,32 @@ const store = {
   eq(txt('######## AUJOURD\'HUI\n1 / 3 séances cette semaine\n######## ENTRAINEMENT\n67% 2/3 cette semaine').includes('seances.ecrans'), 'attrape : deux comptes de séances « cette semaine »');
   eq(txt('######## AUJOURD\'HUI\n' + ad.dashboard.regularite.seances_j7 + ' / 3 séances cette semaine\n######## ENTRAINEMENT\n67% ' + ad.dashboard.regularite.seances_j7 + '/3 cette semaine').length === 0, 'témoin : écrans cohérents → aucun écart');
 
+  // 18/11 (suite) : « ta normale », montre, phrases du classement.
+  const st2 = JSON.parse(JSON.stringify(store));
+  st2.bien_etre = [0, 1, 2].map((i) => ({ athlete_id: '5', date: J(i), sommeil: 3, fatigue_musculaire: 4, stress: 2, courbatures: 2 }))
+    .concat([8, 9, 10, 11, 12, 13, 14, 15].map((i) => ({ athlete_id: '5', date: J(i), sommeil: 4, fatigue_musculaire: 2, stress: 2, courbatures: 2 })));
+  const adSansMoteur = { ...ad, moteur: undefined };   // le moteur de `ad` a été calculé sur l'autre base
+  const t2 = (t) => verifier({ store: st2, appdata: adSansMoteur, ecrans: t, now: TODAY }).map((e) => e.code);
+  eq(t2('######## AUJOURD\'HUI\nFatigue élevée (4/5)\n3 dernières saisies 4 · au-dessus de ta normale (2)').length === 0, 'normale : fatigue 4 contre 2 → « au-dessus » accepté');
+  eq(t2('######## AUJOURD\'HUI\nFatigue élevée (4/5)\n3 dernières saisies 4 · dans ta normale (2)').includes('normale.ecran'), 'attrape : « dans ta normale » alors que +2 points');
+  eq(t2('######## AUJOURD\'HUI\nSommeil moyen (3/5)\n3 dernières saisies 3 · dans ta normale (4)').includes('normale.ecran'), 'attrape : sommeil 1 point sous la normale dit « dans »');
+  const st3 = JSON.parse(JSON.stringify(store)); st3.bien_etre = [0, 3, 9, 12].map((i) => ({ athlete_id: '5', date: J(i), sommeil: 4, fatigue_musculaire: 2, stress: 2, courbatures: 1 }));
+  const t3 = (t) => verifier({ store: st3, appdata: adSansMoteur, ecrans: t, now: TODAY }).map((e) => e.code);
+  eq(t3('######## AUJOURD\'HUI\nSommeil bon (4/5)\nta normale arrive dans 6 questionnaires (il en faut 10 sur 5 semaines, tu en as 4)').length === 0, 'normale : compteur 4 questionnaires → « dans 6 » accepté');
+  eq(t3('######## AUJOURD\'HUI\nSommeil bon (4/5)\nta normale arrive après 7 saisies (1 pour l\'instant)\nStress (2/5)\nta normale arrive dans 7 questionnaires (il en faut 10 sur 5 semaines, tu en as 3)').includes('normale.compteur'), 'attrape : compteur de questionnaires faux');
+  const st4 = JSON.parse(JSON.stringify(store)); st4.indicateurs = [];
+  [0, 1, 2, 3, 4].forEach((i) => st4.indicateurs.push({ id: 100 + i, athlete_id: '5', date: J(i), seance_id: 'sante_' + J(i), cle: 'sommeil_min', valeur: String(400 + i * 10) }));
+  [0, 1].forEach((i) => st4.indicateurs.push({ id: 200 + i, athlete_id: '5', date: J(i), seance_id: 'sante_' + J(i), cle: 'pas', valeur: i === 0 ? '3000' : '8000' }));
+  const t4 = (t) => verifier({ store: st4, appdata: adSansMoteur, ecrans: t, now: TODAY }).map((e) => e.code);
+  eq(t4('######## AUJOURD\'HUI\nSommeil réel 7 h 00 / nuit (7 j, 5 nuits)').length === 0, 'montre : sommeil réel 7 h 00 sur 5 nuits accepté');
+  eq(t4('######## AUJOURD\'HUI\nSommeil réel 6 h 58 / nuit (7 j, 5 nuits)').includes('montre.sommeil'), 'attrape : sommeil réel faux');
+  if (new Date(TODAY + 'T12:00:00Z').getUTCDay() !== 1) eq(t4('######## AUJOURD\'HUI\nmoy. 5500').includes('montre.pas'), 'attrape : journée de pas en cours comptée dans la moyenne');
+  const t5 = (t) => verifier({ store, appdata: ad, ecrans: t, now: TODAY }).map((e) => e.code);
+  eq(t5('######## ANALYSES ▸ resume\nProgresse : Curl 10 → 12 reps').length === 0, 'classement : « Curl 10 → 12 reps » (12,5 kg) accepté');
+  eq(t5('######## ANALYSES ▸ resume\nProgresse : Curl 9 → 12 reps').includes('classement.progres'), 'attrape : progrès avec un mauvais nombre de reps');
+  eq(t5('######## ÉVOLUTION ▸ Curl\nRecord : 12,5 kg × 12 le ' + J(1).split('-').reverse().join('/')).length === 0, 'classement : record Curl 12,5 × 12 accepté');
+  eq(t5('######## ÉVOLUTION ▸ Presse\nRecord : 100 kg × 10 le ' + J(5).split('-').reverse().join('/')).includes('classement.record'), 'attrape : « record » qui ne fait qu\'égaler');
+  eq(t5('######## ÉVOLUTION ▸ Presse\nBloqué à 90 kg × 12 depuis 3 séances').includes('classement.bloque'), 'attrape : « bloqué » sur des séances à des charges différentes');
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

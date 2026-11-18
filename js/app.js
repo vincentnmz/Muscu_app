@@ -17041,7 +17041,7 @@ function _maRegulariteBloc(data) {
     if (!(Number(vpj[k]) > 0)) return;                    // jour entraîné (volume > 0)
     var d = new Date(k + 'T00:00:00'); if (isNaN(d.getTime())) return;
     d.setHours(0, 0, 0, 0);
-    var wi = Math.floor((d - start) / 6048e5);             // 6048e5 = 7 j en ms
+    var wi = Math.floor(Math.round((d - start) / 864e5) / 7);   // jours entiers puis semaines (18/11 : au changement d'heure de printemps, un lundi tombait dans la semaine d'avant)
     if (wi >= 0 && wi < WEEKS) counts[wi]++;
   });
   if (!counts.some(function (c) { return c > 0; })) {
@@ -17050,7 +17050,7 @@ function _maRegulariteBloc(data) {
   var reached = function (c) { return obj > 0 ? c >= obj : c > 0; };
   // 18/11 (audit Romain/Idris) : compte récent → on ne juge que les semaines depuis la 1re séance (« 1/2 », pas « 1/12 »).
   var nW = WEEKS;
-  try { var _k0 = Object.keys(vpj).filter(function (k) { return Number(vpj[k]) > 0; }).sort()[0]; if (_k0) { var _d0 = new Date(_k0 + 'T00:00:00'); var _w0 = Math.floor((_d0 - start) / 6048e5); if (_w0 > 0) nW = WEEKS - _w0; } } catch (e) {}
+  try { var _k0 = Object.keys(vpj).filter(function (k) { return Number(vpj[k]) > 0; }).sort()[0]; if (_k0) { var _d0 = new Date(_k0 + 'T00:00:00'); var _w0 = Math.floor(Math.round((_d0 - start) / 864e5) / 7); if (_w0 > 0) nW = WEEKS - _w0; } } catch (e) {}
   var atObj = counts.slice(WEEKS - nW).filter(reached).length;
   var moy = Math.round(counts.slice(WEEKS - nW).reduce(function (a, c) { return a + c; }, 0) / nW * 10) / 10;
   // Série en cours : semaines consécutives « à l'objectif » en remontant ; la semaine
@@ -19053,11 +19053,11 @@ function _beNormale(data, nowT) {
   nowT = nowT || Date.now();
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
   var rows = ((data && data.bien_etre) || []).map(function (b) { return { b: b, t: _dYmd(b && b.date) }; })
-    .filter(function (x) { return x.t != null && x.t <= t0 && t0 - x.t <= 34 * 864e5; }).sort(function (a, b) { return b.t - a.t; });
+    .filter(function (x) { return x.t != null && x.t <= t0 && Math.round((t0 - x.t) / 864e5) <= 34; }).sort(function (a, b) { return b.t - a.t; });   // jours entiers (changement d'heure, 18/11)
   var DIMS = [['sommeil', 'Sommeil', false], ['fatigue', 'Fatigue', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]];
   return DIMS.map(function (d) {
     var k = d[0], val = function (x) { var n = Number(x.b[k]); return (x.b[k] == null || x.b[k] === '' || isNaN(n)) ? null : n; };
-    var rec = rows.filter(function (x) { return t0 - x.t <= 6 * 864e5 && val(x) != null; }).slice(0, 3);
+    var rec = rows.filter(function (x) { return Math.round((t0 - x.t) / 864e5) <= 6 && val(x) != null; }).slice(0, 3);
     if (!rec.length) return null;
     var recT = rec.map(function (x) { return x.t; });
     var base = rows.filter(function (x) { return recT.indexOf(x.t) < 0 && val(x) != null; });
@@ -19193,7 +19193,10 @@ function _montreNormale(data, nowT) {
   nowT = nowT || Date.now();
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
   var sh = ((data && data.sante_historique) || []).map(function (x) { return { t: _dYmd(x && x.date), s: Number(x && x.sommeil_min) }; }).filter(function (x) { return x.t != null && x.s >= 180 && x.t <= t0; });   // nuit < 3 h = enregistrement incomplet (montre retirée) → ignorée (01/11)
-  var r7 = sh.filter(function (x) { return t0 - x.t <= 6 * 864e5; }), rB = sh.filter(function (x) { return t0 - x.t > 6 * 864e5 && t0 - x.t <= 34 * 864e5; });
+  // 18/11 (vérificateur de cohérence) : écart en JOURS entiers — en millisecondes, le changement d'heure (25/10) faisait
+  // sortir la nuit de J-34 de la fenêtre (27 nuits contre 28 côté serveur, qui compare des dates).
+  var jd = function (t) { return Math.round((t0 - t) / 864e5); };
+  var r7 = sh.filter(function (x) { return jd(x.t) <= 6; }), rB = sh.filter(function (x) { return jd(x.t) > 6 && jd(x.t) <= 34; });
   var moy = function (a) { return a.reduce(function (s, x) { return s + x.s; }, 0) / a.length; };
   var out = {};
   if (r7.length) out.sommeil = { moy: moy(r7), n: r7.length, base: rB.length >= 14 ? moy(rB) : null, nBase: rB.length };   // normale dès 14 nuits complètes (comme le mail récap)

@@ -15,6 +15,11 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - **Sur les vraies données**, avec la commande `node scripts/verif-coherence/verif.cjs <base.json> <appdata.json> [ecrans.txt] [AAAA-MM-JJ]`. Le 18/11, Vincent, Romain, Idris et Célia sont à **0 écart**.
 - **Preuve sur les anciens écrans** (avant les corrections du 18/11) : il retrouve les erreurs corrigées le jour même (records mal datés, force 12 contre 11, « 12.5 kg », « Objectif semaine 1/3 » à côté de « 2/3 »). L'erreur de séries par muscle n'a pas pu être rejouée faute d'ancien relevé, mais le test permanent l'injecte et elle est attrapée.
 
+## Bugs trouvés par le vérificateur lui-même
+- 18/11 : « Objectif semaine 1/3 » à côté de « 2/3 séances » (semaine glissante) → libellé « lun → dim ».
+- 18/11 : formats « 87.5 kg », « 86.0 », « 8.1h ».
+- 18/11 : **changement d'heure** — l'app comptait les jours en millisecondes ; après le 25/10, la nuit (ou le questionnaire) de J-34 sortait de la fenêtre : normale du sommeil sur 27 nuits au lieu de 28, différente du serveur. Même défaut corrigé dans « ta normale » du bien-être et dans le graphique de régularité (un lundi passait dans la semaine d'avant au printemps).
+
 ## Ce qu'il vérifie aujourd'hui
 | Règle | Ce qui est recalculé |
 |---|---|
@@ -29,11 +34,17 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | écran : force estimée | la tuile et la ligne du tableau donnent le même chiffre |
 | écran : records | charge et date affichées identiques au recalcul |
 | écran : séances « cette semaine » | même nombre sur Aujourd'hui, Entraînement et Volume ; libellé « lun → dim » quand ce n'est pas la même fenêtre |
+| ta normale (bien-être) | 3 dernières saisies sur 7 jours contre les autres saisies des 5 semaines (≥ 7) : moyennes, état (dans / au-dessus / sous), compteur « dans N questionnaires » |
+| moteur ↔ normale | raisons « fatigue » et « sommeil » du moteur identiques à la normale recalculée |
+| montre : sommeil | moyenne des nuits ≥ 3 h sur 7 jours, normale J-34 → J-7 dès 14 nuits |
+| montre : FC au repos | récente J-2 → J (≥ 2 mesures), normale J-30 → J-3 (≥ 14), hausse ≥ 5 bpm |
+| montre : pas | moyenne de la semaine sans la journée en cours de synchronisation |
+| phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert (prochaines règles, dans cet ordre)
-1. « Ta normale » du bien-être (comptes et moyennes) et la fraîcheur (charge et récupération).
-2. Le classement des exercices (en progrès, bloqué, sous la fourchette) et les cibles de la prochaine séance.
-3. Les pas, le sommeil et la FC de la montre (moyennes, jours incomplets).
+1. La fraîcheur (modèle fitness-fatigue) et l'ACWR.
+2. Les cibles de la prochaine séance (« Ce que Novalyz vise ») et les leviers.
+3. Le plan de la semaine et le journal des décisions.
 4. Les vues coach (Équipe, fiche) et le mail récapitulatif : mêmes chiffres que l'app.
 5. Le contexte envoyé à l'IA : mêmes chiffres que l'app.
 6. Le cardio.
