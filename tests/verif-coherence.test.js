@@ -8,7 +8,7 @@ const { stripTypeScriptTypes } = require('node:module');
 const ROOT = path.join(__dirname, '..');
 const T = fs.readFileSync(path.join(__dirname, 'e2e-parcours.test.js'), 'utf8');
 eval(T.slice(T.indexOf('function makeEngine'), T.indexOf('// ── Chargement du VRAI backend')));
-const { verifier, verifierBilan, verifierMailHtml } = require('../scripts/verif-coherence/verif.cjs');
+const { verifier, verifierBilan, verifierMailHtml, verifierIA } = require('../scripts/verif-coherence/verif.cjs');
 
 let ok = 0, ko = 0;
 const eq = (c, n, got) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n + (got !== undefined ? ' (got ' + JSON.stringify(got) + ')' : '')); } };
@@ -19,7 +19,7 @@ const TODAY = J(0);
 function charger(store) {
   let js = stripTypeScriptTypes(fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
   js = js.split('\n').filter(l => !/^import\s/.test(l)).join('\n');
-  js += '\n;this.__api = { handleGetAppData, _bilanRecapV2, _emailRecapV2HTML };';
+  js += '\n;this.__api = { handleGetAppData, _bilanRecapV2, _emailRecapV2HTML, _iaContexte };';
   const sandbox = { createClient: () => makeEngine(store), webpush: { setVapidDetails() {}, sendNotification: async () => {} },
     Deno: { env: { get: () => undefined }, serve: () => {} }, Response, Request, URLSearchParams, TextEncoder, TextDecoder, crypto, console, setTimeout, clearTimeout,
     fetch: async () => ({ ok: false, status: 0, text: async () => '', json: async () => ({}) }) };
@@ -131,6 +131,13 @@ const store = {
   }
   { const o = []; verifierMailHtml('<p>Tirage : 50 kg × 7 depuis 3 séances (au Sun N, fin de la période)</p>', o); eq(o.length > 0, 'attrape : date brute « Sun N » dans le mail'); }
   { const o = []; verifierBilan(stM, { per: 'semaine', bornes: { debut: J(13), fin: J(6) }, seances: 99, series: 0, reps: 0, tonnage: 0, volume: [], balance: [], records: [], lecture: {} }, '5', o); eq(o.some((x) => x.code === 'mail.seances'), 'attrape : nombre de séances du mail faux'); }
+  // Contexte envoyé à l'IA (18/11) : vrai code, chaque chiffre vérifié ; une erreur injectée est attrapée.
+  { const ctx = APIM._iaContexte(adM, new Date()); const o = []; verifierIA(stM, ctx, TODAY, '5', o);
+    eq(o.length === 0, 'contexte IA (vrai code) : 0 écart', o.map((x) => x.message));
+    const o2 = []; verifierIA(stM, ctx.replace(/· (\d+) séries/, (m0, n) => '· ' + (+n + 1) + ' séries'), TODAY, '5', o2);
+    eq(o2.some((x) => x.code === 'ia.seance'), 'attrape : nombre de séries faux dans le contexte IA');
+    const o3 = []; verifierIA(stM, '- Dernière séance muscu : S hier · 3 séries · RPE moyen 9.2.', TODAY, '5', o3);
+    eq(o3.some((x) => x.code === 'ia.format'), 'attrape : point décimal dans le contexte IA'); }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

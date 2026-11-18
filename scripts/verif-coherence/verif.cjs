@@ -590,6 +590,31 @@ function verifierBilan(store, b, aid, out) {
   (L.sous || []).forEach((x) => { const P2 = R.sessions[x.exo] || []; if (!P2.length) return; const S0 = P2[0], ser = S0.series.filter((sr) => num(sr.reps) > 0), rp = Math.max(...ser.map((sr) => num(sr.rpe))); if (num(S0.best.charge) !== num(x.c) || num(S0.best.reps) !== num(x.r) || rp !== num(x.rpe) || !(ser.filter((sr) => num(sr.reps) < num(x.rmin)).length * 2 > ser.length)) E('mail.sous', x.exo + ' ' + x.c + ' × ' + x.r + ' (RPE ' + x.rpe + ') : dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps) + ' (RPE ' + rp + ')'); });
 }
 
+// ── E. Contexte envoyé à l'IA : chaque chiffre = recalcul (l'IA ne doit recevoir que des faits justes) ──
+function verifierIA(store, txt, now, aid, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message: 'Contexte IA : ' + message });
+  const R = recalculer(store, null, now, aid), L = String(txt || '').split('\n');
+  const BE = (store.bien_etre || []).filter((b) => !aid || String(b.athlete_id) === String(aid)).map((b) => ({ ...b, d: iso(b.date) })).filter((b) => b.d && b.d <= now).sort((a, b) => b.d.localeCompare(a.d));
+  const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === String(aid)).map((r) => ({ ...r, d: iso(r.date) })).filter((r) => r.d && r.d <= now);
+  const exos = Object.keys(R.sessions).sort((a, b) => b.length - a.length), exoDe = (t) => exos.find((e) => t.indexOf(e) === 0);
+  L.forEach((l) => { let m;
+    if (/(?<![\d/.])\d+\.\d+(?!\.\d)/.test(l.replace(/https?:\S+/g, '')) && !/\d{4}-\d{2}-\d{2}/.test(l)) E('ia.format', '« ' + l.slice(0, 90) + ' » (point décimal)');
+    if ((m = l.match(/^- Dernier questionnaire \((?:[^()]|\([^()]*\))*\) : (.+?) \(sommeil :/))) { const b = BE[0]; if (!b) { E('ia.questionnaire', 'questionnaire cité, aucun en base'); return; }
+      const col = { sommeil: 'sommeil', fatigue: 'fatigue_musculaire', stress: 'stress', courbatures: 'courbatures', douleur: 'douleur' };
+      m[1].split(', ').forEach((it) => { const k = it.match(/^(\w+) (\d+)\/5$/); if (k && col[k[1]] && num(b[col[k[1]]]) !== +k[2]) E('ia.questionnaire', k[1] + ' ' + k[2] + '/5, dernière saisie ' + b[col[k[1]]] + '/5 (' + fr(b.d) + ')'); }); }
+    if ((m = l.match(/^- Dernière séance muscu : .* · (\d+) séries(?: · RPE moyen ([\d,]+))?\.$/))) { const d = P.map((r) => r.d).sort().pop(), S0 = P.filter((r) => r.d === d), rr = S0.filter((r) => num(r.rpe) > 0), rp = rr.length ? Math.round(rr.reduce((x, r) => x + num(r.rpe), 0) / rr.length * 10) / 10 : null;
+      if (+m[1] !== S0.length) E('ia.seance', m[1] + ' séries, recalculé ' + S0.length + ' (' + fr(d) + ')'); if (m[2] && num(m[2]) !== rp) E('ia.seance', 'RPE moyen ' + m[2] + ', recalculé ' + f1(rp)); }
+    if ((m = l.match(/^- Régularité : objectif (\d+) séances\/semaine ; (\d+|—) faites cette semaine \(depuis lundi\)/)) && m[2] !== '—' && +m[2] !== R.seancesSemaine) E('ia.regularite', m[2] + ' séances depuis lundi, recalculé ' + R.seancesSemaine);
+    if ((m = l.match(/^- Records récents : (.+)\.$/))) m[1].split(' ; ').forEach((it) => { const e = exoDe(it); const k = e && it.slice(e.length).match(/^ ([\d,]+) kg × (\d+)/); if (k) { const P2 = R.sessions[e] || []; const i = P2.findIndex((p) => num(p.best.charge) === num(k[1]) && num(p.best.reps) === +k[2]); let ok = i >= 0 && P2.length > i + 1; if (ok) { let bc = -1, br = -1; P2.slice(i + 1).forEach((p) => { const c = num(p.best.charge), r = num(p.best.reps); if (c > bc) { bc = c; br = r; } else if (c === bc && r > br) br = r; }); ok = num(k[1]) > bc || (num(k[1]) === bc && +k[2] > br); } if (!ok) E('ia.record', it + ' : pas un record dans les séries'); } });
+    if ((m = l.match(/^- Bloqués \([^)]*\) : (.+)\.$/))) m[1].split(' ; ').forEach((it) => { const k = it.match(/^(.+) à ([\d,]+) kg × (\d+) depuis (\d+) séances$/); if (!k) return; const P2 = R.sessions[k[1].trim()] || [], n = +k[4], W = P2.slice(0, n); if (P2.length < n || W.some((p) => num(p.best.charge) !== num(k[2])) || Math.max(...W.map((p) => num(p.best.reps))) !== +k[3]) E('ia.bloque', it + ' : pas conforme aux ' + n + ' dernières séances'); });
+    if ((m = l.match(/^- Sous la fourchette de reps : (.+)\.$/))) m[1].split(/\), (?=[A-ZÉ])/).forEach((it) => { const k = it.match(/^(.+?) \(fourchette (\d+)-(\d+) reps ; dernière fois ([\d,]+) kg × (\d+) à RPE ([\d,]+)/); if (!k) return; const P2 = R.sessions[k[1].trim()] || []; if (!P2.length) return; const S0 = P2[0], f = R.fourchette(k[1].trim()); if (num(S0.best.charge) !== num(k[4]) || num(S0.best.reps) !== +k[5] || f.rmin !== +k[2] || f.rmax !== +k[3]) E('ia.sous', it.slice(0, 80) + ' : dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps) + ', fourchette ' + f.rmin + '-' + f.rmax); });
+    if ((m = l.match(/^- Volume de la semaine en cours, (depuis lundi|sur les 7 derniers jours) \(séries faites \/ minimum hebdo\) : (.+)\.$/))) {
+      if ((m[1] === 'depuis lundi') !== (R.semaineType === 'calendaire')) E('ia.volume', 'fenêtre « ' + m[1] + ' » alors que le réglage est ' + R.semaineType);
+      m[2].split(', ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+)\/(\d+)$/); if (k && Math.abs(num(k[2]) - (R.volume[cle(k[1])] || 0)) > 0.01) E('ia.volume', k[1] + ' ' + k[2] + ' séries, recalculé ' + f1(R.volume[cle(k[1])] || 0)); }); }
+    if ((m = l.match(/^- Poids : ([\d,]+) kg/))) { const ph = (store.poids_historique || []).filter((x) => !aid || String(x.athlete_id) === String(aid)).sort((a, b) => iso(b.date).localeCompare(iso(a.date)))[0]; if (ph && num(ph.poids) !== num(m[1])) E('ia.poids', m[1] + ' kg, dernière pesée ' + ph.poids + ' kg (' + fr(iso(ph.date)) + ')'); }
+  });
+}
+
 function verifier({ store, appdata, ecrans, now }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour), out = [];
@@ -598,7 +623,7 @@ function verifier({ store, appdata, ecrans, now }) {
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
-module.exports = { verifier, recalculer, verifierBilan, verifierMailHtml };
+module.exports = { verifier, recalculer, verifierBilan, verifierMailHtml, verifierIA };
 
 if (require.main === module) {
   const fs = require('fs');

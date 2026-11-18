@@ -22,6 +22,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 18/11 : cibles : « RPE 10 sur toutes tes séries » alors que des séries étaient à 9 (Célia ×6, Idris ×4) → plage réelle « RPE 9-10 ».
 - 18/11 : « bloqué à 50 × 7 depuis 3 séances » (mail) alors qu'une des 3 séances avait fait 8 → le palier affiché est le meilleur nombre de reps du plateau (app et serveur).
 - 18/11 : mail : « (au Sun N, fin de la période) » au lieu de la date → corrigé (« au 15/11 »).
+- 18/11 : contexte IA : « RPE moyen 9.2 » (point décimal que l'IA pouvait recopier) → « 9,2 ».
 - 18/11 : carte « Charge & fraîcheur » : « tonnage pondéré par l'effort » alors que la source est le tonnage brut (charge × reps) → « tonnage : charge × répétitions ».
 
 ## Ce qu'il vérifie aujourd'hui
@@ -55,10 +56,10 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | fiche coach | Aperçu, Analyses et Forme d'un athlète : mêmes règles que ses propres écrans (dont « Records — … », « Progresse — a→b reps ») |
 | mail récapitulatif | séances, séries, reps, tonnage, RPE, jours de vacances, volume moyen par muscle, équilibres, records de la période, « bloqué » et « sous la fourchette » à la fin de la période ; HTML sans texte cassé ni point décimal |
 | texte cassé (partout) | jamais « undefined », « NaN », « Invalid Date » ni date brute « Sun Nov … » |
+| contexte envoyé à l'IA | dernier questionnaire, dernière séance (séries, RPE), séances depuis lundi, records récents, bloqués, sous la fourchette, volume de la semaine (et sa fenêtre), poids ; aucun point décimal |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert (prochaines règles, dans cet ordre)
-1. Le contexte envoyé à l'IA : mêmes chiffres que l'app.
-2. Le cardio.
+1. Le cardio.
 
 Tant qu'une ligne de cette liste n'est pas couverte, sa fiabilité n'est **pas démontrée**.
