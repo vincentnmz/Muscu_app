@@ -1274,6 +1274,8 @@ select.pbc-rpe { min-width:70px; font-size:16px !important; font-weight:800; }
 .cae-sub { font-size:11px; color:var(--text-muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .cae-sub b { font-weight:800; }
 .cae-chip { border-radius:999px !important; }
+/* 18/11 : l'état (ex. « Douleur modérée signalée (épaule) · 07/11 ») passe sous le nom, sur sa propre ligne — avant il écrasait le nom. */
+.cae-nm .cae-chip { margin-top:3px; white-space:normal; max-width:100%; line-height:1.35; }
 /* 06/11 — Analyses équipe : ligne rangée (avatar | nom … pastille/barre/bouton à droite ; détail dessous) */
 .ae-right { display:flex; align-items:center; gap:8px; flex:none; }
 @media (max-width:991.98px) {
