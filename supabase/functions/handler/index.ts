@@ -800,7 +800,8 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[
     const l = ds.slice(-4).map(d => parExo[exo][d])
     const rpeAv = (l[0].rpe + l[1].rpe) / 2, rpeAp = (l[2].rpe + l[3].rpe) / 2
     const chAv = (l[0].charge + l[1].charge) / 2, chAp = (l[2].charge + l[3].charge) / 2
-    const chPct = chAv > 0 ? (chAp - chAv) / chAv * 100 : 0
+    // 18/11 (audit Vincent) : 0 kg (poids du corps) → lest = HAUSSE de charge, pas « charge égale » (avant : 0 % forcé).
+    const chPct = chAv > 0 ? (chAp - chAv) / chAv * 100 : (chAp > 0 ? 100 : 0)
     rpeEvalues++
     if (rpeAp - rpeAv >= 1 && chPct <= 2.5) { rpeExos.push(exo); rpeDetails.push({ exo, charge: Math.round(chAp * 10) / 10, rpeAvant: rpeAv, rpeApres: rpeAp }) }
   }
@@ -900,7 +901,7 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
     const chgAvant = (last4[0].charge + last4[1].charge) / 2
     const chgApres = (last4[2].charge + last4[3].charge) / 2
     const rpeHausse = rpeApres - rpeAvant
-    const chgPct = chgAvant > 0 ? (chgApres - chgAvant) / chgAvant * 100 : 0
+    const chgPct = chgAvant > 0 ? (chgApres - chgAvant) / chgAvant * 100 : (chgApres > 0 ? 100 : 0)   // 18/11 : 0 kg → lest = hausse
     if (rpeHausse >= 1.0 && chgPct < 3)
       alertes.push({ type: 'fatigue_rpe', severite: 'moyenne', message: `${exo} : RPE en hausse de +${Math.round(rpeHausse * 10) / 10} pt (moy. ${Math.round(rpeApres * 10) / 10}) sans progression de charge — fatigue latente ?` })
   }
@@ -3767,6 +3768,10 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // Charge élevée SEULE (récup bonne → Prêt) : repère informatif, pas un ordre.
   // Règle ressenti : on ne dit « tu encaisses bien » QUE si le ressenti a pu être évalué.
   else if (chargeHaute && regleRessenti && s.chargeSoutenue === true && s.ressentiDegrade === true) reco = 'Ta charge monte et tu récupères moins bien — allège 1 séance et priorise le sommeil.'
+  // 18/11 (audit Vincent) : charge haute + ressenti dégradé mais PAS encore soutenue (< 3 jours) — cas oublié, qui tombait
+  // sur le message par défaut « forte hausse… si tu te sens frais » (contradictoire avec le plan mis en pause). Même consigne
+  // que le plan et la cible de séance : on maintient, sans aller à l'échec.
+  else if (chargeHaute && regleRessenti && s.ressentiDegrade === true) reco = 'Ta charge monte et ton ressenti baisse — garde tes charges prévues, sans aller à l\'échec, et priorise la récupération.'
   else if (chargeHaute && regleRessenti && s.ressentiEvaluable === true && s.ressentiDegrade !== true) reco = 'Ta charge monte et tu encaisses bien — continue, sans empiler davantage de volume.'
   else if (chargeHaute && regleRessenti && s.ressentiEvaluable !== true && s.ressentiDegrade !== true) reco = 'Ta charge monte — renseigne ton état du jour pour qu\'on vérifie que tu récupères bien.'
   else if (chargeHaute) reco = 'Charge en forte hausse récemment — évite d\'empiler encore du volume ; si tu te sens frais, entraîne-toi normalement.'
@@ -5952,7 +5957,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   out.montre = montre
   const be = Array.isArray(ad.bien_etre) ? ad.bien_etre : []
   const beV = (k: string, a: string, b: string) => be.filter((x: any) => { const d = normDate(x.date); return d >= a && d < b }).map((x: any) => Number(x[k])).filter((v: number) => !isNaN(v) && v > 0)
-  out.forme = [['sommeil', 'Sommeil ressenti', false], ['fatigue', 'Fatigue musculaire', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]].map(([k, lab, inv]: any) => {
+  out.forme = [['sommeil', 'Sommeil ressenti', false], ['fatigue', 'Fatigue', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]].map(([k, lab, inv]: any) => {
     const p = beV(k, d0, d1); if (!p.length) return null
     const n = beV(k, n0, d0), v = Math.round((moy(p) as number) * 10) / 10, nm = n.length >= 7 ? Math.round((moy(n) as number) * 10) / 10 : null
     const etat = nm == null ? 'nd' : (inv ? (v - nm >= 1 ? 'haut' : 'ok') : (nm - v >= 1 ? 'bas' : 'ok'))
@@ -7430,7 +7435,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   if (cf && cf.tsbPct != null) L.push(`- Fraîcheur (charge récente vs habituelle) : ${cf.tsbPct >= 5 ? 'frais' : cf.tsbPct >= -12 ? 'équilibré' : 'charge en hausse'}${cf.fiable ? '' : ' (indicatif, historique court)'}.`)
   if (be && beAge != null && beAge <= 6) {
     const v = (k: string) => (be[k] != null && be[k] !== '' && !isNaN(Number(be[k]))) ? Number(be[k]) + '/5' : null
-    const parts = [['sommeil', v('sommeil')], ['fatigue musculaire', v('fatigue')], ['stress', v('stress')], ['courbatures', v('courbatures')], ['douleur', v('douleur')]].filter((x) => x[1]).map((x) => x[0] + ' ' + x[1])
+    const parts = [['sommeil', v('sommeil')], ['fatigue', v('fatigue')], ['stress', v('stress')], ['courbatures', v('courbatures')], ['douleur', v('douleur')]].filter((x) => x[1]).map((x) => x[0] + ' ' + x[1])
     if (parts.length) L.push(`- Dernier questionnaire (${quand(be.date)}) : ${parts.join(', ')} (sommeil : 5 = très bien ; fatigue/stress/courbatures/douleur : 1 = aucun).`)
   } else if (be) L.push(`- Dernier questionnaire : ${quand(be.date)} — trop ancien pour juger la forme d'aujourd'hui.`)
   else L.push('- Aucun questionnaire de forme enregistré.')
