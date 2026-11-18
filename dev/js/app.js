@@ -13637,7 +13637,7 @@ function _progDecision(ctx) {
   // Alternative « sûre » en mode sous : charge permettant rmin reps à RPE 9 d'après la force estimée.
   var alt = null;
   try { if (mode === 'sous' && typeof _sousAlt === 'function') { var r0 = ref(1); alt = _sousAlt(Number(r0.charge) || 0, last.concat(ctx.prev || []), rmin, ctx.pas); } } catch (e) {}
-  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, bloque: ctx.bloque || null, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt };
+  return { mode: mode, rpe: rpe, rpeMin: rpes.length ? Math.min.apply(null, rpes) : null, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, bloque: ctx.bloque || null, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt };
 }
 // Petit pas en « sous la fourchette » : ≈ −5 % arrondi au pas de l'appareil, au moins un pas (80 → 75 kg).
 function _sousPetitPas(ch, pas) { pas = pas > 0 ? pas : 2.5; var c = Math.floor(ch * 0.95 / pas) * pas; if (c > ch - pas) c = ch - pas; return Math.max(0, c); }
@@ -13663,7 +13663,8 @@ function _progWhy(d, f, pas) {
   if (d.mode === 'reprise') return 'reprise après ' + Math.floor(d.joursSansSeance / 7) + ' semaines sans séance : refais ta dernière fois, sans pousser · indicatif';
   if (d.mode === 'vigilance') return (/^charge en hausse/.test(d.vigilanceTxt || '') ? d.vigilanceTxt : 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '')) + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';   // E (14/11)
   if (d.mode === 'echec') return 'échec (RPE 10) 2 séances de suite : garde ta charge et vise RPE 9 (1 rep en réserve)';
-  if (d.mode === 'consolide') return 'RPE ' + d.rpe + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
+  // 18/11 (vérificateur) : « RPE 10 sur toutes tes séries » alors que deux séries étaient à 9 → on écrit la vraie plage (9-10).
+  if (d.mode === 'consolide') return 'RPE ' + ((d.rpeMin != null && d.rpeMin !== d.rpe) ? d.rpeMin + '-' + d.rpe : d.rpe) + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
   if (d.mode === 'bloque') { var av = d.bloque && d.bloque.avant; return 'bloqué depuis ' + d.bloque.n + ' séances : pas de +1 rep forcé, mêmes charges et mêmes reps' + (av ? ' ; ta série à ' + kg(av.charge) + ' kg revient à ≈ ' + av.reps + ' reps' : ''); }
   if (d.mode === 'charge') return 'haut de fourchette atteint → +' + kg(pas) + ' kg';
   if (d.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
