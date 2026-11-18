@@ -248,7 +248,7 @@ fatigue
 frais
 Forme de fond 1 337
 Fatigue récente 117
-En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+En unités de charge (tonnage : charge × répétitions) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
 TON RESSENTI · 7 DERNIERS JOURS

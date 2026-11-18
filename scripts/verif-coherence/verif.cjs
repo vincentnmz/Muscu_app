@@ -105,6 +105,26 @@ function recalculer(store, appdata, now) {
   const pasSem = jSA.filter((d) => d >= R.lundi && SA[d].pas != null && d !== partiel);
   R.pasMoySemaine = pasSem.length ? Math.round(pasSem.reduce((x, d) => x + SA[d].pas, 0) / pasSem.length) : null;
   R.pasPartiel = partiel;
+  // Charge & fraîcheur (modèle fitness-fatigue, EWMA 7 j / 42 j ; forme de fond ≥ moyenne réelle des 28 derniers jours
+  // dès 28 j d'historique). Source : note de séance × durée (sRPE) dès 28 j d'historique sRPE et 8 jours actifs sur 42,
+  // sinon le tonnage (Σ charge × reps du jour). ACWR = 7 derniers jours ÷ (28 derniers jours ÷ 4), toujours sur le tonnage.
+  const tonJour = {}; P.forEach((r) => { tonJour[r.d] = (tonJour[r.d] || 0) + num(r.charge) * num(r.reps); });
+  const IND = (store.indicateurs || []).filter((r) => !aid || String(r.athlete_id) === aid);
+  const dur = {}; IND.filter((r) => r.cle === 'duree_muscu').forEach((r) => { dur[iso(r.date) + '|' + (r.seance_id || '')] = num(r.valeur); });
+  const srpe = {}; IND.filter((r) => r.cle === 'rpe_muscu' && r.valeur != null && r.valeur !== '').forEach((r) => { const k = iso(r.date) + '|' + (r.seance_id || ''), du = dur[k]; if (du > 0 && iso(r.date) <= now) srpe[iso(r.date)] = (srpe[iso(r.date)] || 0) + num(r.valeur) * du; });
+  const ecart = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
+  const ff = (cpj) => {
+    const ks = Object.keys(cpj).filter((k) => cpj[k] > 0 && k <= now).sort(); if (!ks.length) return null;
+    const LA = 2 / 8, LC = 2 / 43, span = Math.max(0, ecart(ks[0], now));
+    let a = cpj[ks[0]], c = cpj[ks[0]], act42 = 0;
+    for (let d = span; d >= 0; d--) { const v = cpj[plusJ(now, -d)] || 0; if (d < 42 && v > 0) act42++; if (d === span) continue; a = v * LA + (1 - LA) * a; c = v * LC + (1 - LC) * c; }
+    if (span >= 28) { let s28 = 0; for (let d = 0; d < 28; d++) s28 += cpj[plusJ(now, -d)] || 0; if (s28 / 28 > c) c = s28 / 28; }
+    return { ctl: Math.round(c), atl: Math.round(a), tsbPct: c > 0 ? Math.round((c - a) / c * 100) : null, act42, span };
+  };
+  const fS = ff(srpe), fT = ff(tonJour);
+  R.ff = (fS && fS.span >= 28 && fS.act42 >= 8) ? { ...fS, source: 'srpe' } : (fT ? { ...fT, source: 'tonnage' } : null);
+  let ai = 0, s28 = 0; for (let d = 0; d < 28; d++) { const v = tonJour[plusJ(now, -d)] || 0; s28 += v; if (d < 7) ai += v; }
+  R.acwr = s28 > 0 ? Math.round(ai / (s28 / 4) * 100) / 100 : null;
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
   Object.values(R.parExoJour).forEach((x) => { const e = x.series[0].exercice; (R.sessions[e] = R.sessions[e] || []).push({ d: x.series[0].d, best: x.best, series: x.series.slice().sort((a, b) => num(a.serie) - num(b.serie) || num(a.id) - num(b.id)) }); });
@@ -163,6 +183,14 @@ function verifierDonnees(R, ad, out) {
     if (cr.raisons.includes('fatigue') !== fat) E('ressenti.fatigue', 'moteur : fatigue ' + (cr.raisons.includes('fatigue') ? 'en hausse' : 'normale') + ', recalcul : ' + (fat ? 'au-dessus de la normale' : 'pas au-dessus') + ' (' + (R.normale.fatigue.rec == null ? '—' : f1(R.normale.fatigue.rec)) + ' contre ' + (R.normale.fatigue.base == null ? '—' : f1(R.normale.fatigue.base)) + ')');
     if (cr.raisons.includes('sommeil') !== som) E('ressenti.sommeil', 'moteur : sommeil ' + (cr.raisons.includes('sommeil') ? 'en baisse' : 'normal') + ', recalcul : ' + (som ? 'sous la normale' : 'pas sous la normale'));
   }
+  // Fraîcheur et ACWR du moteur = recalcul.
+  const cf = ad && ad.moteur && ad.moteur.charge_fatigue;
+  if (cf && R.ff) {
+    if (cf.source !== R.ff.source) E('fraicheur.source', 'source de la fraîcheur : servie « ' + cf.source + ' », recalculée « ' + R.ff.source + ' »');
+    else if (num(cf.ctl) !== R.ff.ctl || num(cf.atl) !== R.ff.atl || cf.tsbPct !== R.ff.tsbPct) E('fraicheur.valeurs', 'fraîcheur : servi forme ' + cf.ctl + ' / fatigue ' + cf.atl + ' / ' + cf.tsbPct + ' %, recalculé ' + R.ff.ctl + ' / ' + R.ff.atl + ' / ' + R.ff.tsbPct + ' %');
+  }
+  const acw = ad && ad.dashboard && ad.dashboard.acwr;
+  if (acw != null && R.acwr != null && Math.abs(num(acw) - R.acwr) > 0.005) E('acwr', 'ACWR servi ' + acw + ', recalculé ' + R.acwr);
   // FC au repos du moteur = recalcul.
   const fc = cr && cr.fc_repos;
   if (fc) {
@@ -289,6 +317,16 @@ function verifierTexte(R, ad, txt, out) {
       if ((m = l.match(/^Bloqué : (.+) ([\d,]+) × (\d+) depuis (\d+) séances$/))) { const e = exoDe(m[1]); if (e) { const x = bloque(e, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
     });
   });
+  // B8. Carte « Charge & fraîcheur » : %, forme de fond, fatigue récente, ACWR, unité annoncée.
+  Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
+    const t = l.trim(); let m;
+    if (!R.ff) return;
+    if ((m = t.match(/^([−-]?\d+)\s?% de fraîcheur$/)) && +m[1].replace('−', '-') !== R.ff.tsbPct) E('fraicheur.ecran', nom + ' : « ' + t + ' », recalculé ' + R.ff.tsbPct + ' %');
+    if ((m = t.match(/^Forme de fond ([\d\s\u202f\u00a0]+)$/)) && +m[1].replace(/\D/g, '') !== R.ff.ctl) E('fraicheur.ecran', nom + ' : « ' + t + ' », recalculé ' + R.ff.ctl);
+    if ((m = t.match(/^Fatigue récente ([\d\s\u202f\u00a0]+)$/)) && +m[1].replace(/\D/g, '') !== R.ff.atl) E('fraicheur.ecran', nom + ' : « ' + t + ' », recalculé ' + R.ff.atl);
+    if ((m = t.match(/^ACWR ([\d,]+)/)) && R.acwr != null && Math.abs(num(m[1]) - R.acwr) > 0.005) E('acwr.ecran', nom + ' : « ' + t + ' », recalculé ' + R.acwr);
+    if (/^En unités de charge \(/.test(t)) { const dit = /pondéré par l.effort|RPE × durée|note de séance × durée/.test(t) ? (/tonnage/.test(t) && /pondéré/.test(t) ? 'tonnage pondéré' : 'srpe') : (/tonnage/.test(t) ? 'tonnage' : '?'); if ((R.ff.source === 'tonnage' && dit !== 'tonnage') || (R.ff.source === 'srpe' && dit !== 'srpe')) E('fraicheur.unite', nom + ' : « ' + t.slice(0, 70) + '… » alors que la source est ' + (R.ff.source === 'srpe' ? 'note de séance × durée' : 'le tonnage brut (charge × reps, sans effort)')); }
+  }));
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {

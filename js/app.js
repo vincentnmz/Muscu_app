@@ -20191,7 +20191,7 @@ function renderEtat(data) {
           + '<span class="et-big" style="color:' + frC + '">' + frL + '</span>'
           + '<span class="et-muted"><b style="color:' + frC + '">' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%</b> de fraîcheur<br>' + esc(frD) + '</span></div>'
           + zbarF
-          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div><div style="font-size:10px;color:var(--text-subtle);margin-top:3px">En unités de charge (' + (cfe.source === 'srpe' ? 'RPE × durée' : 'tonnage pondéré par l\'effort') + ') : seul leur rapport compte, c\'est la fraîcheur ci-dessus.</div>'
+          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div><div style="font-size:10px;color:var(--text-subtle);margin-top:3px">En unités de charge (' + (cfe.source === 'srpe' ? 'note de séance × durée' : 'tonnage : charge × répétitions')   /* 18/11 (vérificateur) : la source « tonnage » n'est PAS pondérée par l'effort (calculerChargeSport muscu = Σ charge × reps) */ + ') : seul leur rapport compte, c\'est la fraîcheur ci-dessus.</div>'
           + acwrLine;
       }
     }

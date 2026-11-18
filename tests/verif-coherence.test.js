@@ -84,6 +84,10 @@ const store = {
   eq(t5('######## ÉVOLUTION ▸ Curl\nRecord : 12,5 kg × 12 le ' + J(1).split('-').reverse().join('/')).length === 0, 'classement : record Curl 12,5 × 12 accepté');
   eq(t5('######## ÉVOLUTION ▸ Presse\nRecord : 100 kg × 10 le ' + J(5).split('-').reverse().join('/')).includes('classement.record'), 'attrape : « record » qui ne fait qu\'égaler');
   eq(t5('######## ÉVOLUTION ▸ Presse\nBloqué à 90 kg × 12 depuis 3 séances').includes('classement.bloque'), 'attrape : « bloqué » sur des séances à des charges différentes');
+  // Fraîcheur / ACWR (18/11) : valeurs du moteur et phrases de la carte.
+  eq(mut((x) => { x.moteur.charge_fatigue = { ...(x.moteur.charge_fatigue || {}), ctl: 1, atl: 1, tsbPct: 0, source: (x.moteur.charge_fatigue || {}).source || 'tonnage' }; }).includes('fraicheur.valeurs'), 'attrape : forme de fond / fatigue récente fausses');
+  eq(mut((x) => { x.dashboard.acwr = 9.99; }).includes('acwr'), 'attrape : ACWR faux');
+  eq(t5('######## FORME\nEn unités de charge (tonnage pondéré par l\'effort) : seul leur rapport compte').includes('fraicheur.unite'), 'attrape : « tonnage pondéré par l\'effort » alors que la source est le tonnage brut');
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

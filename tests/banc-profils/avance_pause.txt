@@ -275,7 +275,7 @@ fatigue
 frais
 Forme de fond 2 154
 Fatigue récente 1 632
-En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+En unités de charge (tonnage : charge × répétitions) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
 ACWR 1,00 · indice secondaire (à interpréter avec prudence)
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
