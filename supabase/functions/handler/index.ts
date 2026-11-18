@@ -711,6 +711,14 @@ function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date
     ewmaA = v * LA + (1 - LA) * ewmaA
     ewmaC = v * LC + (1 - LC) * ewmaC
   }
+  // 18/11 (audit Vincent) : la forme de fond (EWMA 42 j) pèse fort les DERNIÈRES semaines — une semaine creuse
+  // (vacances, semaine légère) la fait chuter, et la reprise normale ressortait en « forte hausse » (−38 % de fraîcheur
+  // pour +24 % de charge réelle). Plancher : la moyenne réelle des 28 derniers jours (dès 28 j d'historique).
+  if (span >= 28) {
+    let s28 = 0
+    for (let d = 0; d < 28; d++) s28 += chargeParJour[fmtYMD(minus(now, d))] || 0
+    if (s28 / 28 > ewmaC) ewmaC = s28 / 28
+  }
   return {
     ctl: Math.round(ewmaC), atl: Math.round(ewmaA), tsb: Math.round(ewmaC - ewmaA),
     tsbPct: ewmaC > 0 ? Math.round((ewmaC - ewmaA) / ewmaC * 100) : null,

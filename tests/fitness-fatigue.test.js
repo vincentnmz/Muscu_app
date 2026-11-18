@@ -57,6 +57,22 @@ const mk = (fn) => { const m = {}; for (let d = 0; d <= 60; d++) { const v = fn(
   const b = calculerFitnessFatigue(mk((d) => d < 7 ? 1000000 : 500000), NOW);
   eq(a.ratio === b.ratio && a.tsbPct === b.tsbPct, 'ratio/tsbPct indépendants de l\'unité', a.ratio + ' vs ' + b.ratio); }
 
+// 6) 18/11 (audit Vincent) : semaine creuse (vacances) puis reprise NORMALE → la reprise n'est pas une « forte hausse ».
+//    Cas réel : 3 séances/sem (~6 t), une semaine à 1 séance, puis 3 séances sur les 7 derniers jours.
+{ const sem = (d) => [1, 3, 5].includes(d % 7) ? 2000 : 0;           // ≈ 6 t / semaine, 3 jours
+  const cas = mk((d) => d < 7 ? sem(d) : d < 14 ? (d === 10 ? 2000 : 0) : sem(d));
+  const r = calculerFitnessFatigue(cas, NOW);
+  let a7 = 0, c28 = 0; for (let d = 0; d < 28; d++) { const v = cas[fmtYMD(minus(NOW, d))] || 0; c28 += v; if (d < 7) a7 += v; }
+  const vraie = (a7 / 7) / (c28 / 28);   // charge 7 j vs moyenne 28 j
+  eq(r.tsbPct > -30, 'reprise après semaine creuse : pas de « forte hausse » (TSB > −30 %)', r.tsbPct);
+  eq(r.ctl >= Math.floor(c28 / 28), 'reprise : la forme de fond ne descend pas sous la moyenne réelle des 28 j (' + Math.round(c28 / 28) + ')', r.ctl); }
+
+// 7) 18/11 : cas RÉEL (tonnage journalier d'un testeur, anonyme) — semaine de vacances 09-13/11 puis reprise.
+//    Charge 7 j = +24 % vs moyenne 28 j ; l'ancien calcul affichait −38 % de fraîcheur (« forte hausse »).
+{ const reel = {'2026-09-03':3545,'2026-09-07':3790,'2026-09-14':5150,'2026-09-15':6240,'2026-09-17':4578,'2026-09-18':5856,'2026-10-01':4256,'2026-10-02':5130,'2026-10-05':3750,'2026-10-06':6030,'2026-10-12':4345,'2026-10-13':5125,'2026-10-15':3848,'2026-10-16':9020,'2026-10-22':3464,'2026-10-23':5795,'2026-10-26':4128,'2026-10-27':6860,'2026-10-29':4230,'2026-10-30':3160,'2026-11-02':4580,'2026-11-05':8780,'2026-11-06':5075,'2026-11-13':6285,'2026-11-16':4658,'2026-11-17':9645};
+  const N2 = new Date('2026-11-18T08:00:00Z'), r = calculerFitnessFatigue(reel, N2);
+  eq(r.tsbPct > -30 && r.tsbPct < -12, 'cas réel : charge « en hausse » (−12 à −30 %), plus « forte hausse »', r.tsbPct); }
+
 console.log('-'.repeat(70));
 console.log('fitness-fatigue (Banister) : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }
