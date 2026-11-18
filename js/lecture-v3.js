@@ -769,7 +769,17 @@ function _lv3JournalEvaluer(d, data) {
   if ((a.type === 'charge' || a.type === 'cible' || a.type === 'rpe') && !(a.charge > 0)) return { statut: 'non_evaluable', detail: 'Critère incomplet.' };
   var R = _lv3Realise(a, data, isoL, isoFin), detail = '';
   // 18/11 (audit Vincent) : semaine en VACANCES (≥ 3 jours de pause) et action pas tentée → non évaluable, pas « pas tenté ».
-  if (!R.tente && !R.fait) { try { var jp = 0, dj = new Date(isoL + 'T12:00:00'); for (var k = 0; k < 7; k++) { var ik = _lv3Ymd(dj); if ((data.pauses_hist || []).some(function (p) { return p && p.debut <= ik && ik <= p.fin; })) jp++; dj.setDate(dj.getDate() + 1); } if (jp >= 3) return { statut: 'non_evaluable', detail: 'Semaine de vacances (' + jp + ' jours en pause) : pas jugée.' }; } catch (_) {} }
+  // 18/11 (audit coach, Alizé) : même règle pendant une BLESSURE en cours ou un contexte « retour de blessure ».
+  if (!R.tente && !R.fait) { try {
+    var iso = function (v) { v = String(v || ''); var m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : v.slice(0, 10); };
+    var auj = _lv3Ymd(new Date()), bl = [];
+    ((data.blessures) || []).forEach(function (b) { if (b && b.statut !== 'gueri' && b.date) bl.push({ debut: iso(b.date), fin: auj }); });
+    if (data.contexte && data.contexte.etat === 'retour_blessure') bl.push({ debut: iso(data.contexte.date_debut) || auj, fin: iso(data.contexte.date_fin) || auj });
+    var jp = 0, jb = 0, dj = new Date(isoL + 'T12:00:00');
+    for (var k = 0; k < 7; k++) { var ik = _lv3Ymd(dj); var dans = function (p) { return p && p.debut <= ik && ik <= p.fin; }; if ((data.pauses_hist || []).some(dans)) jp++; else if (bl.some(dans)) jb++; dj.setDate(dj.getDate() + 1); }
+    if (jp >= 3) return { statut: 'non_evaluable', detail: 'Semaine de vacances (' + jp + ' jours en pause) : pas jugée.' };
+    if (jb + jp >= 3) return { statut: 'non_evaluable', detail: 'Semaine de blessure (' + (jb + jp) + ' jours) : pas jugée.' };
+  } catch (_) {} }
   var kg = function (x) { return (typeof _cdFmtKg === 'function') ? _cdFmtKg(x) : String(x); };
   if (a.type === 'series') detail = R.tente ? 'Réalisé : ' + _lv3Fmt(R.tot) + ' série' + (R.tot > 1 ? 's' : '') + ' (objectif ' + a.min + ').' : 'Aucune série de ce muscle cette semaine-là.';
   else if (a.type === 'reprise') detail = R.tente ? 'Séance faite cette semaine-là.' : 'Pas de séance cette semaine-là.';

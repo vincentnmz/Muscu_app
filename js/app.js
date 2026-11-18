@@ -5082,9 +5082,23 @@ function _coachAbsence(d, m) {
 // Raison « à traiter » d'un athlète — UNE règle pour l'accueil, Équipe (filtres + étiquette) et le bureau (E1/E2, 03/11).
 // kind : 'absence' (→ filtre Inactifs) | 'alerte' | 'synth' (→ À surveiller). court = étiquette d'Équipe.
 const COACH_PRIO_WARN = '#f59f00', COACH_PRIO_BAD = '#f0505a';
+// 18/11 (audit coach, Alizé) : blessure EN COURS ou contexte « retour de blessure » → c'est LA raison à montrer au coach
+// (avant : « 14 j sans muscu », classée « Inactive », et « Relancer l'athlète » proposé à une athlète blessée).
+function _coachBlesse(d) {
+  try {
+    var b = ((d && d.blessures) || []).filter(function (x) { return x && x.statut !== 'gueri' && x.statut !== 'guéri'; })[0];
+    var ctx = (d && d.contexte && d.contexte.etat === 'retour_blessure') ? d.contexte : null;
+    if (!b && !ctx) return null;
+    var lieu = b ? (b.localisation || b.type || '') : '';
+    var txt = 'Blessure' + (lieu ? ' : ' + lieu : '') + (b && b.gravite ? ' (' + b.gravite + ')' : '') + (ctx ? ' · retour de blessure' + (ctx.date_fin ? ' jusqu\'au ' + String(ctx.date_fin).slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '') : '');
+    return { txt: txt, court: 'Blessure' + (lieu ? ' (' + lieu.toLowerCase() + ')' : ''), grave: !!(b && /s[ée]v[èe]re|grave/i.test(b.gravite || '')) };
+  } catch (e) { return null; }
+}
 function _coachPrio(e, d) {
   const a = e.a, m = e.m;
   if (e.enPause) return null;
+  const bl = _coachBlesse(d);
+  if (bl) return { kind: 'blessure', txt: bl.txt, court: bl.court, color: bl.grave ? COACH_PRIO_BAD : COACH_PRIO_WARN };
   const ab = _coachAbsence(d, m);   // A1 : muscu ET cardio
   if (!ab.connue) {
     const sansProg = !((d && d.dashboard && d.dashboard.regularite && d.dashboard.regularite.seances_prevues) || ((d && d.programme) || []).length);
@@ -8837,7 +8851,7 @@ function _aeHtml(M, desk) {
       if (!arr.length) { if (cls !== 'ok' && cls !== 'bl') c.push(chip(sym + ' 0 ' + lab(0), 'gr')); return; }
       var ex = String(arr[0].exo).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       c.push('<span class="ae-chip ' + cls + '" style="cursor:pointer" onclick="event.stopPropagation();coachOuvrirProgression(\'' + r.i + '\',\'' + ex + '\')">' + sym + ' ' + arr.length + ' ' + lab(arr.length) + '</span>');
-      det.push('<b>' + lab(arr.length).charAt(0).toUpperCase() + lab(arr.length).slice(1) + '</b> : ' + arr.slice(0, nMax).map(function (x) { return exoLien(r, x.exo, col); }).join(', ') + (arr.length > nMax ? ' <span class="ae-mut">+' + (arr.length - nMax) + '</span>' : ''));
+      det.push('<b>' + lab(arr.length).charAt(0).toUpperCase() + lab(arr.length).slice(1) + '</b> : ' + arr.slice(0, nMax).map(function (x) { return exoLien(r, x.exo, col); }).join(', ') + (arr.length > nMax ? ' <span class="ae-mut">· +' + (arr.length - nMax) + ' autre' + (arr.length - nMax > 1 ? 's' : '') + '</span>' : ''));
     };
     cat(L.bloque, '■', function (n) { return n > 1 ? 'bloqués' : 'bloqué'; }, 'wa', 'var(--warn)', 4);
     cat(L.recule, '▼', function (n) { return n > 1 ? 'reculent' : 'recule'; }, 'ba', 'var(--danger)', 4);
@@ -10883,7 +10897,7 @@ function renderAlertesCoach(data) {
   // Absence (si non émise par le moteur et hors pause) — calculée depuis la dernière séance.
   const enPauseAth = (typeof estEnPause === 'function') ? estEnPause(d && d.pause) : false;
   const absDejaBackend = alertes.some(al => al.type === 'absence' || al.type === 'irregularite');
-  if (!enPauseAth && !absDejaBackend) {
+  if (!enPauseAth && !absDejaBackend && !_coachBlesse(d)) {   // 18/11 : pas de « Relancer » pendant une blessure
     const dj = d && d.dashboard && d.dashboard.derniere_seance ? d.dashboard.derniere_seance.date : null;
     const tsLast = dj ? parseChatDate(dj) : null;
     const ageJ = tsLast ? Math.floor((Date.now() - tsLast) / 86400000) : null;
@@ -25278,7 +25292,8 @@ function renderCoachMontre(data) {
   var el = document.getElementById('cd-aside-montre'); if (!el) return;
   var hist = (data && Array.isArray(data.sante_historique)) ? data.sante_historique : [];
   var now = Date.now();
-  var recent = hist.filter(function (x) { var t = parseChatDate(x && x.date); return t && (now - t) / 86400000 <= 8; });
+  // 18/11 (audit coach) : 7 jours (comme « État & récup » au-dessus) — avant ≤ 8 j : 5 429 pas ici contre 5 790 juste au-dessus.
+  var recent = hist.filter(function (x) { var t = parseChatDate(x && x.date); return t && (now - t) / 86400000 < 7; });
   var pasArr = recent.map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
   var slpArr = recent.map(function (x) { return Number(x.sommeil_min); }).filter(function (v) { return !isNaN(v) && v > 0; });
   var fcRec = hist.filter(function (x) { return x && x.fc_repos != null && !isNaN(Number(x.fc_repos)) && Number(x.fc_repos) > 0; })
@@ -25291,7 +25306,7 @@ function renderCoachMontre(data) {
   var slpTxt = slpV != null ? (Math.floor(slpV / 60) + ' h' + ((slpV % 60) ? ' <small>' + (slpV % 60 < 10 ? '0' : '') + (slpV % 60) + '</small>' : '')) : '—';
   var fcTxt = fcV != null ? (fcV + ' <small>bpm</small>') : '—';
   el.innerHTML = '<div class="cd-montre-top"><span class="ic">⌚</span><b>Ma montre</b><span class="per">moy. 7 j</span></div>'
-    + '<div class="cd-montre-grid">' + cell('Pas', pasTxt) + cell('Sommeil', slpTxt) + cell('FC repos', fcTxt) + '</div>'
+    + '<div class="cd-montre-grid">' + cell('Pas', pasTxt) + cell('Sommeil', slpTxt) + cell('FC repos (dernière)', fcTxt) + '</div>'
     + '<div class="cd-montre-note">' + (function () { var t = _montreSyncTxt(_montreEtat(data)); return t ? escapeHtml(t) : 'Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.'; })() + '</div>';
   el.style.display = '';
 }
@@ -25345,7 +25360,10 @@ function renderCoachMontreDetail(data) {
   ];
   var any = false;
   var rows = defs.map(function (m) {
-    var vals = hist.map(function (x) { return Number(x[m.key]); }).filter(function (v) { return !isNaN(v) && v > 0; }).slice(-7);
+    // 18/11 (audit coach) : les 7 derniers JOURS (libellé « moy. 7 j »), pas les 7 dernières valeurs — avant, des nuits
+    // d'il y a 10 jours entraient dans la moyenne (7 h 20 ici contre 6 h 58 dans « État & récup »).
+    var _lim7 = Date.now() - 7 * 864e5;
+    var vals = hist.filter(function (x) { var t = parseChatDate(x && x.date); return t && t >= _lim7; }).map(function (x) { return Number(x[m.key]); }).filter(function (v) { return !isNaN(v) && v > 0; });
     if (!vals.length) return '';
     any = true;
     var last = vals[vals.length - 1];

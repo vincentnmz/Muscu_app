@@ -7,7 +7,7 @@ const NOW = new Date(2026, 10, 3, 10, 0).getTime();
 class FD extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } }
 const sb = { Date: FD, Math, String, Number, Array, JSON, Object, alerteEstTraitee: () => false, escapeHtml: (x) => String(x), synthAlertesActivesCoach: () => [], COACH_PRIO_WARN: '#f59f00', COACH_PRIO_BAD: '#f0505a' };
 vm.createContext(sb);
-vm.runInContext(['parseChatDate', '_coachIsoTs', '_coachAbsence', 'alertesActives', 'labelAlerteCourt', '_coachDerniereDouleur', '_coachJourTxt', '_coachAlerteTxt', '_coachPrio', '_coachEtatEquipe', '_coachTonTxt'].map(pick).join('\n'), sb);
+vm.runInContext(['parseChatDate', '_coachIsoTs', '_coachAbsence', 'alertesActives', 'labelAlerteCourt', '_coachDerniereDouleur', '_coachJourTxt', '_coachAlerteTxt', '_coachBlesse', '_coachPrio', '_coachEtatEquipe', '_coachTonTxt'].map(pick).join('\n'), sb);
 // A1 — Alizé : muscu le 07/10, cardio le 25/10 → 27 j sans muscu, activité il y a 9 j (orange, pas rouge).
 const ali = sb._coachAbsence({ moteur: { derniere_activite: '2026-10-25' } }, { derniere: { date: '07/10/2026' } });
 eq(Math.floor(ali.muscuAge) === 27 && Math.floor(ali.actAge) === 9 && ali.autreRecente && ali.actAge <= 14, 'A1 : 27 j sans muscu · cardio il y a 9 j', ali);
@@ -28,6 +28,12 @@ eq(sb._coachAlerteTxt(a, {}) === 'Douleur', 'A2 : repli = type avec majuscule', 
 const E = (m, al, d) => sb._coachEtatEquipe({ a: { athlete_id: '1', alertes: al || [] }, m, enPause: false }, d || {});
 eq(E({ derniere: { date: '07/10/2026' }, statut: { rank: 1 } }, [], { moteur: { derniere_activite: '2026-10-25' } }).court === '27 j sans muscu', 'E2 : Alizé « 27 j sans muscu » (filtre Inactifs)');
 eq(E({ derniere: { date: '07/10/2026' }, statut: { rank: 1 } }, [], { moteur: { derniere_activite: '2026-10-25' } }).cat === 'inactifs', 'E1 : absence → Inactifs');
+// 18/11 (audit coach) : blessure EN COURS → c'est la raison affichée (filtre « À surveiller »), pas « N j sans muscu ».
+{ const dB = { moteur: { derniere_activite: '2026-10-25' }, blessures: [{ localisation: 'Hanches', gravite: 'sévère', statut: 'en_cours', date: '14/11/2026' }], contexte: { etat: 'retour_blessure', date_fin: '2026-12-08' } };
+  const r = E({ derniere: { date: '07/10/2026' }, statut: { rank: 1 } }, [], dB);
+  eq(r.cat === 'surveiller' && /Blessure/.test(r.court), 'Blessure en cours : « Blessure (hanches) », filtre À surveiller (pas Inactifs)', r);
+  const g = E({ derniere: { date: '07/10/2026' }, statut: { rank: 1 } }, [], { moteur: { derniere_activite: '2026-10-25' }, blessures: [{ localisation: 'Genou', statut: 'gueri' }] });
+  eq(g.cat === 'inactifs', 'Blessure guérie : la règle d\'absence reprend', g); }
 const vin = E({ derniere: { date: '02/11/2026' }, statut: { rank: 0 } }, [{ type: 'douleur', severite: 'basse' }], { alertes_centre: [{ type: 'douleur', title: 'Gêne légère signalée', id: 'douleur|2026-11-02' }] });
 eq(vin.cat === 'surveiller' && vin.court === 'Gêne légère', 'E1/E2 : Vincent « Gêne légère » → À surveiller (comme l\'accueil ; plus de date de semaine prise pour la date de la douleur)', vin);
 eq(E({ derniere: null, statut: { rank: 1 } }, [], { dashboard: { regularite: { seances_prevues: 0 } }, programme: [] }).court === 'Pas de programme', 'E2 : sans séance ni programme → « Pas de programme »');
