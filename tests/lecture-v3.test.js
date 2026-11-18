@@ -65,6 +65,7 @@ eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau 
     dd.bien_etre = [{ date: fr('2026-10-22'), douleur: niv, zone: zone || 'Pectoraux droit' }];
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
   const g3 = gene(3); eq(g3.cause === 'gene' && /Possible : gêne/.test(g3.pourquoi), 'Bloqué : gêne 3/5 sur la zone → cause possible « gêne »', g3);
+  eq(!/\+30 s|au choix|ajoute 1 série/.test(g3.levier), 'Gêne : une seule consigne prudente, aucune option ajoutée', g3.levier);
   eq(gene(2).cause !== 'gene', 'Bloqué : gêne 2/5 → ne compte pas (seuil 3/5)', gene(2).cause);
   // 16/11 (retour porteur) : effort EN HAUSSE à charge égale (RPE 8 → 9) → levier « garde, vise RPE 8 », SANS
   // « va jusqu'à RPE 9-10 » ni constat « séries arrêtées à RPE 8,x » (avant : les deux dans la même phrase).
@@ -75,7 +76,11 @@ eq(/change de fourchette .*3-4 semaines/.test(dNiv('avance').levier), 'B niveau 
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' });
     const dE = sb._lv3Diag(dd, 'Rowing', 'bloque', now);
     eq(dE.cause === 'effort' && /vise RPE 8/.test(dE.levier) && !/RPE 9-10/.test(dE.levier), 'Effort en hausse : « vise RPE 8 », plus de « va jusqu\'à RPE 9-10 »', dE.levier);
-    eq(!/Séries arrêtées à RPE/.test(dE.checks.map((c) => c.t).join(' ')) && !/tu pousses déjà, pas en cause/.test(dE.checks.map((c) => c.t).join(' ')), 'Effort en hausse : ni « séries arrêtées en réserve » ni « effort pas en cause »', dE.checks); }
+    eq(!/Séries arrêtées à RPE/.test(dE.checks.map((c) => c.t).join(' ')) && !/tu pousses déjà, pas en cause/.test(dE.checks.map((c) => c.t).join(' ')), 'Effort en hausse : ni « séries arrêtées en réserve » ni « effort pas en cause »', dE.checks);
+    // 18/11 (validé porteur) : leviers « au choix » — +30 s de repos d'après le repos RÉEL (2 min → 2 min 30).
+    eq(/au choix/.test(dE.levier) && /\+30 s de repos entre tes séries \(tu prends 2 min, essaie 2 min 30\)/.test(dE.levier) && /−10 %/.test(dE.levier), 'Effort en hausse : 3 options (garder RPE 8 · +30 s de repos 2 min → 2 min 30 · −10 % si ça remonte)', dE.levier);
+    const d3 = JSON.parse(JSON.stringify(dd)); d3.historique.progression_par_exo['Rowing'].forEach((p) => p.series.forEach((x) => { x.repos = 180; }));
+    eq(!/\+30 s de repos/.test(sb._lv3Diag(d3, 'Rowing', 'bloque', now).levier), 'Repos déjà à 3 min : pas d\'option « +30 s »', sb._lv3Diag(d3, 'Rowing', 'bloque', now).levier); }
   // 16/11 (constaté sur le compte démo) : effort en réserve (RPE 8) ET gêne 3/5 sur la zone → la gêne passe devant,
   // aucun levier ne pousse jusqu'à l'échec (avant : « va jusqu'à RPE 9-10 » avec une gêne épaule signalée 7 fois).
   { const dd = JSON.parse(JSON.stringify(data)); dd.niveau_experience = 'intermediaire';

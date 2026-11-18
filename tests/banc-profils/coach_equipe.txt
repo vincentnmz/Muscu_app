@@ -477,14 +477,14 @@ Planifier la semaine
 CHARGE
 Développé couché barre : sous la fourchette
 09/11 : 80 kg × 4 à RPE 10 (fourchette 6-10) · Saut de 70 à 80 kg (+14 %) · Volume pectoraux : 3 séries/sem (minimum 10) · Travaillé 1×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10. C'est toi qui choisis. »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10 ; ou garde 80 kg avec +30 s de repos entre tes séries (tu prends 2 min, essaie 2 min 30). C'est toi qui choisis. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Squat : bloqué
 09/11 : 90 kg × 8 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Squat (3 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -498,14 +498,14 @@ Marquer traité
 VOLUME
 RDL barre : bloqué
 05/11 : 50 kg × 10 à RPE 9 (fourchette 8-12) · Volume ischios : 3 séries/sem (minimum 10) · Travaillé 1×/sem (3 séances en 2 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (3 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de RDL barre (3 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (1×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Développé militaire aux haltères : bloqué
 05/11 : 55 kg × 10 à RPE 9 (fourchette 8-12) · Volume épaules : 3 séries/sem (minimum 8) · Travaillé 1×/sem (3 séances en 2 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Développé militaire aux haltères (3 → 8 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Développé militaire aux haltères (3 → 8 séries/sem), ou répartis épaules sur 2 séances dans la semaine (1×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -1100,14 +1100,14 @@ Planifier la semaine
 VOLUME
 Squat : bloqué
 02/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem (5 séances en 4 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Squat (3 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Développé couché barre : bloqué
 02/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Volume pectoraux : 3 séries/sem (minimum 10) · Travaillé 1×/sem (5 séances en 4 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Développé couché barre (3 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Développé couché barre (3 → 10 séries/sem), ou répartis pectoraux sur 2 séances dans la semaine (1×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -1121,14 +1121,14 @@ Marquer traité
 VOLUME
 RDL barre : bloqué
 29/10 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,3 séries/sem (minimum 10) · Travaillé 0,8×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (2,3 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de RDL barre (2,3 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (0,8×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Développé militaire aux haltères : bloqué
 29/10 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Volume épaules : 2,3 séries/sem (minimum 8) · Travaillé 0,8×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Développé militaire aux haltères (2,3 → 8 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Développé militaire aux haltères (2,3 → 8 séries/sem), ou répartis épaules sur 2 séances dans la semaine (0,8×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -1444,7 +1444,7 @@ Planifier la semaine
 VOLUME
 RDL barre : bloqué
 09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de RDL barre (2,6 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de RDL barre (2,6 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (0,9×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -1465,7 +1465,7 @@ Marquer traité
 VOLUME
 Squat : bloqué
 06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Squat (3,5 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Squat (3,5 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1,2×/sem aujourd'hui). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
