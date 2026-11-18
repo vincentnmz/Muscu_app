@@ -17006,7 +17006,7 @@ function _maBalance(data) {
 function _maRecords(data) {
   var recs = (data.global && data.global.records_par_exo) || {};
   var recArr = Object.keys(recs).map(function (k) { return { n: k, c: recs[k].charge || 0, d: recs[k].date }; }).sort(function (a, b) { return b.c - a.c; }).slice(0, 4);
-  return recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + x.c + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
+  return recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + _kgTxt(x.c) + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
 }
 var _maProgMode = 'exo';   // 'exo' | 'grp' | 'sea'
 function maSetProgMode(m) { _maProgMode = m; try { _maMuscuExercice(dernierAppData); } catch (e) {} }
@@ -19943,7 +19943,10 @@ function _renderLignePoints(data) {
   var rec = (data && data.recompenses) || {};
   var ob = _ptsObjectif(rec, data);
   var fmt = function (n) { return Number(n || 0).toLocaleString('fr-FR'); };
-  var t = document.getElementById('tj-pl-t'); if (t) t.textContent = 'Objectif semaine ' + ob.fait + '/' + ob.cible + (ob.fait >= ob.cible ? ' ✓' : '');
+  // 18/11 (vérificateur de cohérence) : les points se comptent par semaine CALENDAIRE ; pour un athlète en semaine glissante,
+  // « Objectif semaine 1/3 » à côté de « 2 / 3 séances cette semaine » (7 derniers jours) se contredisait → fenêtre écrite.
+  var _obLbl = (typeof _maSemaineType === 'function' && _maSemaineType() === 'glissant') ? 'Objectif lun → dim ' : 'Objectif semaine ';
+  var t = document.getElementById('tj-pl-t'); if (t) t.textContent = _obLbl + ob.fait + '/' + ob.cible + (ob.fait >= ob.cible ? ' ✓' : '');
   var sem = rec.semaine ? rec.semaine.total : null;
   var sb = document.getElementById('tj-pl-s'); if (sb) sb.textContent = fmt(rec.solde) + ' pts' + (sem != null ? ' · ' + (sem > 0 ? '+' : '') + fmt(sem) + ' cette semaine' : '');
   var bar = document.getElementById('tj-pl-bar'); if (bar) bar.style.width = Math.max(0, Math.min(100, Math.round(ob.fait / Math.max(1, ob.cible) * 100))) + '%';
@@ -19966,7 +19969,7 @@ function _renderMesPoints(data) {
     var ob = _ptsObjectif(rec, data);
     rows += ob.fait >= ob.cible
       ? '<div class="mp-r"><span class="ok">✓ Objectif ' + ob.cible + ' séances atteint</span><b class="p">+' + fmt(ob.pts || B.objectif) + '</b></div>'
-      : '<div class="mp-r"><span class="todo">○ Objectif ' + ob.fait + '/' + ob.cible + ' séances (encore ' + (ob.cible - ob.fait) + ')</span><b class="p" style="color:var(--tj-subtle)">+' + B.objectif + '</b></div>';
+      : '<div class="mp-r"><span class="todo">○ Objectif ' + ob.fait + '/' + ob.cible + ' séances' + ((typeof _maSemaineType === 'function' && _maSemaineType() === 'glissant') ? ' du lundi au dimanche' : '') + ' (encore ' + (ob.cible - ob.fait) + ')</span><b class="p" style="color:var(--tj-subtle)">+' + B.objectif + '</b></div>';
     if (!rec.semaine) rows = '<div class="mp-r"><span class="todo">Le détail de la semaine arrive avec la mise à jour du serveur.</span></div>';
     el.innerHTML = '<div class="mp-lbl">Cette semaine' + (rec.semaine ? ' · ' + fmt(rec.semaine.total) + ' pts' : '') + '</div>' + rows
       + '<div class="mp-note">Solde : <b>' + fmt(rec.solde) + ' pts</b> (gagnés ' + fmt(rec.gagnes) + ' · dépensés ' + fmt(rec.depenses) + '). Chacun de ces gestes rend aussi tes analyses plus fiables.</div>';
@@ -24791,7 +24794,7 @@ function dessinerGraphPoids(pesees, periode, ids) {
   gridVals.forEach(v => {
     const y = toY(v);
     svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3"/>`;
-    svg += `<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="var(--text-muted)" text-anchor="end" style="font-variant-numeric:tabular-nums">${v.toFixed(1)}</text>`;
+    svg += `<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="var(--text-muted)" text-anchor="end" style="font-variant-numeric:tabular-nums">${v.toFixed(1).replace('.', ',')}</text>`;
   });
 
   // Zone remplie
@@ -28205,7 +28208,7 @@ function renderSanteChart(pfx) {
     var mx = Math.max.apply(null, days.map(function (x) { return x.v || 0; }).concat([1]));
     var bars = days.map(function (x) {
       var h = x.v != null ? Math.max(3, Math.round(x.v / mx * 48)) : 2;
-      var num = x.v != null ? (cfg.kind === 'dur' ? (Math.round(x.v / 6) / 10 + 'h') : Math.round(x.v)) : '';
+      var num = x.v != null ? (cfg.kind === 'dur' ? (String(Math.round(x.v / 6) / 10).replace('.', ',') + ' h') : Math.round(x.v)) : '';
       return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;">'
         + '<em style="font-size:8.5px;color:var(--text-muted);font-style:normal;font-weight:700;white-space:nowrap;">' + (num || '&nbsp;') + '</em>'
         + '<i style="width:100%;max-width:16px;height:' + h + 'px;border-radius:3px;background:' + (x.v != null ? 'linear-gradient(180deg,' + cfg.c1 + ',' + cfg.c2 + ')' : 'var(--surface2)') + ';display:block;"></i>'

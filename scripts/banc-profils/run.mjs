@@ -12,6 +12,7 @@ const ATT = path.join(ROOT, 'tests', 'banc-profils');
 const { NOW, PROFILS, equipe } = require('./profils.js');
 const { getAppData, equipeData } = require('./serveur.js');
 const { verifier } = require('./coherence.js');
+const { verifier: verifierCalculs } = require('../verif-coherence/verif.cjs');   // 18/11 : chiffres recalculés depuis les séries brutes
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (_) { try { ({ chromium } = require('/opt/node22/lib/node_modules/playwright')); } catch (e) { console.log('banc-profils : Playwright absent → ignoré'); process.exit(0); } }
 
@@ -77,6 +78,11 @@ try {
     if (erreurs.length) { ko++; console.error('  ✗ ' + id + ' : erreur JavaScript — ' + erreurs[0]); }   // bloquant même en --maj (14/11)
     const inc = verifier(normaliser(txt), data);   // cohérence inter-écrans (14/11) : bloquant même en --maj
     if (inc.length) { ko++; console.error('  ✗ ' + id + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
+    // 18/11 (fiabilité des calculs, décision porteur) : chaque chiffre servi / affiché est RECALCULÉ depuis les données brutes
+    // par un code indépendant du moteur (scripts/verif-coherence) — bloquant même en --maj.
+    const _jour = new Date(NOW).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+    const cal = verifierCalculs({ store: st, appdata: data, ecrans: normaliser(txt).split('\n').map((l) => (/^== .+ ==$/.test(l) ? l : l)).join('\n'), now: _jour });
+    if (cal.length) { ko++; console.error('  ✗ ' + id + ' : calcul ≠ recalcul indépendant'); cal.forEach((e) => console.error('      ⚠ [' + e.code + '] ' + e.message)); }
     const f = path.join(ATT, id + '.txt');
     if (MAJ) { fs.mkdirSync(ATT, { recursive: true }); fs.writeFileSync(f, sortie); console.log('  ✎ ' + id + ' : attendu réécrit (' + sortie.split('\n').length + ' lignes)'); }
     else if (!fs.existsSync(f)) { ko++; console.error('  ✗ ' + id + ' : pas de fichier attendu (lancer --maj ' + id + ' après relecture)'); }

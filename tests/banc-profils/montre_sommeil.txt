@@ -230,13 +230,13 @@ Arrière
 Ratio de séries entre groupes opposés sur la période. Vise ~50/50.
 RECORDS PERSONNELS
 Rowing barre
-92.5 kg
+92,5 kg
 12/11/2026
 Tirage vertical prise large
 90 kg
 09/11/2026
 Développé couché barre
-82.5 kg
+82,5 kg
 12/11/2026
 Développé militaire aux haltères
 80 kg
@@ -316,13 +316,13 @@ Année
 ‹
 9 – 15 nov.
 ›
-8h
+8 h
 L
-7.8h
+7,8 h
 M
-7.7h
+7,7 h
 M
-7.5h
+7,5 h
 J
 V
 S
