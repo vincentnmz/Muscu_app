@@ -23326,12 +23326,14 @@ function _enProgUneSeance(data, prog) {
   if (lignes.length < 12) return;
   var mus = {}; lignes.forEach(function (l) { var m = (typeof _lv3MuscleExo === 'function') ? _lv3MuscleExo(data, l.exercice) : ''; if (m) mus[_musKey ? _musKey(m) : m] = 1; });
   if (Object.keys(mus).length < 4) return;
-  var ds = (data.historique && data.historique.dates_seances) || {}, lim = Date.now() - 14 * 864e5, n14 = 0;
-  Object.keys(ds).forEach(function (k) { var p = k.split('/'); var t = new Date(p[2] + '-' + p[1] + '-' + p[0] + 'T12:00:00').getTime(); if (t >= lim) n14++; });
+  // Meilleure semaine (lundi → dimanche) parmi les 3 dernières : « tu t'entraînes N fois par semaine ».
+  var ds = (data.historique && data.historique.dates_seances) || {}, parSem = {}, lim = Date.now() - 21 * 864e5;
+  Object.keys(ds).forEach(function (k) { var p = k.split('/'); var d = new Date(p[2] + '-' + p[1] + '-' + p[0] + 'T12:00:00'); if (d.getTime() < lim) return; var l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7)); var kk = l.toISOString().slice(0, 10); parSem[kk] = (parSem[kk] || 0) + 1; });
+  var nMax = 0; Object.keys(parSem).forEach(function (k) { if (parSem[k] > nMax) nMax = parSem[k]; });
   var card = document.getElementById('en-prog-card'); if (!card || !card.parentNode) return;
   var el = document.createElement('div'); el.id = 'en-prog-conseil';
   el.style.cssText = 'background:var(--warn-a12,#FFF4E5);border:1px solid var(--warn,#E07800);border-radius:12px;padding:11px 13px;margin:10px 0 4px;font-size:12.5px;line-height:1.5;color:var(--text)';
-  el.innerHTML = '<b>Ton programme n\'a qu\'une séance de ' + lignes.length + ' exercices</b>' + (n14 >= 4 ? ', alors que tu t\'entraînes ' + Math.round(n14 / 2) + ' fois par semaine' : '') + '. Novalyz compte donc ton objectif à 1 séance par semaine et te propose les ' + lignes.length + ' exercices chaque jour.'
+  el.innerHTML = '<b>Ton programme n\'a qu\'une séance de ' + lignes.length + ' exercices</b>' + (nMax >= 2 ? ', alors que tu as fait jusqu\'à ' + nMax + ' séances dans une même semaine' : '') + '. Novalyz compte donc ton objectif à 1 séance par semaine et te propose les ' + lignes.length + ' exercices chaque jour.'
     + '<br>Crée une séance par jour type (ex. Push, Pull, Jambes) : <span onclick="ouvrirEditeurProgramme()" style="color:var(--accent);font-weight:800;cursor:pointer">Modifier mon programme ▸ Ajouter une séance</span>.';
   card.parentNode.insertBefore(el, card.nextSibling);
 }
