@@ -213,6 +213,11 @@ function _lv3Diag(data, exo, kind, nowT) {
   var pas = (typeof _petitPas === 'function' && _petitPas(exo)) || 2.5;
   var checks = [], cause = null, levier = '', action = null, avant = null;
   var kg = function (x) { return _cdFmtKg(x); };
+  // 18/11 (validé porteur) : leviers « au choix » — l'option « +30 s de repos » s'appuie sur le repos RÉEL des séries de
+  // travail de la dernière séance, proposée seulement s'il est connu et < 3 min.
+  var _rtx = function (x) { var n = Math.round(Number(x) || 0), m = Math.floor(n / 60), r = n % 60; return m ? (m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '')) : (r + ' s'); };   // même format que _reposTxt (app.js)
+  var _repJ = (function () { var c = _lv3Num(p0.charge), v = (p0.series || []).filter(function (x) { return _lv3Num(x.charge) === c; }).map(function (x) { return _lv3Num(x.repos); }).filter(function (x) { return x > 0; }); return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length / 15) * 15 : null; })();
+  var _optRepos = (_repJ && _repJ < 180) ? '+30 s de repos entre tes séries (tu prends ' + _rtx(_repJ) + ', essaie ' + _rtx(_repJ + 30) + ')' : '';
   var nom = _lv3MusNom(muscle);
 
   // 1) Charge trop lourde pour la fourchette (reps sous le minimum, effort maximal).
@@ -230,7 +235,7 @@ function _lv3Diag(data, exo, kind, nowT) {
     if (saut) checks.push({ s: 'ko', t: 'Saut de <b>' + kg(cPrev) + ' à ' + kg(c0) + ' kg</b> (+' + Math.round((c0 - cPrev) / cPrev * 100) + ' %)' });
     cause = 'charge';
     levier = 'au choix — ' + kg(pp) + ' kg (petit pas' + (alt ? ', attends-toi à ≈ ' + alt.repsAuPetitPas + ' reps au début' : '') + ')'
-      + (alt ? ' ou ' + kg(alt.charge) + ' kg (pour assurer ' + rmin + ' reps à RPE 9, d\'après ta meilleure série récente)' : '') + ', puis +1 rep par séance jusqu\'à ' + rmax + '. C\'est toi qui choisis.';
+      + (alt ? ' ou ' + kg(alt.charge) + ' kg (pour assurer ' + rmin + ' reps à RPE 9, d\'après ta meilleure série récente)' : '') + ', puis +1 rep par séance jusqu\'à ' + rmax + (_optRepos ? ' ; ou garde ' + kg(c0) + ' kg avec ' + _optRepos : '') + '. C\'est toi qui choisis.';
     action = { exo: exo, type: 'charge', charge: pp, alt: alt ? alt.charge : null, reps: rmin, titre: exo + ' : proposé ' + kg(pp) + ' kg' + (alt ? ' (ou ' + kg(alt.charge) + ' kg)' : ''),
       raison: 'Pour revenir dans ta fourchette ' + rmin + '-' + rmax + '. Petit pas de ≈ 5 %' + (alt ? ' ; ' + kg(alt.charge) + ' kg si tu veux être sûr de faire ' + rmin + ' reps (force estimée ≈ ' + Math.round(Fb) + ' kg)' : '') + '.' };
   }
@@ -243,7 +248,7 @@ function _lv3Diag(data, exo, kind, nowT) {
       checks.push({ s: 'ko', t: '<b>Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem</b> (minimum ' + V.min + ')' });
       if (!cause) {
         var add = Math.max(1, Math.min(4, Math.ceil(V.min - V.parSem)));
-        cause = 'volume'; levier = '+' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo + ' (' + _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem).';
+        cause = 'volume'; levier = (nom && V.freq > 0 && V.freq < 1.5 ? 'au choix — +' : '+') + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo + ' (' + _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem)' + (nom && V.freq > 0 && V.freq < 1.5 ? ', ou répartis ' + _maE(String(nom).toLowerCase()) + ' sur 2 séances dans la semaine (' + _lv3Fmt(V.freq) + '×/sem aujourd\'hui)' : '') + '.';
         action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, parSem: V.parSem, recul: V.recul, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
       }
     } else checks.push({ s: 'ok', t: 'Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem — pas en cause' });
@@ -255,13 +260,13 @@ function _lv3Diag(data, exo, kind, nowT) {
   if (_lv3Num(p1.charge) === c0 && ra != null && rb != null && ra >= rb + 0.5) {
     checks.push({ s: 'ko', t: 'Effort en hausse à ' + kg(c0) + ' kg : RPE ' + _lv3Fmt(rb) + ' → ' + _lv3Fmt(ra) });
     if (!cause) {
-      cause = 'effort'; levier = 'garde ' + kg(c0) + ' kg et vise RPE 8 ; si le RPE monte encore la prochaine fois, allège cette semaine (−10 %).';
+      cause = 'effort'; levier = 'au choix — garde ' + kg(c0) + ' kg et vise RPE 8' + (_optRepos ? ' ; ou ' + _optRepos : '') + ' ; si le RPE monte encore la prochaine fois, allège cette semaine (−10 %).';
       action = { exo: exo, type: 'rpe', charge: c0, titre: exo + ' : garde ' + kg(c0) + ' kg, vise RPE 8', raison: 'RPE ' + _lv3Fmt(rb) + ' → ' + _lv3Fmt(ra) + ' à charge égale : signe de fatigue sur ce mouvement.' };
     }
   }
   // 5) Fréquence.
   if (V && V.freq > 0) {
-    if (V.freq <= 1) { checks.push({ s: 'ko', t: 'Travaillé ' + _lv3Fmt(V.freq) + '×/sem' }); if (!cause) { cause = 'frequence'; levier = 'répartis ' + _maE(nom) + ' sur 2 séances dans la semaine.'; } }
+    if (V.freq <= 1) { checks.push({ s: 'ko', t: 'Travaillé ' + _lv3Fmt(V.freq) + '×/sem' }); if (!cause) { cause = 'frequence'; levier = 'au choix — répartis ' + _maE(nom) + ' sur 2 séances dans la semaine, ou ajoute 1 série de ' + exo + '.'; } }
     // 18/11 (audit Vincent) : on nomme le muscle et on dit que le secondaire compte (spm), sinon « Trapèze 2×/sem » ici
     // contredisait « 0,4×/sem » dans Tendances (qui ne compte que le muscle principal).
     else checks.push({ s: 'ok', t: 'Fréquence ' + _maE(String(nom || '').toLowerCase()) + ' : ' + _lv3Fmt(V.freq) + '×/sem (y compris en muscle secondaire) — pas en cause' });
@@ -291,7 +296,7 @@ function _lv3Diag(data, exo, kind, nowT) {
     if (rpeT != null && rpeT < 8.5 && cause !== 'effort' && !(_rpe0 != null && _rpe0 >= 9)) {
       var res = Math.round(10 - rpeT);
       checks.push({ s: 'ko', t: '<b>Séries arrêtées à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '</b> (≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve) sur les ' + recentes.length + ' dernières séances' });
-      if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Sur ta dernière série, va jusqu\'à RPE 9-10 (0 à 1 rep en réserve) à ' + kg(c0) + ' kg.'; }
+      if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Au choix : sur ta dernière série, va jusqu\'à RPE 9-10 (0 à 1 rep en réserve) à ' + kg(c0) + ' kg, ou ajoute 1 série à ' + kg(c0) + ' kg.'; }
       else levier += ' Et sur ta dernière série, va jusqu\'à RPE 9-10 : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve.';
     } else if (rpeT != null && cause !== 'effort') checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
     // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
@@ -376,6 +381,7 @@ function _lv3Diag(data, exo, kind, nowT) {
     : (kind === 'bloque' && typeof rpeT !== 'undefined' && rpeT != null && rpeT >= 8.5)
       ? 'aucune cause visible dans tes données : repos stable, tu pousses déjà tes séries (RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '). Garde ta charge ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.'
       : 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.';
+  if (!cause && _optRepos && !_dF && !_pic) levier = levier.replace(/\.$/, '') + ' Option à tester : ' + _optRepos + '.';
   var n = pts.filter(function (p) { return (nowT - _lv3T(p.date)) / 864e5 <= 42; }).length;
   var sem = Math.max(1, Math.round((_lv3T(pts[0].date) - _lv3T(pts[Math.min(pts.length, n) - 1].date)) / 864e5 / 7));
   return { exo: exo, kind: kind, checks: checks, cause: cause, pourquoi: pourquoi, levier: levier, action: action, n: n, sem: sem, rmin: rmin, rmax: rmax, avant: avant };

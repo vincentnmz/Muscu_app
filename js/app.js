@@ -13637,7 +13637,7 @@ function _progDecision(ctx) {
   // Alternative « sûre » en mode sous : charge permettant rmin reps à RPE 9 d'après la force estimée.
   var alt = null;
   try { if (mode === 'sous' && typeof _sousAlt === 'function') { var r0 = ref(1); alt = _sousAlt(Number(r0.charge) || 0, last.concat(ctx.prev || []), rmin, ctx.pas); } } catch (e) {}
-  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, bloque: ctx.bloque || null, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt };
+  return { mode: mode, rpe: rpe, rpeMin: rpes.length ? Math.min.apply(null, rpes) : null, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, bloque: ctx.bloque || null, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt };
 }
 // Petit pas en « sous la fourchette » : ≈ −5 % arrondi au pas de l'appareil, au moins un pas (80 → 75 kg).
 function _sousPetitPas(ch, pas) { pas = pas > 0 ? pas : 2.5; var c = Math.floor(ch * 0.95 / pas) * pas; if (c > ch - pas) c = ch - pas; return Math.max(0, c); }
@@ -13663,7 +13663,8 @@ function _progWhy(d, f, pas) {
   if (d.mode === 'reprise') return 'reprise après ' + Math.floor(d.joursSansSeance / 7) + ' semaines sans séance : refais ta dernière fois, sans pousser · indicatif';
   if (d.mode === 'vigilance') return (/^charge en hausse/.test(d.vigilanceTxt || '') ? d.vigilanceTxt : 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '')) + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';   // E (14/11)
   if (d.mode === 'echec') return 'échec (RPE 10) 2 séances de suite : garde ta charge et vise RPE 9 (1 rep en réserve)';
-  if (d.mode === 'consolide') return 'RPE ' + d.rpe + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
+  // 18/11 (vérificateur) : « RPE 10 sur toutes tes séries » alors que deux séries étaient à 9 → on écrit la vraie plage (9-10).
+  if (d.mode === 'consolide') return 'RPE ' + ((d.rpeMin != null && d.rpeMin !== d.rpe) ? d.rpeMin + '-' + d.rpe : d.rpe) + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
   if (d.mode === 'bloque') { var av = d.bloque && d.bloque.avant; return 'bloqué depuis ' + d.bloque.n + ' séances : pas de +1 rep forcé, mêmes charges et mêmes reps' + (av ? ' ; ta série à ' + kg(av.charge) + ' kg revient à ≈ ' + av.reps + ' reps' : ''); }
   if (d.mode === 'charge') return 'haut de fourchette atteint → +' + kg(pas) + ' kg';
   if (d.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
@@ -17006,7 +17007,7 @@ function _maBalance(data) {
 function _maRecords(data) {
   var recs = (data.global && data.global.records_par_exo) || {};
   var recArr = Object.keys(recs).map(function (k) { return { n: k, c: recs[k].charge || 0, d: recs[k].date }; }).sort(function (a, b) { return b.c - a.c; }).slice(0, 4);
-  return recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + x.c + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
+  return recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + _kgTxt(x.c) + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
 }
 var _maProgMode = 'exo';   // 'exo' | 'grp' | 'sea'
 function maSetProgMode(m) { _maProgMode = m; try { _maMuscuExercice(dernierAppData); } catch (e) {} }
@@ -17041,7 +17042,7 @@ function _maRegulariteBloc(data) {
     if (!(Number(vpj[k]) > 0)) return;                    // jour entraîné (volume > 0)
     var d = new Date(k + 'T00:00:00'); if (isNaN(d.getTime())) return;
     d.setHours(0, 0, 0, 0);
-    var wi = Math.floor((d - start) / 6048e5);             // 6048e5 = 7 j en ms
+    var wi = Math.floor(Math.round((d - start) / 864e5) / 7);   // jours entiers puis semaines (18/11 : au changement d'heure de printemps, un lundi tombait dans la semaine d'avant)
     if (wi >= 0 && wi < WEEKS) counts[wi]++;
   });
   if (!counts.some(function (c) { return c > 0; })) {
@@ -17050,7 +17051,7 @@ function _maRegulariteBloc(data) {
   var reached = function (c) { return obj > 0 ? c >= obj : c > 0; };
   // 18/11 (audit Romain/Idris) : compte récent → on ne juge que les semaines depuis la 1re séance (« 1/2 », pas « 1/12 »).
   var nW = WEEKS;
-  try { var _k0 = Object.keys(vpj).filter(function (k) { return Number(vpj[k]) > 0; }).sort()[0]; if (_k0) { var _d0 = new Date(_k0 + 'T00:00:00'); var _w0 = Math.floor((_d0 - start) / 6048e5); if (_w0 > 0) nW = WEEKS - _w0; } } catch (e) {}
+  try { var _k0 = Object.keys(vpj).filter(function (k) { return Number(vpj[k]) > 0; }).sort()[0]; if (_k0) { var _d0 = new Date(_k0 + 'T00:00:00'); var _w0 = Math.floor(Math.round((_d0 - start) / 864e5) / 7); if (_w0 > 0) nW = WEEKS - _w0; } } catch (e) {}
   var atObj = counts.slice(WEEKS - nW).filter(reached).length;
   var moy = Math.round(counts.slice(WEEKS - nW).reduce(function (a, c) { return a + c; }, 0) / nW * 10) / 10;
   // Série en cours : semaines consécutives « à l'objectif » en remontant ; la semaine
@@ -19053,11 +19054,11 @@ function _beNormale(data, nowT) {
   nowT = nowT || Date.now();
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
   var rows = ((data && data.bien_etre) || []).map(function (b) { return { b: b, t: _dYmd(b && b.date) }; })
-    .filter(function (x) { return x.t != null && x.t <= t0 && t0 - x.t <= 34 * 864e5; }).sort(function (a, b) { return b.t - a.t; });
+    .filter(function (x) { return x.t != null && x.t <= t0 && Math.round((t0 - x.t) / 864e5) <= 34; }).sort(function (a, b) { return b.t - a.t; });   // jours entiers (changement d'heure, 18/11)
   var DIMS = [['sommeil', 'Sommeil', false], ['fatigue', 'Fatigue', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]];
   return DIMS.map(function (d) {
     var k = d[0], val = function (x) { var n = Number(x.b[k]); return (x.b[k] == null || x.b[k] === '' || isNaN(n)) ? null : n; };
-    var rec = rows.filter(function (x) { return t0 - x.t <= 6 * 864e5 && val(x) != null; }).slice(0, 3);
+    var rec = rows.filter(function (x) { return Math.round((t0 - x.t) / 864e5) <= 6 && val(x) != null; }).slice(0, 3);
     if (!rec.length) return null;
     var recT = rec.map(function (x) { return x.t; });
     var base = rows.filter(function (x) { return recT.indexOf(x.t) < 0 && val(x) != null; });
@@ -19193,7 +19194,10 @@ function _montreNormale(data, nowT) {
   nowT = nowT || Date.now();
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
   var sh = ((data && data.sante_historique) || []).map(function (x) { return { t: _dYmd(x && x.date), s: Number(x && x.sommeil_min) }; }).filter(function (x) { return x.t != null && x.s >= 180 && x.t <= t0; });   // nuit < 3 h = enregistrement incomplet (montre retirée) → ignorée (01/11)
-  var r7 = sh.filter(function (x) { return t0 - x.t <= 6 * 864e5; }), rB = sh.filter(function (x) { return t0 - x.t > 6 * 864e5 && t0 - x.t <= 34 * 864e5; });
+  // 18/11 (vérificateur de cohérence) : écart en JOURS entiers — en millisecondes, le changement d'heure (25/10) faisait
+  // sortir la nuit de J-34 de la fenêtre (27 nuits contre 28 côté serveur, qui compare des dates).
+  var jd = function (t) { return Math.round((t0 - t) / 864e5); };
+  var r7 = sh.filter(function (x) { return jd(x.t) <= 6; }), rB = sh.filter(function (x) { return jd(x.t) > 6 && jd(x.t) <= 34; });
   var moy = function (a) { return a.reduce(function (s, x) { return s + x.s; }, 0) / a.length; };
   var out = {};
   if (r7.length) out.sommeil = { moy: moy(r7), n: r7.length, base: rB.length >= 14 ? moy(rB) : null, nBase: rB.length };   // normale dès 14 nuits complètes (comme le mail récap)
@@ -19943,7 +19947,10 @@ function _renderLignePoints(data) {
   var rec = (data && data.recompenses) || {};
   var ob = _ptsObjectif(rec, data);
   var fmt = function (n) { return Number(n || 0).toLocaleString('fr-FR'); };
-  var t = document.getElementById('tj-pl-t'); if (t) t.textContent = 'Objectif semaine ' + ob.fait + '/' + ob.cible + (ob.fait >= ob.cible ? ' ✓' : '');
+  // 18/11 (vérificateur de cohérence) : les points se comptent par semaine CALENDAIRE ; pour un athlète en semaine glissante,
+  // « Objectif semaine 1/3 » à côté de « 2 / 3 séances cette semaine » (7 derniers jours) se contredisait → fenêtre écrite.
+  var _obLbl = (typeof _maSemaineType === 'function' && _maSemaineType() === 'glissant') ? 'Objectif lun → dim ' : 'Objectif semaine ';
+  var t = document.getElementById('tj-pl-t'); if (t) t.textContent = _obLbl + ob.fait + '/' + ob.cible + (ob.fait >= ob.cible ? ' ✓' : '');
   var sem = rec.semaine ? rec.semaine.total : null;
   var sb = document.getElementById('tj-pl-s'); if (sb) sb.textContent = fmt(rec.solde) + ' pts' + (sem != null ? ' · ' + (sem > 0 ? '+' : '') + fmt(sem) + ' cette semaine' : '');
   var bar = document.getElementById('tj-pl-bar'); if (bar) bar.style.width = Math.max(0, Math.min(100, Math.round(ob.fait / Math.max(1, ob.cible) * 100))) + '%';
@@ -19966,7 +19973,7 @@ function _renderMesPoints(data) {
     var ob = _ptsObjectif(rec, data);
     rows += ob.fait >= ob.cible
       ? '<div class="mp-r"><span class="ok">✓ Objectif ' + ob.cible + ' séances atteint</span><b class="p">+' + fmt(ob.pts || B.objectif) + '</b></div>'
-      : '<div class="mp-r"><span class="todo">○ Objectif ' + ob.fait + '/' + ob.cible + ' séances (encore ' + (ob.cible - ob.fait) + ')</span><b class="p" style="color:var(--tj-subtle)">+' + B.objectif + '</b></div>';
+      : '<div class="mp-r"><span class="todo">○ Objectif ' + ob.fait + '/' + ob.cible + ' séances' + ((typeof _maSemaineType === 'function' && _maSemaineType() === 'glissant') ? ' du lundi au dimanche' : '') + ' (encore ' + (ob.cible - ob.fait) + ')</span><b class="p" style="color:var(--tj-subtle)">+' + B.objectif + '</b></div>';
     if (!rec.semaine) rows = '<div class="mp-r"><span class="todo">Le détail de la semaine arrive avec la mise à jour du serveur.</span></div>';
     el.innerHTML = '<div class="mp-lbl">Cette semaine' + (rec.semaine ? ' · ' + fmt(rec.semaine.total) + ' pts' : '') + '</div>' + rows
       + '<div class="mp-note">Solde : <b>' + fmt(rec.solde) + ' pts</b> (gagnés ' + fmt(rec.gagnes) + ' · dépensés ' + fmt(rec.depenses) + '). Chacun de ces gestes rend aussi tes analyses plus fiables.</div>';
@@ -20185,7 +20192,7 @@ function renderEtat(data) {
           + '<span class="et-big" style="color:' + frC + '">' + frL + '</span>'
           + '<span class="et-muted"><b style="color:' + frC + '">' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%</b> de fraîcheur<br>' + esc(frD) + '</span></div>'
           + zbarF
-          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div><div style="font-size:10px;color:var(--text-subtle);margin-top:3px">En unités de charge (' + (cfe.source === 'srpe' ? 'RPE × durée' : 'tonnage pondéré par l\'effort') + ') : seul leur rapport compte, c\'est la fraîcheur ci-dessus.</div>'
+          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div><div style="font-size:10px;color:var(--text-subtle);margin-top:3px">En unités de charge (' + (cfe.source === 'srpe' ? 'note de séance × durée' : 'tonnage : charge × répétitions')   /* 18/11 (vérificateur) : la source « tonnage » n'est PAS pondérée par l'effort (calculerChargeSport muscu = Σ charge × reps) */ + ') : seul leur rapport compte, c\'est la fraîcheur ci-dessus.</div>'
           + acwrLine;
       }
     }
@@ -24791,7 +24798,7 @@ function dessinerGraphPoids(pesees, periode, ids) {
   gridVals.forEach(v => {
     const y = toY(v);
     svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3"/>`;
-    svg += `<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="var(--text-muted)" text-anchor="end" style="font-variant-numeric:tabular-nums">${v.toFixed(1)}</text>`;
+    svg += `<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="var(--text-muted)" text-anchor="end" style="font-variant-numeric:tabular-nums">${v.toFixed(1).replace('.', ',')}</text>`;
   });
 
   // Zone remplie
@@ -28205,7 +28212,7 @@ function renderSanteChart(pfx) {
     var mx = Math.max.apply(null, days.map(function (x) { return x.v || 0; }).concat([1]));
     var bars = days.map(function (x) {
       var h = x.v != null ? Math.max(3, Math.round(x.v / mx * 48)) : 2;
-      var num = x.v != null ? (cfg.kind === 'dur' ? (Math.round(x.v / 6) / 10 + 'h') : Math.round(x.v)) : '';
+      var num = x.v != null ? (cfg.kind === 'dur' ? (String(Math.round(x.v / 6) / 10).replace('.', ',') + ' h') : Math.round(x.v)) : '';
       return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;">'
         + '<em style="font-size:8.5px;color:var(--text-muted);font-style:normal;font-weight:700;white-space:nowrap;">' + (num || '&nbsp;') + '</em>'
         + '<i style="width:100%;max-width:16px;height:' + h + 'px;border-radius:3px;background:' + (x.v != null ? 'linear-gradient(180deg,' + cfg.c1 + ',' + cfg.c2 + ')' : 'var(--surface2)') + ';display:block;"></i>'
