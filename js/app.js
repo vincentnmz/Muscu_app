@@ -365,7 +365,7 @@ try {
         if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Fatigue générale probable',
-          description: 'Sommeil faible, fatigue musculaire élevée et ' + (s.energieFaible === true ? 'énergie basse' : 'stress élevé') + ' en même temps.',
+          description: 'Sommeil faible, fatigue élevée et ' + (s.energieFaible === true ? 'énergie basse' : 'stress élevé') + ' en même temps.',
           evidence: ev.join(' · '),
           recommandation: 'Allège la séance du jour (volume/intensité) et priorise le sommeil ; reprends les charges lourdes une fois récupéré.' });
       }
@@ -5397,7 +5397,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
       <span class="cae-stripe" style="background:${et.color};"></span>
       <div class="cae-top">
         ${enPause ? '<div class="cae-av"></div>' : _coachAv(a, 'var(--surface2)', 'var(--text)', 36)}
-        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b><span class="cae-sub">${escapeHtml(_COACH_NIVLBL[getNiveauExperience(a.annees_pratique)] || '—')} · ${_coachDernAct(e, datas[i])}</span></div>${chip}
+        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b><span class="cae-sub">${escapeHtml(_COACH_NIVLBL[getNiveauExperience(a.annees_pratique)] || '—')} · ${_coachDernAct(e, datas[i])}</span>${chip}</div>
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="m9 6 6 6-6 6"/></svg>
       </div>
       ${body}
@@ -6850,7 +6850,7 @@ function renderCoachCoupDoeil(data) {
           .sort(function (a, b) { return a.t - b.t; });
         if (_hj.length) _fH = ' <span class="cdcp-sub">(info : ' + _hj.map(function (h) { return h.v + '/5 ' + h.s; }).join(', ') + ' · 7 j)</span>';
       } catch (e) {}
-      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true) + _fH);
+      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true) + _fH);
     }
     if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
     if (be) {   // F1 (03/11) : niveau du questionnaire + zone (avant : zone seule → « aucune » alors que 2/5)
@@ -13465,6 +13465,13 @@ function _exoCatMap(aid) {
   return {};
 }
 function _exoCat(nom, map) { var m = map || _exoCatMap(); var k = String(nom || '').trim(); return m[k] || m[nom] || ''; }
+// Signaux qui confirment une baisse de ressenti (moteur.charge_ressenti.raisons), en clair.
+function _crRaisonsTxt(cr) {
+  var R = { fatigue: 'ta fatigue est au-dessus de ta normale', sommeil: 'ton sommeil est sous ta normale', rpe: 'ton effort monte à charge égale', fc_repos: 'ta FC au repos monte' };
+  var t = ((cr && cr.raisons) || []).map(function (k) { return R[k]; }).filter(Boolean);
+  if (!t.length) return 'ton ressenti baisse';
+  return t.length === 1 ? t[0] : t.slice(0, -1).join(', ') + ' et ' + t[t.length - 1];
+}
 function _exoFourchette(nom, rmin, rmax, map) {
   var c = _exoCat(nom, map), r = _EXO_CAT_R[c];
   var progDefaut = (rmin == null && rmax == null) || (Number(rmin) === 8 && Number(rmax) === 12);
@@ -13861,7 +13868,7 @@ function supprimerSerie(index) {
 const WELLNESS_CONFIG = {
   sommeil:  { label: 'Qualité du sommeil',        douleurConditional: false },
   energie:  { label: "Niveau d'énergie",           douleurConditional: false },
-  fatigue:  { label: 'Fatigue musculaire',          douleurConditional: false }, // inversé dans le HTML
+  fatigue:  { label: 'Fatigue générale',            douleurConditional: false }, // inversé dans le HTML
   douleur:  { label: 'Douleur',                    douleurConditional: true  }, // inversé + zone conditionnelle
   ressenti: { label: 'Ressenti de la séance',      douleurConditional: false }
 };
@@ -16159,7 +16166,7 @@ function _maLectureNovalyzBloc(data) {
   try { L = _lectureExos(data); } catch (e) {}
   var V = { rows: [], faites: 0, prevues: 0, prorata: 1 };
   try { V = _lxVolume(data); } catch (e) {}
-  var kg = function (x) { return _cdFmtKg(x); }, plus = function (arr, n) { return arr.length > n ? ' <span style="color:var(--text-subtle)">+' + (arr.length - n) + '</span>' : ''; };
+  var kg = function (x) { return _cdFmtKg(x); }, plus = function (arr, n) { var k = arr.length - n; return k > 0 ? ' <span style="color:var(--text-subtle)">· +' + k + ' autre' + (k > 1 ? 's' : '') + '</span>' : ''; };   // 18/11 : « +4 » se lisait « +4 reps »
   var cls = [];
   if (L.records.length) cls.push({ ic: '★', col: '#00A854', html: '<b>Records</b> : ' + L.records.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r; }).join(' · ') + plus(L.records, 3), src: 'charge (ou reps à charge égale) battue · 10 derniers jours' });
   if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.why ? _maE(x.why) : x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
@@ -18624,7 +18631,7 @@ function renderCorrelationBienEtre(bienEtreArr, volumeParJour) {
   const DIMS = [
     { key: 'sommeil',  label: 'Sommeil',        badLabel: 'mauvais (≤2)',   goodLabel: 'bon (≥4)',   bad: v => v <= 2, good: v => v >= 4 },
     { key: 'energie',  label: 'Énergie',         badLabel: 'faible (≤2)',    goodLabel: 'élevée (≥4)', bad: v => v <= 2, good: v => v >= 4 },
-    { key: 'fatigue',  label: 'Fatigue musculaire', badLabel: 'élevée (≥4)', goodLabel: 'faible (≤2)', bad: v => v >= 4, good: v => v <= 2 },
+    { key: 'fatigue',  label: 'Fatigue', badLabel: 'élevée (≥4)', goodLabel: 'faible (≤2)', bad: v => v >= 4, good: v => v <= 2 },
   ];
 
   // entry.date arrive en JJ/MM/AAAA (fmtFR côté backend), mais vpj est indexé en
@@ -18952,7 +18959,7 @@ function _beNormale(data, nowT) {
   var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
   var rows = ((data && data.bien_etre) || []).map(function (b) { return { b: b, t: _dYmd(b && b.date) }; })
     .filter(function (x) { return x.t != null && x.t <= t0 && t0 - x.t <= 34 * 864e5; }).sort(function (a, b) { return b.t - a.t; });
-  var DIMS = [['sommeil', 'Sommeil', false], ['fatigue', 'Fatigue musculaire', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]];
+  var DIMS = [['sommeil', 'Sommeil', false], ['fatigue', 'Fatigue', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]];
   return DIMS.map(function (d) {
     var k = d[0], val = function (x) { var n = Number(x.b[k]); return (x.b[k] == null || x.b[k] === '' || isNaN(n)) ? null : n; };
     var rec = rows.filter(function (x) { return t0 - x.t <= 6 * 864e5 && val(x) != null; }).slice(0, 3);
@@ -19173,7 +19180,10 @@ function renderChargeFatigueJour(data) {
     // On ne parle de récupération moins bonne QUE si le ressenti le confirme (moteur.charge_ressenti).
     var _cr = m.charge_ressenti || null;
     fr = 'Charge en hausse';
-    if (_cr && _cr.degrade) { frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude et tu récupères moins bien : allège une séance'; }
+    // 18/11 (audit Vincent) : on dit QUEL signal baisse (fatigue, sommeil, effort, FC) — sinon « tu récupères moins bien »
+    // contredisait « récupération excellente » juste au-dessus — et on n'ordonne d'alléger que si la charge est SOUTENUE
+    // (même règle que le moteur) ; sinon même consigne que le plan : on maintient, sans aller à l'échec.
+    if (_cr && _cr.degrade) { frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude et ' + _crRaisonsTxt(_cr) + (_cr.soutenue ? ' : allège une séance' : ' : garde tes charges prévues, sans aller à l\'échec'); }
     else if (_cr && _cr.evaluable) { frc = 'var(--tj-text)'; frTxt = 'tu as plus chargé que d\'habitude et tu encaisses bien'; }
     else { frc = 'var(--tj-text)'; frTxt = 'tu as plus chargé que d\'habitude ces jours-ci — renseigne ton état du jour pour qu\'on vérifie ta récupération'; }
   }
@@ -25011,7 +25021,7 @@ function renderEtatDuJour(data, ids) {
   const phrasesFaible = {
     sommeil:  'sommeil dégradé',
     energie:  'énergie basse',
-    fatigue:  'fatigue musculaire marquée',
+    fatigue:  'fatigue marquée',
     douleur:  'douleur présente' + (_zoneDouleur(dernier.zone) ? ' (' + _zoneDouleur(dernier.zone) + ')' : ''),
     ressenti: 'dernière séance ressentie difficile'
   };
