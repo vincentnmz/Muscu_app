@@ -145,6 +145,17 @@ function recalculer(store, appdata, now, aidForce) {
     const pct = cA > 0 ? (cP - cA) / cA * 100 : (cP > 0 ? 100 : 0);
     if (ap - av >= 1 && pct <= 2.5) R.rpeHausse[exo] = { charge: Math.round(cP * 10) / 10, avant: av, apres: ap };
   });
+  // Volume et fréquence d'un muscle sur les 4 semaines TERMINÉES (avant lundi), divisés par les semaines réellement
+  // couvertes (1re séance → lundi, max 4) ; muscle secondaire = 0,5 série et compte comme un jour travaillé.
+  R.vol4 = (muscle) => {
+    const k = cle(muscle), fin = R.lundi, deb = plusJ(fin, -28);
+    const jours = [...new Set(P.map((r) => r.d))].filter((d) => d < fin).sort(); const prem = jours[0] || null;
+    let s = 0, j = 0;
+    jours.filter((d) => d >= deb).forEach((d) => { let v = 0; P.filter((r) => r.d === d).forEach((r) => { if (r.muscle && cle(r.muscle) === k && cle(r.muscle) !== 'corps entier') v += 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) === k && cle(sm) !== cle(r.muscle)) v += 0.5; }); if (v > 0) { s += v; j++; } });
+    const debEff = prem && prem > deb ? prem : deb, sem = prem ? Math.min(4, Math.max(0, ecart(debEff, fin) / 7)) : 0, div = Math.max(1, sem);
+    return { parSem: Math.round(s / div * 10) / 10, freq: Math.round(j / div * 10) / 10, recul: sem };
+  };
+  R.muscleDe = (exo) => { const r = P.find((x) => x.exercice === exo && x.muscle); return r ? r.muscle : null; };
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
   Object.values(R.parExoJour).forEach((x) => { const e = x.series[0].exercice; (R.sessions[e] = R.sessions[e] || []).push({ d: x.series[0].d, best: x.best, series: x.series.slice().sort((a, b) => num(a.serie) - num(b.serie) || num(a.id) - num(b.id)) }); });
@@ -391,12 +402,29 @@ function verifierTexte(R, ad, txt, out) {
   Object.entries(S).filter(([n]) => !/^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
     let cur = null;
     L.forEach((l0) => { const l = l0.trim(); let m;
-      const e = EXOS.find((x) => l.indexOf(x) >= 0); if (e) cur = e;
+      { const pq = l.match(/^Pourquoi \(([^)]+)\)/); if (pq && EXOS.includes(pq[1].trim())) cur = pq[1].trim(); else if (!/^(Pourquoi|Levier)/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; } }
       if ((m = l.match(/^(.+) bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
       if (!cur || !/^(Pourquoi|Levier)/.test(l)) return;
       if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/))) { const b = R.rpeHausse[cur]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' · ' + cur + ' : « ' + m[0] + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
       if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/))) { const P = R.sessions[cur] || []; if (P.length) { const c0 = num(P[0].best.charge), tr = P[0].series.filter((x) => num(x.charge) === c0 && num(x.repos) > 0); if (tr.length) { const r15 = Math.round(tr.reduce((a, x) => a + num(x.repos), 0) / tr.length / 15) * 15, rtx = (n) => { const mm = Math.floor(n / 60), r = n % 60; return mm ? mm + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; }; if (m[1] !== rtx(r15) || m[2] !== rtx(r15 + 30)) E('levier.repos', nom + ' · ' + cur + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(r15)); } } }
     });
+  });
+  // B12. Volume / fréquence du muscle cités dans « Pourquoi ça bloque » et les leviers (4 semaines terminées).
+  const ctlVol = (nom, exo, l) => {
+    const mu = R.muscleDe(exo); if (!mu) return; const V = R.vol4(mu); let m;
+    if ((m = l.match(/Volume [^:]+ : ([\d,]+) séries\/sem/))) { if (num(m[1]) !== V.parSem) E('levier.volume', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.parSem) + ' séries/sem (' + mu + ')'); }
+    if ((m = l.match(/Fréquence [^:]+ : ([\d,]+)×\/sem/)) || (m = l.match(/Travaillé ([\d,]+)×\/sem/))) { if (num(m[1]) !== V.freq) E('levier.frequence', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.freq) + '×/sem (' + mu + ')'); }
+    if ((m = l.match(/\(([\d,]+) → (\d+) séries\/sem\)/))) { if (num(m[1]) !== V.parSem) E('levier.volume', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.parSem) + ' séries/sem'); }
+    if ((m = l.match(/\(([\d,]+)×\/sem aujourd'hui\)/))) { if (num(m[1]) !== V.freq) E('levier.frequence', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.freq) + '×/sem'); }
+  };
+  Object.entries(S).forEach(([nom, L]) => {
+    const exoSec = (nom.match(/^ÉVOLUTION ▸ (.+)$/) || [])[1]; let cur = exoSec || null;
+    L.forEach((l0) => { const l = l0.trim();
+      if (!exoSec) {
+        const pq = l.match(/^Pourquoi \(([^)]+)\)/); if (pq && EXOS.includes(pq[1].trim())) cur = pq[1].trim();   // « Pourquoi (Squat) : … »
+        else if (!/^(Pourquoi|Levier|[✓✗])/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; }   // 1er exercice cité de la ligne
+      }
+      if (cur && /(Volume [^:]+ : [\d,]+ séries\/sem|Fréquence [^:]+ : [\d,]+×\/sem|Travaillé [\d,]+×\/sem|séries\/sem\)|×\/sem aujourd'hui\))/.test(l)) ctlVol(nom, cur, l); });
   });
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];
