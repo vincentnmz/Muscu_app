@@ -1076,7 +1076,7 @@ function _ckKpi(k, v, sub, evolPct){
 function _ckFraicheurHeader(m, dash){
   m = m || {}; dash = dash || {};
   var cf = m.charge_fatigue || null;
-  var tsbPct = (cf && cf.tsbPct != null) ? Number(cf.tsbPct) : null;
+  var tsbPct = (cf && cf.tsbPct != null && cf.fiable !== false) ? Number(cf.tsbPct) : null;   // 18/11 : < 28 j d'historique → pas de % (calcul non interprétable)
   var acwrRatio = (dash.acwr != null && !isNaN(Number(dash.acwr))) ? Number(dash.acwr) : null;
   var acwrSec = (acwrRatio != null && m.acwr_fiable === true)
     ? 'ACWR ' + acwrRatio.toFixed(2).replace('.', ',') + ' · indice secondaire'
@@ -13308,6 +13308,15 @@ function ajouterSerie() {
   if (!exoEnCours) { showToast('Choisis un exercice', '#ff4444'); return; }
 
   const chargeNum = parseFloat(charge);
+  // 18/11 (audit Idris : Pompe 77,5 kg, Crunch 87,5 kg = poids de corps tapé comme charge → faux records, tonnage gonflé) :
+  // sur un exercice au poids du corps, la charge = le LEST ajouté. Au-delà de 40 kg, on fait confirmer.
+  try {
+    var _fxE = _fxExo(), _mat = _fxE ? String(_fxE.materiel || '') : '';
+    if (_mat === 'Poids du corps' && chargeNum >= 40) {
+      var _okL = confirm('Sur « ' + exoEnCours.exerciceNom + ' », la charge à noter est le lest que tu ajoutes (0 si rien), pas ton poids de corps.\n\nTu as noté ' + String(chargeNum).replace('.', ',') + ' kg : c\'est bien un lest ?\n\nOK = garder · Annuler = corriger');
+      if (!_okL) { var _ic = document.getElementById('inp-charge'); if (_ic) { _ic.focus(); try { _ic.select(); } catch (e) {} } return; }
+    }
+  } catch (e) {}
   const volume = chargeNum > 0 ? chargeNum * parseInt(reps) : parseInt(reps);
   exoEnCours.series.push({
     date, seanceId, semaine: getNumSemaine(date),
@@ -13344,7 +13353,7 @@ function _fxSaisie() {
   var mat = e ? String(e.materiel || '') : '';
   var lc = document.getElementById('saisie-lbl-charge'), ch = document.getElementById('inp-charge');
   var pdc = mat === 'Poids du corps' || mat === 'Pneu / masse';
-  if (lc) lc.textContent = pdc ? 'Charge (0 = sans)' : 'Charge (kg)';
+  if (lc) lc.textContent = pdc ? (mat === 'Poids du corps' ? 'Lest ajouté (0 = sans)' : 'Charge (0 = sans)') : 'Charge (kg)';   // 18/11 : pas le poids de corps
   if (pdc && ch && ch.value === '' && !(exoEnCours && exoEnCours.series && exoEnCours.series.length)) ch.value = '0';
   var box = document.getElementById('fx-sac'); if (!box) return;
   if (mat !== 'Sac lesté') { box.hidden = true; box.innerHTML = ''; return; }
@@ -15459,7 +15468,7 @@ function _maMoteurTiles(data) {
   if (m.recup && m.recup !== '—') tiles.push(_maRailTile('Récupération', _maE(String(m.recup)), ''));
   // Fraîcheur (fitness-fatigue) remplace l'ancienne tuile ACWR. Jamais rouge.
   var cf = m.charge_fatigue || null;
-  if (cf && cf.tsbPct != null) {
+  if (cf && cf.tsbPct != null && cf.fiable !== false) {
     var _fe = _frEtat(cf.tsbPct, m), frL = _fe.l, frC = _fe.c;
     tiles.push(_maRailTile('Fraîcheur', _maE(frL), '', frC));
   }
@@ -17020,8 +17029,11 @@ function _maRegulariteBloc(data) {
     return _maSec('Régularité', '', 'regularite') + _maEmpty('Pas encore de séances pour mesurer la régularité.');
   }
   var reached = function (c) { return obj > 0 ? c >= obj : c > 0; };
-  var atObj = counts.filter(reached).length;
-  var moy = Math.round(counts.reduce(function (a, c) { return a + c; }, 0) / WEEKS * 10) / 10;
+  // 18/11 (audit Romain/Idris) : compte récent → on ne juge que les semaines depuis la 1re séance (« 1/2 », pas « 1/12 »).
+  var nW = WEEKS;
+  try { var _k0 = Object.keys(vpj).filter(function (k) { return Number(vpj[k]) > 0; }).sort()[0]; if (_k0) { var _d0 = new Date(_k0 + 'T00:00:00'); var _w0 = Math.floor((_d0 - start) / 6048e5); if (_w0 > 0) nW = WEEKS - _w0; } } catch (e) {}
+  var atObj = counts.slice(WEEKS - nW).filter(reached).length;
+  var moy = Math.round(counts.slice(WEEKS - nW).reduce(function (a, c) { return a + c; }, 0) / nW * 10) / 10;
   // Série en cours : semaines consécutives « à l'objectif » en remontant ; la semaine
   // en cours (dernière) ne casse pas la série si elle n'est pas encore atteinte.
   var streak = 0;
@@ -17046,11 +17058,11 @@ function _maRegulariteBloc(data) {
     var lastC = i === WEEKS - 1;
     return '<span style="flex:1;text-align:center;font-size:9px;font-weight:' + (lastC ? '800' : '600') + ';color:' + (lastC ? 'var(--text)' : 'var(--text-subtle)') + '">' + c + '</span>';
   }).join('') + '</div>';
-  var sub = (obj > 0 ? 'objectif ' + obj + '/sem' : 'objectif non défini') + ' · 12 semaines';
+  var sub = (obj > 0 ? 'objectif ' + obj + '/sem' : 'objectif non défini') + ' · ' + (nW < WEEKS ? 'depuis ta 1re séance (' + nW + ' sem.)' : '12 semaines');
   var tile = function (v, l, c) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 8px;text-align:center"><b style="display:block;font-size:18px;font-weight:900;line-height:1' + (c ? ';color:' + c : '') + '">' + v + '</b><span style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.03em;font-weight:800;margin-top:3px;display:block">' + l + '</span></div>'; };
   var stats = '<div style="display:flex;gap:8px;margin-top:12px">'
     + tile('🔥 ' + streak, 'série à l\'objectif', streak > 0 ? 'var(--warn)' : 'var(--text-subtle)')
-    + tile(atObj + '/' + WEEKS, 'sem. à l\'objectif', 'var(--good)')
+    + tile(atObj + '/' + nW, 'sem. à l\'objectif', 'var(--good)')
     + tile(String(moy).replace('.', ','), 'séances/sem. moy.', '')
     + '</div>';
   return _maSec('Régularité', sub, 'regularite')
@@ -18023,7 +18035,7 @@ function renderTjFormeRail(data) {
   // Fraîcheur (modèle fitness-fatigue de Banister, TSB %) — remplace l'ancienne
   // tuile ACWR (repère secondaire peu fiable en muscu). Jamais rouge : max orange.
   var cf = m.charge_fatigue || null;
-  if (cf && cf.tsbPct != null) {
+  if (cf && cf.tsbPct != null && cf.fiable !== false) {
     var frL, frC;
     var _fe2 = _frEtat(cf.tsbPct, m); frL = _fe2.l; frC = _fe2.c || 'var(--text)';
     tiles.push('<div class="rail-tile"><div class="k">Fraîcheur</div><div class="v" style="font-size:14px;color:' + frC + '">' + frL + '</div></div>');
@@ -19230,7 +19242,7 @@ function renderChargeFatigueJour(data) {
   // une reco ou un point de vigilance — sinon masqué.
   var _c0 = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
   if (!niv0 && !hasCf && !_c0.length && !hasRecup && !m.reco) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  var tsbPct = hasCf ? cf.tsbPct : null, ratio = hasCf ? cf.ratio : null, fiable = hasCf ? cf.fiable : false;
+  var tsbPct = (hasCf && cf.fiable !== false) ? cf.tsbPct : null, ratio = hasCf ? cf.ratio : null, fiable = hasCf ? cf.fiable : false;
   // Fraîcheur (TSB %) → libellé grand public, jamais rouge (max orange).
   var fr, frc, frTxt;
   if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frTxt = 'pas encore assez de données'; }
@@ -20109,7 +20121,7 @@ function renderEtat(data) {
     if (elA) {
       var dashd = data.dashboard || {};
       var cfe = m.charge_fatigue || null;
-      var tsbPct = (cfe && cfe.tsbPct != null) ? Number(cfe.tsbPct) : null;
+      var tsbPct = (cfe && cfe.tsbPct != null && cfe.fiable !== false) ? Number(cfe.tsbPct) : null;
       // Mention ACWR secondaire (si dispo) — affichée en petit, jamais décisionnelle.
       var acwrRatio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
       var acwrLine = (acwrRatio != null && m.acwr_fiable === true)
@@ -23304,6 +23316,27 @@ function _enDemarrerNow() {
     else ouvrirSeancePage();
   }
 }
+// 18/11 (audit Idris) : programme d'UNE séance très chargée (≥ 12 exercices, ≥ 4 groupes musculaires) alors que
+// l'athlète s'entraîne plusieurs jours par semaine → l'objectif est calculé à 1 séance/sem, la « séance du jour » liste
+// tout, la régularité est faussée. Conseil affiché sous « Mon programme » (aucune modification automatique).
+function _enProgUneSeance(data, prog) {
+  var old = document.getElementById('en-prog-conseil'); if (old) old.remove();
+  if (_enOrder.length !== 1) return;
+  var lignes = (prog || []).filter(function (p) { return p && p.type !== 'cardio'; });
+  if (lignes.length < 12) return;
+  var mus = {}; lignes.forEach(function (l) { var m = (typeof _lv3MuscleExo === 'function') ? _lv3MuscleExo(data, l.exercice) : ''; if (m) mus[_musKey ? _musKey(m) : m] = 1; });
+  if (Object.keys(mus).length < 4) return;
+  // Meilleure semaine (lundi → dimanche) parmi les 3 dernières : « tu t'entraînes N fois par semaine ».
+  var ds = (data.historique && data.historique.dates_seances) || {}, parSem = {}, lim = Date.now() - 21 * 864e5;
+  Object.keys(ds).forEach(function (k) { var p = k.split('/'); var d = new Date(p[2] + '-' + p[1] + '-' + p[0] + 'T12:00:00'); if (d.getTime() < lim) return; var l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7)); var kk = l.toISOString().slice(0, 10); parSem[kk] = (parSem[kk] || 0) + 1; });
+  var nMax = 0; Object.keys(parSem).forEach(function (k) { if (parSem[k] > nMax) nMax = parSem[k]; });
+  var card = document.getElementById('en-prog-card'); if (!card || !card.parentNode) return;
+  var el = document.createElement('div'); el.id = 'en-prog-conseil';
+  el.style.cssText = 'background:var(--warn-a12,#FFF4E5);border:1px solid var(--warn,#E07800);border-radius:12px;padding:11px 13px;margin:10px 0 4px;font-size:12.5px;line-height:1.5;color:var(--text)';
+  el.innerHTML = '<b>Ton programme n\'a qu\'une séance de ' + lignes.length + ' exercices</b>' + (nMax >= 2 ? ', alors que tu as fait jusqu\'à ' + nMax + ' séances dans une même semaine' : '') + '. Novalyz compte donc ton objectif à 1 séance par semaine et te propose les ' + lignes.length + ' exercices chaque jour.'
+    + '<br>Crée une séance par jour type (ex. Push, Pull, Jambes) : <span onclick="ouvrirEditeurProgramme()" style="color:var(--accent);font-weight:800;cursor:pointer">Modifier mon programme ▸ Ajouter une séance</span>.';
+  card.parentNode.insertBefore(el, card.nextSibling);
+}
 function renderEntrainement(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
   var prog = Array.isArray(data.programme) ? data.programme : [];
@@ -23320,6 +23353,7 @@ function renderEntrainement(data) {
     var strat = ''; try { strat = (athlete && athlete.strategie) ? String(athlete.strategie).trim() : ''; } catch (e0) {}
     var subEl = document.getElementById('en-prog-sub');
     if (subEl) subEl.textContent = _enOrder.length ? ((strat || 'Programme personnalisé') + ' · ' + prog.length + ' exercice' + (prog.length > 1 ? 's' : '')) : 'Crée ton programme pour commencer';
+    try { _enProgUneSeance(data, prog); } catch (eU) {}
     var reg = (data.dashboard && data.dashboard.regularite) || {};
     var done = _seancesFaites(reg);
     var goal = Number(reg.seances_prevues || 4) || 4;

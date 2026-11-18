@@ -711,6 +711,14 @@ function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date
     ewmaA = v * LA + (1 - LA) * ewmaA
     ewmaC = v * LC + (1 - LC) * ewmaC
   }
+  // 18/11 (audit Vincent) : la forme de fond (EWMA 42 j) pèse fort les DERNIÈRES semaines — une semaine creuse
+  // (vacances, semaine légère) la fait chuter, et la reprise normale ressortait en « forte hausse » (−38 % de fraîcheur
+  // pour +24 % de charge réelle). Plancher : la moyenne réelle des 28 derniers jours (dès 28 j d'historique).
+  if (span >= 28) {
+    let s28 = 0
+    for (let d = 0; d < 28; d++) s28 += chargeParJour[fmtYMD(minus(now, d))] || 0
+    if (s28 / 28 > ewmaC) ewmaC = s28 / 28
+  }
   return {
     ctl: Math.round(ewmaC), atl: Math.round(ewmaA), tsb: Math.round(ewmaC - ewmaA),
     tsbPct: ewmaC > 0 ? Math.round((ewmaC - ewmaA) / ewmaC * 100) : null,
@@ -823,6 +831,26 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[
   const raisons: string[] = []
   if (fatDeg) raisons.push('fatigue'); if (somDeg) raisons.push('sommeil'); if (rpeDeg) raisons.push('rpe'); if (fcDeg) raisons.push('fc_repos')
   return { degrade: fatDeg || somDeg || rpeDeg || fcDeg, evaluable: F.ok || S.ok, rpeExos, rpeDetails, rpeEvalues, fc, raisons }
+}
+
+// 18/11 (audit Vincent) : périodes de vacances PASSÉES et en cours, [{ debut, fin }] (aaaa-mm-jj).
+// Sources : table pauses + indicateurs cle 'pause' (valeur = début, unite = fin ; valeur 'fin' = arrêt anticipé ce jour-là).
+async function _pausesHist(athleteId: string): Promise<{ debut: string; fin: string }[]> {
+  const out: { debut: string; fin: string }[] = []
+  try {
+    const { data: P } = await sb().from('pauses').select('debut,fin').eq('athlete_id', athleteId)
+    for (const r of (P || []) as any[]) { const d = normDate(r.debut), f = normDate(r.fin) || d; if (d) out.push({ debut: d, fin: f }) }
+  } catch (_) {}
+  try {
+    const { data: I } = await sb().from('indicateurs').select('date,valeur,unite,id').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: true }).order('id', { ascending: true })
+    let cur: { debut: string; fin: string } | null = null
+    for (const r of (I || []) as any[]) {
+      if (String(r.valeur) === 'fin') { const d = normDate(r.date); if (cur && d) { if (d < cur.fin) cur.fin = d; } cur = null; continue }
+      const d = normDate(r.valeur), f = normDate(r.unite)
+      if (d && f) { cur = { debut: d, fin: f }; out.push(cur) }
+    }
+  } catch (_) {}
+  return out
 }
 
 // ── Alertes ───────────────────────────────────────────────────────────────────
@@ -3036,6 +3064,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     bien_etre,
     pause: pauseObj,
     pause_prevue: pausePrevue(pauseRow, now),
+    pauses_hist: await _pausesHist(athleteId),   // 18/11 : vacances passées (journal des décisions : semaine en pause ≠ « pas tenté »)
     contexte,
     sport,
     cardio,

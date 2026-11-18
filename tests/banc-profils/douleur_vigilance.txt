@@ -277,16 +277,11 @@ Poser un état
 MES TENDANCES
 Charge & fraîcheur
 ?
-Frais · indicatif
-Frais
-+62% de fraîcheur
-Tu es reposé.
-fatigue
-équilibre
-frais
-Forme de fond 2 506
-Fatigue récente 946
-En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+—
+—
+Pas encore calculable.
+Il faut ~4 semaines d'entraînement (28 jours d'historique) avec assez de séances. Continue d'enregistrer : la fraîcheur s'activera toute seule.
+C'est quoi la fraîcheur ? En clair : es-tu reposé ? Novalyz compare ce que tu encaisses d'habitude (~6 semaines) à ta charge des derniers jours. Tu as fait plus que d'habitude récemment → charge en hausse (c'est ton ressenti qui dit si c'est de la fatigue) ; moins → reposé. Méthode reconnue (modèle fitness-fatigue).
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
 TON RESSENTI · 7 DERNIERS JOURS

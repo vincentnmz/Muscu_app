@@ -43,7 +43,9 @@ jobs:
         if: env.SUPABASE_ACCESS_TOKEN != ''
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # 18/11 : version figée — « latest » interroge l'API GitHub à chaque run et a échoué une fois
+          # (« rate limit exceeded », run 41). 3.1.0 = version des déploiements réussis du 16/11.
+          version: 3.1.0
 
       - name: Préparer la fonction (nom smooth-service)
         if: env.SUPABASE_ACCESS_TOKEN != ''
