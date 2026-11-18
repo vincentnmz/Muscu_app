@@ -800,7 +800,8 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[
     const l = ds.slice(-4).map(d => parExo[exo][d])
     const rpeAv = (l[0].rpe + l[1].rpe) / 2, rpeAp = (l[2].rpe + l[3].rpe) / 2
     const chAv = (l[0].charge + l[1].charge) / 2, chAp = (l[2].charge + l[3].charge) / 2
-    const chPct = chAv > 0 ? (chAp - chAv) / chAv * 100 : 0
+    // 18/11 (audit Vincent) : 0 kg (poids du corps) → lest = HAUSSE de charge, pas « charge égale » (avant : 0 % forcé).
+    const chPct = chAv > 0 ? (chAp - chAv) / chAv * 100 : (chAp > 0 ? 100 : 0)
     rpeEvalues++
     if (rpeAp - rpeAv >= 1 && chPct <= 2.5) { rpeExos.push(exo); rpeDetails.push({ exo, charge: Math.round(chAp * 10) / 10, rpeAvant: rpeAv, rpeApres: rpeAp }) }
   }
@@ -900,7 +901,7 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
     const chgAvant = (last4[0].charge + last4[1].charge) / 2
     const chgApres = (last4[2].charge + last4[3].charge) / 2
     const rpeHausse = rpeApres - rpeAvant
-    const chgPct = chgAvant > 0 ? (chgApres - chgAvant) / chgAvant * 100 : 0
+    const chgPct = chgAvant > 0 ? (chgApres - chgAvant) / chgAvant * 100 : (chgApres > 0 ? 100 : 0)   // 18/11 : 0 kg → lest = hausse
     if (rpeHausse >= 1.0 && chgPct < 3)
       alertes.push({ type: 'fatigue_rpe', severite: 'moyenne', message: `${exo} : RPE en hausse de +${Math.round(rpeHausse * 10) / 10} pt (moy. ${Math.round(rpeApres * 10) / 10}) sans progression de charge — fatigue latente ?` })
   }
@@ -3767,6 +3768,10 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // Charge élevée SEULE (récup bonne → Prêt) : repère informatif, pas un ordre.
   // Règle ressenti : on ne dit « tu encaisses bien » QUE si le ressenti a pu être évalué.
   else if (chargeHaute && regleRessenti && s.chargeSoutenue === true && s.ressentiDegrade === true) reco = 'Ta charge monte et tu récupères moins bien — allège 1 séance et priorise le sommeil.'
+  // 18/11 (audit Vincent) : charge haute + ressenti dégradé mais PAS encore soutenue (< 3 jours) — cas oublié, qui tombait
+  // sur le message par défaut « forte hausse… si tu te sens frais » (contradictoire avec le plan mis en pause). Même consigne
+  // que le plan et la cible de séance : on maintient, sans aller à l'échec.
+  else if (chargeHaute && regleRessenti && s.ressentiDegrade === true) reco = 'Ta charge monte et ton ressenti baisse — garde tes charges prévues, sans aller à l\'échec, et priorise la récupération.'
   else if (chargeHaute && regleRessenti && s.ressentiEvaluable === true && s.ressentiDegrade !== true) reco = 'Ta charge monte et tu encaisses bien — continue, sans empiler davantage de volume.'
   else if (chargeHaute && regleRessenti && s.ressentiEvaluable !== true && s.ressentiDegrade !== true) reco = 'Ta charge monte — renseigne ton état du jour pour qu\'on vérifie que tu récupères bien.'
   else if (chargeHaute) reco = 'Charge en forte hausse récemment — évite d\'empiler encore du volume ; si tu te sens frais, entraîne-toi normalement.'

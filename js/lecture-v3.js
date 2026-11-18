@@ -262,7 +262,9 @@ function _lv3Diag(data, exo, kind, nowT) {
   // 5) Fréquence.
   if (V && V.freq > 0) {
     if (V.freq <= 1) { checks.push({ s: 'ko', t: 'Travaillé ' + _lv3Fmt(V.freq) + '×/sem' }); if (!cause) { cause = 'frequence'; levier = 'répartis ' + _maE(nom) + ' sur 2 séances dans la semaine.'; } }
-    else checks.push({ s: 'ok', t: 'Fréquence : ' + _lv3Fmt(V.freq) + '×/sem — pas en cause' });
+    // 18/11 (audit Vincent) : on nomme le muscle et on dit que le secondaire compte (spm), sinon « Trapèze 2×/sem » ici
+    // contredisait « 0,4×/sem » dans Tendances (qui ne compte que le muscle principal).
+    else checks.push({ s: 'ok', t: 'Fréquence ' + _maE(String(nom || '').toLowerCase()) + ' : ' + _lv3Fmt(V.freq) + '×/sem (y compris en muscle secondaire) — pas en cause' });
   }
   // 6) Bas de fourchette (bloqué sur le minimum de reps) : levier reps avant la charge.
   // (06/11, validé) Plus de « +1 rep » sur un exercice BLOQUÉ : il bloque déjà, on cherche la cause (étapes 6-10).
@@ -852,7 +854,7 @@ function _lv3JournalResumeHtml(rows, data) {
   var dern = _lv3Ymd(new Date(_lv3Lundi(Date.now()).getTime() - 7 * 864e5)); if (S.semaine !== dern) return '';
   var n = S.lignes.length;
   return '<div style="margin-top:10px;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;font-size:12px;line-height:1.5">'
-    + '<b>Semaine dernière</b><br>' + n + ' action' + (n > 1 ? 's' : '') + ' proposée' + (n > 1 ? 's' : '') + ' · ' + S.tentes + ' réalisée' + (S.tentes > 1 ? 's' : '') + ' · <b>' + S.atteints + ' objectif' + (S.atteints > 1 ? 's' : '') + ' atteint' + (S.atteints > 1 ? 's' : '') + '</b>.<br>'
+    + '<b>Semaine dernière</b><br>' + n + ' action' + (n > 1 ? 's' : '') + ' proposée' + (n > 1 ? 's' : '') + ' · ' + S.tentes + ' tentée' + (S.tentes > 1 ? 's' : '') + ' · <b>' + S.atteints + ' objectif' + (S.atteints > 1 ? 's' : '') + ' atteint' + (S.atteints > 1 ? 's' : '') + '</b>.<br>'
     + '<span onclick="ouvrirJournalDecisions()" style="color:var(--accent);font-weight:700;cursor:pointer">Voir le détail · Tes décisions ›</span></div>';
 }
 // Historique complet (Analyses ▸ Tes décisions ; fenêtre « Tes décisions »).
@@ -861,7 +863,7 @@ function _lv3JournalHtml(rows, data, opts) {
   if (!sem.length) return '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5">Pas encore de décision passée : ton premier plan enregistré apparaîtra ici la semaine prochaine, avec ce qui s\'est passé ensuite.</div>';
   return sem.map(function (S) {
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;margin-bottom:10px">'
-      + '<div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px">Semaine du ' + _lv3Ddmm(S.semaine) + '<span style="font-size:11px;color:var(--text-subtle)">' + S.tentes + ' / ' + S.lignes.length + ' réalisée' + (S.tentes > 1 ? 's' : '') + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px">Semaine du ' + _lv3Ddmm(S.semaine) + '<span style="font-size:11px;color:var(--text-subtle)">' + S.tentes + ' / ' + S.lignes.length + ' tentée' + (S.tentes > 1 ? 's' : '') + '</span></div>'
       + S.lignes.map(function (x, i) {
         return '<div style="font-size:12.5px;padding:8px 0;line-height:1.45;' + (i ? 'border-top:1px solid var(--border)' : '') + '">' + _lv3JournalTag(x.ev.statut) + '<b>' + esc(_lv3TitrePasse(x.d.titre)) + '</b>'
           + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:3px">' + (x.d.raison ? 'Proposé car : ' + esc(x.d.raison) + ' ' : '') + esc(x.ev.detail) + '</div>' + (x.ev.statut === 'atteint' || x.ev.statut === 'pas_atteint' ? _lv3JournalSuiteHtml(x.d, data) : '') + '</div>';
@@ -896,6 +898,6 @@ function _lv3JournalBilanCoachHtml(rows, data) {
   var S = _lv3JournalSemaines(rows, data).slice(0, 4); if (!S.length) return '';
   var n = 0, t = 0, a = 0, p = 0, ne = 0; S.forEach(function (s) { s.lignes.forEach(function (x) { n++; if (x.ev.statut === 'atteint') { a++; t++; } else if (x.ev.statut === 'pas_atteint') { p++; t++; } else if (x.ev.statut === 'non_evaluable') ne++; }); });
   return '<div class="dash-card" style="padding:12px 14px;margin-bottom:10px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:800;margin-bottom:5px">Historique des propositions</div>'
-    + '<div style="font-size:12.5px;line-height:1.5"><b>Sur ' + S.length + ' semaine' + (S.length > 1 ? 's' : '') + '</b> : ' + n + ' action' + (n > 1 ? 's' : '') + ' proposée' + (n > 1 ? 's' : '') + ' · ' + t + ' réalisée' + (t > 1 ? 's' : '') + ' · <b>' + a + ' objectif' + (a > 1 ? 's' : '') + ' atteint' + (a > 1 ? 's' : '') + '</b> · ' + p + ' pas atteint' + (p > 1 ? 's' : '') + (ne ? ' · ' + ne + ' non évaluable' + (ne > 1 ? 's' : '') : '') + '</div>'
+    + '<div style="font-size:12.5px;line-height:1.5"><b>Sur ' + S.length + ' semaine' + (S.length > 1 ? 's' : '') + '</b> : ' + n + ' action' + (n > 1 ? 's' : '') + ' proposée' + (n > 1 ? 's' : '') + ' · ' + t + ' tentée' + (t > 1 ? 's' : '') + ' · <b>' + a + ' objectif' + (a > 1 ? 's' : '') + ' atteint' + (a > 1 ? 's' : '') + '</b> · ' + p + ' pas atteint' + (p > 1 ? 's' : '') + (ne ? ' · ' + ne + ' non évaluable' + (ne > 1 ? 's' : '') : '') + '</div>'
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px;line-height:1.45">Résultat observé après la recommandation. Association observée, pas une preuve de cause : d\'autres facteurs (sommeil, programme, contexte) peuvent jouer.</div></div>';
 }
