@@ -12503,6 +12503,7 @@ function _saveBrouillon() {
       lastPerfData:      lastPerfData,
       exoEnCoursNom:     exoEnCours ? exoEnCours.exerciceNom : null,
       envoiId:           _seanceEnvoiId,
+      chronoT0:          _seanceChronoT0 || 0,   // 18/11 : heure de départ gardée (sinon le chrono repart à la réouverture)
       ts:                Date.now()
     }));
   } catch (e) {}
@@ -12548,6 +12549,9 @@ function _restaurerBrouillon() {
   indexExoProgramme = b.indexExoProgramme || 0;
   lastPerfData      = b.lastPerfData || {};
   _seanceEnvoiId    = b.envoiId || _nouvelEnvoiId();
+  // 18/11 : chrono repris à l'heure de départ réelle (≤ 6 h) — avant, une fermeture de l'app en pleine séance
+  // raccourcissait la durée mesurée (elle repartait de la réouverture).
+  try { var _t0 = Number(b.chronoT0) || 0; if (_t0 > 0 && Date.now() - _t0 < 6 * 3600e3) _seanceChronoT0 = _t0; } catch (e) {}
   exoEnCours        = null;
 
   var di = document.getElementById('inp-date');      if (di && b.date) di.value = b.date;
@@ -14042,6 +14046,7 @@ function ouvrirBilanSeance(type, seanceId, date) {
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Bilan de ta séance';
   var _wn = document.getElementById('wq-note'); if (_wn) _wn.placeholder = (athlete && athlete.coach_id) ? 'Douleurs, ressenti, contexte… (gardé avec ta séance et envoyé à ton coach)' : 'Douleurs, ressenti, contexte… (gardé avec ta séance)';
   var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'À quel point c’était dur ? · échelle 0-10';
+  try { _bilanDureeBloc(_wqType); } catch (e) {}
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
     '<button onclick="_bilanSkip()" style="' + _BTN_SEC + '">Passer</button>'
@@ -14053,6 +14058,35 @@ function ouvrirBilanSeance(type, seanceId, date) {
 // afficherRecap() (qui fige _seanceDureeMin) → la durée partait toujours vide (0 durée en base
 // pour 5 RPE de séance). On la calcule ici depuis le chrono. Au-delà de 4 h (appli restée
 // ouverte, brouillon repris le lendemain), la mesure n'est pas fiable → non envoyée.
+// 18/11 (audit Romain : séances de 5 et 3 min = temps de SAISIE après coup) : si la durée mesurée est invraisemblable
+// pour le nombre de séries (< 1 min 30 par série, ou mesure absente), le bilan demande la durée réelle au lieu
+// d'enregistrer une fausse durée (elle sert à la charge interne RPE × durée). Laissée vide → durée inconnue.
+var _bilanDureeSaisie = null;   // null = pas demandée ; '' = demandée, non renseignée ; nombre = saisie
+function _bilanDureeDouteuse() {
+  var n = 0; try { n = (seance || []).reduce(function (a, e) { return a + ((e && e.series) ? e.series.length : 0); }, 0); } catch (e) {}
+  var m = _seanceDureeMesuree();
+  if (n < 4) return null;
+  if (m == null || m < n * 1.5) return { n: n, m: m };
+  return null;
+}
+function _bilanDureeBloc(type) {
+  var old = document.getElementById('wqb-duree'); if (old) old.remove();
+  _bilanDureeSaisie = null;
+  if (type !== 'muscu') return;
+  var d = _bilanDureeDouteuse(); if (!d) return;
+  _bilanDureeSaisie = '';
+  var note = document.getElementById('wqb-note'); if (!note || !note.parentNode) return;
+  var el = document.createElement('div'); el.className = 'wq-block'; el.id = 'wqb-duree';
+  el.innerHTML = '<div class="wq-label">Combien de temps a duré ta séance ? <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(minutes)</span></div>'
+    + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin:2px 0 8px">' + (d.m != null ? 'Le chrono indique ' + d.m + ' min pour ' + d.n + ' séries : tu as sans doute saisi ta séance après coup.' : 'Le chrono n\'a pas pu mesurer ta séance.') + ' Laisse vide si tu ne sais pas.</div>'
+    + '<input id="wq-duree" type="number" inputmode="numeric" min="5" max="240" placeholder="ex. 60" oninput="_bilanDureeSaisie=this.value" style="width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:9px 11px;outline:none;font-family:inherit;">';
+  note.parentNode.insertBefore(el, note);
+}
+function _bilanDuree() {
+  if (_bilanDureeSaisie === null) return _seanceDureeMesuree();
+  var v = Math.round(Number(String(_bilanDureeSaisie).replace(',', '.')));
+  return (v >= 5 && v <= 240) ? v : null;   // vide ou hors bornes → inconnue (jamais la fausse mesure)
+}
 function _seanceDureeMesuree() {
   var m = _seanceDureeMin;
   try { if (!(m > 0) && _seanceChronoT0) m = Math.max(1, Math.round((Date.now() - _seanceChronoT0) / 60000)); } catch (e) {}
@@ -14066,7 +14100,7 @@ function _bilanPayload(type, seanceId, dateSeance) {
     action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
     seance_id: seanceId || null, date: dateSeance,
     // Durée mesurée par le chrono de séance (muscu) → charge interne sRPE = RPE × durée.
-    rpe: wellnessState.rpe, duree: (type === 'muscu') ? _seanceDureeMesuree() : null,
+    rpe: wellnessState.rpe, duree: (type === 'muscu') ? _bilanDuree() : null,
     douleur: wellnessState.douleur, zone: zone,
     note: (document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '')
   };
@@ -14493,7 +14527,7 @@ function _confirmerFinSeance() {
         + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalVol + ' kg</div>'
         + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">volume</div></div>'
     + '</div>'
-    + _rattHtml
+    + _rattHtml + _nuitDateHtml()
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="_annulerFinSeance()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">↩ Continuer</button>'
       + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Terminer</button>'
@@ -14502,6 +14536,28 @@ function _confirmerFinSeance() {
   document.body.appendChild(ov);
 }
 
+// 18/11 (audit Romain : séance saisie à 1 h du matin, datée du jour) : entre minuit et 5 h, si la séance est datée
+// d'aujourd'hui, on demande si c'est celle d'hier soir (choix explicite, « aujourd'hui » par défaut).
+function _nuitDateHtml() {
+  try {
+    if (_saisieCoach) return '';
+    var now = new Date(), h = now.getHours(), di = document.getElementById('inp-date');
+    if (h >= 5 || !di || (di.value && di.value !== _todayLocalStr())) return '';
+    var y = new Date(now.getTime() - 864e5), yIso = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+    var fr = function (iso) { var p = iso.split('-'); return p[2] + '/' + p[1]; }, tIso = _todayLocalStr();
+    var btn = function (iso, lbl, on) { return '<button type="button" data-nd="' + iso + '" onclick="_nuitDateChoix(this)" style="flex:1;padding:10px 6px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a10,rgba(26,95,255,.1))' : 'var(--surface2)') + ';color:var(--text)">' + lbl + '</button>'; };
+    return '<div id="_nuit-date" style="margin:-6px 0 16px;background:var(--surface2);border-radius:12px;padding:11px 12px">'
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:8px">Il est ' + h + ' h ' + String(now.getMinutes()).padStart(2, '0') + ' : c\'est ta séance d\'hier soir ?</div>'
+      + '<div style="display:flex;gap:8px">' + btn(yIso, 'Hier soir (' + fr(yIso) + ')', false) + btn(tIso, 'Aujourd\'hui (' + fr(tIso) + ')', true) + '</div></div>';
+  } catch (e) { return ''; }
+}
+function _nuitDateChoix(b) {
+  var di = document.getElementById('inp-date'), nd = b.getAttribute('data-nd'); if (di) di.value = nd;
+  // Les séries portent leur date (prise à la saisie) : on les re-date toutes, sinon la séance partirait à l'ancienne date.
+  try { (seance || []).forEach(function (e) { (e.series || []).forEach(function (x) { x.date = nd; try { x.semaine = getNumSemaine(nd); } catch (_) {} }); }); _saveBrouillon(); } catch (e) {}
+  document.querySelectorAll('#_nuit-date [data-nd]').forEach(function (x) { var on = x === b; x.style.borderColor = on ? 'var(--accent)' : 'var(--border)'; x.style.background = on ? 'var(--accent-a10,rgba(26,95,255,.1))' : 'var(--surface2)'; });
+  try { if (_rattChoix) _rattChoix.date = _rattIso(di.value); } catch (e) {}
+}
 function _annulerFinSeance() {
   var ov = document.getElementById('_confirm-fin-seance');
   if (ov) ov.remove();
