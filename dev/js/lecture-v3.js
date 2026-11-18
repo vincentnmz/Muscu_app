@@ -768,6 +768,8 @@ function _lv3JournalEvaluer(d, data) {
   var a = { type: d.type_action, exo: d.exercice, muscle: d.muscle || d.cle, charge: c.charge, alt: c.alt, reps: c.reps, min: c.min };
   if ((a.type === 'charge' || a.type === 'cible' || a.type === 'rpe') && !(a.charge > 0)) return { statut: 'non_evaluable', detail: 'Critère incomplet.' };
   var R = _lv3Realise(a, data, isoL, isoFin), detail = '';
+  // 18/11 (audit Vincent) : semaine en VACANCES (≥ 3 jours de pause) et action pas tentée → non évaluable, pas « pas tenté ».
+  if (!R.tente && !R.fait) { try { var jp = 0, dj = new Date(isoL + 'T12:00:00'); for (var k = 0; k < 7; k++) { var ik = _lv3Ymd(dj); if ((data.pauses_hist || []).some(function (p) { return p && p.debut <= ik && ik <= p.fin; })) jp++; dj.setDate(dj.getDate() + 1); } if (jp >= 3) return { statut: 'non_evaluable', detail: 'Semaine de vacances (' + jp + ' jours en pause) : pas jugée.' }; } catch (_) {} }
   var kg = function (x) { return (typeof _cdFmtKg === 'function') ? _cdFmtKg(x) : String(x); };
   if (a.type === 'series') detail = R.tente ? 'Réalisé : ' + _lv3Fmt(R.tot) + ' série' + (R.tot > 1 ? 's' : '') + ' (objectif ' + a.min + ').' : 'Aucune série de ce muscle cette semaine-là.';
   else if (a.type === 'reprise') detail = R.tente ? 'Séance faite cette semaine-là.' : 'Pas de séance cette semaine-là.';
