@@ -5957,7 +5957,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   out.montre = montre
   const be = Array.isArray(ad.bien_etre) ? ad.bien_etre : []
   const beV = (k: string, a: string, b: string) => be.filter((x: any) => { const d = normDate(x.date); return d >= a && d < b }).map((x: any) => Number(x[k])).filter((v: number) => !isNaN(v) && v > 0)
-  out.forme = [['sommeil', 'Sommeil ressenti', false], ['fatigue', 'Fatigue musculaire', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]].map(([k, lab, inv]: any) => {
+  out.forme = [['sommeil', 'Sommeil ressenti', false], ['fatigue', 'Fatigue', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]].map(([k, lab, inv]: any) => {
     const p = beV(k, d0, d1); if (!p.length) return null
     const n = beV(k, n0, d0), v = Math.round((moy(p) as number) * 10) / 10, nm = n.length >= 7 ? Math.round((moy(n) as number) * 10) / 10 : null
     const etat = nm == null ? 'nd' : (inv ? (v - nm >= 1 ? 'haut' : 'ok') : (nm - v >= 1 ? 'bas' : 'ok'))
@@ -7435,7 +7435,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   if (cf && cf.tsbPct != null) L.push(`- Fraîcheur (charge récente vs habituelle) : ${cf.tsbPct >= 5 ? 'frais' : cf.tsbPct >= -12 ? 'équilibré' : 'charge en hausse'}${cf.fiable ? '' : ' (indicatif, historique court)'}.`)
   if (be && beAge != null && beAge <= 6) {
     const v = (k: string) => (be[k] != null && be[k] !== '' && !isNaN(Number(be[k]))) ? Number(be[k]) + '/5' : null
-    const parts = [['sommeil', v('sommeil')], ['fatigue musculaire', v('fatigue')], ['stress', v('stress')], ['courbatures', v('courbatures')], ['douleur', v('douleur')]].filter((x) => x[1]).map((x) => x[0] + ' ' + x[1])
+    const parts = [['sommeil', v('sommeil')], ['fatigue', v('fatigue')], ['stress', v('stress')], ['courbatures', v('courbatures')], ['douleur', v('douleur')]].filter((x) => x[1]).map((x) => x[0] + ' ' + x[1])
     if (parts.length) L.push(`- Dernier questionnaire (${quand(be.date)}) : ${parts.join(', ')} (sommeil : 5 = très bien ; fatigue/stress/courbatures/douleur : 1 = aucun).`)
   } else if (be) L.push(`- Dernier questionnaire : ${quand(be.date)} — trop ancien pour juger la forme d'aujourd'hui.`)
   else L.push('- Aucun questionnaire de forme enregistré.')
