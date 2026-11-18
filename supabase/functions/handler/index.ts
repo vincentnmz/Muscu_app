@@ -2189,7 +2189,7 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   // Respect du programme (exécution vs cible charge %1RM / RPE), si des cibles existent.
   if (execCible && execCible.nEval > 0) {
     const r = execCible.nOk, n = execCible.nEval
-    if (r >= Math.ceil(n * 0.7)) constats.push({ ton: 'positif', texte: `Tu respectes ton programme : dans la cible sur ${r}/${n} exercice${n > 1 ? 's' : ''} suivi${n > 1 ? 's' : ''} (charge / RPE).` })
+    if (r >= Math.ceil(n * 0.7)) constats.push({ ton: 'positif', texte: `Effort conforme à ton programme : charge / RPE dans la cible (±1) sur ${r}/${n} exercice${n > 1 ? 's' : ''} suivi${n > 1 ? 's' : ''} — les reps sont jugées à part (fourchette).` })   // 18/11 (audit Romain) : « tu respectes ton programme » à côté de « 2 sous la fourchette »
     else constats.push({ ton: 'attention', texte: `Respect du programme : ${r}/${n} exercice${n > 1 ? 's' : ''} dans la cible — ajuste tes charges ou revois tes cibles.` })
   } else if (execCible && execCible.nCible > 0) {
     constats.push({ ton: 'neutre', texte: `Tu as défini des cibles mais pas encore réalisé ces exercices — fais-les pour suivre ton respect du programme.` })

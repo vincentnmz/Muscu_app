@@ -6607,7 +6607,10 @@ function _progSecondaire(pA, pB) {
   if (!tA.length || !tB.length) return null;
   if (tA.length > tB.length) return tA.length + ' séries à ' + r + ' reps au lieu de ' + tB.length;
   var rpe = function (t) { var v = t.map(function (x) { return num(x.rpe); }).filter(function (x) { return x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
-  var rA = rpe(tA), rB = rpe(tB);
+  // 18/11 (audit Idris) : RPE comparé sur le MÊME nombre de séries (les premières) — avant, une série de moins
+  // (souvent la plus dure) faisait baisser la moyenne et affichait un faux « même niveau à RPE plus bas ».
+  var nC = Math.min(tA.length, tB.length);
+  var rA = rpe(tA.slice(0, nC)), rB = rpe(tB.slice(0, nC));
   if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',');
   return null;
 }
@@ -13632,7 +13635,9 @@ function _progWhy(d, f, pas) {
   if (d.mode === 'bloque') { var av = d.bloque && d.bloque.avant; return 'bloqué depuis ' + d.bloque.n + ' séances : pas de +1 rep forcé, mêmes charges et mêmes reps' + (av ? ' ; ta série à ' + kg(av.charge) + ' kg revient à ≈ ' + av.reps + ' reps' : ''); }
   if (d.mode === 'charge') return 'haut de fourchette atteint → +' + kg(pas) + ' kg';
   if (d.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
-  var base = f.rmax ? '+1 rep (haut de fourchette : ' + f.rmax + ')' : '+1 rep';
+  // 18/11 (audit Idris) : le +1 rep vaut pour les séries SOUS le haut de fourchette ; la série affichée (la plus lourde)
+  // peut déjà y être et ne pas bouger — « +1 rep » seul à côté de « 18 × 12 → 18 × 12 » se lisait comme une erreur.
+  var base = f.rmax ? '+1 rep sur les séries sous ' + f.rmax + ' reps (haut de ta fourchette)' : '+1 rep';
   return d.nTenues ? base + ' · ' + d.nTenues + ' série' + (d.nTenues > 1 ? 's' : '') + ' à RPE ' + (d.seuil === 8 ? '9-10' : '10') + ' gardée' + (d.nTenues > 1 ? 's' : '') + ' telle' + (d.nTenues > 1 ? 's' : '') : base;
 }
 // Âge (jours) du dernier questionnaire bien-être — null s'il n'y en a pas (T1, 01/11).
