@@ -11219,7 +11219,8 @@ async function chargerMessagesCoach() {
 function majBadgeConseils() {
   const badge = document.getElementById('badge-conseils');
   if (!badge) return;
-  const nonLus = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).length;
+  // 18/11 : + messages « Novalyz · l'équipe » non lus (js/messages-novalyz.js).
+  const nonLus = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).length + ((typeof nvmNonLus === 'function') ? nvmNonLus() : 0);
   if (nonLus > 0) {
     badge.textContent = nonLus;
     badge.style.display = 'block';
@@ -11355,6 +11356,7 @@ function _cvHeure(d) { var t = parseChatDate(d); if (!t) return ''; var x = new 
 function afficherOngletConseils() {
   cvRenderThreads();
   if (_cvView === 'coach') cvOpenCoach(true);
+  else if (_cvView === 'nv' && typeof nvmOuvrir === 'function') nvmOuvrir();
   else if (_cvView === 'ia') cvOpenIA();
   else cvShowList();
 }
@@ -11483,7 +11485,7 @@ function _athleteAUnCoach() {
 }
 
 function ouvrirCoach() {
-  _cvView = _athleteAUnCoach() ? 'list' : 'ia';
+  _cvView = (_athleteAUnCoach() || (typeof nvmListe === 'function' && nvmListe().length)) ? 'list' : 'ia';   // 18/11 : fil Novalyz visible
   if (typeof switchTab === 'function') switchTab('conseils');
 }
 
@@ -11521,7 +11523,7 @@ function _majFabNovalyz(tab) {
 
 function _cvShow(view) {
   _cvView = view;
-  var map = { list: 'cv-list-view', ia: 'cv-ia-view', coach: 'cv-coach-view' };
+  var map = { list: 'cv-list-view', ia: 'cv-ia-view', coach: 'cv-coach-view', nv: 'cv-nv-view' };   // nv : « Novalyz · l'équipe » (18/11)
   Object.keys(map).forEach(function (k) { var el = document.getElementById(map[k]); if (el) el.style.display = (k === view) ? 'flex' : 'none'; });
 }
 function cvShowList() { cvResetSel(); cvRenderThreads(); _cvShow('list'); }
@@ -11536,6 +11538,7 @@ function cvRenderThreads() {
     + '<div class="mid"><div class="r1"><span class="nm">Novalyz IA</span><span class="tag">assistant</span></div>'
     + '<div class="pv">' + escapeHtml(iaPrev) + '</div></div>'
     + '<div class="rt"><span class="tm">' + (_cvIaMsgs.length ? "à l'instant" : 'dispo') + '</span></div></button>';
+  try { if (typeof nvmThreadHtml === 'function') html = nvmThreadHtml() + html; } catch (e) {}   // 18/11 : messages de l'équipe Novalyz en tête
 
   var aUnCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id) || (messagesCoach && messagesCoach.length > 0);
   if (aUnCoach) {
@@ -19599,6 +19602,8 @@ function renderAujourdhui(data) {
 
   // --- Séances prévues par le coach (agenda daté, lecture seule) ---
   try { renderTjPlanning(data); } catch (e) {}
+  // --- Message de l'équipe Novalyz non lu (18/11, js/messages-novalyz.js) ---
+  try { if (typeof nvmCarteAccueil === 'function') nvmCarteAccueil(data); if (typeof majBadgeConseils === 'function') majBadgeConseils(); } catch (e) {}
 
   // --- Séance du jour : prochaine séance du programme (backend dashboard.prochaine_seance) ---
   try {
@@ -26053,6 +26058,7 @@ function _gererNotifTarget(target) {
     return;
   }
   if (target === 'conversation') _ouvrirConversationNotif();
+  else if (target === 'novalyz') { try { nvmAllerFil(); } catch (e) {} }
   else if (target === 'accueil' || target === 'alertes') { try { switchTab('accueil'); } catch (e) {} }
 }
 
