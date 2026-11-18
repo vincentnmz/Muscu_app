@@ -2386,7 +2386,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   if (n28 === 0) {
     constats.push({ ton: 'neutre', texte: `Aucune sortie cardio ces 4 dernières semaines.` })
   } else {
-    constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
+    constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${String(Math.round(dist28 * 10) / 10).replace('.', ',')} km au total)` : ''}.` })
     if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
     else if (actEvol != null && actEvol <= -50) constats.push({ ton: 'attention', texte: `Forte baisse de ton activité cardio (${actEvol}% de temps sur 4 semaines) — si l'endurance est un objectif, reprends progressivement.` })
     else if (actEvol != null && actEvol <= -40) constats.push({ ton: 'neutre', texte: `Ton activité cardio a baissé (${actEvol}% de temps sur 4 semaines).` })
@@ -5862,7 +5862,10 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
       let secondaire = false
       for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }
       if (secondaire) continue
-      if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: r0, n })
+      // 18/11 (vérificateur) : « bloqué à C × R » = le MEILLEUR nombre de reps du plateau (la barre à dépasser), pas celui de
+      // la dernière séance (le mail disait « 50 × 7 depuis 3 séances » alors qu'une de ces 3 séances avait fait 8).
+      const rMax = Math.max(...pts.slice(0, n).map((p: any) => num(p.reps)))
+      if (ctxA) R.attendu.push({ exo, c0, c1: c0, r0, r1 }); else R.bloque.push({ exo, c: c0, r: rMax, rDer: r0, n })
     }
   }
   return R
@@ -6064,7 +6067,7 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   } else if ((L.bloque || []).filter(_libre).length) {
     const x = L.bloque.filter(_libre)[0]; // 18/11 (audit mail) : plus de levier générique (il pouvait contredire celui de l'app, tiré du diagnostic : repos,
     // effort, volume, fréquence, gêne). Le constat est daté (fin de période) et renvoie au levier de l'app.
-    recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances (au ${fmtFR(minus(B.fin, 1)).slice(0, 5)}, fin de la période). La cause probable et le levier adapté sont dans l'app : Analyses ▸ Évolution ▸ ${_escHtml(x.exo)}.`)
+    recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances (au ${fmtFR(fmtYMD(minus(B.fin, 1))).slice(0, 5)}, fin de la période). La cause probable et le levier adapté sont dans l'app : Analyses ▸ Évolution ▸ ${_escHtml(x.exo)}.`)
   }
   const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')
@@ -7540,7 +7543,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   if (d.contexte && d.contexte.etat && d.contexte.etat !== 'saison_normale') L.push(`- Contexte de performance déclaré : ${String(d.contexte.etat).replace(/_/g, ' ')}${d.contexte.jours_restants != null ? ' (' + d.contexte.jours_restants + ' j restants)' : ''}.`)
   if (d.pause && d.pause.debut) L.push(`- Mode vacances actif (${d.pause.debut}${d.pause.fin ? ' → ' + d.pause.fin : ''}).`)
   // Séances
-  if (dash.derniere_seance && dash.derniere_seance.date) L.push(`- Dernière séance muscu : ${dash.derniere_seance.seance_id || ''} ${quand(dash.derniere_seance.date)}${dash.derniere_seance.nb_series ? ' · ' + dash.derniere_seance.nb_series + ' séries' : ''}${dash.derniere_seance.rpe_moyen ? ' · RPE moyen ' + dash.derniere_seance.rpe_moyen : ''}.`)
+  if (dash.derniere_seance && dash.derniere_seance.date) L.push(`- Dernière séance muscu : ${dash.derniere_seance.seance_id || ''} ${quand(dash.derniere_seance.date)}${dash.derniere_seance.nb_series ? ' · ' + dash.derniere_seance.nb_series + ' séries' : ''}${dash.derniere_seance.rpe_moyen ? ' · RPE moyen ' + String(dash.derniere_seance.rpe_moyen).replace('.', ',') : ''}.`)
   const reg = dash.regularite || {}
   if (reg.seances_prevues != null) L.push(`- Régularité : objectif ${reg.seances_prevues} séances/semaine ; ${reg.seances_semaine != null ? reg.seances_semaine : '—'} faites cette semaine (depuis lundi).`)
   if (dash.prochaine_seance) { const ex = (d.programme || []).filter((p: any) => p && p.seance_id === dash.prochaine_seance && p.type !== 'cardio').map((p: any) => String(p.exercice).trim()); L.push(`- Prochaine séance du programme : ${dash.prochaine_seance}${ex.length ? ' (' + ex.join(', ') + ')' : ''}. Les charges/reps visées sont dans l'app (Aujourd'hui ▸ « Ce que Novalyz vise ») — ne les invente pas.`) }

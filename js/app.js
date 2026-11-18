@@ -6705,7 +6705,9 @@ function _lectureExos(data, nowT) {
     if (n >= _NB) {
       for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
       var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
-      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+      // 18/11 (vérificateur) : « bloqué à C × R » = meilleur nombre de reps du plateau (même règle que le serveur / le mail).
+      var _rMax = Math.max.apply(null, pts.slice(0, n).map(function (p) { return num(p.reps); }));
+      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: _rMax, rDer: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
     }
   });
   return R;
@@ -15518,13 +15520,14 @@ function _maCardioRail(data) {
   var hist = (data && data.cardio && data.cardio.history) || []; if (!hist.length) return '';
   // Audit 28/10 #5 : même fenêtre (4 semaines) et même filtre (micro-sorties < 5 min
   // et < 0,3 km ignorées) que la Lecture cardio du backend → mêmes chiffres partout.
-  var cut30 = _maCutISO(28), cut7 = _maCutISO(7), n30 = 0, km30 = 0, ua7 = 0;
+  // 18/11 (vérificateur) : mêmes fenêtres que le serveur — 4 sem. = 28 jours (J-27 → J), 7 j = J-6 → J (avant 29 et 8 jours).
+  var cut30 = _maCutISO(27), cut7 = _maCutISO(6), n30 = 0, km30 = 0, ua7 = 0;
   hist.forEach(function (s) {
     var micro = (Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3;
     if (!micro && (s.date || '') >= cut30) { n30++; if (+s.distance) km30 += +s.distance; }
     if ((s.date || '') >= cut7) ua7 += _chargeInterneCardio(s);
   });
-  var tiles = [_maRailTile('Sorties 4 sem.', n30, ''), _maRailTile('Distance 4 sem.', Math.round(km30 * 10) / 10, 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
+  var tiles = [_maRailTile('Sorties 4 sem.', n30, ''), _maRailTile('Distance 4 sem.', String(Math.round(km30 * 10) / 10).replace('.', ','), 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
   return '<div class="rail-hd">Mes repères cardio</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
 }
 // Bloc « Demande à Novalyz » pour le rail des panneaux Analyses (généré en JS).
@@ -17371,7 +17374,7 @@ function _maCardioHistorique(data) {
   var rows = hist.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'][dd.getMonth()], m = _maCM(s.type_cardio);
     var isHx = (s.type_cardio || '') === 'hyrox';
-    var parts = []; if (isHx) { parts.push(_hyroxFmt(Number(s.hyrox_total) || (Number(s.duree) || 0) * 60)); } else { if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); }
+    var parts = []; if (isHx) { parts.push(_hyroxFmt(Number(s.hyrox_total) || (Number(s.duree) || 0) * 60)); } else { if (+s.distance) parts.push(String(Math.round(s.distance * 10) / 10).replace('.', ',') + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push(String(Math.round(s.vitesse_moy * 10) / 10).replace('.', ',') + ' km/h'); }
     var tap = isHx ? ' onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="padding:11px 14px;cursor:pointer;' : ' style="padding:11px 14px;';
     return '<div class="ma-hhd"' + tap + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + (isHx ? '<span style="color:var(--text-subtle);margin-left:6px">›</span>' : '') + '</div>';
   }).join('');
@@ -27167,7 +27170,7 @@ async function sauvegarderCardio() {
   var typeLabel = _CARDIO_TYPE_LABELS[type] || type;
   var stats = [];
   if (parseFloat(duree)) stats.push({ n: duree + ' min', k: 'Durée' });
-  if (dist)     stats.push({ n: dist + ' km',   k: 'Distance' });
+  if (dist)     stats.push({ n: String(dist).replace('.', ',') + ' km',   k: 'Distance' });
   if (pasCalc)  stats.push({ n: Number(pasCalc).toLocaleString('fr-FR') + ' pas', k: 'Pas' });
   if (cal)      stats.push({ n: cal + ' kcal',  k: 'Calories' });
   if (fc)       stats.push({ n: fc + ' bpm',    k: 'FC moy.' });
@@ -27540,7 +27543,7 @@ function _impApercu(d, filename) {
     + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:7px;word-break:break-all;">' + escapeHtml(filename) + ' · ' + dateFr + '</div>'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;">Type</span>'
     + '<select id="imp-type" onchange="if(_impData)_impData.type_cardio=this.value" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;">' + opts + '</select></div>'
-    + '<div>' + chip('⏱', d.duree ? d.duree + ' min' : '') + chip('', d.distance ? d.distance + ' km' : '') + chip('', d.vitesse_moy ? d.vitesse_moy + ' km/h' : '') + chip('❤', d.fc_moy ? d.fc_moy + ' bpm' : '') + chip('', d.calories ? d.calories + ' kcal' : '') + chip('⛰', d.deniv ? d.deniv + ' m D+' : '') + '</div>'
+    + '<div>' + chip('⏱', d.duree ? d.duree + ' min' : '') + chip('', d.distance ? String(d.distance).replace('.', ',') + ' km' : '') + chip('', d.vitesse_moy ? String(d.vitesse_moy).replace('.', ',') + ' km/h' : '') + chip('❤', d.fc_moy ? d.fc_moy + ' bpm' : '') + chip('', d.calories ? d.calories + ' kcal' : '') + chip('⛰', d.deniv ? d.deniv + ' m D+' : '') + '</div>'
     + (dups.length ? '<div style="margin-top:9px;font-size:12px;color:var(--warn);">Une séance de durée proche existe déjà ce jour-là — tu peux quand même importer (doublon possible).</div>' : '')
     + '<div style="display:flex;gap:8px;margin-top:12px;">'
     + '<button onclick="_impConfirmer()" style="flex:1;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">Importer la séance</button>'
@@ -28936,7 +28939,7 @@ function _renderDashCardioContent() {
   } else {
     var tiles = [
       { v: wd.sessions,    u: 'séances' },
-      { v: wd.distance ? wd.distance + ' km'   : '—', u: 'distance' },
+      { v: wd.distance ? String(wd.distance).replace('.', ',') + ' km'   : '—', u: 'distance' },
       { v: wd.duree    ? wd.duree    + ' min'  : '—', u: 'durée' },
       { v: wd.calories ? wd.calories + ' kcal' : '—', u: 'calories' }
     ];

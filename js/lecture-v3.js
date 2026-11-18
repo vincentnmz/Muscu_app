@@ -143,7 +143,7 @@ function _lv3MuscleExo(data, exo) {
   return m;
 }
 function _lv3Volume(data, muscle, nowT) {
-  var dm = (data && data.historique && data.historique.daily_muscu) || {}, k = _musKey(muscle), fin = _lv3Ymd(new Date(nowT)), deb = _lv3Ymd(new Date(nowT - 28 * 864e5));
+  var dm = (data && data.historique && data.historique.daily_muscu) || {}, k = _musKey(muscle), fin = _lv3Ymd(new Date(nowT)), _d28 = new Date(nowT); _d28.setDate(_d28.getDate() - 28); var deb = _lv3Ymd(_d28);   // 18/11 : en jours (changement d'heure)
   var s = 0, j = 0, prem = null;
   Object.keys(dm).forEach(function (d) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d >= fin) return;
@@ -156,7 +156,7 @@ function _lv3Volume(data, muscle, nowT) {
   // Audit 06/11 : on divise par les semaines RÉELLEMENT couvertes (1re séance → fin, max 4) ; avant, un compte de
   // 5 jours (18 séries d'épaule) affichait « 4,5 séries/sem, 0,5×/sem ». recul < 2 sem → pas de conclusion (appelants).
   var debEff = (prem && prem > deb) ? prem : deb;
-  var sem = prem ? Math.min(4, Math.max(0, (_lv3T(fin) - _lv3T(debEff)) / 864e5 / 7)) : 0;   // aucune séance avant → aucun recul
+  var sem = prem ? Math.min(4, Math.max(0, Math.round((_lv3T(fin) - _lv3T(debEff)) / 864e5) / 7)) : 0;   // jours entiers (changement d'heure)   // aucune séance avant → aucun recul
   var div = Math.max(1, sem);
   var cible = ((data && data.volume_obti) || []).filter(function (o) { return o && _musKey(o.muscle) === k; })[0] || null;
   return { parSem: Math.round(s / div * 10) / 10, freq: Math.round(j / div * 10) / 10, recul: Math.round(sem * 10) / 10, min: cible ? _lv3Num(cible.series_min) : null, opt: cible ? _lv3Num(cible.series_opt) : null, prio: !!(cible && cible.prio) };

@@ -30,7 +30,7 @@ function recalculer(store, appdata, now, aidForce) {
   const aid = String(aidForce || (store.athletes && store.athletes[0] && store.athletes[0].id) || '');
   const ath = (store.athletes || []).find((a) => String(a.id) === aid) || {};
   const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === aid).map((r) => ({ ...r, d: iso(r.date) })).filter((r) => r.d && r.d <= now);
-  const R = {};
+  const R = { now };
   // Records : meilleure série à vie (charge, puis reps), datée de la PREMIÈRE fois où elle a été atteinte.
   R.records = {};
   for (const r of P.slice().sort((a, b) => a.d.localeCompare(b.d))) {
@@ -145,6 +145,53 @@ function recalculer(store, appdata, now, aidForce) {
     const pct = cA > 0 ? (cP - cA) / cA * 100 : (cP > 0 ? 100 : 0);
     if (ap - av >= 1 && pct <= 2.5) R.rpeHausse[exo] = { charge: Math.round(cP * 10) / 10, avant: av, apres: ap };
   });
+  // Volume et fréquence d'un muscle sur les 4 semaines TERMINÉES (avant lundi), divisés par les semaines réellement
+  // couvertes (1re séance → lundi, max 4) ; muscle secondaire = 0,5 série et compte comme un jour travaillé.
+  R.vol4 = (muscle) => {
+    const k = cle(muscle), fin = R.lundi, deb = plusJ(fin, -28);
+    const jours = [...new Set(P.map((r) => r.d))].filter((d) => d < fin).sort(); const prem = jours[0] || null;
+    let s = 0, j = 0;
+    jours.filter((d) => d >= deb).forEach((d) => { let v = 0; P.filter((r) => r.d === d).forEach((r) => { if (r.muscle && cle(r.muscle) === k && cle(r.muscle) !== 'corps entier') v += 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) === k && cle(sm) !== cle(r.muscle)) v += 0.5; }); if (v > 0) { s += v; j++; } });
+    const debEff = prem && prem > deb ? prem : deb, sem = prem ? Math.min(4, Math.max(0, ecart(debEff, fin) / 7)) : 0, div = Math.max(1, sem);
+    return { parSem: Math.round(s / div * 10) / 10, freq: Math.round(j / div * 10) / 10, recul: sem };
+  };
+  R.muscles = [...new Set(P.map((r) => r.muscle).filter(Boolean))];
+  R.muscleDe = (exo) => { const r = P.find((x) => x.exercice === exo && x.muscle); return r ? r.muscle : null; };
+  // Journal des décisions : statut de chaque action enregistrée, recalculé sur les séances de SA semaine (lundi → dimanche).
+  const pauses = [];
+  (store.pauses || []).filter((r) => !aid || String(r.athlete_id) === aid).forEach((r) => { const d = iso(r.debut), f = iso(r.fin) || d; if (d) pauses.push({ debut: d, fin: f }); });
+  { let cur = null; (store.indicateurs || []).filter((r) => (!aid || String(r.athlete_id) === aid) && r.cle === 'pause').slice().sort((a, b) => iso(a.date).localeCompare(iso(b.date)) || num(a.id) - num(b.id)).forEach((r) => {
+    if (String(r.valeur) === 'fin') { const d = iso(r.date); if (cur && d && d < cur.fin) cur.fin = d; cur = null; return; }
+    const d = iso(r.valeur), f = iso(r.unite); if (d && f) { cur = { debut: d, fin: f }; pauses.push(cur); } }); }
+  R.journal = (dec) => {
+    const L0 = iso(dec.semaine), L1 = plusJ(L0, 7), c = dec.critere || {}, type = dec.type_action, dans = (d) => d >= L0 && d < L1;
+    let tente = false, fait = false, tot = 0, sets = [];
+    if (type === 'series') { const k = cle(dec.muscle || dec.cle); P.filter((r) => dans(r.d)).forEach((r) => { if (r.muscle && cle(r.muscle) === k && cle(r.muscle) !== 'corps entier') tot += 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) === k && cle(sm) !== cle(r.muscle)) tot += 0.5; }); tente = tot > 0; fait = tot >= num(c.min); }
+    else if (type === 'reprise') { tente = fait = P.some((r) => dans(r.d)); }
+    else {
+      if (!(num(c.charge) > 0)) return { statut: 'non_evaluable' };
+      sets = P.filter((r) => dans(r.d) && r.exercice === dec.exercice); tente = sets.length > 0;
+      if (type === 'charge') fait = sets.some((x) => num(x.charge) <= num(c.charge) + 0.01 && num(x.charge) >= (c.alt != null ? num(c.alt) : num(c.charge)) - 2.5 && num(x.reps) >= num(c.reps));
+      else if (type === 'cible') fait = sets.some((x) => num(x.charge) >= num(c.charge) && num(x.reps) >= num(c.reps));
+      else if (type === 'rpe') fait = sets.some((x) => num(x.charge) >= num(c.charge) && num(x.rpe) > 0 && num(x.rpe) <= 8);
+    }
+    if (!tente && !fait) {   // semaine de vacances ou de blessure (≥ 3 jours) : pas jugée
+      const bl = (store.blessures || []).filter((b) => (!aid || String(b.athlete_id) === aid) && b.statut !== 'gueri' && b.date).map((b) => ({ debut: iso(b.date), fin: now }));
+      (store.contexte_athlete || []).filter((x) => (!aid || String(x.athlete_id) === aid) && x.etat === 'retour_blessure' && !x.clos && (!x.date_fin || iso(x.date_fin) >= now)).forEach((x) => bl.push({ debut: iso(x.date_debut) || now, fin: iso(x.date_fin) || now }));
+      let jp = 0, jb = 0; for (let k = 0; k < 7; k++) { const dk = plusJ(L0, k), inn = (p) => p.debut <= dk && dk <= p.fin; if (pauses.some(inn)) jp++; else if (bl.some(inn)) jb++; }
+      if (jp >= 3 || jb + jp >= 3) return { statut: 'non_evaluable', jp, jb };
+    }
+    const best = sets.slice().sort((x, y) => num(y.charge) - num(x.charge) || num(y.reps) - num(x.reps))[0];
+    return { statut: fait ? 'atteint' : (tente ? 'pas_atteint' : 'pas_tente'), tente, tot, best };
+  };
+  R.decisions = (store.decisions || []).filter((d) => !aid || String(d.athlete_id) === aid);
+  // Cardio : séances = indicateurs « cardio_* » regroupés par séance ; micro-sorties (< 5 min et < 0,3 km) hors comptes.
+  // Charge interne = RPE × durée (marche = 0 ; sans RPE : estimé par la FC moyenne, sinon 5).
+  const CX = {};
+  IND.filter((r) => /^cardio_/.test(String(r.seance_id || ''))).forEach((r) => { const k = r.seance_id, d = iso(r.date); const o = CX[k] || (CX[k] = { d, type: 'autre' }); if (d && d < o.d) o.d = d; if (r.cle === 'type_cardio') o.type = String(r.valeur || 'autre'); else { const v = Number(r.valeur); if (!isNaN(v)) o[r.cle] = v; } });
+  R.cardio = Object.values(CX).filter((o) => o.d && o.d <= now);
+  R.cxCharge = (o) => { if (/^marche/i.test(o.type)) return 0; const du = num(o.duree); if (du <= 0) return 0; let rp = num(o.rpe); if (rp <= 0) { const fc = num(o.fc_moy != null ? o.fc_moy : o.fc); rp = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5; } return rp * du; };
+  R.cxMicro = (o) => num(o.duree) < 5 && num(o.distance) < 0.3;
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
   Object.values(R.parExoJour).forEach((x) => { const e = x.series[0].exercice; (R.sessions[e] = R.sessions[e] || []).push({ d: x.series[0].d, best: x.best, series: x.series.slice().sort((a, b) => num(a.serie) - num(b.serie) || num(a.id) - num(b.id)) }); });
@@ -243,9 +290,11 @@ function verifierTexte(R, ad, txt, out) {
   const S = sections(txt);
   // B1. Nombres décimaux au format français (virgule) : « 12.5 kg », « 4.5 / 9 » interdits.
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
-    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/);
+    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|km\/h|km\b|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/);
     if (m && !/^\d{1,2}\.\d{2}$/.test(m[2]) && !/v\d|version/i.test(l)) E('format.decimal', nom + ' : « ' + l.trim().slice(0, 80) + ' » (point au lieu de virgule)');
   }));
+  // B0. Texte cassé : valeur absente ou date brute affichée (« undefined », « NaN », « Invalid Date », « Sun Nov … »).
+  Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.match(/\b(undefined|NaN|Invalid Date|null kg)\b|\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|N\b)/); if (m) E('texte.casse', nom + ' : « ' + l.trim().slice(0, 90) + ' »'); }));
   // B2. Force estimée : la tuile et la 1re ligne du tableau (même séance) donnent le même chiffre.
   Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
     const iT = L.findIndex((l) => l.trim() === 'FORCE ESTIMÉE'), iH = L.findIndex((l) => l.trim() === 'FORCE EST.');
@@ -339,8 +388,8 @@ function verifierTexte(R, ad, txt, out) {
         if ((m = l.match(/^En progrès : (.+)$/)) && !/,/.test(m[1].replace(/\d,\d/g, ''))) { const x = progres(exoSec, m[1]); ctrl('classement.progres', nom, l, !x, x); }
         return;
       }
-      if ((m = l.match(/^Records? : (.+)$/))) m[1].split(/ · |, (?=[A-ZÉÈÀ])/).forEach((it) => { const e = exoDe(it.trim()); const k = e && it.trim().slice(e.length).match(/^ ([\d,]+)(?: kg)? × (\d+)$/); if (k) { const x = record(e, kgN(k[1]), +k[2]); ctrl('classement.record', nom, e + ' ' + it.trim().slice(e.length), !x, x); } });
-      if ((m = l.match(/^Progresse : (.+)$/))) m[1].split(' · ').forEach((it) => { const e = exoDe(it.trim()); if (e) { const x = progres(e, it.trim().slice(e.length).trim()); ctrl('classement.progres', nom, it.trim(), !x, x); } });
+      if ((m = l.match(/^Records? (?::|—) (.+?)(?: \([^)]*\))?$/))) m[1].split(/ · |, (?=[A-ZÉÈÀ])/).forEach((it) => { it = it.replace(/ \+\d+( autres?)?$/, ''); const e = exoDe(it.trim()); const k = e && it.trim().slice(e.length).match(/^ ([\d,]+)(?: kg)? × (\d+)$/); if (k) { const x = record(e, kgN(k[1]), +k[2]); ctrl('classement.record', nom, e + ' ' + it.trim().slice(e.length), !x, x); } });
+      if ((m = l.match(/^Progresse (?::|—) (.+?)(?: \((?:charge|reps)[^)]*\))?$/))) m[1].split(/ · |, (?=[A-ZÉÈÀ])/).forEach((it) => { it = it.replace(/ \+\d+( autres?)?$/, '').replace(/(\d)→(\d)/g, '$1 → $2'); const e = exoDe(it.trim()); if (e) { const x = progres(e, it.trim().slice(e.length).trim()); ctrl('classement.progres', nom, it.trim(), !x, x); } });
       if ((m = l.match(/^Sous ta fourchette : (.+) \(RPE ([\d,]+)\)$/))) { const e = exoDe(m[1]); const k = e && m[1].slice(e.length).match(/^ ([\d,]+) × (\d+)$/); if (k) { const x = sous(e, kgN(k[1]), +k[2], num(m[2]), null, null); ctrl('classement.sous', nom, l, !x, x); } }
       if ((m = l.match(/^Bloqué : (.+) ([\d,]+) × (\d+) depuis (\d+) séances$/))) { const e = exoDe(m[1]); if (e) { const x = bloque(e, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
     });
@@ -391,13 +440,99 @@ function verifierTexte(R, ad, txt, out) {
   Object.entries(S).filter(([n]) => !/^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
     let cur = null;
     L.forEach((l0) => { const l = l0.trim(); let m;
-      const e = EXOS.find((x) => l.indexOf(x) >= 0); if (e) cur = e;
+      { const pq = l.match(/^Pourquoi \(([^)]+)\)/); if (pq && EXOS.includes(pq[1].trim())) cur = pq[1].trim(); else if (!/^(Pourquoi|Levier)/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; } }
       if ((m = l.match(/^(.+) bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
-      if (!cur || !/^(Pourquoi|Levier)/.test(l)) return;
+      if (!cur || !/^(Pourquoi|Levier)|Effort en hausse à/.test(l)) return;
       if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/))) { const b = R.rpeHausse[cur]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' · ' + cur + ' : « ' + m[0] + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
       if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/))) { const P = R.sessions[cur] || []; if (P.length) { const c0 = num(P[0].best.charge), tr = P[0].series.filter((x) => num(x.charge) === c0 && num(x.repos) > 0); if (tr.length) { const r15 = Math.round(tr.reduce((a, x) => a + num(x.repos), 0) / tr.length / 15) * 15, rtx = (n) => { const mm = Math.floor(n / 60), r = n % 60; return mm ? mm + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; }; if (m[1] !== rtx(r15) || m[2] !== rtx(r15 + 30)) E('levier.repos', nom + ' · ' + cur + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(r15)); } } }
     });
   });
+  // B12. Volume / fréquence du muscle cités dans « Pourquoi ça bloque » et les leviers (4 semaines terminées).
+  const ctlVol = (nom, exo, l) => {
+    const mu = R.muscleDe(exo); if (!mu) return; const V = R.vol4(mu); let m;
+    if ((m = l.match(/Volume [^:]+ : ([\d,]+) séries\/sem/))) { if (num(m[1]) !== V.parSem) E('levier.volume', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.parSem) + ' séries/sem (' + mu + ')'); }
+    if ((m = l.match(/Fréquence [^:]+ : ([\d,]+)×\/sem/)) || (m = l.match(/Travaillé ([\d,]+)×\/sem/))) { if (num(m[1]) !== V.freq) E('levier.frequence', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.freq) + '×/sem (' + mu + ')'); }
+    if ((m = l.match(/\(([\d,]+) → (\d+) séries\/sem\)/))) { if (num(m[1]) !== V.parSem) E('levier.volume', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.parSem) + ' séries/sem'); }
+    if ((m = l.match(/\(([\d,]+)×\/sem aujourd'hui\)/))) { if (num(m[1]) !== V.freq) E('levier.frequence', nom + ' · ' + exo + ' : « ' + m[0] + ' », recalculé ' + f1(V.freq) + '×/sem'); }
+  };
+  Object.entries(S).forEach(([nom, L]) => {
+    const exoSec = (nom.match(/^ÉVOLUTION ▸ (.+)$/) || [])[1]; let cur = exoSec || null;
+    L.forEach((l0) => { const l = l0.trim();
+      if (!exoSec) {
+        const pq = l.match(/^Pourquoi \(([^)]+)\)/); if (pq && EXOS.includes(pq[1].trim())) cur = pq[1].trim();   // « Pourquoi (Squat) : … »
+        else if (!/^(Pourquoi|Levier|[✓✗])/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; }   // 1er exercice cité de la ligne
+      }
+      if (cur && /(Volume [^:]+ : [\d,]+ séries\/sem|Fréquence [^:]+ : [\d,]+×\/sem|Travaillé [\d,]+×\/sem|séries\/sem\)|×\/sem aujourd'hui\))/.test(l)) ctlVol(nom, cur, l); });
+  });
+  // B13. Journal des décisions : statut affiché, « Réalisé : … », « N / M tentée(s) » = recalcul.
+  const STAT = { 'Atteint': 'atteint', 'Pas atteint': 'pas_atteint', 'Pas tenté': 'pas_tente', 'Non évaluable': 'non_evaluable' };
+  Object.entries(S).forEach(([nom, L]) => {
+    let sem = null, entete = null, vus = [];
+    const clore = () => { if (entete && vus.length) { const t = vus.filter((x) => x.tente).length; if (t !== entete[0] || vus.length !== entete[1]) E('journal.compte', nom + ' · semaine du ' + fr(sem).slice(0, 5) + ' : « ' + entete[0] + ' / ' + entete[1] + ' tentée » , recalculé ' + t + ' / ' + vus.length); } vus = []; entete = null; };
+    L.forEach((l0, i) => { const l = l0.trim(); let m;
+      if ((m = l.match(/^Semaine du (\d{2})\/(\d{2})$/))) { clore(); const an = R.lundi.slice(0, 4); let d = an + '-' + m[2] + '-' + m[1]; if (d > R.lundi) d = (+an - 1) + '-' + m[2] + '-' + m[1]; sem = d; return; }
+      if (sem && (m = l.match(/^(\d+) \/ (\d+) tentées?$/))) { entete = [+m[1], +m[2]]; return; }
+      if (!sem) return;
+      m = l.match(/^(Atteint|Pas atteint|Pas tenté|Non évaluable)(.+)$/); if (!m) return;
+      const dec = R.decisions.find((d) => iso(d.semaine) === sem && String(d.titre).trim().replace(/ cette semaine$/, '') === m[2].trim().replace(/ cette semaine$/, '')); if (!dec) { E('journal.inconnu', nom + ' : « ' + m[2].trim() + ' » (semaine du ' + fr(sem).slice(0, 5) + ') absent du journal enregistré'); return; }
+      const J = R.journal(dec); vus.push(J);
+      if (STAT[m[1]] !== J.statut) E('journal.statut', nom + ' · ' + m[2].trim() + ' : « ' + m[1] + ' », recalculé « ' + Object.keys(STAT).find((k) => STAT[k] === J.statut) + ' »');
+      const det = String(L[i + 1] || ''); let k;
+      if ((k = det.match(/Réalisé : ([\d,]+) séries? \(objectif (\d+)\)/)) && num(k[1]) !== J.tot) E('journal.realise', nom + ' · ' + m[2].trim() + ' : « ' + k[0] + ' », recalculé ' + f1(J.tot) + ' séries');
+      if ((k = det.match(/Réalisé : ([\d,]+) kg × (\d+)(?: \(RPE ([\d,]+)\))?\./)) && (!J.best || num(k[1]) !== num(J.best.charge) || +k[2] !== num(J.best.reps) || (k[3] && num(k[3]) !== num(J.best.rpe)))) E('journal.realise', nom + ' · ' + m[2].trim() + ' : « ' + k[0] + ' », recalculé ' + (J.best ? num(J.best.charge) + ' × ' + num(J.best.reps) + ' (RPE ' + num(J.best.rpe) + ')' : 'aucune série'));
+      if ((k = det.match(/Semaine de vacances \((\d+) jours en pause\)/)) && J.jp !== +k[1]) E('journal.pause', nom + ' · ' + m[2].trim() + ' : « ' + k[0] + ' », recalculé ' + J.jp + ' jours');
+    });
+    clore();
+  });
+  // B14. Plan de la semaine : actions affichées = actions enregistrées au journal (même semaine), compte « N / M fait »,
+  // « Semaine dernière : … », « Rien à changer : muscle X séries/sem ».
+  const decSem = R.decisions.filter((d) => iso(d.semaine) === R.lundi), decPrec = R.decisions.filter((d) => iso(d.semaine) === plusJ(R.lundi, -7));
+  const normT = (t) => String(t || '').replace(/ · .*$/, '').replace(/ cette semaine$/, '').replace(/^★ /, '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/s\b/g, '');
+  Object.entries(S).forEach(([nom, L]) => {
+    const i0 = L.findIndex((l) => /^TON PLAN DE LA SEMAINE$/.test(l.trim())); if (i0 < 0) return;
+    const cpt = String(L[i0 + 1] || '').trim().match(/^(\d+) \/ (\d+)( fait)?$/);
+    const actifs = [], pause = [], MARK = /^(\d+|⏸|✓)$/, STOP = (l) => /^(Semaine dernière|Rien à changer|Ce sont des propositions|Voir le détail)/.test(l) || (l.length > 3 && l === l.toUpperCase() && /[A-ZÉ]/.test(l));
+    let parMarques = false; for (let i = i0 + 2; i < L.length; i++) { const l = L[i].trim(); if (STOP(l)) break; if (/^\d+$/.test(l)) { parMarques = true; break; } }   // Résumé : « 1 / ⏸ / ✓ » puis titre puis raison ; Aujourd'hui : titres à la suite
+    for (let i = i0 + 2; i < L.length; i++) { const l = L[i].trim(); if (STOP(l)) break; if (MARK.test(l)) continue;
+      if (/^⚠/.test(l)) continue;   // note de gêne, pas une action
+      const prev = String(L[i - 1] || '').trim(); if (parMarques && !MARK.test(prev)) continue;
+      (prev === '⏸' ? pause : actifs).push(l); }
+    const tous = actifs.concat(pause);
+    if (decSem.length) tous.forEach((t) => { if (!decSem.some((d) => normT(d.titre) === normT(t))) E('plan.journal', nom + ' : action affichée « ' + t.slice(0, 70) + ' » absente du journal enregistré pour cette semaine (le journal jugera autre chose)'); });
+    if (decSem.length) decSem.forEach((d) => { if (tous.length && !tous.some((t) => normT(t) === normT(d.titre))) E('plan.journal', nom + ' : action enregistrée « ' + String(d.titre).slice(0, 70) + ' » n\'est plus affichée dans le plan'); });
+    if (cpt) { const faits = actifs.map((t) => decSem.find((d) => normT(d.titre) === normT(t))).filter(Boolean).filter((d) => { const L1 = R.lundi; return R.journal({ ...d, semaine: L1 }).statut === 'atteint'; }).length;
+      if (+cpt[2] !== actifs.length) E('plan.compte', nom + ' : « ' + cpt[0] + ' » mais ' + actifs.length + ' action(s) active(s) affichée(s)');
+      else if (actifs.every((t) => decSem.some((d) => normT(d.titre) === normT(t))) && +cpt[1] !== faits) E('plan.compte', nom + ' : « ' + cpt[0] + ' », recalculé ' + faits + ' faite(s) sur ' + actifs.length); }
+    L.forEach((l0) => { const l = l0.trim(); let m;
+      if ((m = l.match(/^(\d+) actions? proposées? · (\d+) tentées? · (\d+) objectifs? atteints?\.?$/)) && decPrec.length) { const J = decPrec.map((d) => R.journal(d)); const t = J.filter((x) => x.tente).length, at = J.filter((x) => x.statut === 'atteint').length; if (+m[1] !== decPrec.length || +m[2] !== t || +m[3] !== at) E('plan.semaine_derniere', nom + ' : « ' + l + ' », recalculé ' + decPrec.length + ' proposées · ' + t + ' tentée(s) · ' + at + ' atteint(s)'); }
+      if ((m = l.match(/^Rien à changer : (.+?) séries\/sem/))) m[1].split(' · ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+)$/); if (!k) return; const mu = R.muscles.find((x) => cle(x) === cle(k[1])); if (mu) { const V = R.vol4(mu); if (num(k[2]) !== V.parSem) E('plan.rien_a_changer', nom + ' : « ' + it + ' séries/sem », recalculé ' + f1(V.parSem)); } });
+    });
+  });
+  // B15. Cardio : résumé « N sorties ces 4 semaines (X km) », tuiles « Sorties / Distance 4 sem. », « Charge 7 j »,
+  // lignes d'historique (date, distance, durée, vitesse).
+  if (R.cardio && R.cardio.length) {
+    const now = R.now, c28 = plusJ(now, -27), c7 = plusJ(now, -6);
+    const s28 = R.cardio.filter((o) => o.d >= c28 && !R.cxMicro(o)), n28 = s28.length, km28 = Math.round(s28.reduce((a, o) => a + num(o.distance), 0) * 10) / 10;
+    const ua7 = Math.round(R.cardio.filter((o) => o.d >= c7).reduce((a, o) => a + R.cxCharge(o), 0));
+    const hms = (m) => { m = Math.round(m || 0); const h = Math.floor(m / 60); return h ? h + 'h' + String(m % 60).padStart(2, '0') : m + ' min'; };
+    const MOIS = { JANV: '01', 'FÉVR': '02', MARS: '03', AVR: '04', MAI: '05', JUIN: '06', JUIL: '07', 'AOÛT': '08', SEPT: '09', OCT: '10', NOV: '11', 'DÉC': '12' };
+    Object.entries(S).forEach(([nom, L]) => {
+      L.forEach((l0, i) => { const l = l0.trim(); let m;
+        if ((m = l.match(/^(\d+) sorties? cardio ces 4 semaines(?: \(([\d,]+) km au total\))?\.$/))) { if (+m[1] !== n28 || (m[2] && num(m[2]) !== km28)) E('cardio.resume', nom + ' : « ' + l + ' », recalculé ' + n28 + ' sortie(s), ' + f1(km28) + ' km (28 jours, micro-sorties exclues)'); }
+        const v = String(L[i + 1] || '').trim();
+        if (l === 'SORTIES 4 SEM.' && v && +v !== n28) E('cardio.tuile', nom + ' : sorties 4 sem. ' + v + ', recalculé ' + n28);
+        if (l === 'DISTANCE 4 SEM.' && v && Math.abs(num(v.replace(/\s*km$/, '')) - km28) > 0.05) E('cardio.tuile', nom + ' : distance 4 sem. ' + v + ', recalculé ' + f1(km28) + ' km');
+        if (l === 'CHARGE 7 J' && /UA$/.test(v) && Math.abs(num(v.replace(/\D/g, '')) - ua7) > 1) E('cardio.tuile', nom + ' : charge 7 j ' + v + ', recalculé ' + ua7 + ' UA');
+        // Historique : « 13 » / « NOV » / sport / « 1,7 km · 1h10 · 1,5 km/h »
+        if (/^\d{1,2}$/.test(l) && MOIS[String(L[i + 1] || '').trim()] && /CARDIO/.test(nom)) {
+          const mo = MOIS[String(L[i + 1]).trim()], an = (mo > now.slice(5, 7) ? +now.slice(0, 4) - 1 : +now.slice(0, 4)), d = an + '-' + mo + '-' + l.padStart(2, '0');
+          const det = String(L[i + 3] || '').trim(); if (!/km|h\d|min/.test(det)) return;
+          const cand = R.cardio.filter((o) => o.d === d), fmt = (o) => [num(o.distance) ? f1(num(o.distance)) + ' km' : null, num(o.duree) ? hms(o.duree) : null, num(o.vitesse_moy) ? f1(num(o.vitesse_moy)) + ' km/h' : null].filter(Boolean).join(' · ');
+          if (!cand.some((o) => fmt(o) === det)) E('cardio.historique', nom + ' : ' + l + ' ' + String(L[i + 1]).trim() + ' « ' + det + ' », séances ce jour-là : ' + (cand.map(fmt).join(' | ') || 'aucune'));
+        }
+      });
+    });
+  }
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
@@ -415,7 +550,17 @@ function verifierTexte(R, ad, txt, out) {
 
 // ── C. Vue coach ▸ Équipe : chaque ligne d'athlète = recalcul sur SES séries (RPE 7 j, tonnage 7 j et son évolution) ──
 function verifierCoach(store, ecrans, now, out) {
-  const S = sections(ecrans), L = S['COACH equipe']; if (!L) return;
+  const S = sections(ecrans);
+  // Fiche coach d'un athlète (Aperçu, Analyses, Forme) : mêmes règles que les écrans de l'athlète, sur SES données.
+  const parAth = {};
+  Object.entries(S).forEach(([n, L]) => { const m = n.match(/^FICHE (.+?) ▸ /); if (m) (parAth[m[1].trim()] = parAth[m[1].trim()] || []).push('######## ' + n + '\n' + L.join('\n')); });
+  Object.entries(parAth).forEach(([nomA, blocs]) => {
+    const a = (store.athletes || []).find((x) => String(x.nom || '').trim() === nomA); if (!a) return;
+    const R = recalculer(store, null, now, String(a.id)), o = [];
+    verifierTexte(R, {}, blocs.join('\n'), o);
+    o.forEach((x) => out.push({ ...x, message: 'Fiche coach · ' + x.message }));
+  });
+  const L = S['COACH equipe']; if (!L) return;
   const noms = {}; (store.athletes || []).forEach((a) => { if (a && a.nom) noms[String(a.nom).trim()] = String(a.id); });
   for (let i = 0; i < L.length; i++) {
     const aid = noms[L[i].trim()]; if (!aid) continue;
@@ -437,20 +582,85 @@ function verifierCoach(store, ecrans, now, out) {
   }
 }
 
-function verifier({ store, appdata, ecrans, now }) {
+// ── D. Mail récapitulatif (bilan de la période) : chiffres recalculés sur la période [début, fin[ ──
+// Mail (HTML) : aucun texte cassé, nombres décimaux à la française.
+function verifierMailHtml(html, out) {
+  const t = String(html || '').replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+  let m; const re = /\b(undefined|NaN|Invalid Date)\b|\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|N\b)|(?<![\d.])\d+\.\d+(?= ?(kg|t\b|séries|h\b|%))/g;
+  while ((m = re.exec(t))) out.push({ code: 'mail.texte', gravite: 'erreur', message: 'Mail : « …' + t.slice(Math.max(0, m.index - 40), m.index + 40).trim() + '… »' });
+}
+function verifierBilan(store, b, aid, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message: 'Mail ' + b.per + ' : ' + message });
+  const d0 = b.bornes.debut, d1 = b.bornes.fin, jours = Math.round((new Date(d1 + 'T12:00:00Z') - new Date(d0 + 'T12:00:00Z')) / 864e5);
+  const fin1 = plusJ(d1, -1), R = recalculer(store, null, fin1, aid);   // état à la fin de la période
+  const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === String(aid)).map((r) => ({ ...r, d: iso(r.date) }));
+  const dansP = P.filter((r) => r.d >= d0 && r.d < d1), dPrec = plusJ(d0, -jours);
+  const seances = new Set(dansP.map((r) => r.d)).size, seancesPrec = new Set(P.filter((r) => r.d >= dPrec && r.d < d0).map((r) => r.d)).size;
+  if (b.seances !== seances) E('mail.seances', b.seances + ' séance(s), recalculé ' + seances);
+  if (b.seancesPrec != null && b.seancesPrec !== seancesPrec && b.per === 'semaine') E('mail.seances_prec', 'période précédente ' + b.seancesPrec + ', recalculé ' + seancesPrec);
+  const ton = Math.round(dansP.reduce((x, r) => x + num(r.charge) * num(r.reps), 0)); if (Math.abs(num(b.tonnage) - ton) > 1) E('mail.tonnage', b.tonnage + ' kg, recalculé ' + ton);
+  if (b.series !== dansP.length) E('mail.series', b.series + ' séries, recalculé ' + dansP.length);
+  const reps = dansP.reduce((x, r) => x + num(r.reps), 0); if (b.reps !== reps) E('mail.reps', b.reps + ' reps, recalculé ' + reps);
+  const rr = dansP.filter((r) => num(r.rpe) > 0), rpe = rr.length ? Math.round(rr.reduce((x, r) => x + num(r.rpe), 0) / rr.length * 10) / 10 : null; if (b.rpe != null && b.rpe !== rpe) E('mail.rpe', 'RPE ' + b.rpe + ', recalculé ' + rpe);
+  // Jours de vacances dans la période.
+  let jp = 0; const pz = []; (store.pauses || []).filter((r) => !aid || String(r.athlete_id) === String(aid)).forEach((r) => pz.push({ debut: iso(r.debut), fin: iso(r.fin) || iso(r.debut) }));
+  { let cur = null; (store.indicateurs || []).filter((r) => (!aid || String(r.athlete_id) === String(aid)) && r.cle === 'pause').slice().sort((a, c) => iso(a.date).localeCompare(iso(c.date)) || num(a.id) - num(c.id)).forEach((r) => { if (String(r.valeur) === 'fin') { const d = iso(r.date); if (cur && d && d < cur.fin) cur.fin = d; cur = null; return; } const d = iso(r.valeur), f = iso(r.unite); if (d && f) { cur = { debut: d, fin: f }; pz.push(cur); } }); }
+  for (let k = 0; k < jours; k++) { const dk = plusJ(d0, k); if (pz.some((p) => p.debut <= dk && dk <= p.fin)) jp++; }
+  if (b.pauseJours != null && b.pauseJours !== jp) E('mail.pause', b.pauseJours + ' jour(s) de vacances, recalculé ' + jp);
+  // Volume moyen par semaine sur la période (secondaire 0,5) et équilibres.
+  const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
+  const vol = {}; dansP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') vol[cle(r.muscle)] = (vol[cle(r.muscle)] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) vol[cle(sm)] = (vol[cle(sm)] || 0) + 0.5; });
+  (b.volume || []).forEach((v) => { const att = Math.round((vol[cle(v.muscle)] || 0) / (jours / 7) * 10) / 10; if (Math.abs(num(v.parSem) - att) > 0.051) E('mail.volume', v.muscle + ' ' + v.parSem + ' séries/sem, recalculé ' + att); });
+  (b.balance || []).forEach((x) => { const a = vol[cle(x.a)] || 0, c = vol[cle(x.b)] || 0; if (a + c > 0) { const pa = Math.round(a / (a + c) * 100); if (Math.abs(pa - x.pa) > 1) E('mail.balance', x.a + '/' + x.b + ' ' + x.pa + '/' + x.pb + ', recalculé ' + pa + '/' + (100 - pa)); } });
+  // Records de la période : chaque record cité bat bien tout ce qui précède, à sa date.
+  (b.records || []).forEach((x) => { const S0 = (R.sessions[x.exo] || []); const i = S0.findIndex((p) => p.d === iso(x.date)); if (i < 0) { E('mail.record', x.exo + ' ' + x.c + ' × ' + x.r + ' le ' + fr(iso(x.date)) + ' : aucune séance ce jour-là'); return; }
+    const ok = S0[i].series.some((sr) => num(sr.charge) === num(x.c) && num(sr.reps) === num(x.r)); let bc = -1, br = -1; S0.slice(i + 1).forEach((p) => p.series.forEach((sr) => { const c = num(sr.charge), rr2 = num(sr.reps); if (c > bc) { bc = c; br = rr2; } else if (c === bc && rr2 > br) br = rr2; }));
+    if (!ok || !(S0.length > i + 1) || !(num(x.c) > bc || (num(x.c) === bc && num(x.r) > br))) E('mail.record', x.exo + ' ' + x.c + ' × ' + x.r + ' le ' + fr(iso(x.date)) + ' : ' + (!ok ? 'série absente ce jour-là' : 'ne bat pas le meilleur d\'avant (' + bc + ' × ' + br + ')')); });
+  // Classement à la fin de la période (bloqué / sous la fourchette) = séries brutes jusqu'à cette date.
+  const L = b.lecture || {};
+  (L.bloque || []).forEach((x) => { const P2 = R.sessions[x.exo] || [], n = num(x.n); const W = P2.slice(0, n); const bad = P2.length < n ? 'seulement ' + P2.length + ' séances' : (W.some((p) => num(p.best.charge) !== num(x.c)) ? 'les ' + n + ' dernières séances ne sont pas toutes à ' + x.c + ' kg' : (Math.max(...W.map((p) => num(p.best.reps))) !== num(x.r) ? 'meilleur nombre de reps ' + Math.max(...W.map((p) => num(p.best.reps))) : (num(W[n - 1].best.reps) !== num(x.r) ? 'plateau plus court' : null))); if (bad) E('mail.bloque', x.exo + ' ' + x.c + ' × ' + x.r + ' depuis ' + n + ' séances (au ' + fr(fin1).slice(0, 5) + ') : ' + bad); });
+  (L.sous || []).forEach((x) => { const P2 = R.sessions[x.exo] || []; if (!P2.length) return; const S0 = P2[0], ser = S0.series.filter((sr) => num(sr.reps) > 0), rp = Math.max(...ser.map((sr) => num(sr.rpe))); if (num(S0.best.charge) !== num(x.c) || num(S0.best.reps) !== num(x.r) || rp !== num(x.rpe) || !(ser.filter((sr) => num(sr.reps) < num(x.rmin)).length * 2 > ser.length)) E('mail.sous', x.exo + ' ' + x.c + ' × ' + x.r + ' (RPE ' + x.rpe + ') : dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps) + ' (RPE ' + rp + ')'); });
+}
+
+// ── E. Contexte envoyé à l'IA : chaque chiffre = recalcul (l'IA ne doit recevoir que des faits justes) ──
+function verifierIA(store, txt, now, aid, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message: 'Contexte IA : ' + message });
+  const R = recalculer(store, null, now, aid), L = String(txt || '').split('\n');
+  const BE = (store.bien_etre || []).filter((b) => !aid || String(b.athlete_id) === String(aid)).map((b) => ({ ...b, d: iso(b.date) })).filter((b) => b.d && b.d <= now).sort((a, b) => b.d.localeCompare(a.d));
+  const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === String(aid)).map((r) => ({ ...r, d: iso(r.date) })).filter((r) => r.d && r.d <= now);
+  const exos = Object.keys(R.sessions).sort((a, b) => b.length - a.length), exoDe = (t) => exos.find((e) => t.indexOf(e) === 0);
+  L.forEach((l) => { let m;
+    if (/(?<![\d/.])\d+\.\d+(?!\.\d)/.test(l.replace(/https?:\S+/g, '')) && !/\d{4}-\d{2}-\d{2}/.test(l)) E('ia.format', '« ' + l.slice(0, 90) + ' » (point décimal)');
+    if ((m = l.match(/^- Dernier questionnaire \((?:[^()]|\([^()]*\))*\) : (.+?) \(sommeil :/))) { const b = BE[0]; if (!b) { E('ia.questionnaire', 'questionnaire cité, aucun en base'); return; }
+      const col = { sommeil: 'sommeil', fatigue: 'fatigue_musculaire', stress: 'stress', courbatures: 'courbatures', douleur: 'douleur' };
+      m[1].split(', ').forEach((it) => { const k = it.match(/^(\w+) (\d+)\/5$/); if (k && col[k[1]] && num(b[col[k[1]]]) !== +k[2]) E('ia.questionnaire', k[1] + ' ' + k[2] + '/5, dernière saisie ' + b[col[k[1]]] + '/5 (' + fr(b.d) + ')'); }); }
+    if ((m = l.match(/^- Dernière séance muscu : .* · (\d+) séries(?: · RPE moyen ([\d,]+))?\.$/))) { const d = P.map((r) => r.d).sort().pop(), S0 = P.filter((r) => r.d === d), rr = S0.filter((r) => num(r.rpe) > 0), rp = rr.length ? Math.round(rr.reduce((x, r) => x + num(r.rpe), 0) / rr.length * 10) / 10 : null;
+      if (+m[1] !== S0.length) E('ia.seance', m[1] + ' séries, recalculé ' + S0.length + ' (' + fr(d) + ')'); if (m[2] && num(m[2]) !== rp) E('ia.seance', 'RPE moyen ' + m[2] + ', recalculé ' + f1(rp)); }
+    if ((m = l.match(/^- Régularité : objectif (\d+) séances\/semaine ; (\d+|—) faites cette semaine \(depuis lundi\)/)) && m[2] !== '—' && +m[2] !== R.seancesSemaine) E('ia.regularite', m[2] + ' séances depuis lundi, recalculé ' + R.seancesSemaine);
+    if ((m = l.match(/^- Records récents : (.+)\.$/))) m[1].split(' ; ').forEach((it) => { const e = exoDe(it); const k = e && it.slice(e.length).match(/^ ([\d,]+) kg × (\d+)/); if (k) { const P2 = R.sessions[e] || []; const i = P2.findIndex((p) => num(p.best.charge) === num(k[1]) && num(p.best.reps) === +k[2]); let ok = i >= 0 && P2.length > i + 1; if (ok) { let bc = -1, br = -1; P2.slice(i + 1).forEach((p) => { const c = num(p.best.charge), r = num(p.best.reps); if (c > bc) { bc = c; br = r; } else if (c === bc && r > br) br = r; }); ok = num(k[1]) > bc || (num(k[1]) === bc && +k[2] > br); } if (!ok) E('ia.record', it + ' : pas un record dans les séries'); } });
+    if ((m = l.match(/^- Bloqués \([^)]*\) : (.+)\.$/))) m[1].split(' ; ').forEach((it) => { const k = it.match(/^(.+) à ([\d,]+) kg × (\d+) depuis (\d+) séances$/); if (!k) return; const P2 = R.sessions[k[1].trim()] || [], n = +k[4], W = P2.slice(0, n); if (P2.length < n || W.some((p) => num(p.best.charge) !== num(k[2])) || Math.max(...W.map((p) => num(p.best.reps))) !== +k[3]) E('ia.bloque', it + ' : pas conforme aux ' + n + ' dernières séances'); });
+    if ((m = l.match(/^- Sous la fourchette de reps : (.+)\.$/))) m[1].split(/\), (?=[A-ZÉ])/).forEach((it) => { const k = it.match(/^(.+?) \(fourchette (\d+)-(\d+) reps ; dernière fois ([\d,]+) kg × (\d+) à RPE ([\d,]+)/); if (!k) return; const P2 = R.sessions[k[1].trim()] || []; if (!P2.length) return; const S0 = P2[0], f = R.fourchette(k[1].trim()); if (num(S0.best.charge) !== num(k[4]) || num(S0.best.reps) !== +k[5] || f.rmin !== +k[2] || f.rmax !== +k[3]) E('ia.sous', it.slice(0, 80) + ' : dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps) + ', fourchette ' + f.rmin + '-' + f.rmax); });
+    if ((m = l.match(/^- Volume de la semaine en cours, (depuis lundi|sur les 7 derniers jours) \(séries faites \/ minimum hebdo\) : (.+)\.$/))) {
+      if ((m[1] === 'depuis lundi') !== (R.semaineType === 'calendaire')) E('ia.volume', 'fenêtre « ' + m[1] + ' » alors que le réglage est ' + R.semaineType);
+      m[2].split(', ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+)\/(\d+)$/); if (k && Math.abs(num(k[2]) - (R.volume[cle(k[1])] || 0)) > 0.01) E('ia.volume', k[1] + ' ' + k[2] + ' séries, recalculé ' + f1(R.volume[cle(k[1])] || 0)); }); }
+    if ((m = l.match(/^- Poids : ([\d,]+) kg/))) { const ph = (store.poids_historique || []).filter((x) => !aid || String(x.athlete_id) === String(aid)).sort((a, b) => iso(b.date).localeCompare(iso(a.date)))[0]; if (ph && num(ph.poids) !== num(m[1])) E('ia.poids', m[1] + ' kg, dernière pesée ' + ph.poids + ' kg (' + fr(iso(ph.date)) + ')'); }
+  });
+}
+
+function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
-  const R = recalculer(store, appdata, jour), out = [];
+  const R = recalculer(store, appdata, jour, aid), out = [];
   if (appdata) verifierDonnees(R, appdata, out);
   if (appdata) verifierTexte(R, appdata, ecrans, out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
-module.exports = { verifier, recalculer };
+module.exports = { verifier, recalculer, verifierBilan, verifierMailHtml, verifierIA };
 
 if (require.main === module) {
   const fs = require('fs');
-  const [db, ad, ec, j] = process.argv.slice(2);
-  const res = verifier({ store: JSON.parse(fs.readFileSync(db, 'utf8')), appdata: ad && ad !== '-' ? JSON.parse(fs.readFileSync(ad, 'utf8')) : null, ecrans: ec ? fs.readFileSync(ec, 'utf8') : '', now: j });
+  const [db, ad, ec, j, aidCli] = process.argv.slice(2);
+  const res = verifier({ store: JSON.parse(fs.readFileSync(db, 'utf8')), appdata: ad && ad !== '-' ? JSON.parse(fs.readFileSync(ad, 'utf8')) : null, ecrans: ec ? fs.readFileSync(ec, 'utf8') : '', now: j, aid: aidCli });
   if (!res.length) console.log('✓ aucun écart'); else res.forEach((x) => console.log('✗ [' + x.code + '] ' + x.message));
   process.exit(res.length ? 1 : 0);
 }
