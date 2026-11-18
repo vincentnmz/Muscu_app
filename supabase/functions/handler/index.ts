@@ -5920,6 +5920,8 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   out.seancesPrec = new Set(inPrev.map((r: any) => normDate(r.date))).size
   out.objectif = objectif
   out.prevues = objectif ? Math.round(objectif * sem) : 0
+  // 18/11 (audit mail) : jours de vacances (mode pause) dans la période → dits dans le bilan (« 1/4 » d'une semaine de vacances).
+  try { let pj = 0; for (let t = new Date(B.debut); fmtYMD(t) < d1; t = minus(t, -1)) { const k = fmtYMD(t); if (((ad.pauses_hist || []) as any[]).some((p: any) => p && p.debut <= k && k <= p.fin)) pj++ } out.pauseJours = pj } catch (_) { out.pauseJours = 0 }
   if (per !== 'semaine') {
     const semaines: any[] = []
     let lun = getLundi(B.debut)
@@ -6027,11 +6029,11 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   // H (14/11, validé porteur) = app `_lv3DouleurForte` : douleur forte → hors zone, maintien ; pas de séries en plus proposées.
   const _dfR = ((_motR.alertes || []) as any[]).some((x: any) => x && x.type === 'douleur' && x.severite === 'haute')
   if (_dfR && bas.length) {
-    recos.push(`<b>Douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.`)
+    recos.push(`<b>Aujourd'hui — douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.`)
   } else if (_picR && bas.length) {
     recos.push(_crR.degrade === true
-      ? `<b>Charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`
-      : `<b>Charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)
+      ? `<b>Aujourd'hui — charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`   // 18/11 : état du JOUR d'envoi, pas de la période (le bilan d'octobre le citait)
+      : `<b>Aujourd'hui — charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)
   } else if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
@@ -6072,7 +6074,7 @@ function _emailRecapV2HTML(prenom: string, b: any): string {
   else if (b.seances) {
     const pct = b.prevues ? Math.round(100 * b.seances / b.prevues) : null
     const roue = pct != null ? _roueImg(Math.min(100, pct), 104, 'b', pct + '%') : `<div style="font-size:30px;font-weight:800;color:#4d82ff">${b.seances}</div>`
-    let reg = `<div style="${td};text-align:center">${roue}<div style="font-size:13px;color:#e9eef8;margin-top:8px"><b>${b.seances} séance${b.seances > 1 ? 's' : ''}</b>${b.prevues ? ` <span style="color:#8b96b0">/ ${b.prevues} prévues</span>` : ''}</div>${b.per !== 'semaine' || b.seancesPrec ? `<div style="font-size:11px;color:#6f7b96;margin-top:3px">période précédente : ${b.seancesPrec}</div>` : ''}</div>`
+    let reg = `<div style="${td};text-align:center">${roue}<div style="font-size:13px;color:#e9eef8;margin-top:8px"><b>${b.seances} séance${b.seances > 1 ? 's' : ''}</b>${b.prevues ? ` <span style="color:#8b96b0">/ ${b.prevues} prévues</span>` : ''}</div>${b.per !== 'semaine' || b.seancesPrec ? `<div style="font-size:11px;color:#6f7b96;margin-top:3px">période précédente : ${b.seancesPrec}</div>` : ''}${b.pauseJours >= 2 ? `<div style="font-size:11px;color:#8bb4ff;margin-top:3px">dont ${b.pauseJours} jours de vacances (mode pause)</div>` : ''}</div>`
     if (b.semaines && b.semaines.length) {
       const mx = Math.max(b.objectif || 1, ...b.semaines.map((s: any) => s.n), 1)
       const cols = b.semaines.map((s: any) => { const col = !s.complete ? '#4d82ff66' : (b.objectif && s.n >= b.objectif ? '#37d39a' : '#fab219'); return `<td valign="bottom" align="center" style="padding:0 3px;font-size:10.5px;color:#8b96b0;font-family:Arial,sans-serif"><div style="font-size:11px;color:#e9eef8;font-weight:700;margin-bottom:3px">${s.n}</div><div style="height:${Math.max(4, Math.round(44 * s.n / mx))}px;background:${col};border-radius:5px 5px 2px 2px;font-size:0;line-height:0">&nbsp;</div><div style="margin-top:4px">${s.du.slice(8, 10)}/${s.du.slice(5, 7)}${s.complete ? '' : '*'}</div></td>` }).join('')
