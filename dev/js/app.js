@@ -13465,6 +13465,13 @@ function _exoCatMap(aid) {
   return {};
 }
 function _exoCat(nom, map) { var m = map || _exoCatMap(); var k = String(nom || '').trim(); return m[k] || m[nom] || ''; }
+// Signaux qui confirment une baisse de ressenti (moteur.charge_ressenti.raisons), en clair.
+function _crRaisonsTxt(cr) {
+  var R = { fatigue: 'ta fatigue musculaire est au-dessus de ta normale', sommeil: 'ton sommeil est sous ta normale', rpe: 'ton effort monte à charge égale', fc_repos: 'ta FC au repos monte' };
+  var t = ((cr && cr.raisons) || []).map(function (k) { return R[k]; }).filter(Boolean);
+  if (!t.length) return 'ton ressenti baisse';
+  return t.length === 1 ? t[0] : t.slice(0, -1).join(', ') + ' et ' + t[t.length - 1];
+}
 function _exoFourchette(nom, rmin, rmax, map) {
   var c = _exoCat(nom, map), r = _EXO_CAT_R[c];
   var progDefaut = (rmin == null && rmax == null) || (Number(rmin) === 8 && Number(rmax) === 12);
@@ -16159,7 +16166,7 @@ function _maLectureNovalyzBloc(data) {
   try { L = _lectureExos(data); } catch (e) {}
   var V = { rows: [], faites: 0, prevues: 0, prorata: 1 };
   try { V = _lxVolume(data); } catch (e) {}
-  var kg = function (x) { return _cdFmtKg(x); }, plus = function (arr, n) { return arr.length > n ? ' <span style="color:var(--text-subtle)">+' + (arr.length - n) + '</span>' : ''; };
+  var kg = function (x) { return _cdFmtKg(x); }, plus = function (arr, n) { var k = arr.length - n; return k > 0 ? ' <span style="color:var(--text-subtle)">· +' + k + ' autre' + (k > 1 ? 's' : '') + '</span>' : ''; };   // 18/11 : « +4 » se lisait « +4 reps »
   var cls = [];
   if (L.records.length) cls.push({ ic: '★', col: '#00A854', html: '<b>Records</b> : ' + L.records.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r; }).join(' · ') + plus(L.records, 3), src: 'charge (ou reps à charge égale) battue · 10 derniers jours' });
   if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.why ? _maE(x.why) : x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
@@ -19173,7 +19180,10 @@ function renderChargeFatigueJour(data) {
     // On ne parle de récupération moins bonne QUE si le ressenti le confirme (moteur.charge_ressenti).
     var _cr = m.charge_ressenti || null;
     fr = 'Charge en hausse';
-    if (_cr && _cr.degrade) { frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude et tu récupères moins bien : allège une séance'; }
+    // 18/11 (audit Vincent) : on dit QUEL signal baisse (fatigue, sommeil, effort, FC) — sinon « tu récupères moins bien »
+    // contredisait « récupération excellente » juste au-dessus — et on n'ordonne d'alléger que si la charge est SOUTENUE
+    // (même règle que le moteur) ; sinon même consigne que le plan : on maintient, sans aller à l'échec.
+    if (_cr && _cr.degrade) { frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude et ' + _crRaisonsTxt(_cr) + (_cr.soutenue ? ' : allège une séance' : ' : garde tes charges prévues, sans aller à l\'échec'); }
     else if (_cr && _cr.evaluable) { frc = 'var(--tj-text)'; frTxt = 'tu as plus chargé que d\'habitude et tu encaisses bien'; }
     else { frc = 'var(--tj-text)'; frTxt = 'tu as plus chargé que d\'habitude ces jours-ci — renseigne ton état du jour pour qu\'on vérifie ta récupération'; }
   }
