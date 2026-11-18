@@ -41,7 +41,7 @@ const be = (fn, n = 20) => ({ bien_etre: Array.from({ length: n }, (_, i) => Obj
   eq(so.etat === 'ok', 'écart 0,5 → dans la normale', so); }
 // Trop peu de saisies → pas de moyenne inventée.
 { const st = S._beNormale(be(i => ({ stress: 1 }), 6), NOW).find(x => x.key === 'stress');
-  eq(st.etat === 'nd' && st.base === null && /arrive après 7 saisies \(3 pour/.test(S._beNormaleTxt(st, 'ta')), '6 saisies → « ta normale arrive après 7 saisies »', st); }
+  eq(st.etat === 'nd' && st.base === null && /arrive dans 4 questionnaires \(il en faut 10 sur 5 semaines, tu en as 6\)/.test(S._beNormaleTxt(st, 'ta')), '6 saisies → « ta normale arrive dans 4 questionnaires »', st); }
 // Rien saisi depuis > 7 j → pas de ligne.
 { eq(S._beNormale({ bien_etre: [{ date: day(10), sommeil: 2 }] }, NOW).length === 0, 'dernière saisie > 7 j → aucune ligne'); }
 // Montre absente → null ; présente → sommeil 7 j vs 4 semaines d'avant.

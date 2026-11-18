@@ -287,6 +287,7 @@ function computeGlobal(perfs: any[]): any {
 
   const datesSet = new Set<string>()
   const records: Record<string, { charge: number; reps: number; volume: number; date: string }> = {}
+  const _recIso: Record<string, string> = {}
   let totalTonnage = 0, totalRpe = 0, rpeCount = 0, totalSeries = 0, totalReps = 0
   const seanceMap: Record<string, { date: string; seance_id: string; tonnage: number; exercices: Set<string>; muscles: Set<string> }> = {}
 
@@ -303,8 +304,12 @@ function computeGlobal(perfs: any[]): any {
     datesSet.add(dIso)
 
     const exo = r.exercice
-    if (exo && (!records[exo] || charge > records[exo].charge || (charge === records[exo].charge && reps > records[exo].reps))) {
+    // 18/11 (audits Vincent/Célia) : à égalité (même charge, mêmes reps), le record garde la date où il a été ATTEINT
+    // la première fois — les perfs arrivent du plus récent au plus ancien, la date d'un record égalé glissait vers la répétition.
+    if (exo && (!records[exo] || charge > records[exo].charge || (charge === records[exo].charge && reps > records[exo].reps)
+      || (charge === records[exo].charge && reps === records[exo].reps && dIso && dIso < (_recIso[exo] || '')))) {
       records[exo] = { charge, reps, volume: Number(r.volume) || tonnage, date: fmtFR(r.date) }
+      _recIso[exo] = dIso
     }
 
     // Une SÉANCE RÉELLE = une DATE réelle. On NE regroupe PAS par seance_id : c'est
@@ -2599,7 +2604,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const perfsWeek = perfs.filter(r => normDate(r.date) >= lundiStr)
   const _secAll = _secMap(exoCatRows || [])
   const seriesParMuscle: Record<string, number> = {}
-  for (const r of perfsWeek) _addSeriesMuscle(seriesParMuscle, r, _secAll)
+  // 18/11 (audit Célia) : séries « cette semaine » sur la MÊME fenêtre que les séances faites (réglage semaine_type).
+  // Avant : séries depuis lundi mais séances sur 7 j glissants → « Quadriceps 0/9 (2/3 séances faites) » alors que
+  // la séance de vendredi (dans les 7 j) avait 3 séries de presse.
+  const _perfsVolSem = prefsA.semaine_type === 'glissant' ? perfs.filter(r => normDate(r.date) >= c7) : perfsWeek
+  for (const r of _perfsVolSem) _addSeriesMuscle(seriesParMuscle, r, _secAll)
 
   // prochaine séance = prochaine séance non faite du programme cette semaine (comme Code.gs getProchaineSeance)
   const prochaineSeance = (() => {
@@ -6050,7 +6059,9 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   } else if ((L.recule || []).filter(_libre).length) {
     const x = L.recule.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
   } else if ((L.bloque || []).filter(_libre).length) {
-    const x = L.bloque.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
+    const x = L.bloque.filter(_libre)[0]; // 18/11 (audit mail) : plus de levier générique (il pouvait contredire celui de l'app, tiré du diagnostic : repos,
+    // effort, volume, fréquence, gêne). Le constat est daté (fin de période) et renvoie au levier de l'app.
+    recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances (au ${fmtFR(minus(B.fin, 1)).slice(0, 5)}, fin de la période). La cause probable et le levier adapté sont dans l'app : Analyses ▸ Évolution ▸ ${_escHtml(x.exo)}.`)
   }
   const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')
@@ -7495,7 +7506,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   } catch (_) {}
   // Volume de la semaine vs minimum (séries/muscle, muscle secondaire = 0,5).
   const vo = (d.volume_obti || []).filter((o: any) => o && o.muscle && Number(o.series_min) > 0)
-  if (vo.length) L.push(`- Volume de la semaine en cours, depuis lundi (séries faites / minimum hebdo) : ${vo.map((o: any) => o.muscle + ' ' + String(Math.round((Number(o.series_semaine) || 0) * 10) / 10).replace('.', ',') + '/' + o.series_min).join(', ')}.`)
+  if (vo.length) L.push(`- Volume de la semaine en cours, ${d.semaine_type === 'glissant' ? 'sur les 7 derniers jours' : 'depuis lundi'} (séries faites / minimum hebdo) : ${vo.map((o: any) => o.muscle + ' ' + String(Math.round((Number(o.series_semaine) || 0) * 10) / 10).replace('.', ',') + '/' + o.series_min).join(', ')}.`)
   // Cardio 7 jours.
   const c7 = fmtYMD(minus(now, 6)), ch = ((d.cardio && d.cardio.history) || []).filter((h: any) => String(h.date || '') >= c7)
   if (ch.length) L.push(`- Cardio 7 derniers jours : ${ch.length} sortie(s), ${Math.round(ch.reduce((a: number, h: any) => a + (Number(h.duree) || 0), 0))} min au total.`)
