@@ -19,6 +19,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 18/11 : « Objectif semaine 1/3 » à côté de « 2/3 séances » (semaine glissante) → libellé « lun → dim ».
 - 18/11 : formats « 87.5 kg », « 86.0 », « 8.1h ».
 - 18/11 : **changement d'heure** — l'app comptait les jours en millisecondes ; après le 25/10, la nuit (ou le questionnaire) de J-34 sortait de la fenêtre : normale du sommeil sur 27 nuits au lieu de 28, différente du serveur. Même défaut corrigé dans « ta normale » du bien-être et dans le graphique de régularité (un lundi passait dans la semaine d'avant au printemps).
+- 18/11 : cibles : « RPE 10 sur toutes tes séries » alors que des séries étaient à 9 (Célia ×6, Idris ×4) → plage réelle « RPE 9-10 ».
 - 18/11 : carte « Charge & fraîcheur » : « tonnage pondéré par l'effort » alors que la source est le tonnage brut (charge × reps) → « tonnage : charge × répétitions ».
 
 ## Ce qu'il vérifie aujourd'hui
@@ -42,10 +43,11 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | montre : pas | moyenne de la semaine sans la journée en cours de synchronisation |
 | fraîcheur | forme de fond (EWMA 42 j, plancher = moyenne réelle des 28 j), fatigue récente (EWMA 7 j), %, source (tonnage ou note de séance × durée) et son libellé |
 | ACWR | 7 derniers jours ÷ (28 derniers jours ÷ 4), sur le tonnage |
+| cibles « Ce que Novalyz vise » | départ = meilleure série de la dernière séance ; raison vraie dans les séries (« RPE x sur toutes », « échec N séances de suite », « +1 rep sous N reps », « sous ta fourchette », « haut de fourchette → +N kg », « mêmes charges » si le moteur signale un ressenti en baisse) |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert (prochaines règles, dans cet ordre)
-1. Les cibles de la prochaine séance (« Ce que Novalyz vise ») et les leviers.
+1. Les leviers « Pourquoi ça bloque » (repos réel, fréquence, volume cités).
 2. Le plan de la semaine et le journal des décisions.
 3. Les vues coach (Équipe, fiche) et le mail récapitulatif : mêmes chiffres que l'app.
 4. Le contexte envoyé à l'IA : mêmes chiffres que l'app.

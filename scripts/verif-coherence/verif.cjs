@@ -327,6 +327,25 @@ function verifierTexte(R, ad, txt, out) {
     if ((m = t.match(/^ACWR ([\d,]+)/)) && R.acwr != null && Math.abs(num(m[1]) - R.acwr) > 0.005) E('acwr.ecran', nom + ' : « ' + t + ' », recalculé ' + R.acwr);
     if (/^En unités de charge \(/.test(t)) { const dit = /pondéré par l.effort|RPE × durée|note de séance × durée/.test(t) ? (/tonnage/.test(t) && /pondéré/.test(t) ? 'tonnage pondéré' : 'srpe') : (/tonnage/.test(t) ? 'tonnage' : '?'); if ((R.ff.source === 'tonnage' && dit !== 'tonnage') || (R.ff.source === 'srpe' && dit !== 'srpe')) E('fraicheur.unite', nom + ' : « ' + t.slice(0, 70) + '… » alors que la source est ' + (R.ff.source === 'srpe' ? 'note de séance × durée' : 'le tonnage brut (charge × reps, sans effort)')); }
   }));
+  // B9. « Ce que Novalyz vise la prochaine fois » : point de départ = meilleure série de la dernière séance, et la raison
+  // donnée doit être VRAIE dans les séries brutes (RPE, fourchette, séances d'échec, haut de fourchette).
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
+    const exo = nom.replace('ÉVOLUTION ▸ ', ''), P = R.sessions[exo] || [];
+    const i = L.findIndex((l) => l.trim() === 'Ce que Novalyz vise la prochaine fois'); if (i < 0 || !P.length) return;
+    const h = String(L[i + 1] || '').trim().match(/^([\d,]+) × (\d+) →$/), c = String(L[i + 2] || '').trim().match(/^([\d,]+) kg × (\d+)$/), why = String(L[i + 3] || '').trim();
+    if (!h || !c) return;
+    const S0 = P[0], C = kgN(h[1]), Rp = +h[2], C2 = kgN(c[1]), R2 = +c[2], f = R.fourchette(exo);
+    const ser = S0.series.filter((x) => num(x.reps) > 0), rpes = ser.map((x) => num(x.rpe)).filter((x) => x > 0);
+    const err = (t) => E('cible.raison', nom + ' : « ' + why.slice(0, 90) + ' » — ' + t);
+    if (num(S0.best.charge) !== C || num(S0.best.reps) !== Rp) E('cible.depart', nom + ' : départ « ' + h[1] + ' × ' + h[2] + ' », meilleure série de la dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps));
+    let m;
+    if ((m = why.match(/^RPE (\d+)(?:-(\d+))? sur toutes tes séries la dernière fois/))) { const lo = +m[1], hi = m[2] ? +m[2] : +m[1], rs = ser.map((x) => num(x.rpe)); if (Math.min(...rs) !== lo || Math.max(...rs) !== hi) err('RPE des séries : ' + rs.join(', ') + ' (pas « ' + (m[2] ? lo + '-' + hi : lo) + ' sur toutes »)'); if (C2 !== C || R2 !== Rp) err('« garde charge et reps » mais cible ' + C2 + ' × ' + R2); }
+    if ((m = why.match(/^Échec \(RPE 10\) (\d+) séances de suite/))) { const W = P.slice(0, +m[1]); if (W.length < +m[1] || W.some((p) => Math.max(...p.series.map((x) => num(x.rpe))) < 10)) err('pas ' + m[1] + ' séances de suite avec une série à RPE 10'); if (C2 !== C) err('« garde ta charge » mais cible ' + C2 + ' kg'); }
+    if ((m = why.match(/^\+1 rep sur les séries sous (\d+) reps/))) { if (f.rmax != null && +m[1] !== f.rmax) err('haut de fourchette ' + f.rmax + ', pas ' + m[1]); if (C2 !== C || R2 < Rp || R2 > Rp + 1) err('cible ' + C2 + ' × ' + R2 + ' pour « +1 rep »'); }
+    if ((m = why.match(/^Sous ta fourchette (\d+)-(\d+) \(RPE ([\d,]+)\)/))) { if (f.rmin !== +m[1] || f.rmax !== +m[2]) err('fourchette ' + f.rmin + '-' + f.rmax); if (Math.max(...rpes) !== num(m[3])) err('RPE max ' + Math.max(...rpes)); if (!(C2 < C) || R2 !== f.rmin) err('cible ' + C2 + ' × ' + R2 + ' : attendu une charge plus basse pour ' + f.rmin + ' reps'); }
+    if ((m = why.match(/^Haut de fourchette atteint → \+([\d,]+) kg/))) { if (f.rmax != null && Rp < f.rmax) err('meilleure série à ' + Rp + ' reps, haut de fourchette ' + f.rmax); if (Math.abs(C2 - C - kgN(m[1])) > 1e-9) err('cible ' + C2 + ' kg, attendu ' + C + ' + ' + m[1]); }
+    if (/^Charge en hausse et ressenti en baisse : pas de progression aujourd'hui/.test(why)) { if (C2 !== C || R2 !== Rp) err('« mêmes charges » mais cible ' + C2 + ' × ' + R2); const cr2 = ad && ad.moteur && ad.moteur.charge_ressenti; if (cr2 && !cr2.degrade) err('le moteur ne signale pas de ressenti en baisse'); }
+  });
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {

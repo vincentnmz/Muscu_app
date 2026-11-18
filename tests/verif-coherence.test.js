@@ -88,6 +88,12 @@ const store = {
   eq(mut((x) => { x.moteur.charge_fatigue = { ...(x.moteur.charge_fatigue || {}), ctl: 1, atl: 1, tsbPct: 0, source: (x.moteur.charge_fatigue || {}).source || 'tonnage' }; }).includes('fraicheur.valeurs'), 'attrape : forme de fond / fatigue récente fausses');
   eq(mut((x) => { x.dashboard.acwr = 9.99; }).includes('acwr'), 'attrape : ACWR faux');
   eq(t5('######## FORME\nEn unités de charge (tonnage pondéré par l\'effort) : seul leur rapport compte').includes('fraicheur.unite'), 'attrape : « tonnage pondéré par l\'effort » alors que la source est le tonnage brut');
+  // Cibles « Ce que Novalyz vise » (18/11) : la raison doit être vraie dans les séries brutes.
+  const cib = (why, c2, r2) => t5('######## ÉVOLUTION ▸ Presse\nCe que Novalyz vise la prochaine fois\n90 × 12 →\n' + c2 + ' kg × ' + r2 + '\n' + why);
+  eq(cib('RPE 8 sur toutes tes séries la dernière fois : garde charge et reps (vise 2 reps en réserve).', 90, 12).length === 0, 'cible : « RPE 8 sur toutes » vrai (dernière séance 90 × 12 à RPE 8) accepté');
+  eq(cib('RPE 10 sur toutes tes séries la dernière fois : garde charge et reps (vise 2 reps en réserve).', 90, 12).includes('cible.raison'), 'attrape : « RPE 10 sur toutes tes séries » faux');
+  eq(cib('RPE 8 sur toutes tes séries la dernière fois : garde charge et reps (vise 2 reps en réserve).', '92,5', 12).includes('cible.raison'), 'attrape : « garde charge et reps » avec une charge qui monte');
+  eq(t5('######## ÉVOLUTION ▸ Presse\nCe que Novalyz vise la prochaine fois\n100 × 10 →\n100 kg × 10\nRPE 8 sur toutes tes séries la dernière fois').includes('cible.depart'), 'attrape : point de départ ≠ dernière séance');
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);
