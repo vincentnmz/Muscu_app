@@ -155,7 +155,36 @@ function recalculer(store, appdata, now, aidForce) {
     const debEff = prem && prem > deb ? prem : deb, sem = prem ? Math.min(4, Math.max(0, ecart(debEff, fin) / 7)) : 0, div = Math.max(1, sem);
     return { parSem: Math.round(s / div * 10) / 10, freq: Math.round(j / div * 10) / 10, recul: sem };
   };
+  R.muscles = [...new Set(P.map((r) => r.muscle).filter(Boolean))];
   R.muscleDe = (exo) => { const r = P.find((x) => x.exercice === exo && x.muscle); return r ? r.muscle : null; };
+  // Journal des décisions : statut de chaque action enregistrée, recalculé sur les séances de SA semaine (lundi → dimanche).
+  const pauses = [];
+  (store.pauses || []).filter((r) => !aid || String(r.athlete_id) === aid).forEach((r) => { const d = iso(r.debut), f = iso(r.fin) || d; if (d) pauses.push({ debut: d, fin: f }); });
+  { let cur = null; (store.indicateurs || []).filter((r) => (!aid || String(r.athlete_id) === aid) && r.cle === 'pause').slice().sort((a, b) => iso(a.date).localeCompare(iso(b.date)) || num(a.id) - num(b.id)).forEach((r) => {
+    if (String(r.valeur) === 'fin') { const d = iso(r.date); if (cur && d && d < cur.fin) cur.fin = d; cur = null; return; }
+    const d = iso(r.valeur), f = iso(r.unite); if (d && f) { cur = { debut: d, fin: f }; pauses.push(cur); } }); }
+  R.journal = (dec) => {
+    const L0 = iso(dec.semaine), L1 = plusJ(L0, 7), c = dec.critere || {}, type = dec.type_action, dans = (d) => d >= L0 && d < L1;
+    let tente = false, fait = false, tot = 0, sets = [];
+    if (type === 'series') { const k = cle(dec.muscle || dec.cle); P.filter((r) => dans(r.d)).forEach((r) => { if (r.muscle && cle(r.muscle) === k && cle(r.muscle) !== 'corps entier') tot += 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) === k && cle(sm) !== cle(r.muscle)) tot += 0.5; }); tente = tot > 0; fait = tot >= num(c.min); }
+    else if (type === 'reprise') { tente = fait = P.some((r) => dans(r.d)); }
+    else {
+      if (!(num(c.charge) > 0)) return { statut: 'non_evaluable' };
+      sets = P.filter((r) => dans(r.d) && r.exercice === dec.exercice); tente = sets.length > 0;
+      if (type === 'charge') fait = sets.some((x) => num(x.charge) <= num(c.charge) + 0.01 && num(x.charge) >= (c.alt != null ? num(c.alt) : num(c.charge)) - 2.5 && num(x.reps) >= num(c.reps));
+      else if (type === 'cible') fait = sets.some((x) => num(x.charge) >= num(c.charge) && num(x.reps) >= num(c.reps));
+      else if (type === 'rpe') fait = sets.some((x) => num(x.charge) >= num(c.charge) && num(x.rpe) > 0 && num(x.rpe) <= 8);
+    }
+    if (!tente && !fait) {   // semaine de vacances ou de blessure (≥ 3 jours) : pas jugée
+      const bl = (store.blessures || []).filter((b) => (!aid || String(b.athlete_id) === aid) && b.statut !== 'gueri' && b.date).map((b) => ({ debut: iso(b.date), fin: now }));
+      (store.contexte_athlete || []).filter((x) => (!aid || String(x.athlete_id) === aid) && x.etat === 'retour_blessure' && !x.clos && (!x.date_fin || iso(x.date_fin) >= now)).forEach((x) => bl.push({ debut: iso(x.date_debut) || now, fin: iso(x.date_fin) || now }));
+      let jp = 0, jb = 0; for (let k = 0; k < 7; k++) { const dk = plusJ(L0, k), inn = (p) => p.debut <= dk && dk <= p.fin; if (pauses.some(inn)) jp++; else if (bl.some(inn)) jb++; }
+      if (jp >= 3 || jb + jp >= 3) return { statut: 'non_evaluable', jp, jb };
+    }
+    const best = sets.slice().sort((x, y) => num(y.charge) - num(x.charge) || num(y.reps) - num(x.reps))[0];
+    return { statut: fait ? 'atteint' : (tente ? 'pas_atteint' : 'pas_tente'), tente, tot, best };
+  };
+  R.decisions = (store.decisions || []).filter((d) => !aid || String(d.athlete_id) === aid);
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
   Object.values(R.parExoJour).forEach((x) => { const e = x.series[0].exercice; (R.sessions[e] = R.sessions[e] || []).push({ d: x.series[0].d, best: x.best, series: x.series.slice().sort((a, b) => num(a.serie) - num(b.serie) || num(a.id) - num(b.id)) }); });
@@ -425,6 +454,50 @@ function verifierTexte(R, ad, txt, out) {
         else if (!/^(Pourquoi|Levier|[✓✗])/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; }   // 1er exercice cité de la ligne
       }
       if (cur && /(Volume [^:]+ : [\d,]+ séries\/sem|Fréquence [^:]+ : [\d,]+×\/sem|Travaillé [\d,]+×\/sem|séries\/sem\)|×\/sem aujourd'hui\))/.test(l)) ctlVol(nom, cur, l); });
+  });
+  // B13. Journal des décisions : statut affiché, « Réalisé : … », « N / M tentée(s) » = recalcul.
+  const STAT = { 'Atteint': 'atteint', 'Pas atteint': 'pas_atteint', 'Pas tenté': 'pas_tente', 'Non évaluable': 'non_evaluable' };
+  Object.entries(S).forEach(([nom, L]) => {
+    let sem = null, entete = null, vus = [];
+    const clore = () => { if (entete && vus.length) { const t = vus.filter((x) => x.tente).length; if (t !== entete[0] || vus.length !== entete[1]) E('journal.compte', nom + ' · semaine du ' + fr(sem).slice(0, 5) + ' : « ' + entete[0] + ' / ' + entete[1] + ' tentée » , recalculé ' + t + ' / ' + vus.length); } vus = []; entete = null; };
+    L.forEach((l0, i) => { const l = l0.trim(); let m;
+      if ((m = l.match(/^Semaine du (\d{2})\/(\d{2})$/))) { clore(); const an = R.lundi.slice(0, 4); let d = an + '-' + m[2] + '-' + m[1]; if (d > R.lundi) d = (+an - 1) + '-' + m[2] + '-' + m[1]; sem = d; return; }
+      if (sem && (m = l.match(/^(\d+) \/ (\d+) tentées?$/))) { entete = [+m[1], +m[2]]; return; }
+      if (!sem) return;
+      m = l.match(/^(Atteint|Pas atteint|Pas tenté|Non évaluable)(.+)$/); if (!m) return;
+      const dec = R.decisions.find((d) => iso(d.semaine) === sem && String(d.titre).trim().replace(/ cette semaine$/, '') === m[2].trim().replace(/ cette semaine$/, '')); if (!dec) { E('journal.inconnu', nom + ' : « ' + m[2].trim() + ' » (semaine du ' + fr(sem).slice(0, 5) + ') absent du journal enregistré'); return; }
+      const J = R.journal(dec); vus.push(J);
+      if (STAT[m[1]] !== J.statut) E('journal.statut', nom + ' · ' + m[2].trim() + ' : « ' + m[1] + ' », recalculé « ' + Object.keys(STAT).find((k) => STAT[k] === J.statut) + ' »');
+      const det = String(L[i + 1] || ''); let k;
+      if ((k = det.match(/Réalisé : ([\d,]+) séries? \(objectif (\d+)\)/)) && num(k[1]) !== J.tot) E('journal.realise', nom + ' · ' + m[2].trim() + ' : « ' + k[0] + ' », recalculé ' + f1(J.tot) + ' séries');
+      if ((k = det.match(/Réalisé : ([\d,]+) kg × (\d+)(?: \(RPE ([\d,]+)\))?\./)) && (!J.best || num(k[1]) !== num(J.best.charge) || +k[2] !== num(J.best.reps) || (k[3] && num(k[3]) !== num(J.best.rpe)))) E('journal.realise', nom + ' · ' + m[2].trim() + ' : « ' + k[0] + ' », recalculé ' + (J.best ? num(J.best.charge) + ' × ' + num(J.best.reps) + ' (RPE ' + num(J.best.rpe) + ')' : 'aucune série'));
+      if ((k = det.match(/Semaine de vacances \((\d+) jours en pause\)/)) && J.jp !== +k[1]) E('journal.pause', nom + ' · ' + m[2].trim() + ' : « ' + k[0] + ' », recalculé ' + J.jp + ' jours');
+    });
+    clore();
+  });
+  // B14. Plan de la semaine : actions affichées = actions enregistrées au journal (même semaine), compte « N / M fait »,
+  // « Semaine dernière : … », « Rien à changer : muscle X séries/sem ».
+  const decSem = R.decisions.filter((d) => iso(d.semaine) === R.lundi), decPrec = R.decisions.filter((d) => iso(d.semaine) === plusJ(R.lundi, -7));
+  const normT = (t) => String(t || '').replace(/ · .*$/, '').replace(/ cette semaine$/, '').replace(/^★ /, '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/s\b/g, '');
+  Object.entries(S).forEach(([nom, L]) => {
+    const i0 = L.findIndex((l) => /^TON PLAN DE LA SEMAINE$/.test(l.trim())); if (i0 < 0) return;
+    const cpt = String(L[i0 + 1] || '').trim().match(/^(\d+) \/ (\d+)( fait)?$/);
+    const actifs = [], pause = [], MARK = /^(\d+|⏸|✓)$/, STOP = (l) => /^(Semaine dernière|Rien à changer|Ce sont des propositions|Voir le détail)/.test(l) || (l.length > 3 && l === l.toUpperCase() && /[A-ZÉ]/.test(l));
+    let parMarques = false; for (let i = i0 + 2; i < L.length; i++) { const l = L[i].trim(); if (STOP(l)) break; if (/^\d+$/.test(l)) { parMarques = true; break; } }   // Résumé : « 1 / ⏸ / ✓ » puis titre puis raison ; Aujourd'hui : titres à la suite
+    for (let i = i0 + 2; i < L.length; i++) { const l = L[i].trim(); if (STOP(l)) break; if (MARK.test(l)) continue;
+      if (/^⚠/.test(l)) continue;   // note de gêne, pas une action
+      const prev = String(L[i - 1] || '').trim(); if (parMarques && !MARK.test(prev)) continue;
+      (prev === '⏸' ? pause : actifs).push(l); }
+    const tous = actifs.concat(pause);
+    if (decSem.length) tous.forEach((t) => { if (!decSem.some((d) => normT(d.titre) === normT(t))) E('plan.journal', nom + ' : action affichée « ' + t.slice(0, 70) + ' » absente du journal enregistré pour cette semaine (le journal jugera autre chose)'); });
+    if (decSem.length) decSem.forEach((d) => { if (tous.length && !tous.some((t) => normT(t) === normT(d.titre))) E('plan.journal', nom + ' : action enregistrée « ' + String(d.titre).slice(0, 70) + ' » n\'est plus affichée dans le plan'); });
+    if (cpt) { const faits = actifs.map((t) => decSem.find((d) => normT(d.titre) === normT(t))).filter(Boolean).filter((d) => { const L1 = R.lundi; return R.journal({ ...d, semaine: L1 }).statut === 'atteint'; }).length;
+      if (+cpt[2] !== actifs.length) E('plan.compte', nom + ' : « ' + cpt[0] + ' » mais ' + actifs.length + ' action(s) active(s) affichée(s)');
+      else if (actifs.every((t) => decSem.some((d) => normT(d.titre) === normT(t))) && +cpt[1] !== faits) E('plan.compte', nom + ' : « ' + cpt[0] + ' », recalculé ' + faits + ' faite(s) sur ' + actifs.length); }
+    L.forEach((l0) => { const l = l0.trim(); let m;
+      if ((m = l.match(/^(\d+) actions? proposées? · (\d+) tentées? · (\d+) objectifs? atteints?\.?$/)) && decPrec.length) { const J = decPrec.map((d) => R.journal(d)); const t = J.filter((x) => x.tente).length, at = J.filter((x) => x.statut === 'atteint').length; if (+m[1] !== decPrec.length || +m[2] !== t || +m[3] !== at) E('plan.semaine_derniere', nom + ' : « ' + l + ' », recalculé ' + decPrec.length + ' proposées · ' + t + ' tentée(s) · ' + at + ' atteint(s)'); }
+      if ((m = l.match(/^Rien à changer : (.+?) séries\/sem/))) m[1].split(' · ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+)$/); if (!k) return; const mu = R.muscles.find((x) => cle(x) === cle(k[1])); if (mu) { const V = R.vol4(mu); if (num(k[2]) !== V.parSem) E('plan.rien_a_changer', nom + ' : « ' + it + ' séries/sem », recalculé ' + f1(V.parSem)); } });
+    });
   });
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];

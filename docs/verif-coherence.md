@@ -48,12 +48,13 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | leviers : repos cité | « Repos : X, stable » et « tu prends X, essaie Y » = repos réel des séries de travail de la dernière séance |
 | coach ▸ Équipe | pour chaque athlète, sur SES séries : RPE 7 j, tonnage 7 j, évolution et sa référence « vs 7 j d'avant » |
 | volume / fréquence des leviers | « Volume X : N séries/sem », « Fréquence X : F×/sem », « Travaillé F×/sem », « (N → M séries/sem) », « (F×/sem aujourd'hui) » = 4 semaines terminées, divisées par les semaines réellement couvertes |
+| journal des décisions | statut de chaque action (atteint / pas atteint / pas tenté / non évaluable : vacances ou blessure ≥ 3 j), « Réalisé : … », « N / M tentée(s) », jours de pause cités |
+| plan de la semaine | actions affichées = actions enregistrées au journal, compte « N / M fait », « Semaine dernière : … », « Rien à changer : muscle X séries/sem » |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert (prochaines règles, dans cet ordre)
-1. Le plan de la semaine et le journal des décisions.
-2. La fiche coach (Aperçu, Analyses, Forme) et le mail récapitulatif : mêmes chiffres que l'app.
-3. Le contexte envoyé à l'IA : mêmes chiffres que l'app.
-4. Le cardio.
+1. La fiche coach (Aperçu, Analyses, Forme) et le mail récapitulatif : mêmes chiffres que l'app.
+2. Le contexte envoyé à l'IA : mêmes chiffres que l'app.
+3. Le cardio.
 
 Tant qu'une ligne de cette liste n'est pas couverte, sa fiabilité n'est **pas démontrée**.

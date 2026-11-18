@@ -104,6 +104,18 @@ const store = {
   eq(co(String(tonA).replace('.', ',') + ' t').length === 0 || co(String(tonA).replace('.', ',') + ' t').every((c) => c !== 'coach.tonnage'), 'coach : tonnage 7 j juste accepté');
   eq(co('99,9 t').includes('coach.tonnage'), 'attrape : tonnage 7 j faux côté coach');
   eq(co(String(tonA).replace('.', ',') + ' t · +5 %').includes('coach.tonnage_ref'), 'attrape : évolution du tonnage sans sa référence');
+  // Journal des décisions (18/11).
+  const lun = (d) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() - (x.getUTCDay() + 6) % 7); return x.toISOString().slice(0, 10); };
+  const sJ = lun(J(5)), stJ = JSON.parse(JSON.stringify(store));
+  stJ.decisions = [{ athlete_id: '5', semaine: sJ, type_action: 'rpe', cle: 'Presse', exercice: 'Presse', titre: 'Presse : garde 100 kg, vise RPE 8', critere: { charge: 100 } }];
+  const jr = (stat, det) => verifier({ store: stJ, appdata: adSansMoteur, ecrans: '######## ANALYSES\nSemaine du ' + sJ.slice(8, 10) + '/' + sJ.slice(5, 7) + '\n1 / 1 tentée\n' + stat + 'Presse : garde 100 kg, vise RPE 8\nProposé car : test. ' + det, now: TODAY }).map((e) => e.code);
+  const best = store.performances.filter((r) => r.exercice === 'Presse' && r.date >= sJ && r.date < (() => { const x = new Date(sJ + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + 7); return x.toISOString().slice(0, 10); })()).sort((a, b) => b.charge - a.charge || b.reps - a.reps)[0];
+  if (best) {
+    const okStat = best.charge >= 100 && store.performances.some((r) => r.exercice === 'Presse' && r.date >= sJ && r.charge >= 100 && r.rpe <= 8) ? 'Atteint' : 'Pas atteint';
+    eq(jr(okStat, 'Réalisé : ' + String(best.charge).replace('.', ',') + ' kg × ' + best.reps + ' (RPE ' + best.rpe + ').').length === 0, 'journal : statut et « Réalisé » justes acceptés');
+    eq(jr(okStat === 'Atteint' ? 'Pas atteint' : 'Atteint', '').includes('journal.statut'), 'attrape : statut du journal faux');
+    eq(jr(okStat, 'Réalisé : 1 kg × 1 (RPE 1).').includes('journal.realise'), 'attrape : « Réalisé » faux');
+  }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);
