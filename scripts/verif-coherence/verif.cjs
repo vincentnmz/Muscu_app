@@ -125,6 +125,21 @@ function recalculer(store, appdata, now) {
   R.ff = (fS && fS.span >= 28 && fS.act42 >= 8) ? { ...fS, source: 'srpe' } : (fT ? { ...fT, source: 'tonnage' } : null);
   let ai = 0, s28 = 0; for (let d = 0; d < 28; d++) { const v = tonJour[plusJ(now, -d)] || 0; s28 += v; if (d < 7) ai += v; }
   R.acwr = s28 > 0 ? Math.round(ai / (s28 / 4) * 100) / 100 : null;
+  // Effort à charge égale (règle du moteur) : par exercice, 4 dernières séances (la dernière ≤ 10 j) ; charge du jour = la
+  // plus haute, RPE = celui de la PREMIÈRE série à cette charge (ordre des séries) ; moyenne des 2 dernières contre les 2
+  // d'avant : RPE +1 ou plus avec une charge qui n'a pas monté de plus de 2,5 % (0 kg → lest = hausse).
+  R.rpeHausse = {};
+  const parExoJ = {};
+  P.slice().sort((a, b) => a.d.localeCompare(b.d) || num(a.serie) - num(b.serie) || num(a.id) - num(b.id)).forEach((r) => {
+    if (!(num(r.rpe) > 0)) return; const m = (parExoJ[r.exercice] = parExoJ[r.exercice] || {}), ch = num(r.charge);
+    if (!m[r.d] || ch > m[r.d].charge) m[r.d] = { charge: ch, rpe: num(r.rpe) };
+  });
+  Object.entries(parExoJ).forEach(([exo, m]) => {
+    const ds = Object.keys(m).sort(); if (ds.length < 4 || ds[ds.length - 1] < plusJ(now, -10)) return;
+    const l = ds.slice(-4).map((d) => m[d]), av = (l[0].rpe + l[1].rpe) / 2, ap = (l[2].rpe + l[3].rpe) / 2, cA = (l[0].charge + l[1].charge) / 2, cP = (l[2].charge + l[3].charge) / 2;
+    const pct = cA > 0 ? (cP - cA) / cA * 100 : (cP > 0 ? 100 : 0);
+    if (ap - av >= 1 && pct <= 2.5) R.rpeHausse[exo] = { charge: Math.round(cP * 10) / 10, avant: av, apres: ap };
+  });
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
   Object.values(R.parExoJour).forEach((x) => { const e = x.series[0].exercice; (R.sessions[e] = R.sessions[e] || []).push({ d: x.series[0].d, best: x.best, series: x.series.slice().sort((a, b) => num(a.serie) - num(b.serie) || num(a.id) - num(b.id)) }); });
@@ -191,6 +206,14 @@ function verifierDonnees(R, ad, out) {
   }
   const acw = ad && ad.dashboard && ad.dashboard.acwr;
   if (acw != null && R.acwr != null && Math.abs(num(acw) - R.acwr) > 0.005) E('acwr', 'ACWR servi ' + acw + ', recalculé ' + R.acwr);
+  // Effort à charge égale : mêmes exercices et mêmes chiffres que le moteur.
+  if (cr && Array.isArray(cr.rpe_details)) {
+    const srv = {}; cr.rpe_details.forEach((x) => { srv[x.exo] = x; });
+    const tous = new Set([...Object.keys(srv), ...Object.keys(R.rpeHausse)]);
+    tous.forEach((exo) => { const a = srv[exo], b = R.rpeHausse[exo];
+      if (!a || !b) E('rpe.hausse', exo + ' : effort en hausse ' + (a ? 'signalé par le moteur (RPE ' + a.rpeAvant + ' → ' + a.rpeApres + ')' : 'absent du moteur') + ', recalcul : ' + (b ? 'RPE ' + b.avant + ' → ' + b.apres + ' à ' + b.charge + ' kg' : 'pas de hausse'));
+      else if (a.rpeAvant !== b.avant || a.rpeApres !== b.apres || Math.abs(num(a.charge) - b.charge) > 0.05) E('rpe.hausse', exo + ' : moteur RPE ' + a.rpeAvant + ' → ' + a.rpeApres + ' à ' + a.charge + ' kg, recalcul ' + b.avant + ' → ' + b.apres + ' à ' + b.charge + ' kg'); });
+  }
   // FC au repos du moteur = recalcul.
   const fc = cr && cr.fc_repos;
   if (fc) {
@@ -345,6 +368,30 @@ function verifierTexte(R, ad, txt, out) {
     if ((m = why.match(/^Sous ta fourchette (\d+)-(\d+) \(RPE ([\d,]+)\)/))) { if (f.rmin !== +m[1] || f.rmax !== +m[2]) err('fourchette ' + f.rmin + '-' + f.rmax); if (Math.max(...rpes) !== num(m[3])) err('RPE max ' + Math.max(...rpes)); if (!(C2 < C) || R2 !== f.rmin) err('cible ' + C2 + ' × ' + R2 + ' : attendu une charge plus basse pour ' + f.rmin + ' reps'); }
     if ((m = why.match(/^Haut de fourchette atteint → \+([\d,]+) kg/))) { if (f.rmax != null && Rp < f.rmax) err('meilleure série à ' + Rp + ' reps, haut de fourchette ' + f.rmax); if (Math.abs(C2 - C - kgN(m[1])) > 1e-9) err('cible ' + C2 + ' kg, attendu ' + C + ' + ' + m[1]); }
     if (/^Charge en hausse et ressenti en baisse : pas de progression aujourd'hui/.test(why)) { if (C2 !== C || R2 !== Rp) err('« mêmes charges » mais cible ' + C2 + ' × ' + R2); const cr2 = ad && ad.moteur && ad.moteur.charge_ressenti; if (cr2 && !cr2.degrade) err('le moteur ne signale pas de ressenti en baisse'); }
+  });
+  // B10. « Pourquoi ça bloque » / levier : repos et effort cités = séries brutes.
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
+    const exo = nom.replace('ÉVOLUTION ▸ ', ''), P = R.sessions[exo] || []; if (!P.length) return;
+    const S0 = P[0], c0 = num(S0.best.charge), trav = S0.series.filter((x) => num(x.charge) === c0 && num(x.repos) > 0);
+    const repMoy = trav.length ? trav.reduce((a, x) => a + num(x.repos), 0) / trav.length : null;
+    const rtx = (n) => { n = Math.round(n); const m = Math.floor(n / 60), r = n % 60; return m ? m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; };
+    L.forEach((l0) => { const l = l0.trim(); let m;
+      if ((m = l.match(/^✓ Repos : (.+), stable — pas en cause$/)) && repMoy != null && m[1] !== rtx(repMoy)) E('levier.repos', nom + ' : « ' + l + ' », repos moyen des séries de travail ' + rtx(repMoy));
+      if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/)) && repMoy != null) { const r15 = Math.round(repMoy / 15) * 15; if (m[1] !== rtx(r15) || m[2] !== rtx(r15 + 30)) E('levier.repos', nom + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(repMoy)); }
+      if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/)))   // « ✗ … » (constats) et « Pourquoi : … »
+         { const b = R.rpeHausse[exo]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' : « ' + l + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
+    });
+  });
+  // B11. Mêmes contrôles hors des pages Évolution : l'exercice est cité sur la ligne précédente (Aujourd'hui, Résumé, fiche coach).
+  Object.entries(S).filter(([n]) => !/^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
+    let cur = null;
+    L.forEach((l0) => { const l = l0.trim(); let m;
+      const e = EXOS.find((x) => l.indexOf(x) >= 0); if (e) cur = e;
+      if ((m = l.match(/^(.+) bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
+      if (!cur || !/^(Pourquoi|Levier)/.test(l)) return;
+      if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/))) { const b = R.rpeHausse[cur]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' · ' + cur + ' : « ' + m[0] + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
+      if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/))) { const P = R.sessions[cur] || []; if (P.length) { const c0 = num(P[0].best.charge), tr = P[0].series.filter((x) => num(x.charge) === c0 && num(x.repos) > 0); if (tr.length) { const r15 = Math.round(tr.reduce((a, x) => a + num(x.repos), 0) / tr.length / 15) * 15, rtx = (n) => { const mm = Math.floor(n / 60), r = n % 60; return mm ? mm + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; }; if (m[1] !== rtx(r15) || m[2] !== rtx(r15 + 30)) E('levier.repos', nom + ' · ' + cur + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(r15)); } } }
+    });
   });
   // B4. Même compte de séances « cette semaine » partout (régularité, entraînement, volume, objectif).
   const vus = [];

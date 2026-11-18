@@ -94,6 +94,10 @@ const store = {
   eq(cib('RPE 10 sur toutes tes séries la dernière fois : garde charge et reps (vise 2 reps en réserve).', 90, 12).includes('cible.raison'), 'attrape : « RPE 10 sur toutes tes séries » faux');
   eq(cib('RPE 8 sur toutes tes séries la dernière fois : garde charge et reps (vise 2 reps en réserve).', '92,5', 12).includes('cible.raison'), 'attrape : « garde charge et reps » avec une charge qui monte');
   eq(t5('######## ÉVOLUTION ▸ Presse\nCe que Novalyz vise la prochaine fois\n100 × 10 →\n100 kg × 10\nRPE 8 sur toutes tes séries la dernière fois').includes('cible.depart'), 'attrape : point de départ ≠ dernière séance');
+  // Leviers (18/11) : effort à charge égale (moteur ↔ recalcul) et repos cité.
+  eq(mut((x) => { x.moteur.charge_ressenti = { ...(x.moteur.charge_ressenti || {}), raisons: (x.moteur.charge_ressenti || {}).raisons || [], rpe_details: [{ exo: 'Presse', charge: 95, rpeAvant: 8, rpeApres: 9 }] }; }).includes('rpe.hausse'), 'attrape : « effort en hausse » signalé sans hausse réelle');
+  eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 2 min, stable — pas en cause').includes('levier.repos'), 'attrape : repos cité ≠ repos réel (1 min 30)');
+  eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 1 min 30, stable — pas en cause').length === 0, 'repos cité = repos réel (1 min 30) accepté');
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);
