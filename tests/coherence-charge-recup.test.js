@@ -69,7 +69,7 @@ const ad = (mot) => ({ historique: { progression_par_exo: RC.buildProgressionPar
 const rec = (mot) => (RC._bilanRecapV2({ perfs, appData: ad(mot), secByExo: {}, musByExo: {} }, 'semaine', new Date(nowM)).recos || []).join(' | ');
 const r0 = rec({ surcharge: 'Faible', charge_ressenti: { evaluable: false } }), r1 = rec({ surcharge: 'Élevé', charge_ressenti: { evaluable: false } });
 eq(/il manque environ/.test(r0), 'mail : charge habituelle → « il manque environ N séries » (inchangé)', r0);
-eq(!/il manque environ/.test(r1) && /Charge en hausse/.test(r1) && /renseigne ton état du jour/.test(r1), 'mail : pic non interprétable → prudence, pas de séries en plus', r1);
+eq(!/il manque environ/.test(r1) && /[Cc]harge en hausse/.test(r1) && /renseigne ton état du jour/.test(r1), 'mail : pic non interprétable → prudence, pas de séries en plus', r1);
 // R7 (14/11) : douleur signalée → jamais « Aucune blessure active · OK » (affichage seulement).
 eq(verifier('Douleurs & blessures\nAucune blessure active\nOK', D({ alertes: [{ type: 'douleur' }] })).some((e) => e.startsWith('R7')), 'R7 : douleur + « Aucune blessure active · OK » → contradiction');
 eq(verifier('Douleurs & blessures\nDouleur forte signalée (épaule)\nà évaluer', D({ alertes: [{ type: 'douleur' }] })).length === 0, 'R7 : douleur affichée « à évaluer » → permis');
@@ -84,7 +84,7 @@ vm.runInContext(fnSrc(LV3, '_lv3DouleurForte') + '\nthis.df = _lv3DouleurForte;'
 eq(P.df({ moteur: { alertes: [{ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée (épaule)' }] } }).zone === 'épaule', 'H app : douleur forte reconnue (zone lue)');
 eq(P.df({ moteur: { alertes: [{ type: 'douleur', severite: 'moyenne' }] } }) === null, 'H app : douleur modérée → pas de règle H');
 const r2 = rec({ surcharge: 'Faible', charge_ressenti: { evaluable: true }, alertes: [{ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée (genou)' }] });
-eq(!/il manque environ/.test(r2) && /Douleur forte/.test(r2), 'mail : douleur forte → pas de séries en plus hors zone', r2);
+eq(!/il manque environ/.test(r2) && /[Dd]ouleur forte/.test(r2), 'mail : douleur forte → pas de séries en plus hors zone', r2);
 console.log('-'.repeat(70));
 console.log('cohérence charge ↔ récup : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) process.exit(1);

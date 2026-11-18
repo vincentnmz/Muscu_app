@@ -189,7 +189,7 @@ Epaule
 CHARGE & ASSIDUITÉ
 8
 RPE 7 J
-16,2 t ▼8%
+16,2 t ▼8% vs 7 j d'avant
 TONNAGE 7 J
 2/2
 ASSIDUITÉ
@@ -378,7 +378,7 @@ Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
-10,9 t ▲0%
+10,9 t ▲0% vs 7 j d'avant
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
@@ -545,7 +545,7 @@ Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
 CHARGE & ASSIDUITÉ
 8,9
 RPE 7 J
-4,5 t ▼51%
+4,5 t ▼51% vs 7 j d'avant
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
@@ -677,7 +677,7 @@ Rowing barre
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
-12,2 t ▲12%
+12,2 t ▲12% vs 7 j d'avant
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
@@ -853,7 +853,7 @@ Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
-10,9 t ▲0%
+10,9 t ▲0% vs 7 j d'avant
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
@@ -998,7 +998,7 @@ Mêmes cibles que celles de l'athlète ; séries indirectes comptées 0,5.
 CHARGE & ASSIDUITÉ
 8,4
 RPE 7 J
-48,3 t ▲1067%
+48,3 t ▲1067% vs 7 j d'avant
 TONNAGE 7 J
 3/2
 ASSIDUITÉ
@@ -1181,7 +1181,7 @@ Développé couché barre
 Rowing barre
 3 × 8–12 Novalyz : +4 séries
 CHARGE & ASSIDUITÉ
-0 t ▼100%
+0 t ▼100% vs 7 j d'avant
 TONNAGE 7 J
 0/2
 ASSIDUITÉ
@@ -1345,7 +1345,7 @@ Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
-10,9 t ▲0%
+10,9 t ▲0% vs 7 j d'avant
 TONNAGE 7 J
 1/2
 ASSIDUITÉ
@@ -1520,7 +1520,7 @@ Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
-10,9 t ▲0%
+10,9 t ▲0% vs 7 j d'avant
 TONNAGE 7 J
 1/2
 ASSIDUITÉ

@@ -287,6 +287,7 @@ function computeGlobal(perfs: any[]): any {
 
   const datesSet = new Set<string>()
   const records: Record<string, { charge: number; reps: number; volume: number; date: string }> = {}
+  const _recIso: Record<string, string> = {}
   let totalTonnage = 0, totalRpe = 0, rpeCount = 0, totalSeries = 0, totalReps = 0
   const seanceMap: Record<string, { date: string; seance_id: string; tonnage: number; exercices: Set<string>; muscles: Set<string> }> = {}
 
@@ -303,8 +304,12 @@ function computeGlobal(perfs: any[]): any {
     datesSet.add(dIso)
 
     const exo = r.exercice
-    if (exo && (!records[exo] || charge > records[exo].charge || (charge === records[exo].charge && reps > records[exo].reps))) {
+    // 18/11 (audits Vincent/Célia) : à égalité (même charge, mêmes reps), le record garde la date où il a été ATTEINT
+    // la première fois — les perfs arrivent du plus récent au plus ancien, la date d'un record égalé glissait vers la répétition.
+    if (exo && (!records[exo] || charge > records[exo].charge || (charge === records[exo].charge && reps > records[exo].reps)
+      || (charge === records[exo].charge && reps === records[exo].reps && dIso && dIso < (_recIso[exo] || '')))) {
       records[exo] = { charge, reps, volume: Number(r.volume) || tonnage, date: fmtFR(r.date) }
+      _recIso[exo] = dIso
     }
 
     // Une SÉANCE RÉELLE = une DATE réelle. On NE regroupe PAS par seance_id : c'est
@@ -2599,7 +2604,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const perfsWeek = perfs.filter(r => normDate(r.date) >= lundiStr)
   const _secAll = _secMap(exoCatRows || [])
   const seriesParMuscle: Record<string, number> = {}
-  for (const r of perfsWeek) _addSeriesMuscle(seriesParMuscle, r, _secAll)
+  // 18/11 (audit Célia) : séries « cette semaine » sur la MÊME fenêtre que les séances faites (réglage semaine_type).
+  // Avant : séries depuis lundi mais séances sur 7 j glissants → « Quadriceps 0/9 (2/3 séances faites) » alors que
+  // la séance de vendredi (dans les 7 j) avait 3 séries de presse.
+  const _perfsVolSem = prefsA.semaine_type === 'glissant' ? perfs.filter(r => normDate(r.date) >= c7) : perfsWeek
+  for (const r of _perfsVolSem) _addSeriesMuscle(seriesParMuscle, r, _secAll)
 
   // prochaine séance = prochaine séance non faite du programme cette semaine (comme Code.gs getProchaineSeance)
   const prochaineSeance = (() => {
@@ -3064,7 +3073,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     bien_etre,
     pause: pauseObj,
     pause_prevue: pausePrevue(pauseRow, now),
-    pauses_hist: await _pausesHist(athleteId),   // 18/11 : vacances passées (journal des décisions : semaine en pause ≠ « pas tenté »)
+    pauses_hist: await _pausesHist(athleteId),
+    // 18/11 : canal « Message de Novalyz » — SEULEMENT pour la session de l'athlète (jamais au coach, au cron ni à l'IA).
+    messages_novalyz: params.get('_sess_role') === 'a' ? await _messagesNovalyz(athleteId) : [],   // 18/11 : vacances passées (journal des décisions : semaine en pause ≠ « pas tenté »)
     contexte,
     sport,
     cardio,
@@ -5221,6 +5232,7 @@ function _rythmeAbsence(derniereActivite: string | null, dernierPush: string | n
 async function handleCronPushAlertes(body: any): Promise<Response> {
   const secret = Deno.env.get('CRON_SECRET')
   if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
+  try { await handlePushMessagesNovalyz() } catch (_) {}   // 18/11 : filet — messages Novalyz pas encore notifiés
   const [{ data: nt }, { data: ws }] = await Promise.all([
     sb().from('native_push_tokens').select('athlete_id'),
     sb().from('push_subscriptions').select('athlete_id'),
@@ -5920,6 +5932,8 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   out.seancesPrec = new Set(inPrev.map((r: any) => normDate(r.date))).size
   out.objectif = objectif
   out.prevues = objectif ? Math.round(objectif * sem) : 0
+  // 18/11 (audit mail) : jours de vacances (mode pause) dans la période → dits dans le bilan (« 1/4 » d'une semaine de vacances).
+  try { let pj = 0; for (let t = new Date(B.debut); fmtYMD(t) < d1; t = minus(t, -1)) { const k = fmtYMD(t); if (((ad.pauses_hist || []) as any[]).some((p: any) => p && p.debut <= k && k <= p.fin)) pj++ } out.pauseJours = pj } catch (_) { out.pauseJours = 0 }
   if (per !== 'semaine') {
     const semaines: any[] = []
     let lun = getLundi(B.debut)
@@ -6027,11 +6041,11 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   // H (14/11, validé porteur) = app `_lv3DouleurForte` : douleur forte → hors zone, maintien ; pas de séries en plus proposées.
   const _dfR = ((_motR.alertes || []) as any[]).some((x: any) => x && x.type === 'douleur' && x.severite === 'haute')
   if (_dfR && bas.length) {
-    recos.push(`<b>Douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.`)
+    recos.push(`<b>Aujourd'hui — douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.`)
   } else if (_picR && bas.length) {
     recos.push(_crR.degrade === true
-      ? `<b>Charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`
-      : `<b>Charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)
+      ? `<b>Aujourd'hui — charge en hausse</b> : ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l'échec, et priorise la récupération.`   // 18/11 : état du JOUR d'envoi, pas de la période (le bilan d'octobre le citait)
+      : `<b>Aujourd'hui — charge en hausse</b> : ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses — garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.`)
   } else if (bas.length) {
     const JAMBES = ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Adducteur']
     const titre = bas.every((v: any) => JAMBES.indexOf(v.muscle) >= 0) ? 'Jambes sous le minimum' : 'Volume sous le minimum'
@@ -6048,7 +6062,9 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   } else if ((L.recule || []).filter(_libre).length) {
     const x = L.recule.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : charge et reps en baisse (${_frNum(x.c1)} kg × ${x.r1} → ${_frNum(x.c0)} kg × ${x.r0}). Vérifie ta récupération avant d'insister.`)
   } else if ((L.bloque || []).filter(_libre).length) {
-    const x = L.bloque.filter(_libre)[0]; recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances. Pour débloquer : un repos un peu plus long, le placer plus tôt dans la séance, ou viser RPE 8-9 sur toutes tes séries.`)
+    const x = L.bloque.filter(_libre)[0]; // 18/11 (audit mail) : plus de levier générique (il pouvait contredire celui de l'app, tiré du diagnostic : repos,
+    // effort, volume, fréquence, gêne). Le constat est daté (fin de période) et renvoie au levier de l'app.
+    recos.push(`<b>${_escHtml(x.exo)}</b> : ${_frNum(x.c)} kg × ${x.r} depuis ${x.n} séances (au ${fmtFR(minus(B.fin, 1)).slice(0, 5)}, fin de la période). La cause probable et le levier adapté sont dans l'app : Analyses ▸ Évolution ▸ ${_escHtml(x.exo)}.`)
   }
   const ilYa = derniere ? Math.round((B.fin.getTime() - (parseFR(derniere) as Date).getTime()) / 864e5) : null
   if (ilYa == null) recos.push('<b>Cardio</b> : aucune sortie enregistrée. 1 à 2 sorties par semaine pour ta base d\'endurance.')
@@ -6072,7 +6088,7 @@ function _emailRecapV2HTML(prenom: string, b: any): string {
   else if (b.seances) {
     const pct = b.prevues ? Math.round(100 * b.seances / b.prevues) : null
     const roue = pct != null ? _roueImg(Math.min(100, pct), 104, 'b', pct + '%') : `<div style="font-size:30px;font-weight:800;color:#4d82ff">${b.seances}</div>`
-    let reg = `<div style="${td};text-align:center">${roue}<div style="font-size:13px;color:#e9eef8;margin-top:8px"><b>${b.seances} séance${b.seances > 1 ? 's' : ''}</b>${b.prevues ? ` <span style="color:#8b96b0">/ ${b.prevues} prévues</span>` : ''}</div>${b.per !== 'semaine' || b.seancesPrec ? `<div style="font-size:11px;color:#6f7b96;margin-top:3px">période précédente : ${b.seancesPrec}</div>` : ''}</div>`
+    let reg = `<div style="${td};text-align:center">${roue}<div style="font-size:13px;color:#e9eef8;margin-top:8px"><b>${b.seances} séance${b.seances > 1 ? 's' : ''}</b>${b.prevues ? ` <span style="color:#8b96b0">/ ${b.prevues} prévues</span>` : ''}</div>${b.per !== 'semaine' || b.seancesPrec ? `<div style="font-size:11px;color:#6f7b96;margin-top:3px">période précédente : ${b.seancesPrec}</div>` : ''}${b.pauseJours >= 2 ? `<div style="font-size:11px;color:#8bb4ff;margin-top:3px">dont ${b.pauseJours} jours de vacances (mode pause)</div>` : ''}</div>`
     if (b.semaines && b.semaines.length) {
       const mx = Math.max(b.objectif || 1, ...b.semaines.map((s: any) => s.n), 1)
       const cols = b.semaines.map((s: any) => { const col = !s.complete ? '#4d82ff66' : (b.objectif && s.n >= b.objectif ? '#37d39a' : '#fab219'); return `<td valign="bottom" align="center" style="padding:0 3px;font-size:10.5px;color:#8b96b0;font-family:Arial,sans-serif"><div style="font-size:11px;color:#e9eef8;font-weight:700;margin-bottom:3px">${s.n}</div><div style="height:${Math.max(4, Math.round(44 * s.n / mx))}px;background:${col};border-radius:5px 5px 2px 2px;font-size:0;line-height:0">&nbsp;</div><div style="margin-top:4px">${s.du.slice(8, 10)}/${s.du.slice(5, 7)}${s.complete ? '' : '*'}</div></td>` }).join('')
@@ -6340,6 +6356,57 @@ async function handleEnvoyerRetour(body: any): Promise<Response> {
   return jsonResp(ok || enregistre ? { success: true, enregistre } : { success: false, error: 'Envoi impossible pour le moment' })
 }
 const RETOUR_TYPES = ['bug', 'idee', 'autre']
+
+// ── Canal « Message de Novalyz » (18/11, demande porteur) ─────────────────────
+// L'équipe écrit à un athlète (fonction SQL novalyz_message, migration 20261118160000) ; l'app l'affiche
+// (fil « Novalyz · l'équipe » + carte Aujourd'hui) ; l'athlète peut répondre (rangé ici + e-mail à l'équipe).
+// Table absente (migration pas encore appliquée) → aucun message, rien ne casse.
+async function _messagesNovalyz(athleteId: string): Promise<any[]> {
+  try {
+    const { data, error } = await sb().from('messages_novalyz').select('id,created_at,auteur,message,lu_at').eq('athlete_id', String(athleteId)).order('created_at', { ascending: true }).limit(100)
+    return error ? [] : (data || [])
+  } catch (_) { return [] }
+}
+async function handleLireMessagesNovalyz(body: any): Promise<Response> {
+  if (body._sessRole !== 'a' || !body._sessId) return jsonResp({ success: false, error: 'Réservé à l\'athlète' })
+  const { error } = await sb().from('messages_novalyz').update({ lu_at: new Date().toISOString() }).eq('athlete_id', String(body._sessId)).eq('auteur', 'novalyz').is('lu_at', null)
+  return jsonResp(error ? { success: false, error: 'Lecture impossible' } : { success: true })
+}
+const MSG_NV_REPONSES_JOUR = 10
+async function handleRepondreMessageNovalyz(body: any): Promise<Response> {
+  if (body._sessRole !== 'a' || !body._sessId) return jsonResp({ success: false, error: 'Réservé à l\'athlète' })
+  const aid = String(body._sessId), msg = String(body.message || '').trim().slice(0, 1000)
+  if (msg.length < 3) return jsonResp({ success: false, error: 'Message trop court' })
+  const depuis = new Date(Date.now() - 86_400_000).toISOString()
+  const { data: rec, error: eL } = await sb().from('messages_novalyz').select('id').eq('athlete_id', aid).eq('auteur', 'athlete').gte('created_at', depuis).limit(MSG_NV_REPONSES_JOUR)
+  if (eL) return jsonResp({ success: false, error: 'Envoi impossible pour le moment' })
+  if ((rec || []).length >= MSG_NV_REPONSES_JOUR) return jsonResp({ success: false, error: 'Tu as déjà beaucoup écrit aujourd\'hui. Réessaie demain.' })
+  const { error } = await sb().from('messages_novalyz').insert({ athlete_id: aid, auteur: 'athlete', message: msg })
+  if (error) return jsonResp({ success: false, error: 'Envoi impossible pour le moment' })
+  let qui = 'Athlète ' + aid
+  try { const { data } = await sb().from('athletes').select('nom,login').eq('id', aid).single(); qui = 'Athlète ' + String((data as any)?.nom || aid) + ' (login ' + String((data as any)?.login || '?') + ', id ' + aid + ')' } catch (_) {}
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  try { await _envoyerEmail(CONTACT_NOVALYZ, 'Réponse à un message Novalyz — ' + qui, `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Réponse dans le fil « Novalyz »</b> — ${esc(qui)}</p><p style="white-space:pre-wrap">${esc(msg)}</p><p style="color:#777">Répondre : select novalyz_message('login', 'texte'); puis l'action pushMessagesNovalyz.</p></div>`) } catch (_) {}
+  return jsonResp({ success: true })
+}
+// Notification des messages pas encore notifiés (≤ 7 jours). PUBLIQUE et sans secret : elle ne fait que livrer
+// une fois des messages déjà écrits par l'équipe (push_at posé AVANT l'envoi → jamais deux notifications).
+// Appelée après novalyz_message (SQL : net.http_post) et, en filet, par le cron du matin.
+async function handlePushMessagesNovalyz(): Promise<Response> {
+  try {
+    const depuis = new Date(Date.now() - 7 * 86_400_000).toISOString()
+    const { data, error } = await sb().from('messages_novalyz').select('id,athlete_id,message').eq('auteur', 'novalyz').is('push_at', null).gte('created_at', depuis).order('created_at', { ascending: true }).limit(50)
+    if (error) return jsonResp({ success: true })
+    let envoyes = 0
+    for (const m of (data || []) as any[]) {
+      const { data: claim } = await sb().from('messages_novalyz').update({ push_at: new Date().toISOString() }).eq('id', m.id).is('push_at', null).select('id')
+      if (!claim || !claim.length) continue
+      const txt = String(m.message || '').replace(/\s+/g, ' ').trim()
+      try { envoyes += (await notifyAthlete(String(m.athlete_id), { title: '💬 Message de Novalyz', body: txt.length > 140 ? txt.slice(0, 137) + '…' : txt, tag: 'novalyz-equipe', target: 'novalyz' })) > 0 ? 1 : 0 } catch (_) {}
+    }
+    return jsonResp({ success: true })   // aucune donnée renvoyée (route publique)
+  } catch (_) { return jsonResp({ success: true }) }
+}
 const RETOUR_LIBELLES: Record<string, string> = { bug: 'Problème', idee: 'Idée', autre: 'Autre' }
 const RETOURS_MAX_JOUR = 20
 
@@ -7493,7 +7560,7 @@ function _iaContexte(d: any, now: Date = new Date()): string {
   } catch (_) {}
   // Volume de la semaine vs minimum (séries/muscle, muscle secondaire = 0,5).
   const vo = (d.volume_obti || []).filter((o: any) => o && o.muscle && Number(o.series_min) > 0)
-  if (vo.length) L.push(`- Volume de la semaine en cours, depuis lundi (séries faites / minimum hebdo) : ${vo.map((o: any) => o.muscle + ' ' + String(Math.round((Number(o.series_semaine) || 0) * 10) / 10).replace('.', ',') + '/' + o.series_min).join(', ')}.`)
+  if (vo.length) L.push(`- Volume de la semaine en cours, ${d.semaine_type === 'glissant' ? 'sur les 7 derniers jours' : 'depuis lundi'} (séries faites / minimum hebdo) : ${vo.map((o: any) => o.muscle + ' ' + String(Math.round((Number(o.series_semaine) || 0) * 10) / 10).replace('.', ',') + '/' + o.series_min).join(', ')}.`)
   // Cardio 7 jours.
   const c7 = fmtYMD(minus(now, 6)), ch = ((d.cardio && d.cardio.history) || []).filter((h: any) => String(h.date || '') >= c7)
   if (ch.length) L.push(`- Cardio 7 derniers jours : ${ch.length} sortie(s), ${Math.round(ch.reduce((a: number, h: any) => a + (Number(h.duree) || 0), 0))} min au total.`)
@@ -8322,7 +8389,7 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 // appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
 const SESSION_TTL_S = 30 * 24 * 3600
 const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
-const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginDispo', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'confirmerEmail', 'exercices', 'inscriptionBeta', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto', 'envelopperHachages', 'pushMessagesNovalyz'])
 let _sessKeyCache: CryptoKey | null = null
 function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
@@ -8427,7 +8494,7 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   // saveEmail : l'e-mail sert à « mot de passe oublié » → un coach qui y mettait SON adresse pouvait reprendre le compte,
   // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
   // P1-1 (13/11) : le journal des décisions n'est créé que depuis le parcours de l'athlète (jamais par le coach).
-  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan' || action === 'marquerOuverture') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
+  if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan' || action === 'marquerOuverture' || action === 'lireMessagesNovalyz' || action === 'repondreMessageNovalyz') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -8545,6 +8612,9 @@ Deno.serve(async (req: Request) => {
         case 'saveRecapFreq':            return handleSaveRecapFreq(body)
         case 'saveCoachPref':            return handleSaveCoachPref(body)
         case 'envoyerRetour':            return handleEnvoyerRetour(body)
+        case 'lireMessagesNovalyz':      return handleLireMessagesNovalyz(body)       // 18/11 : canal « Message de Novalyz »
+        case 'repondreMessageNovalyz':   return handleRepondreMessageNovalyz(body)
+        case 'pushMessagesNovalyz':      return handlePushMessagesNovalyz()
         case 'enregistrerPlan':          return handleEnregistrerPlan(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
