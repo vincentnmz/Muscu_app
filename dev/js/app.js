@@ -5133,7 +5133,9 @@ function _coachPlanXN(d) { try { const P = (typeof _lv3Plan === 'function') ? _l
 function _coachTonTxt(t) {
   if (!t) return null; const v = t.j7 != null ? t.j7 : t.semaine; if (!(v > 0)) return null;
   const ev = t.evol_pct != null ? t.evol_pct : t.evol;
-  return { txt: String(v).replace('.', ',') + ' t' + (ev != null ? ' · ' + (ev >= 0 ? '+' : '−') + Math.abs(Math.round(ev)) + ' %' : ''), color: ev != null ? (ev >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)' };
+  // 18/11 (audit coach) : « +49 % » sans référence se lisait comme une hausse de fond ; c'est vs les 7 jours d'avant
+  // (une semaine de vacances suffit à le gonfler). La référence est désormais écrite.
+  return { txt: String(v).replace('.', ',') + ' t' + (ev != null ? ' · ' + (ev >= 0 ? '+' : '−') + Math.abs(Math.round(ev)) + ' %' : ''), ref: ev != null ? ('vs 7 j d\'avant' + (t.j7_prec != null ? ' (' + String(t.j7_prec).replace('.', ',') + ' t)' : '')) : '', color: ev != null ? (ev >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)' };
 }
 // Date (ms) du dernier signalement de douleur ≥ 2/5 (ressenti ou bilan de séance) — 0 si aucun.
 function _coachDerniereDouleur(d) {
@@ -5389,7 +5391,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
     const _dash = '<div class="v" style="color:var(--text-subtle)">—</div>';
     const rpeCell = (rpe != null) ? `<div class="v">${String(rpe).replace('.', ',')}</div>` : _dash;
     const _tt = _coachTonTxt(tonnage);
-    const tonCell = _tt ? `<div class="v" style="color:${_tt.color};font-size:12px;white-space:nowrap">${_tt.txt}</div>` : _dash;
+    const tonCell = _tt ? `<div class="v" style="color:${_tt.color};font-size:12px;white-space:nowrap">${_tt.txt}</div>${_tt.ref ? `<div style="font-size:9.5px;color:var(--text-subtle);white-space:nowrap">${_tt.ref}</div>` : ''}` : _dash;
     let regCell = _dash;
     if (seancesSem != null && regPrevues) {
       const rc = (m && (m.regColor === '#e5484d' || m.regColor === '#f59f00')) ? m.regColor : 'var(--text)';
@@ -8657,7 +8659,7 @@ function _coachDeskEquipe() {
     var plan = _coachPlanXN(dd) || '—';
     // 06/11 : mêmes infos que les cartes mobiles (RPE 7 j, tonnage + variation).
     var rpe7 = e.rpe != null ? String(e.rpe).replace('.', ',') : '—';
-    var _tt7 = _coachTonTxt(e.tonnage), ton7 = _tt7 ? '<span style="color:' + _tt7.color + ';white-space:nowrap">' + _tt7.txt + '</span>' : '—';
+    var _tt7 = _coachTonTxt(e.tonnage), ton7 = _tt7 ? '<span style="color:' + _tt7.color + ';white-space:nowrap">' + _tt7.txt + '</span>' + (_tt7.ref ? '<div style="font-size:10px;color:var(--text-subtle);white-space:nowrap">' + _tt7.ref + '</div>' : '') : '—';
     return '<tr class="cs-trow" data-cat="' + et.cat + '" data-nom="' + escapeHtml(String(e.a.nom || '').toLowerCase()) + '" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><td><div class="cs-tn">' + (e.enPause ? '<span class="cs-tav"></span>' : _coachAv(e.a, 'var(--surface2)', 'var(--text)', 30)) + '<b>' + escapeHtml(e.a.nom) + '</b></div></td><td>' + niv + '</td><td>' + etat + '</td><td>' + dern + '</td><td>' + ass + '</td><td>' + plan + '</td><td>' + rpe7 + '</td><td>' + ton7 + '</td></tr>';
   }).join('');
   var chip = function (k, l) { return '<button class="coach-eq-chip' + (_coachDeskCat === k ? ' on' : '') + '" onclick="coachDeskSetCat(\'' + k + '\')">' + l + ' <b>' + nb[k] + '</b></button>'; };
@@ -16092,7 +16094,7 @@ function _maForceChart(data) {
   }
   return _maSec('Exercices en progrès', 'par ' + bNoun + ' · ' + w.plabel, 'progres')
     + _maChartBlock('En progrès', pts, 'exos', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(dts[0]),
-      'Sur la période : ' + Math.round(nUp) + ' progrès sur ' + Math.round(nF) + ' exercices faits. Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».', dts);
+      'Sur la période : ' + Math.round(nUp) + ' progrès sur ' + Math.round(nF) + ' exercices réalisés (un exercice compte à chaque séance où tu le fais). Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».', dts);
 }
 
 // ════════ BLOC UNIQUE « Lecture Novalyz · Analyses » (entraînement) ════════
@@ -16228,7 +16230,7 @@ function _lxRecos(L, V, niveau, data) {
     if (_picR.df) out.push('<b>Douleur forte</b> : hors zone douloureuse, garde tes charges prévues. Pas besoin de forcer ni d\'aller à l\'échec.');
     else out.push('<b>Charge en hausse</b> : ' + (_picR.degrade ? 'ton ressenti baisse — garde tes séries et ta charge prévues, sans aller à l\'échec, et priorise la récupération.' : 'ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses — garde tes séries et ta charge prévues, sans aller à l\'échec, et renseigne ton état du jour.'));
   } else if (ret.length && out.length < 3) {
-    var noms = ret.slice(0, 3).map(function (r) { return _maE(r.muscle) + ' ' + r.fait + '/' + r.min; }).join(', ');
+    var noms = ret.slice(0, 3).map(function (r) { return _maE(r.muscle) + ' ' + _kgTxt(r.fait) + '/' + r.min; }).join(', ');   // 18/11 : 4,5 (secondaires = 0,5), pas 4.5
     out.push('<b>Volume</b> : ' + noms + ' séries cette semaine (' + V.faites + '/' + V.prevues + ' séances faites) — ' + ((V.prevues > 0 && V.faites >= V.prevues) ? 'semaine complète : priorise ces muscles la semaine prochaine.' : 'à compléter sur les séances qui restent.'));
   } else if (out.length < 3 && V.prevues > 0 && V.faites < V.prevues) {
     out.push('<b>Régularité</b> : ' + V.faites + '/' + V.prevues + ' séances cette semaine — encore ' + (V.prevues - V.faites) + ' pour tenir ton objectif.');
@@ -16348,7 +16350,7 @@ function _maLectureNovalyzBloc(data) {
       var C = r.retard ? '#E07800' : '#00A854', w = r.opt ? Math.min(100, Math.round(r.fait / r.opt * 100)) : 0;
       return '<div style="display:grid;grid-template-columns:84px 1fr 62px;gap:8px;align-items:center;font-size:12px;padding:3px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (r.prio ? ';font-weight:800' : '') + '">' + _maE(r.lbl || r.muscle) + '</span>'
         + '<div style="height:7px;border-radius:999px;background:var(--surface);overflow:hidden"><i style="display:block;height:100%;width:' + w + '%;background:' + C + ';border-radius:999px"></i></div>'
-        + '<span style="text-align:right;color:var(--text-muted);font-weight:700">' + r.fait + ' / ' + r.min + '-' + r.opt + '</span></div>';
+        + '<span style="text-align:right;color:var(--text-muted);font-weight:700">' + _kgTxt(r.fait) + ' / ' + r.min + '-' + r.opt + '</span></div>';
     }).join('');
     if (_zero.length) vr += '<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:800;margin:9px 0 3px">' + (_semOk ? 'Pas travaillés cette semaine' : 'Encore à faire cette semaine') + '</div>'
       + _zero.map(function (r) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-muted)"><span>' + _maE(r.lbl || r.muscle) + '</span><span style="font-weight:700">0 / ' + r.min + '-' + r.opt + '</span></div>'; }).join('');
@@ -16678,7 +16680,7 @@ function _maProgExo(data) {
   // séance qui ajoute des reps à charge identique n'était pas prise en compte).
   var best = pts.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, pts[0]);
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
-  var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">force estimée</div></div><div class="c"><div class="v">' + _kgTxt(best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
+  var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">force estimée</div></div><div class="c"><div class="v">' + _kgTxt(best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + _kgTxt(recCharge) + ' kg</div><div class="u">record charge</div></div></div>';
   // « Dernières séances » : TOUTES les séries du jour (depuis seances_detail), +
   // 1RM estimé du jour LABELLISÉ (sinon on ne comprend pas le chiffre de droite).
   var sdByDate = {};
@@ -16691,7 +16693,7 @@ function _maProgExo(data) {
     var series = sdByDate[p.date] || [{ charge: p.charge, reps: p.reps }];
     var setsTxt = series.map(function (x) { return _kgTxt(x.charge || 0) + '×' + (x.reps || 0); }).join(' · ');
     var bd = series.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, series[0]);
-    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps, rpe: bd.rpe, series: [bd] }) + ' kg</span></div>';
+    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps, rpe: bd.rpe, series: series }) + ' kg</span></div>';   // 18/11 : meilleure force du jour sur TOUTES les séries (comme la tuile du haut ; avant 7,5×15 RPE 10 → 11 kg en bas, 12 kg en haut)
   }).join('');
   // Explication de la métrique affichée (sous le graphe) — reprend la maquette validée.
   var EXPL = {
@@ -17058,7 +17060,8 @@ function _maRegulariteBloc(data) {
   }
   var maxV = Math.max(obj, Math.max.apply(null, counts), 1);
   var bars = counts.map(function (c, i) {
-    var col = reached(c) ? 'var(--good)' : (c >= 1 ? 'var(--warn)' : 'var(--bad)');
+    var avant = i < WEEKS - nW;                           // 18/11 (audit Célia) : avant la 1re séance = gris, pas « semaine vide » rouge
+    var col = avant ? 'var(--border)' : (reached(c) ? 'var(--good)' : (c >= 1 ? 'var(--warn)' : 'var(--bad)'));
     var h = c > 0 ? Math.max(6, Math.round(c / maxV * 100)) : 3;
     var last = i === WEEKS - 1;
     return '<i title="Semaine : ' + c + ' séance' + (c > 1 ? 's' : '') + '" style="flex:1;align-self:flex-end;height:' + h + '%;background:' + col + ';border-radius:4px 4px 2px 2px;display:block;' + (last ? 'outline:2px solid ' + col + ';outline-offset:1px' : '') + '"></i>';
@@ -17084,7 +17087,7 @@ function _maRegulariteBloc(data) {
     + '<div style="position:relative;height:124px;display:flex;align-items:flex-end;gap:5px">' + objLine + bars + '</div>'
     + countsRow
     + stats
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = jours d\'entraînement de la semaine · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide.</div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = jours d\'entraînement de la semaine · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide' + (nW < WEEKS ? ' · gris = avant ta 1re séance' : '') + '.</div>'
     + '</div>';
 }
 function _maMuscuTendances(data) {
@@ -18000,7 +18003,9 @@ function renderTjPlanning(data) {
     var it = _items.map(function (o) {
       if (o.plus) { var x = o.plus; return '<div class="tjp-item done extra' + (x.jour === SJ.j ? ' today' : '') + '"><div class="tjp-d">' + (x.jour === SJ.j ? "Aujourd'hui" : _PROG_JOURS_LONG[x.jour - 1]) + ' · ✓ en plus</div><div class="tjp-n">' + escS(String(x.seance_id) === 'Libre' ? 'Séance libre' : x.seance_id) + '</div><div class="tjp-x">' + x.nExos + ' exercice' + (x.nExos > 1 ? 's' : '') + '</div></div>'; }
       var e = o.e;
-      var st = e.fait ? ' · ✓ faite' : (e.jour < SJ.j ? ' · non faite' : '');
+      // 18/11 (audit Romain) : séance prévue mercredi, faite mardi → « Aujourd'hui · ✓ faite mardi » (avant : « ✓ faite », comme si c'était aujourd'hui).
+      var _fj = ''; try { if (e.fait && e.faitIso && e.faitIso !== e.iso) { var _dj = new Date(e.faitIso + 'T00:00:00'); _fj = ' ' + String(_PROG_JOURS_LONG[(_dj.getDay() + 6) % 7] || '').toLowerCase(); } } catch (_) {}
+      var st = e.fait ? ' · ✓ faite' + _fj : (e.jour < SJ.j ? ' · non faite' : '');
       return '<div class="tjp-item' + (e.jour === SJ.j ? ' today' : '') + (e.fait ? ' done' : '') + (!e.fait && e.jour < SJ.j ? ' missed' : '') + '" style="border-left-color:' + (e.fait ? 'var(--tj-good)' : _TJP_PAL[Math.max(0, _ord.indexOf(String(e.sid).trim())) % _TJP_PAL.length]) + '">'
         + '<div class="tjp-d">' + (e.jour === SJ.j ? "Aujourd'hui" : _PROG_JOURS_LONG[e.jour - 1]) + st + (e.deplacee || e.src === 'athlete' ? ' · déplacée' : '') + '</div>'
         + '<div class="tjp-n">' + escS(e.sid) + '</div>' + (e.libre ? '<div class="tjp-x">en séance libre</div>' : '') + '</div>';
@@ -19066,7 +19071,9 @@ function _beNormale(data, nowT) {
 function _beNormaleTxt(r, poss) {
   poss = poss || 'ta';
   if (r.etat === 'nd' && r.ndRaison === 'recentes') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + (r.n > 1 ? r.n + ' saisies' : '1 saisie') + ' cette semaine (' + _fmt1(r.rec) + ') · comparaison à ' + poss + ' normale dès 3 saisies sur 7 jours</span>';
-  if (r.etat === 'nd') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + poss + ' normale arrive après 7 saisies (' + r.nBase + ' pour l\'instant)</span>';
+  // 18/11 (audit Célia/Romain) : « après 7 saisies (1 pour l'instant) » se lisait comme un compteur faux (elle en avait 4) :
+  // les 3 dernières servent à « maintenant », la normale exige 7 AUTRES saisies → 10 au total sur 5 semaines.
+  if (r.etat === 'nd') { var _tot = r.n + r.nBase, _manq = Math.max(1, 10 - _tot); return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + poss + ' normale arrive dans ' + _manq + ' questionnaire' + (_manq > 1 ? 's' : '') + ' (il en faut 10 sur 5 semaines, ' + (poss === 'ta' ? 'tu en as ' : 'il y en a ') + _tot + ')</span>'; }
   var lib = r.etat === 'ok' ? 'dans ' + poss + ' normale' : (r.etat === 'bas' ? 'sous ' + poss + ' normale' : 'au-dessus de ' + poss + ' normale');
   var col = r.etat === 'ok' ? '#00A854' : '#E07800';
   return (r.n > 1 ? r.n + ' dernières saisies ' : 'dernière saisie ') + _fmt1(r.rec) + ' · <b style="color:' + col + '">' + lib + '</b> (' + _fmt1(r.base) + ')';
@@ -20393,7 +20400,17 @@ function _etRenderSuivis(data) {
       // résumée en « OK ». Affichage seulement : moteur et logique des blessures inchangés.
       var _dA = (((data && data.moteur) || {}).alertes || []).filter(function (a) { return a && a.type === 'douleur'; })[0];
       if (_dA) { blSub = String(_dA.message || 'Douleur signalée'); blPill = { txt: 'à évaluer', bg: 'var(--warn-a)', c: 'var(--warn)' }; }
-      else { blSub = 'Aucune douleur ni blessure signalée'; blPill = { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' }; }
+      else {
+        // 18/11 (audit Célia) : douleur 3/5 au fessier le 13/11 puis 1/5 aujourd'hui → on ne dit plus « aucune douleur signalée ».
+        var _dR = null;
+        try {
+          var _c7 = Date.now() - 7 * 864e5;
+          (data.bien_etre || []).forEach(function (b) { var t = _dYmd(b && b.date); if (t != null && t >= _c7 && Number(b.douleur) >= 3 && (!_dR || t > _dR.t)) _dR = { t: t, v: Number(b.douleur), z: b.zone || b.zone_douloureuse || '' }; });
+          if (_dR) _dR.apres = (data.bien_etre || []).some(function (b) { var t = _dYmd(b && b.date); return t != null && t > _dR.t && b.douleur != null && b.douleur !== '' && Number(b.douleur) < 3; });
+        } catch (e) {}
+        if (_dR) { var _dd = new Date(_dR.t); blSub = 'Douleur ' + (_dR.z ? String(_dR.z) + ' ' : '') + _dR.v + '/5 le ' + String(_dd.getDate()).padStart(2, '0') + '/' + String(_dd.getMonth() + 1).padStart(2, '0') + (_dR.apres ? ' · plus signalée depuis' : ''); blPill = _dR.apres ? { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' } : { txt: 'à évaluer', bg: 'var(--warn-a)', c: 'var(--warn)' }; }
+        else { blSub = 'Aucune douleur ni blessure signalée'; blPill = { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' }; }
+      }
     }
   } catch (e) { blSub = 'Tes douleurs signalées et blessures suivies'; blPill = null; }
 
@@ -23065,16 +23082,16 @@ function _rattachements(data, opt) {
 // Séances prévues faites dans [a, b] (dates ISO) : { clé : 'prog' | 'libre' } + séances « en plus ».
 function _faitesPeriode(data, a, b) {
   var P = _rattProgramme(data), estProg = {}; P.ordre.forEach(function (o) { estProg[_rattNorm(o)] = 1; });
-  var R = _rattachements(data), f = {}, plus = [];
+  var R = _rattachements(data), f = {}, plus = [], dt = {};
   ((data && data.seances_detail) || []).forEach(function (x) {
     if (!x || !x.date || x.date < a || x.date > b || x.seance_id == null) return;
     var k = _rattNorm(x.seance_id);
-    if (estProg[k] || !P.ordre.length) { f[k] = 'prog'; return; }
+    if (estProg[k] || !P.ordre.length) { f[k] = 'prog'; dt[k] = x.date; return; }
     var r = R[x.date + '|' + x.seance_id];
-    if (r && r.cible !== '__plus__') { if (!f[_rattNorm(r.cible)]) f[_rattNorm(r.cible)] = 'libre'; }
+    if (r && r.cible !== '__plus__') { if (!f[_rattNorm(r.cible)]) { f[_rattNorm(r.cible)] = 'libre'; dt[_rattNorm(r.cible)] = x.date; } }
     else plus.push({ date: x.date, seance_id: x.seance_id, nExos: _rattExos(x).length });
   });
-  return { faites: f, plus: plus };
+  return { faites: f, plus: plus, dates: dt };   // dates : jour RÉEL où la séance a été faite (18/11)
 }
 // Choix posé dans l'app pas encore relu du serveur (réseau lent / hors-ligne) : gardé 3 jours en local et renvoyé.
 function _rattAid(data) { try { return String((data && data._aid) || (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || ''); } catch (e) { return ''; } }
@@ -23158,8 +23175,8 @@ function _seanceDuJour(data, nowT) {
     var semaine = [];
     ordre.forEach(function (sid) {
       var k = key(sid);
-      if (plan[k]) plan[k].forEach(function (pr) { var jr = jourOf(pr.iso); semaine.push({ sid: sid, jour: jr, iso: pr.iso, fait: !!faites[k], libre: faites[k] === 'libre', id: pr.id, src: pr.src, deplacee: jours[sid] != null && jours[sid] !== jr }); });
-      else if (jours[sid] != null && !annul[k]) { var d = new Date(lun); d.setDate(d.getDate() + jours[sid] - 1); semaine.push({ sid: sid, jour: jours[sid], iso: _sjIso(d), fait: !!faites[k], libre: faites[k] === 'libre', id: null, src: 'type', deplacee: false }); }
+      if (plan[k]) plan[k].forEach(function (pr) { var jr = jourOf(pr.iso); semaine.push({ sid: sid, jour: jr, iso: pr.iso, fait: !!faites[k], faitIso: (_FP.dates || {})[k] || null, libre: faites[k] === 'libre', id: pr.id, src: pr.src, deplacee: jours[sid] != null && jours[sid] !== jr }); });
+      else if (jours[sid] != null && !annul[k]) { var d = new Date(lun); d.setDate(d.getDate() + jours[sid] - 1); semaine.push({ sid: sid, jour: jours[sid], iso: _sjIso(d), fait: !!faites[k], faitIso: (_FP.dates || {})[k] || null, libre: faites[k] === 'libre', id: null, src: 'type', deplacee: false }); }
     });
     if (!semaine.length) return null;
     semaine.sort(function (a, b) { return a.jour - b.jour; });
@@ -24739,6 +24756,11 @@ function dessinerGraphPoids(pesees, periode, ids) {
   } else {
     document.getElementById(ids.evol).innerHTML = '';
   }
+  // 18/11 (audit Vincent) : dernière pesée au 15/09 affichée comme « poids actuel » sans le dire. Au-delà de 30 jours, on date.
+  try {
+    const _dp = String(dernier.date).split('/'), _age = Math.floor((maintenant - new Date(`${_dp[2]}-${_dp[1]}-${_dp[0]}T12:00:00`)) / 864e5);
+    if (_age > 30) document.getElementById(ids.evol).innerHTML += ` <span style="color:var(--text-subtle);font-size:11px;font-weight:600">dernière pesée le ${String(dernier.date).slice(0, 5)} (il y a ${_age} j)</span>`;
+  } catch (e) {}
 
   if (filtered.length < 2) {
     document.getElementById(ids.svg).innerHTML = `<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Besoin d'au moins 2 pesées</text>`;
@@ -25326,7 +25348,7 @@ function renderCoachChargeCard(data) {
     var tv = dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine;
     if (tv != null) {
       var ev = dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol;
-      var sub = (ev != null) ? ' <small style="font-size:10px;color:' + (ev >= 0 ? 'var(--good)' : 'var(--warn)') + '">' + (ev >= 0 ? '▲' : '▼') + Math.abs(ev) + '%</small>' : '';
+      var sub = (ev != null) ? ' <small style="font-size:10px;color:' + (ev >= 0 ? 'var(--good)' : 'var(--warn)') + '">' + (ev >= 0 ? '▲' : '▼') + Math.abs(ev) + '% vs 7 j d\'avant</small>' : '';
       tiles.push(tile(String(tv).replace('.', ',') + ' t' + sub, 'Tonnage 7j', null, 'Tonnage 7 j'));
     }
   }
@@ -28154,8 +28176,19 @@ function renderSanteChart(pfx) {
   var hist = (data && data[cfg.src || 'sante_historique']) || [];
   var byDate = {}; hist.forEach(function (x) { if (x && x.date && x[cfg.metric] != null && !isNaN(Number(x[cfg.metric]))) byDate[x.date] = Number(x[cfg.metric]); });
   // Valeurs présentes dans la période (pour la moyenne).
+  // 18/11 (audit Vincent) : les PAS s'accumulent dans la journée — le jour de la dernière synchro (ou aujourd'hui), s'il
+  // n'est pas fini au moment de la synchro (avant 21 h), est incomplet (3 040 pas synchronisés à 9 h 49) : affiché, mais
+  // hors moyenne.
+  var _partiel = null;
+  if (cfg.kind === 'pas') {
+    try {
+      var _ms = data && data.montre_sync, _at = _ms && _ms.at ? new Date(_ms.at) : null;
+      if (_at && !isNaN(_at.getTime()) && _at.getHours() < 21) _partiel = _ymdLocal(_at);
+      var _auj = _ymdLocal(new Date()); if (byDate[_auj] != null && (!_at || _ymdLocal(_at) === _auj)) _partiel = _auj;
+    } catch (e) {}
+  }
   var vals = [], d = new Date(r.start);
-  while (d < r.end) { var k = _ymdLocal(d); if (byDate[k] != null) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+  while (d < r.end) { var k = _ymdLocal(d); if (byDate[k] != null && k !== _partiel) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
   var avg = vals.length ? (vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) : null;
   var _unit = cfg.kind === 'bpm' ? ' bpm' : (cfg.kind === 'kcal' ? ' kcal' : (cfg.kind === 'g' ? ' g' : ''));
   var fmtAvg = function (v) { return cfg.kind === 'dur' ? _saFmtDur(v) : (Math.round(v) + _unit); };
@@ -28173,7 +28206,7 @@ function renderSanteChart(pfx) {
         + '<em style="font-size:9px;color:var(--text-subtle);font-style:normal;">' + x.lbl + '</em></div>';
     }).join('');
     body.innerHTML = '<div style="display:flex;align-items:flex-end;gap:4px;height:78px;">' + bars + '</div>'
-      + '<div style="font-size:11px;color:var(--text-subtle);text-align:right;margin-top:6px;">' + (avg != null ? 'moy. ' + fmtAvg(avg) : 'Pas encore de données') + '</div>';
+      + '<div style="font-size:11px;color:var(--text-subtle);text-align:right;margin-top:6px;">' + (avg != null ? 'moy. ' + fmtAvg(avg) + (_partiel && days.some(function (x, i) { var q = new Date(r.start); q.setDate(q.getDate() + i); return _ymdLocal(q) === _partiel && x.v != null; }) ? ' (hors journée en cours de synchro)' : '') : (_partiel ? 'Journée en cours : moyenne dès le premier jour complet' : 'Pas encore de données')) + '</div>';
   } else {
     // Mois / Année : moyenne seule.
     if (avg == null) { body.innerHTML = '<div style="text-align:center;color:var(--text-subtle);font-size:12px;padding:18px 0;">Pas de données sur cette période</div>'; return; }
