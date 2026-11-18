@@ -5397,7 +5397,7 @@ async function renderCoachSynthese(athletes, depuisCache) {
       <span class="cae-stripe" style="background:${et.color};"></span>
       <div class="cae-top">
         ${enPause ? '<div class="cae-av"></div>' : _coachAv(a, 'var(--surface2)', 'var(--text)', 36)}
-        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b><span class="cae-sub">${escapeHtml(_COACH_NIVLBL[getNiveauExperience(a.annees_pratique)] || '—')} · ${_coachDernAct(e, datas[i])}</span></div>${chip}
+        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b><span class="cae-sub">${escapeHtml(_COACH_NIVLBL[getNiveauExperience(a.annees_pratique)] || '—')} · ${_coachDernAct(e, datas[i])}</span>${chip}</div>
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="m9 6 6 6-6 6"/></svg>
       </div>
       ${body}
