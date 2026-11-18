@@ -6705,7 +6705,9 @@ function _lectureExos(data, nowT) {
     if (n >= _NB) {
       for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
       var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
-      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+      // 18/11 (vérificateur) : « bloqué à C × R » = meilleur nombre de reps du plateau (même règle que le serveur / le mail).
+      var _rMax = Math.max.apply(null, pts.slice(0, n).map(function (p) { return num(p.reps); }));
+      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: _rMax, rDer: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
     }
   });
   return R;
