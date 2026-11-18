@@ -15,7 +15,7 @@ Stress faible (2/5)
 3 dernières saisies 2 · dans ta normale (2)
 MONTRE
 Sommeil réel 7 h 44 / nuit (7 j, 7 nuits)
-dans ta normale (7 h 29, 27 nuits)
+dans ta normale (7 h 30, 28 nuits)
 Dernière donnée le 12/11
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
 DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (12/11)
@@ -230,13 +230,13 @@ Arrière
 Ratio de séries entre groupes opposés sur la période. Vise ~50/50.
 RECORDS PERSONNELS
 Rowing barre
-92.5 kg
+92,5 kg
 12/11/2026
 Tirage vertical prise large
 90 kg
 09/11/2026
 Développé couché barre
-82.5 kg
+82,5 kg
 12/11/2026
 Développé militaire aux haltères
 80 kg
@@ -262,7 +262,7 @@ fatigue
 frais
 Forme de fond 2 723
 Fatigue récente 2 909
-En unités de charge (tonnage pondéré par l'effort) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
+En unités de charge (tonnage : charge × répétitions) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
 ACWR 1,02 · indice secondaire (à interpréter avec prudence)
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
@@ -316,13 +316,13 @@ Année
 ‹
 9 – 15 nov.
 ›
-8h
+8 h
 L
-7.8h
+7,8 h
 M
-7.7h
+7,7 h
 M
-7.5h
+7,5 h
 J
 V
 S
