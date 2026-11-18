@@ -98,6 +98,12 @@ const store = {
   eq(mut((x) => { x.moteur.charge_ressenti = { ...(x.moteur.charge_ressenti || {}), raisons: (x.moteur.charge_ressenti || {}).raisons || [], rpe_details: [{ exo: 'Presse', charge: 95, rpeAvant: 8, rpeApres: 9 }] }; }).includes('rpe.hausse'), 'attrape : « effort en hausse » signalé sans hausse réelle');
   eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 2 min, stable — pas en cause').includes('levier.repos'), 'attrape : repos cité ≠ repos réel (1 min 30)');
   eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 1 min 30, stable — pas en cause').length === 0, 'repos cité = repos réel (1 min 30) accepté');
+  // Vue coach ▸ Équipe (18/11).
+  const tonA = Math.round(store.performances.filter((r) => r.date >= J(6)).reduce((x, r) => x + r.charge * r.reps, 0) / 100) / 10;
+  const co = (t) => verifier({ store, appdata: null, ecrans: '######## COACH equipe\nA\nPrêt\n9,5\nRPE 7 J\n' + t + '\nTONNAGE\n1/1\nASSIDUITÉ\nPLAN', now: TODAY }).map((e) => e.code);
+  eq(co(String(tonA).replace('.', ',') + ' t').length === 0 || co(String(tonA).replace('.', ',') + ' t').every((c) => c !== 'coach.tonnage'), 'coach : tonnage 7 j juste accepté');
+  eq(co('99,9 t').includes('coach.tonnage'), 'attrape : tonnage 7 j faux côté coach');
+  eq(co(String(tonA).replace('.', ',') + ' t · +5 %').includes('coach.tonnage_ref'), 'attrape : évolution du tonnage sans sa référence');
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

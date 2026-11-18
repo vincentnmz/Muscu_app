@@ -26,8 +26,9 @@ const num = (x) => { const n = Number(String(x == null ? '' : x).replace(',', '.
 const cle = (m) => String(m || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/s$/, '');
 const eqNum = (a, b, tol) => Math.abs(num(a) - num(b)) <= (tol == null ? 1e-9 : tol);
 
-function recalculer(store, appdata, now) {
-  const aid = String((store.athletes && store.athletes[0] && store.athletes[0].id) || '');
+function recalculer(store, appdata, now, aidForce) {
+  const aid = String(aidForce || (store.athletes && store.athletes[0] && store.athletes[0].id) || '');
+  const ath = (store.athletes || []).find((a) => String(a.id) === aid) || {};
   const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === aid).map((r) => ({ ...r, d: iso(r.date) })).filter((r) => r.d && r.d <= now);
   const R = {};
   // Records : meilleure série à vie (charge, puis reps), datée de la PREMIÈRE fois où elle a été atteinte.
@@ -45,8 +46,12 @@ function recalculer(store, appdata, now) {
   const ton = (a, b) => P.filter((r) => r.d >= a && r.d <= b).reduce((s, r) => s + num(r.charge) * num(r.reps), 0);
   R.tonJ7 = Math.round(ton(plusJ(now, -6), now) / 100) / 10;
   R.tonJ7prec = Math.round(ton(plusJ(now, -13), plusJ(now, -7)) / 100) / 10;
+  { const a = ton(plusJ(now, -6), now), b = ton(plusJ(now, -13), plusJ(now, -7)); R.tonEvol = b > 0 ? Math.round((a - b) / b * 100) : null; }
   // Volume par muscle (séries ; muscle secondaire = 0,5) sur la fenêtre du réglage « semaine ».
-  R.semaineType = (appdata && appdata.semaine_type) === 'glissant' ? 'glissant' : 'calendaire';
+  R.semaineType = ((appdata && appdata.semaine_type) || (ath.prefs && ath.prefs.semaine_type)) === 'glissant' ? 'glissant' : 'calendaire';
+  // RPE moyen des séries sur 7 jours ; tonnage brut (kg) pour l'évolution.
+  const p7 = P.filter((r) => r.d >= plusJ(now, -6) && num(r.rpe) > 0);
+  R.rpe7 = p7.length ? Math.round(p7.reduce((x, r) => x + num(r.rpe), 0) / p7.length * 10) / 10 : null;
   const debVol = R.semaineType === 'glissant' ? plusJ(now, -6) : R.lundi;
   const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
   R.volume = {};
@@ -408,11 +413,36 @@ function verifierTexte(R, ad, txt, out) {
   if (diff.length) E('seances.ecrans', 'séances « cette semaine » : ' + vus.map((v) => v[0] + ' = ' + v[1]).join(' · ') + ' — recalculé ' + R.seancesFaites + ' (' + (R.semaineType === 'glissant' ? '7 derniers jours' : 'depuis lundi') + ')');
 }
 
+// ── C. Vue coach ▸ Équipe : chaque ligne d'athlète = recalcul sur SES séries (RPE 7 j, tonnage 7 j et son évolution) ──
+function verifierCoach(store, ecrans, now, out) {
+  const S = sections(ecrans), L = S['COACH equipe']; if (!L) return;
+  const noms = {}; (store.athletes || []).forEach((a) => { if (a && a.nom) noms[String(a.nom).trim()] = String(a.id); });
+  for (let i = 0; i < L.length; i++) {
+    const aid = noms[L[i].trim()]; if (!aid) continue;
+    let j = i + 1; const bloc = []; while (j < L.length && L[j].trim() !== 'PLAN') bloc.push(L[j++].trim());
+    const R = recalculer(store, null, now, aid), nom = 'Équipe · ' + L[i].trim();
+    const iR = bloc.indexOf('RPE 7 J'), iT = bloc.indexOf('TONNAGE');
+    if (iR > 0) { const v = bloc[iR - 1]; if ((v === '—') !== (R.rpe7 == null) || (v !== '—' && v !== f1(R.rpe7))) out.push({ code: 'coach.rpe7', gravite: 'erreur', message: nom + ' : RPE 7 j « ' + v + ' », recalculé ' + (R.rpe7 == null ? '—' : f1(R.rpe7)) }); }
+    if (iT > 0) {
+      const t = bloc.slice(iR + 1, iT).join(' ');
+      const m = t.match(/^([\d,]+) t(?: · ([+−-])(\d+) %)?/);
+      if (m) {
+        if (num(m[1]) !== R.tonJ7) out.push({ code: 'coach.tonnage', gravite: 'erreur', message: nom + ' : tonnage « ' + m[1] + ' t », recalculé ' + f1(R.tonJ7) + ' t' });
+        const ev = m[2] ? (m[2] === '+' ? 1 : -1) * +m[3] : null;
+        if (ev !== null && ev !== R.tonEvol) out.push({ code: 'coach.tonnage_evol', gravite: 'erreur', message: nom + ' : évolution « ' + m[2] + m[3] + ' % », recalculée ' + R.tonEvol + ' %' });
+        const k = t.match(/vs 7 j d'avant \(([\d,]+) t\)/); if (k && num(k[1]) !== R.tonJ7prec) out.push({ code: 'coach.tonnage_prec', gravite: 'erreur', message: nom + ' : « vs 7 j d\'avant (' + k[1] + ' t) », recalculé ' + f1(R.tonJ7prec) + ' t' });
+        if (m[2] && !k) out.push({ code: 'coach.tonnage_ref', gravite: 'erreur', message: nom + ' : évolution du tonnage sans sa référence' });
+      } else if (R.tonJ7 > 0) out.push({ code: 'coach.tonnage', gravite: 'erreur', message: nom + ' : tonnage absent, recalculé ' + f1(R.tonJ7) + ' t' });
+    }
+  }
+}
+
 function verifier({ store, appdata, ecrans, now }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour), out = [];
-  verifierDonnees(R, appdata, out);
-  verifierTexte(R, appdata, ecrans, out);
+  if (appdata) verifierDonnees(R, appdata, out);
+  if (appdata) verifierTexte(R, appdata, ecrans, out);
+  verifierCoach(store, ecrans, jour, out);
   return out;
 }
 module.exports = { verifier, recalculer };
@@ -420,7 +450,7 @@ module.exports = { verifier, recalculer };
 if (require.main === module) {
   const fs = require('fs');
   const [db, ad, ec, j] = process.argv.slice(2);
-  const res = verifier({ store: JSON.parse(fs.readFileSync(db, 'utf8')), appdata: JSON.parse(fs.readFileSync(ad, 'utf8')), ecrans: ec ? fs.readFileSync(ec, 'utf8') : '', now: j });
+  const res = verifier({ store: JSON.parse(fs.readFileSync(db, 'utf8')), appdata: ad && ad !== '-' ? JSON.parse(fs.readFileSync(ad, 'utf8')) : null, ecrans: ec ? fs.readFileSync(ec, 'utf8') : '', now: j });
   if (!res.length) console.log('✓ aucun écart'); else res.forEach((x) => console.log('✗ [' + x.code + '] ' + x.message));
   process.exit(res.length ? 1 : 0);
 }
