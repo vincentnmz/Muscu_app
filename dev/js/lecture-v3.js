@@ -137,6 +137,14 @@ function _lv3Forces(data, nowT) {
 }
 
 // ── Volume / fréquence d'un muscle sur les 4 semaines précédant nowT ──────────
+// 20/11 (banc « exercice remplacé ») : l'exemple d'une action « séries » cite un exercice du programme ACTUEL du muscle
+// (le plan est figé lundi ; si l'exercice a été remplacé depuis, on citait l'ancien). L'action compte tout le muscle.
+function _lv3ExoExemple(data, a) {
+  var prog = (data && data.programme) || [], dans = prog.some(function (l) { return l && String(l.exercice || '').trim() === String(a.exo || '').trim(); });
+  if (dans || !a.muscle) return a.exo;
+  var m = _musKey(a.muscle), l = prog.filter(function (x) { return x && x.type !== 'cardio' && _musKey(_lv3MuscleExo(data, x.exercice) || '') === m; })[0];
+  return l ? l.exercice : a.exo;
+}
 function _lv3MuscleExo(data, exo) {
   try { var e = (exercicesData || []).filter(function (x) { return x && String(x.exercice).trim() === String(exo).trim(); })[0]; if (e && e.muscle) return e.muscle; } catch (_) {}
   var m = ''; try { (data.seances_detail || []).some(function (s) { return (s.exercices || []).some(function (e) { if (String(e.nom).trim() === String(exo).trim()) { m = e.muscle || ''; return true; } return false; }); }); } catch (_) {}
@@ -296,7 +304,7 @@ function _lv3Diag(data, exo, kind, nowT) {
     if (rpeT != null && rpeT < 8.5 && cause !== 'effort' && !(_rpe0 != null && _rpe0 >= 9)) {
       var res = Math.round(10 - rpeT);
       checks.push({ s: 'ko', t: '<b>Séries arrêtées à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '</b> (≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve) sur les ' + recentes.length + ' dernières séances' });
-      if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Au choix : sur ta dernière série, va jusqu\'à RPE 9-10 (0 à 1 rep en réserve) à ' + kg(c0) + ' kg, ou ajoute 1 série à ' + kg(c0) + ' kg.'; }
+      if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Au choix : sur ta dernière série, va jusqu\'à RPE 9-10 (0 à 1 rep en réserve)' + (c0 > 0 ? ' à ' + kg(c0) + ' kg, ou ajoute 1 série à ' + kg(c0) + ' kg.' : ', ou ajoute 1 série.') + (c0 <= 0 && rmax && r0 >= rmax ? ' Tu es au haut de ta fourchette (' + rmax + ' reps) au poids du corps : pour continuer à progresser, ajoute du lest ou passe à une variante plus difficile.' : ''); }
       else levier += ' Et sur ta dernière série, va jusqu\'à RPE 9-10 : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve.';
     } else if (rpeT != null && cause !== 'effort') checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
     // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
@@ -496,7 +504,7 @@ function _lv3Plan(data, nowT) {
       var tc = _tjCibles(D, [pl])[0];
       if (tc && tc.cib && (tc.cib.up === 'charge' || tc.cib.up === 'reps')) {
         var fx = F[x.exo];
-        push({ exo: x.exo, type: 'cible', charge: tc.cib.charge, reps: tc.cib.reps, titre: x.exo + ' : vise ' + _cdFmtKg(tc.cib.charge) + ' kg × ' + tc.cib.reps, raison: 'En progrès' + (fx && fx.pct > 0 ? ' (+' + _lv3Fmt(fx.pct) + ' % en ' + _lv3Fmt(fx.sem) + ' sem.)' : '') + ' — même cible que ta saisie.' });
+        push({ exo: x.exo, type: 'cible', charge: tc.cib.charge, reps: tc.cib.reps, titre: x.exo + ' : vise ' + (typeof _cxr === 'function' ? _cxr(tc.cib.charge, tc.cib.reps) : _cdFmtKg(tc.cib.charge) + ' kg × ' + tc.cib.reps), raison: 'En progrès' + (fx && fx.pct > 0 ? ' (+' + _lv3Fmt(fx.pct) + ' % en ' + _lv3Fmt(fx.sem) + ' sem.)' : '') + ' — même cible que ta saisie.' });
       }
     });
   } catch (_) {}
@@ -537,7 +545,7 @@ function _lv3Plan(data, nowT) {
       a.titre = (String(a.titre || '').indexOf('★') === 0 ? '★ ' : '') + _muL + ' : ' + a.min + ' séries cette semaine';
       a.progres = _lv3Fmt(tot) + ' / ' + a.min;
       a.raison = (a.parSem != null ? 'Moyenne ' + _lv3Fmt(a.parSem) + ' séries/sem sur ' + (a.recul && a.recul < 4 ? _lv3Fmt(Math.round(a.recul)) : '4') + ' semaines, ton minimum ' + a.min + '. ' : '')
-        + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _lv3MusNom(_mu) + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + a.exo + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';
+        + 'Tous tes exercices ' + (/^[aeiouyéèêh]/i.test(_mu) ? 'd\'' : 'de ') + _lv3MusNom(_mu) + ' comptent (ex. +' + a.add + ' série' + (a.add > 1 ? 's' : '') + ' de ' + (typeof _lv3ExoExemple === 'function' ? _lv3ExoExemple(data, a) : a.exo) + (a.add >= 3 ? ', idéalement sur 2 séances' : '') + ').';
     }
   });
   if (!acts.length) return null;
