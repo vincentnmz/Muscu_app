@@ -29,6 +29,7 @@ function makeEngine(store) {
       upsert(p) { op = 'upsert'; payload = Array.isArray(p) ? p : [p]; return self; },
       delete() { op = 'delete'; return self; },
       eq(c, v) { filters.push(r => String(r[c]) === String(v)); return self; },
+      not(c, op, v) { filters.push(r => op === 'is' ? !(v === null ? r[c] == null : r[c] === v) : String(r[c]) !== String(v)); return self; },   // 20/11 : .not('jour', 'is', null)
       neq(c, v) { filters.push(r => String(r[c]) !== String(v)); return self; },
       in(c, a) { const s = (a || []).map(String); filters.push(r => s.includes(String(r[c]))); return self; },
       is(c, v) { filters.push(r => r[c] === v); return self; },

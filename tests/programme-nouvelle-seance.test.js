@@ -22,8 +22,22 @@ eq(S.jg().seances.join() === 'Push,Push 2' && S.ouverts[1] === 'Push 2', 'deuxi�
 S.add('   ');
 eq(S.jg().seances.length === 2 && S.ouverts.length === 2, 'nom vide : rien créé, rien ouvert');
 
-const coach = SRC.slice(SRC.indexOf('async function cdAjouterSeance'), SRC.indexOf('async function _cdNouvelleSeanceOk'));
-eq(/class="jg-chip cta" onclick="document\.getElementById\(\\'cd-ns-in\\'\)\.value=\\'' \+ n \+ '\\';_cdNouvelleSeanceOk\(\)"/.test(coach), 'coach : un clic sur un nom crée la séance et ouvre le choix des exercices');
+// 20/11 : coach ET athlète passent par le même parcours (js/creer-seance.js) : un clic sur « Push » ouvre le choix
+// des exercices sur une séance au nom libre (« Push 2 » si « Push » existe déjà) ; nom vide → rien.
+eq(/function cdAjouterSeance\(\) \{ return creerSeance\(\); \}/.test(SRC), 'coach et athlète : « Créer une séance » = parcours commun');
+const CS = fs.readFileSync(path.join(__dirname, '..', 'js', 'creer-seance.js'), 'utf8');
+const els = {}; const el = (id) => (els[id] || (els[id] = { id, style: {}, value: '', innerHTML: '', addEventListener() {}, focus() {} }));
+const C = { coach: { coach_id: '9' }, cdProgrammeLignes: [{ seance_id: 'Push' }], cdProgOpen: {}, ouverts: [], toasts: [],
+  document: { getElementById: (id) => els[id] || null, createElement: () => el('cs-sheet'), body: { appendChild() {} } },
+  getComputedStyle: () => ({ display: 'none' }), showToast: (t) => C.toasts.push(t), escapeHtml: (t) => String(t) };
+C.ouvrirPickerExos = (sid, done) => { C.ouverts.push(sid); C.done = done; return Promise.resolve(); };
+vm.createContext(C); vm.runInContext(CS, C);
+C.creerSeance();
+eq(els['cs-sheet'] && els['cs-sheet'].style.display === 'flex' && /creerSeanceChoix\('Push'\)/.test(els['cs-sheet'].innerHTML), 'fenêtre « Créer une séance » ouverte avec les choix rapides');
+el('cs-nom'); C.creerSeanceChoix('Push');
+eq(C.ouverts.join() === 'Push 2' && els['cs-sheet'].style.display === 'none', 'un clic sur « Push » (déjà pris) ouvre le choix des exercices sur « Push 2 »', C.ouverts);
+el('cs-nom').value = '   '; C.creerSeanceValider();
+eq(C.ouverts.length === 1 && C.toasts.length === 1, 'nom vide : rien ouvert, message', C.toasts);
 eq(/_jgAddSeance\(\\'' \+ js\(n\) \+ '\\'\)">\+ ' \+ esc\(n\)/.test(SRC) && /class="jg-chip cta"/.test(SRC), 'athlète : boutons « + Push… » en style action');
 eq(/\.jg-chip\.cta \{[^}]*color:var\(--accent\)/.test(CSS), 'CSS : style action défini (.jg-chip.cta)');
 
