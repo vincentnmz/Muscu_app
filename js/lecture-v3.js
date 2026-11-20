@@ -407,6 +407,26 @@ function _lv3DataAvant(data, isoLundi) {
   var c = Object.assign({}, data); c.historique = Object.assign({}, h, { progression_par_exo: prog, daily_muscu: dm });
   return c;
 }
+// 19/11 (retour porteur) : séance où faire l'action = la PROCHAINE séance du programme pas encore faite cette semaine qui
+// contient l'exercice (ou, pour un volume, un exercice du muscle). Avant : la 1re séance du programme qui le contient,
+// même déjà faite (« Séance « dos jambes » » le jeudi alors que dos jambes était faite mardi). Aucune → '' (pas d'indication).
+function _lv3ProchaineSeance(data, a, isoL) {
+  try {
+    var prog = ((data && data.programme) || []).filter(function (l) { return l && l.type !== 'cardio' && l.seance_id; });
+    var k = a.muscle ? _musKey(a.muscle) : null;
+    var cand = []; prog.forEach(function (l) { var sid = String(l.seance_id).trim(), ok = String(l.exercice || '').trim() === String(a.exo || '').trim() || (a.type === 'series' && k && _musKey(_lv3MuscleExo(data, l.exercice)) === k); if (ok && cand.indexOf(sid) < 0) cand.push(sid); });
+    if (!cand.length) return '';
+    var t = new Date(isoL + 'T12:00:00'); t.setDate(t.getDate() + 6); var isoD = _lv3Ymd(t);
+    var faites = {}; try { if (typeof _faitesPeriode === 'function') faites = _faitesPeriode(data, isoL, isoD).faites || {}; } catch (_) {}
+    var norm = function (x) { return (typeof _rattNorm === 'function') ? _rattNorm(x) : String(x || '').trim().toLowerCase(); };
+    var jour = {}; prog.forEach(function (l) { var sid = String(l.seance_id).trim(); if (l.jour != null && l.jour !== '' && jour[sid] == null) jour[sid] = Number(l.jour); });
+    var reste = cand.filter(function (sid) { return !faites[norm(sid)]; });
+    if (!reste.length) return '';
+    var auj = (new Date().getDay() + 6) % 7 + 1;   // 1 = lundi
+    reste.sort(function (x, y) { var jx = jour[x] != null ? jour[x] : 99, jy = jour[y] != null ? jour[y] : 99; var ax = jx >= auj ? 0 : 1, ay = jy >= auj ? 0 : 1; return ax - ay || jx - jy; });
+    return reste[0];
+  } catch (_) { return _lv3SeanceDe(data, a.exo); }
+}
 function _lv3SeanceDe(data, exo) {
   var l = ((data && data.programme) || []).filter(function (x) { return x && String(x.exercice || '').trim() === String(exo).trim() && x.type !== 'cardio'; })[0];
   return l ? (l.seance_id || '') : '';
@@ -449,7 +469,7 @@ function _lv3Plan(data, nowT) {
     }
   }
   var D = _lv3DataAvant(data, isoL), acts = [], vuExo = {}, vuMus = {};
-  var push = function (a) { if (!a || acts.length >= 3 || vuExo[a.exo]) return; vuExo[a.exo] = 1; if (a.muscle) vuMus[_musKey(a.muscle)] = 1; a.seance = _lv3SeanceDe(data, a.exo); acts.push(a); };
+  var push = function (a) { if (!a || acts.length >= 3 || vuExo[a.exo]) return; vuExo[a.exo] = 1; if (a.muscle) vuMus[_musKey(a.muscle)] = 1; a.seance = _lv3ProchaineSeance(data, a, isoL); acts.push(a); };
   var diags = _lv3Diags(D, tL);
   diags.filter(function (d) { return d.action && d.action.type === 'charge'; }).forEach(function (d) { push(d.action); });
   diags.filter(function (d) { return d.action && d.action.type === 'series'; }).forEach(function (d) { push(d.action); });
@@ -493,6 +513,22 @@ function _lv3Plan(data, nowT) {
   acts.forEach(function (a) {
     var R = _lv3Realise(a, data, isoL, null);
     a.fait = R.fait;
+    // 19/11 (retour porteur) : exercice DÉJÀ fait cette semaine sans atteindre l'objectif (ex. Tirage trapèze fait mardi
+    // dans « dos jambes » au lieu de « dos jambe 2 ») → on dit ce qui a été fait et quand, au lieu de renvoyer vers une
+    // séance où il ne sera pas refait. L'action reste non cochée (le journal la jugera « pas atteint » en fin de semaine).
+    a.tente = null;
+    if (!R.fait && R.tente && (a.type === 'charge' || a.type === 'cible' || a.type === 'rpe')) {
+      try {
+        var _pts = ((data.historique && data.historique.progression_par_exo) || {})[a.exo] || [], _b = null, _bd = null;
+        _pts.forEach(function (p) { var iso = _lv3Iso(p.date); if (iso < isoL) return; (p.series || []).forEach(function (x) { var dc = _lv3Num(x.charge) - (_b ? _lv3Num(_b.charge) : -1), dr = _b ? _lv3Num(x.reps) - _lv3Num(_b.reps) : 0, de = _b ? _lv3Num(x.rpe) - _lv3Num(_b.rpe) : 0; if (!_b || dc > 0 || (dc === 0 && (dr > 0 || (dr === 0 && de > 0)))) { _b = x; _bd = iso; } }); });   // à égalité : la série la plus dure (RPE le plus haut)
+        if (_b) {
+          var _J = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'], _jr = _J[new Date(_bd + 'T12:00:00').getDay()];
+          var _obj = a.type === 'rpe' ? 'RPE 8 ou moins à ' + _cdFmtKg(a.charge) + ' kg' : _cdFmtKg(a.charge) + ' kg × ' + a.reps;
+          a.tente = { court: 'tenté ' + _jr + ' (' + _cdFmtKg(_b.charge) + ' kg × ' + _lv3Num(_b.reps) + (_lv3Num(_b.rpe) > 0 ? ', RPE ' + _lv3Fmt(_lv3Num(_b.rpe)) : '') + ')',
+            long: 'Tenté ' + _jr + ' : ' + _cdFmtKg(_b.charge) + ' kg × ' + _lv3Num(_b.reps) + (_lv3Num(_b.rpe) > 0 ? ' à RPE ' + _lv3Fmt(_lv3Num(_b.rpe)) : '') + ' — objectif (' + _obj + ') pas atteint cette fois. Si tu ne refais pas l\'exercice d\'ici dimanche, il comptera comme « pas atteint » au journal.' };
+        }
+      } catch (_) {}
+    }
     if (a.type === 'series') { var tot = R.tot; a.cetteSem = tot;
       // 06/11 : l'action dit ce qui est réellement compté — le TOTAL du muscle sur la semaine (tous ses exercices),
       // pas « +N séries de tel exercice » (retour porteur : 4 séries de Belt squat ne semblaient pas comptées).
@@ -566,7 +602,7 @@ function _lv3PlanHtml(data, compact) {
       + P.actions.map(function (a) {
         if (a.gene) return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--text-muted)"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;color:#B35F00;border:2px solid #E0780055">⏸</span><span><s>' + _maE(a.titre) + '</s> <b style="color:#B35F00">· en pause (' + _maE(_lv3PauseCourt(a.gene)) + ')</b></span></div>';
         return '<div style="display:flex;gap:9px;align-items:center;margin-top:8px;font-size:12.5px"><span style="width:19px;height:19px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:12px;color:#fff;' + (a.fait ? 'background:#00A854;border:2px solid #00A854' : 'border:2px solid var(--border)') + '">' + (a.fait ? '✓' : '') + '</span>'
-          + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <b style="color:var(--accent)">· ' + _maE(a.progres) + '</b>' : '') + (a.seance && !a.fait && !a.progres ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '') + '</span></div>';
+          + '<span style="' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <b style="color:var(--accent)">· ' + _maE(a.progres) + '</b>' : '') + (a.tente ? ' <b style="color:#B35F00">· ' + _maE(a.tente.court) + '</b>' : (a.seance && !a.fait && !a.progres ? ' <span style="color:var(--text-subtle)">· « ' + _maE(a.seance) + ' »</span>' : '')) + '</span></div>';
       }).join('') + _lv3GeneAutreHtml(data) + '</div>';
   }
   return '<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.18));border-radius:12px;padding:11px 13px">'
@@ -575,7 +611,7 @@ function _lv3PlanHtml(data, compact) {
       if (a.gene) return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:#FFF1E0;color:#B35F00;font-weight:800;font-size:11px;display:grid;place-items:center;flex:none">⏸</span>'
         + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;color:var(--text-muted)"><s>' + _maE(a.titre) + '</s> <span style="color:#B35F00">· en pause</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _lv3PauseLong(a.gene) + '</div></div></div>';
       return '<div style="display:flex;gap:10px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="width:22px;height:22px;border-radius:999px;background:' + (a.fait ? '#00A854' : 'var(--accent)') + ';color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none">' + (a.fait ? '✓' : (i + 1)) + '</span>'
-        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <span style="color:var(--accent);font-weight:800">· ' + _maE(a.progres) + '</span>' : '') + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '') + '</div></div></div>';
+        + '<div style="min-width:0"><div style="font-size:13.5px;font-weight:700;' + (a.fait ? 'text-decoration:line-through;color:var(--text-subtle)' : '') + '">' + _maE(a.titre) + (a.progres && !a.fait ? ' <span style="color:var(--accent);font-weight:800">· ' + _maE(a.progres) + '</span>' : '') + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4">' + _maE(a.raison) + (a.tente ? '<br><b style="color:#B35F00">' + _maE(a.tente.long) + '</b>' : (a.seance ? ' Séance « ' + _maE(a.seance) + ' ».' : '')) + '</div></div></div>';
     }).join('')
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:4px;line-height:1.45">' + (P.ok.length ? 'Rien à changer : ' + _maE(P.ok.join(' · ')) + ' séries/sem, dans ta zone. ' : '') + 'Ce sont des propositions : c\'est toi qui choisis. Calculées sur tes séances jusqu\'à dimanche ; chacune se coche toute seule quand ta séance la réalise.</div>' + _lv3GeneAutreHtml(data) + '</div>';
 }
