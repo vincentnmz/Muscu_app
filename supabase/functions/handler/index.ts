@@ -5040,7 +5040,9 @@ async function handleGetCoachPrefs(params: URLSearchParams): Promise<Response> {
     ])
     tel = !!((n && n.length) || (w && w.length))
   } catch (_) {}
-  return jsonResp({ success: true, notif: pr.notif, groupes: pr.groupes, defauts: pr.defauts, telephone: tel })
+  // 20/11 : affiche l'entrée de l'écran admin (le droit est revérifié à chaque appel adminNovalyz).
+  const admin = params.get('_sess_role') === 'c' && await _estAdminNovalyz('c', coachId)
+  return jsonResp({ success: true, notif: pr.notif, groupes: pr.groupes, defauts: pr.defauts, telephone: tel, admin })
 }
 async function handleSaveCoachPref(body: any): Promise<Response> {
   const coachId = String(body.coach_id || ''), cle = String(body.cle || ''), v = body.valeur
@@ -6389,7 +6391,7 @@ async function handleRepondreMessageNovalyz(body: any): Promise<Response> {
   let qui = 'Athlète ' + aid
   try { const { data } = await sb().from('athletes').select('nom,login').eq('id', aid).single(); qui = 'Athlète ' + String((data as any)?.nom || aid) + ' (login ' + String((data as any)?.login || '?') + ', id ' + aid + ')' } catch (_) {}
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  try { await _envoyerEmail(CONTACT_NOVALYZ, 'Réponse à un message Novalyz — ' + qui, `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Réponse dans le fil « Novalyz »</b> — ${esc(qui)}</p><p style="white-space:pre-wrap">${esc(msg)}</p><p style="color:#777">Répondre : select novalyz_message('login', 'texte'); puis l'action pushMessagesNovalyz.</p></div>`) } catch (_) {}
+  try { await _envoyerEmail(CONTACT_NOVALYZ, 'Réponse à un message Novalyz — ' + qui, `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5"><p><b>Réponse dans le fil « Novalyz »</b> — ${esc(qui)}</p><p style="white-space:pre-wrap">${esc(msg)}</p><p style="color:#777">Répondre : app Novalyz (compte coach admin) ▸ Réglages ▸ Mon compte ▸ Écrire aux athlètes.</p></div>`) } catch (_) {}
   return jsonResp({ success: true })
 }
 // Notification des messages pas encore notifiés (≤ 7 jours). PUBLIQUE et sans secret : elle ne fait que livrer
@@ -6409,6 +6411,68 @@ async function handlePushMessagesNovalyz(): Promise<Response> {
     }
     return jsonResp({ success: true })   // aucune donnée renvoyée (route publique)
   } catch (_) { return jsonResp({ success: true }) }
+}
+// ── Écran admin « Écrire aux athlètes » (20/11, demande porteur : « que à moi ») ──────────────
+// Droit = une ligne (role 'c', compte_id = coach_id) dans admins_novalyz (migration 20261120120000,
+// service_role seul : ni l'app ni un coach ne peut s'y ajouter). Vérifié à CHAQUE appel avec l'id de la SESSION.
+// L'athlète visé est passé dans « cible » (pas athlete_id : le contrôle coach ↔ ses athlètes ne s'applique pas ici).
+async function _estAdminNovalyz(role: string, id: string): Promise<boolean> {
+  if (role !== 'c' || !id) return false
+  try {
+    const { data, error } = await sb().from('admins_novalyz').select('compte_id').eq('role', 'c').eq('compte_id', String(id)).limit(1)
+    return !error && !!(data && data.length)
+  } catch (_) { return false }
+}
+async function handleAdminNovalyz(body: any): Promise<Response> {
+  if (!(await _estAdminNovalyz(String(body._sessRole || ''), String(body._sessId || '')))) return jsonResp({ success: false, error: 'non autorisé' })
+  const op = String(body.op || '')
+  if (op === 'etat') {
+    const [{ data: ath, error: eA }, { data: co }, { data: msgs }] = await Promise.all([
+      sb().from('athletes').select('id,login,nom,coach_id,sport,is_demo').limit(2000),
+      sb().from('coachs').select('coach_id,nom').limit(500),
+      sb().from('messages_novalyz').select('athlete_id,auteur,message,created_at,lu_at').order('created_at', { ascending: false }).limit(2000),
+    ])
+    if (eA) return jsonResp({ success: false, error: 'Lecture impossible' })
+    const nomCoach: Record<string, string> = {}
+    for (const c of (co || []) as any[]) nomCoach[String(c.coach_id)] = String(c.nom || '')
+    const parA: Record<string, any> = {}
+    for (const m of (msgs || []) as any[]) {
+      const k = String(m.athlete_id)
+      if (!parA[k]) parA[k] = { dernier: { auteur: m.auteur, apercu: String(m.message || '').replace(/\s+/g, ' ').slice(0, 90), created_at: m.created_at, lu_at: m.lu_at }, total: 0, reponses: 0 }
+      parA[k].total++; if (m.auteur === 'athlete') parA[k].reponses++
+    }
+    const athletes = ((ath || []) as any[]).filter((a) => !a.is_demo).map((a) => ({
+      id: String(a.id), login: String(a.login || ''), nom: String(a.nom || ''), sport: String(a.sport || ''),
+      coach: a.coach_id ? (nomCoach[String(a.coach_id)] || '') : '',
+      dernier: parA[String(a.id)] ? parA[String(a.id)].dernier : null,
+      total: parA[String(a.id)] ? parA[String(a.id)].total : 0, reponses: parA[String(a.id)] ? parA[String(a.id)].reponses : 0,
+    }))
+    return jsonResp({ success: true, athletes })
+  }
+  const cible = String(body.cible || '')
+  if (!cible) return jsonResp({ success: false, error: 'Athlète manquant' })
+  const { data: a } = await sb().from('athletes').select('id,is_demo').eq('id', cible).maybeSingle()
+  if (!a) return jsonResp({ success: false, error: 'Athlète introuvable' })
+  if (op === 'fil') {
+    const { data, error } = await sb().from('messages_novalyz').select('id,created_at,auteur,message,lu_at,push_at').eq('athlete_id', cible).order('created_at', { ascending: true }).limit(200)
+    return jsonResp(error ? { success: false, error: 'Lecture impossible' } : { success: true, messages: data || [] })
+  }
+  if (op === 'envoyer') {
+    if ((a as any).is_demo) return jsonResp({ success: false, error: 'Compte de démo : pas de message' })
+    const msg = String(body.message || '').trim()
+    if (msg.length < 3) return jsonResp({ success: false, error: 'Message trop court' })
+    if (msg.length > 3000) return jsonResp({ success: false, error: 'Message trop long (3 000 caractères max)' })
+    // push_at posé DÈS l'insertion : la notification part ici, une seule fois (le cron pushMessagesNovalyz l'ignore).
+    const { data: ins, error } = await sb().from('messages_novalyz').insert({ athlete_id: cible, auteur: 'novalyz', message: msg, push_at: new Date().toISOString() }).select('id')
+    if (error || !ins || !ins.length) return jsonResp({ success: false, error: 'Envoi impossible pour le moment' })
+    let notifie = false
+    try {
+      const txt = msg.replace(/\s+/g, ' ')
+      notifie = (await notifyAthlete(cible, { title: '💬 Message de Novalyz', body: txt.length > 140 ? txt.slice(0, 137) + '…' : txt, tag: 'novalyz-equipe', target: 'novalyz' })) > 0
+    } catch (_) {}
+    return jsonResp({ success: true, id: (ins as any[])[0].id, notifie })
+  }
+  return jsonResp({ success: false, error: 'Opération inconnue' })
 }
 const RETOUR_LIBELLES: Record<string, string> = { bug: 'Problème', idee: 'Idée', autre: 'Autre' }
 const RETOURS_MAX_JOUR = 20
@@ -8498,6 +8562,8 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   // même après que l'athlète l'a quitté. L'app n'appelle ces deux routes que côté athlète.
   // P1-1 (13/11) : le journal des décisions n'est créé que depuis le parcours de l'athlète (jamais par le coach).
   if ((action === 'claimRecompense' || action === 'saveEmail' || action === 'enregistrerPlan' || action === 'marquerOuverture' || action === 'lireMessagesNovalyz' || action === 'repondreMessageNovalyz') && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → ' + action + ' de ' + aid + ' (réservé à l\'athlète)' }
+  // Écran admin (20/11) : session coach obligatoire ; le droit admin lui-même est vérifié dans le handler (table).
+  if (action === 'adminNovalyz' && sess.role !== 'c') return { ok: false, reason: 'athlète ' + sess.id + ' → adminNovalyz' }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -8618,6 +8684,7 @@ Deno.serve(async (req: Request) => {
         case 'lireMessagesNovalyz':      return handleLireMessagesNovalyz(body)       // 18/11 : canal « Message de Novalyz »
         case 'repondreMessageNovalyz':   return handleRepondreMessageNovalyz(body)
         case 'pushMessagesNovalyz':      return handlePushMessagesNovalyz()
+        case 'adminNovalyz':             return handleAdminNovalyz(body)               // 20/11 : écran admin, droit = table admins_novalyz
         case 'enregistrerPlan':          return handleEnregistrerPlan(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)

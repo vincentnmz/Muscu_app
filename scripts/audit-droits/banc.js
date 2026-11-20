@@ -230,7 +230,9 @@ async function lancerBanc(ROUTES) {
     // S5 propriétaire légitime (contrôle positif : la route n'est pas refusée à tort). Route qui cite un coach_id
     // (hors messagerie) = route coach → propriétaire = le coach C1 (de A1) ; sinon l'athlète A1.
     const ACA = ['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'];
-    const proprio = (aCoach && !ACA.includes(r.action)) ? tC1 : tA1;
+    // Route coach sans coach_id (20/11 : écran admin, droit vérifié dans le handler) → propriétaire = coach C1.
+    const COACH_SEUL = ['adminNovalyz'];
+    const proprio = ((aCoach && !ACA.includes(r.action)) || COACH_SEUL.includes(r.action)) ? tC1 : tA1;
     out.sc.proprietaire = await appel(r, charge(r, { aid: 'A1', cid: 'C1', res: 'A1', role: proprio === tC1 ? 'c' : 'a' }), proprio);
     if (aCoach && aAth && proprio === tC1) { const pl = charge(r, { aid: 'A1', cid: 'C1', res: 'A1', role: 'a' }); delete pl.coach_id; out.sc.proprietaireAthlete = await appel(r, pl, tA1); }
     // S8 ressource seule : on retire athlete_id / coach_id, on garde l'identifiant de la ressource de A2
