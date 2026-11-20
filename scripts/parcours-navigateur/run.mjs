@@ -199,6 +199,32 @@ await etape('5e fermeture en plein cardio', async () => {
   await page.evaluate(() => { fermerSeancePage(); _enSetMode('muscu'); }); await page.waitForTimeout(300);
   eq(await page.evaluate(() => localStorage.getItem('nv_cardio_brouillon_T1')) === null, 'Cardio quitté volontairement : brouillon effacé');
 });
+// 20/11 : message en cours d'écriture, questionnaire à moitié rempli, Hyrox en cours → gardés si l'app est fermée.
+await etape('5f fermeture : message, questionnaire, hyrox', async () => {
+  const recharger = async () => { await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 }); await page.waitForTimeout(2000); };
+  // Message au coach (zone toujours présente côté athlète).
+  await page.evaluate(() => { const t = document.getElementById('athlete-chat-input'); t.value = 'Question sur le squat'; t.dispatchEvent(new Event('input', { bubbles: true })); });
+  // Hyrox : 2 segments faits.
+  await page.evaluate(() => { ouvrirHyroxChrono(); _hxStartCircuitGo(); _hxNext(); _hxNext(); });
+  await recharger();
+  const r = await page.evaluate(() => ({ msg: document.getElementById('athlete-chat-input').value, ov: (document.getElementById('hyrox-chrono-overlay') || { style: {} }).style.display, idx: _hxIdx, splits: _hxSplits.length, timer: !!_hxTimer }));
+  eq(r.msg === 'Question sur le squat', 'App fermée : le message en cours d\'écriture au coach est remis', r.msg);
+  eq(r.ov === 'block' && r.idx === 2 && r.splits === 2 && r.timer, 'App fermée en pleine Hyrox : chrono rouvert au segment 3, splits gardés', r);
+  page.once('dialog', (d) => d.accept());
+  await page.evaluate(() => _hxCancel()); await page.waitForTimeout(300);
+  eq(await page.evaluate(() => localStorage.getItem('nv_hyrox_brouillon_T1')) === null, 'Hyrox annulée volontairement : brouillon effacé');
+  // Message envoyé (zone vidée) → brouillon supprimé.
+  await page.evaluate(() => { document.getElementById('athlete-chat-input').value = ''; }); await page.waitForTimeout(1300);
+  eq(await page.evaluate(() => localStorage.getItem('nv_txt_athlete-chat-input_aT1')) === null, 'Message parti (zone vidée) : brouillon supprimé');
+  // Bilan de séance à moitié rempli → remis quand on le rouvre pour la même séance.
+  await page.evaluate(() => { ouvrirBilanSeance('cardio', 'S-test', _todayLocalStr()); selectRPE(document.querySelector('#wq-rpe .wq-cr[data-val="6"]')); document.getElementById('wq-note').value = 'Genou un peu raide'; document.getElementById('wq-note').dispatchEvent(new Event('input', { bubbles: true })); });
+  await recharger();
+  await page.evaluate(() => ouvrirBilanSeance('cardio', 'S-test', _todayLocalStr())); await page.waitForTimeout(300);
+  const q = await page.evaluate(() => ({ rpe: wellnessState.rpe, note: document.getElementById('wq-note').value }));
+  eq(q.rpe === 6 && q.note === 'Genou un peu raide', 'App fermée pendant le bilan : réponses et note remises', q);
+  await page.evaluate(() => _bilanSkip()); await page.waitForTimeout(300);
+  eq(await page.evaluate(() => localStorage.getItem('nv_wq_brouillon_T1')) === null, 'Bilan passé volontairement : brouillon effacé');
+});
 await etape('6 rechargement', async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 });
