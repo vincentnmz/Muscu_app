@@ -322,6 +322,8 @@ body.prog-editor-open{ overflow:hidden; }
 
 /* Bouton « Ajouter une séance » : masqué en mobile (l'onglet « ＋ Jour » s'en charge). */
 #prog-editor-overlay .prog-addday{ display:none; }
+/* 20/11 : « Créer une séance » bien visible dans Mon programme (mobile) ; sur ordinateur, la colonne « Ajouter une séance » prend le relais. */
+#prog-editor-overlay .prog-newseance{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; height:48px; margin:0 0 14px; border:none; border-radius:13px; background:var(--accent); color:#fff; font-family:inherit; font-weight:800; font-size:14.5px; cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.28); }
 
 @media (min-width:992px){
   #prog-editor-overlay .prog-editor-scroll{ max-width:1180px; }
@@ -329,12 +331,13 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .prog-seg button{ border:none; background:none; font:inherit; font-weight:800; font-size:12.5px; color:var(--text-muted); padding:7px 13px; border-radius:8px; cursor:pointer; }
   #prog-editor-overlay .prog-seg button.on{ background:var(--surface); color:var(--accent); box-shadow:0 1px 2px rgba(0,0,0,.14); }
   #prog-editor-overlay .prog-tabs{ display:none; }
+  #prog-editor-overlay .prog-newseance{ display:none; }
   #prog-editor-overlay .prog-cols{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:start; }
   #prog-editor-overlay .prog-cols.liste{ display:block; max-width:660px; margin:0 auto; }
   #prog-editor-overlay .prog-col{ background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:14px; }
   #prog-editor-overlay .prog-col[data-off]{ display:block; }
   #prog-editor-overlay .prog-start{ max-width:640px; margin:0 auto; }
-  #prog-editor-overlay .prog-addday{ display:flex; align-items:center; justify-content:center; gap:8px; align-self:stretch; min-height:120px; border:1.5px dashed var(--border); background:transparent; border-radius:16px; color:var(--text-subtle); font-weight:800; font-size:13.5px; cursor:pointer; font-family:inherit; }
+  #prog-editor-overlay .prog-addday{ display:flex; align-items:center; justify-content:center; gap:8px; align-self:stretch; min-height:120px; border:1.5px dashed var(--accent); background:var(--accent-a08,rgba(26,95,255,.06)); border-radius:16px; color:var(--accent); font-weight:800; font-size:13.5px; cursor:pointer; font-family:inherit; }
   #prog-editor-overlay .prog-addday:hover{ border-color:var(--accent); color:var(--accent); }
   #prog-editor-overlay .prog-cols.liste .prog-addday{ width:100%; min-height:0; padding:14px; margin-top:4px; }
   #prog-editor-overlay .prog-grip{ display:inline-flex; }
@@ -364,8 +367,8 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .pb-dayrow .nm span{ display:block; font-size:11px; color:var(--text-subtle); }
   #prog-editor-overlay .pb-dayrow .ct{ font-size:11px; font-weight:800; color:var(--text-muted); background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:1px 8px; }
   #prog-editor-overlay .pb-dayrow.on .ct{ background:var(--accent-a14); color:var(--accent); border-color:transparent; }
-  #prog-editor-overlay .pb-railadd{ margin-top:8px; border:1.5px dashed var(--border); background:transparent; color:var(--text-muted); border-radius:12px; padding:11px; font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; }
-  #prog-editor-overlay .pb-railadd:hover{ border-color:var(--accent); color:var(--accent); }
+  #prog-editor-overlay .pb-railadd{ margin-top:8px; border:none; background:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(26,95,255,.25); border-radius:12px; padding:12px; font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; }
+  #prog-editor-overlay .pb-railadd:hover{ filter:brightness(1.08); }
   #prog-editor-overlay .pb-dayrow.prog-col-drop{ outline:2px dashed var(--accent); outline-offset:2px; background:var(--accent-a08); }
 
   /* Plan central */

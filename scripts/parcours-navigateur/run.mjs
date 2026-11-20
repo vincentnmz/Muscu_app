@@ -142,6 +142,63 @@ await etape('5b deuxieme seance meme jour', async () => {
   eq(d3 === auj, 'Séance suivante : date remise à aujourd\'hui', d3);
   await page.evaluate(() => fermerSeancePage());
 });
+// 20/11 (retours testeurs : « où est le bouton pour créer une séance ? ») : Entraînement ▸ « Créer une séance »
+// ▸ « Push » ▸ 2 exercices cochés ▸ Ajouter → enregistrés en UN envoi, « Mon programme » ouvert sur la nouvelle séance.
+await etape('5c creer une seance', async () => {
+  await page.evaluate(() => { try { fermerSeancePage(); } catch (e) {} switchTab('seance'); }); await page.waitForTimeout(1200); await fermerAnnonces();
+  const envois = []; const surReq = (r) => { if (r.method() === 'POST' && /smooth-service/.test(r.url())) { try { const a = JSON.parse(r.postData() || '{}').action; if (/^saveProgrammeLigne/.test(a)) envois.push(a); } catch (e) {} } };
+  page.on('request', surReq);
+  await page.click('#tab-seance .en-cree');
+  await page.waitForSelector('#cs-sheet .jg-chip', { state: 'visible', timeout: 5000 });
+  eq(await page.evaluate(() => _csNomUnique('Haut A')) === 'Haut A 2', 'Créer une séance : un nom déjà pris devient « Haut A 2 » (pas de mélange avec la séance existante)');
+  await page.click('#cs-sheet .jg-chip:has-text("Push")');
+  await page.waitForSelector('#xp-list .xp-it', { state: 'visible', timeout: 5000 });
+  await page.locator('#xp-list .xp-it', { hasText: 'Leg extension' }).first().click().catch(async () => { await page.fill('#xp-q', 'leg'); await page.waitForTimeout(300); await page.locator('#xp-list .xp-it', { hasText: 'Leg extension' }).first().click(); });
+  await page.fill('#xp-q', 'développé'); await page.waitForTimeout(300);
+  await page.locator('#xp-list .xp-it', { hasText: 'Développé couché barre' }).first().click();
+  await page.click('#xp-foot .xp-add');
+  for (let i = 0; i < 40 && store.programme.filter((l) => l.seance_id === 'Push').length < 2; i++) await page.waitForTimeout(250);
+  page.off('request', surReq);
+  const P = store.programme.filter((l) => l.athlete_id === 'T1' && l.seance_id === 'Push');
+  eq(P.length === 2 && P.every((l) => Number(l.series_prevues) === 3 && Number(l.reps_mini) === 8 && Number(l.reps_max) === 12), 'Créer une séance : « Push » enregistrée avec ses 2 exercices (3 × 8-12)', P.map((l) => [l.exercice, l.series_prevues, l.reps_mini, l.reps_max]));
+  eq(envois.length === 1 && envois[0] === 'saveProgrammeLignes', 'Créer une séance : un seul envoi pour tous les exercices', envois);
+  await page.waitForTimeout(1500);
+  const tab = await page.evaluate(() => { const t = document.querySelector('#prog-editor-overlay .prog-tab.on'); return t ? t.textContent : ''; });
+  eq(/Push/.test(tab), 'Créer une séance : « Mon programme » s\'ouvre sur la nouvelle séance', tab);
+  await page.evaluate(() => fermerEditeurProgramme()); await page.waitForTimeout(800);
+});
+// 20/11 (« quand on ferme l'app, tout disparaît ? ») : séance commencée, app fermée → à la réouverture, la séance
+// se rouvre avec ses séries (avant : gardées mais invisibles, retour sur Aujourd'hui avec « Commencer ma séance »).
+await etape('5d fermeture en pleine seance', async () => {
+  // « Push » (créée en 5c, pas encore faite aujourd'hui).
+  await page.evaluate(() => { switchTab('seance'); _enStart('Push'); }); await page.waitForTimeout(1500); await fermerAnnonces();
+  await page.locator('#liste-exercices-seance').getByText('Leg extension').first().click();
+  await page.waitForSelector('#inp-charge', { state: 'visible', timeout: 10000 });
+  await page.fill('#inp-charge', '50'); await page.fill('#inp-reps', '12');
+  await page.click('#rpe-chips >> text="7"').catch(() => {});
+  await page.click('button[onclick="ajouterSerie()"]'); await page.waitForTimeout(400);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => ({ n: _seanceEnCoursN(), page: document.body.classList.contains('seance-active'), bandeau: !!document.getElementById('brouillon-banner'), cta: (document.querySelector('#tab-accueil .tj-seance .tj-cta') || {}).textContent || '' }));
+  eq(r.n === 1 && r.page && r.bandeau, 'App fermée en pleine séance : à la réouverture, la séance se rouvre avec sa série', r);
+  eq(/Reprendre ma séance \(1 série\)/.test(r.cta), 'Aujourd\'hui : « Reprendre ma séance (1 série) » au lieu de « Commencer »', r.cta);
+  page.once('dialog', (d) => d.accept());
+  await page.evaluate(() => { _abandonnerBrouillon(); fermerSeancePage(); }); await page.waitForTimeout(500);
+});
+// 20/11 : séance CARDIO en cours (activité + durée + distance saisies) → gardée si l'app est fermée (avant : perdue).
+await etape('5e fermeture en plein cardio', async () => {
+  await page.evaluate(() => { switchTab('seance'); _enSetMode('cardio'); _enDemarrerNow(); }); await page.waitForTimeout(1200);
+  await page.fill('#cardio-duree', '35');
+  const type = await page.evaluate(() => document.getElementById('cardio-type').value);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => ({ page: document.body.classList.contains('seance-active'), mode: _modeSeance, type: (document.getElementById('cardio-type') || {}).value, duree: (document.getElementById('cardio-duree') || {}).value, chrono: !!_seanceChronoT0 }));
+  eq(r.page && r.mode === 'cardio' && r.type === type && r.duree === '35' && r.chrono, 'App fermée en plein cardio : séance rouverte (activité, durée, chrono)', r);
+  await page.evaluate(() => { fermerSeancePage(); _enSetMode('muscu'); }); await page.waitForTimeout(300);
+  eq(await page.evaluate(() => localStorage.getItem('nv_cardio_brouillon_T1')) === null, 'Cardio quitté volontairement : brouillon effacé');
+});
 await etape('6 rechargement', async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 });

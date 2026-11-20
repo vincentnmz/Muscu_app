@@ -6914,6 +6914,33 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   return jsonResp({ ok: true })
 }
 
+// 20/11 (création de séance, retour testeurs) : les exercices choisis dans le sélecteur sont enregistrés en UN
+// envoi et UNE insertion (tout ou rien). Avant : un envoi par exercice → réseau lent / app fermée = séance à moitié créée.
+const PROG_LOT_MAX = 40
+async function handleSaveProgrammeLignes(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || ''), seance_id = String(body.seance_id || '').trim()
+  const L = Array.isArray(body.lignes) ? body.lignes : []
+  if (!athlete_id || !seance_id || !L.length) return jsonResp({ erreur: 'Paramètres manquants' })
+  if (L.length > PROG_LOT_MAX) return jsonResp({ erreur: 'Trop d\'exercices en une fois (' + PROG_LOT_MAX + ' max)' })
+  const num = (v: any) => (v === '' || v == null || !isFinite(Number(v))) ? null : Number(v)
+  // jour conseillé : hérite du jour déjà posé sur la séance (même règle que saveProgrammeLigne).
+  let jour: number | null = null
+  try { const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1); if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour) } catch (_) {}
+  const rows: any[] = []
+  for (const l of L) {
+    const exercice = String((l && l.exercice) || '').trim()
+    if (!exercice) return jsonResp({ erreur: 'Exercice manquant' })
+    const cardio = l.type === 'cardio'
+    rows.push({ athlete_id, athlete_nom: String(body.athlete_nom || ''), seance_id, exercice,
+      series_prevues: cardio ? null : num(l.series_prevues), reps_mini: cardio ? null : num(l.reps_mini), reps_max: cardio ? null : num(l.reps_max),
+      repos_sec: cardio ? null : num(l.repos_sec), groupe_id: String(l.groupe_id || ''), jour,
+      type: cardio ? 'cardio' : 'muscu', cardio_cible: cardio ? num(l.cardio_cible) : null, cardio_unite: cardio ? (l.cardio_unite ? String(l.cardio_unite) : null) : null })
+  }
+  const { error } = await sb().from('programme').insert(rows)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true, n: rows.length })
+}
+
 // Pyramidal : tableau de cibles par série [{pct, reps, rpe}]. Accepte un array JS
 // (client supabase → jsonb) OU une chaîne JSON. Nettoie/typé ; null si vide/invalide.
 function _parseSeriesJson(v: any): any[] | null {
@@ -7431,7 +7458,7 @@ async function _progMajTrace(action: string, body: any, run: () => Promise<Respo
   try {
     const role = body._sessRole === 'c' ? 'c' : (body._sessRole === 'a' ? 'a' : '')
     if (aid && role) {
-      const quoi = action === 'genererProgramme' ? 'programme regénéré' : action === 'supprimerProgrammeLigne' ? 'exercice retiré' : (body.row_index ? 'exercice modifié' : 'exercice ajouté')
+      const quoi = action === 'genererProgramme' ? 'programme regénéré' : action === 'supprimerProgrammeLigne' ? 'exercice retiré' : action === 'saveProgrammeLignes' ? 'exercices ajoutés' : (body.row_index ? 'exercice modifié' : 'exercice ajouté')
       const valeur = JSON.stringify({ date: new Date().toISOString(), par: role, quoi, seance: action === 'genererProgramme' ? '' : seance, exercice: action === 'genererProgramme' ? '' : exo })
       const { data: ex } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', 'prog_maj').limit(1)
       if (ex?.length) await sb().from('indicateurs').update({ valeur, date: fmtYMD(new Date()) }).eq('athlete_id', aid).eq('seance_id', 'pref').eq('cle', 'prog_maj')
@@ -8719,6 +8746,7 @@ Deno.serve(async (req: Request) => {
         case 'savePoids':                return handleSavePoids(body)
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return _progMajTrace(action, body, () => handleSaveProgrammeLigne(body))
+        case 'saveProgrammeLignes':      return _progMajTrace(action, { ...body, exercice: (Array.isArray(body.lignes) ? body.lignes.map((l: any) => l && l.exercice).filter(Boolean).join(', ') : '') }, () => handleSaveProgrammeLignes(body))   // 20/11 : lot d'exercices (1 envoi)
         case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
         case 'getPlanning':              return handleGetPlanning(body)
         case 'planSeance':               return handlePlanSeance(body)
