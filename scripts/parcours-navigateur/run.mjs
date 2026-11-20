@@ -14,6 +14,8 @@ const S = serveur(store);
 store.exercices.push({ exercice_id: '1', exercice: 'Développé couché barre', muscle: 'Pectoraux', muscle_secondaire: 'Triceps', increment_kg: '2.5', materiel: 'Barre', disciplines: 'muscu', mesure: 'charge_reps', statut: 'valide' });
 store.athletes.push({ id: 'T1', login: '4321', nom: 'Test Parcours', password_hash: await S.hashSalted('motdepasse1', '4321'), sport: 'muscu', annees: 2, sexe: 'H', ddn: '1995-01-01', prefs: { onboarding_vu: true } });
 store.programme.push({ athlete_id: 'T1', athlete_nom: 'Test Parcours', seance_id: 'Haut A', exercice: 'Développé couché barre', series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 120, jour: null });
+store.exercices.push({ exercice_id: '2', exercice: 'Leg extension', muscle: 'Quadriceps', muscle_secondaire: null, increment_kg: '2.5', materiel: 'Machine', disciplines: 'muscu', mesure: 'charge_reps', statut: 'valide' });
+store.programme.push({ athlete_id: 'T1', athlete_nom: 'Test Parcours', seance_id: 'Jambes 2', exercice: 'Leg extension', series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, jour: null });
 
 // ── Serveur statique local (la vraie app) ──
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
@@ -96,6 +98,36 @@ await etape('5 enregistrement', async () => {
   eq(P.length === 3, 'Enregistrement : 3 séries en base (saveSeance)', P.length);
   eq(P.every((x) => Number(x.charge) === 60 && x.exercice === 'Développé couché barre') && P.map((x) => Number(x.reps)).join(',') === '10,10,9', 'Enregistrement : charge 60 kg, reps 10/10/9, bon exercice', P.map((x) => [x.exercice, x.charge, x.reps, x.rpe]));
   eq(P.map((x) => Number(x.rpe)).join(',') === '7,8,9', 'Enregistrement : RPE 7/8/9 conservés', P.map((x) => x.rpe));
+});
+// 20/11 (séance perdue de Célia) : 2e séance le même jour, lancée depuis Entraînement SANS « + Nouvelle séance ».
+// Avant : le verrou de validation restait actif et le bouton affichait « ⏳ Envoi... » → rien n'était envoyé.
+await etape('5b deuxieme seance meme jour', async () => {
+  await page.waitForFunction(() => _seanceEnvoyee === true, null, { timeout: 10000 });   // réponse du serveur reçue (récap affiché)
+  await page.evaluate(() => fermerSeancePage()); await page.waitForTimeout(500);
+  await page.evaluate(() => switchTab('seance')); await page.waitForTimeout(1000); await fermerAnnonces();
+  await page.evaluate(() => _enSelectSeance('Jambes 2')); await page.waitForTimeout(300);
+  const dialogues = []; const surDialogue = (d) => { dialogues.push(d.message()); d.accept(); }; page.on('dialog', surDialogue);
+  await page.click('#en-start'); await page.waitForTimeout(1500); await fermerAnnonces();
+  page.off('dialog', surDialogue);
+  eq(dialogues.length === 0, '2e séance : pas d\'alerte « tout sera perdu » (la 1re est déjà enregistrée)', dialogues);
+  const bouton = await page.evaluate(() => document.getElementById('btn-valider').textContent.trim());
+  eq(bouton === 'Valider la séance', '2e séance : le bouton n\'est plus figé sur « Envoi... »', bouton);
+  await page.locator('#liste-exercices-seance').getByText('Leg extension').first().click();
+  await page.waitForSelector('#inp-charge', { state: 'visible', timeout: 10000 });
+  for (const [c, r] of [[40, 12], [40, 11]]) {
+    await page.fill('#inp-charge', String(c)); await page.fill('#inp-reps', String(r));
+    await page.click('#rpe-chips >> text="8"').catch(async () => { await page.evaluate(() => { const b = [...document.querySelectorAll('[onclick*="pickChip(\'rpe\'"]')].find((x) => x.getAttribute('onclick').includes("'8'")); if (b) b.click(); }); });
+    await page.click('button[onclick="ajouterSerie()"]'); await page.waitForTimeout(400);
+  }
+  if (await page.locator('button[onclick="skipTimer()"]:visible').count()) await page.click('button[onclick="skipTimer()"]');
+  await page.click('button[onclick="validerSeance()"]');
+  await page.click('button[onclick="_validerFinSeance()"]', { timeout: 10000 });
+  await page.waitForTimeout(800);
+  if (await page.locator('button[onclick="_bilanSkip()"]:visible').count()) await page.click('button[onclick="_bilanSkip()"]');
+  const J = () => store.performances.filter((x) => x.athlete_id === 'T1' && x.seance_id === 'Jambes 2');
+  for (let i = 0; i < 40 && J().length < 2; i++) await page.waitForTimeout(250);
+  eq(J().length === 2 && J().map((x) => Number(x.reps)).join(',') === '12,11', '2e séance : enregistrée en base (2 séries Leg extension)', J().map((x) => [x.exercice, x.charge, x.reps]));
+  eq(store.performances.filter((x) => x.athlete_id === 'T1' && x.seance_id === 'Haut A').length === 3, '2e séance : la 1re séance n\'est ni doublée ni écrasée');
 });
 await etape('6 rechargement', async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
