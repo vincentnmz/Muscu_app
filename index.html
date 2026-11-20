@@ -1616,6 +1616,14 @@
         #tab-seance .en-muted{ font-size:12px; color:var(--text-muted); padding:4px 2px; }
         #tab-seance .en-startbtn{ display:flex; align-items:center; justify-content:center; gap:9px; height:52px; border-radius:14px; background:var(--accent); color:#fff; border:none; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.32); }
         #tab-seance .en-startbtn svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-startbtn.en-start-soft{ background:var(--surface); color:var(--accent); border:1.5px solid var(--border); box-shadow:none; height:46px; font-size:14px; }
+        /* 20/11 : « Créer une séance » (carte en pointillés) ; « Créer ma première séance » (pleine, sans programme) */
+        #tab-seance .en-sel.en-cree{ border-style:dashed; border-color:var(--accent); background:var(--accent-a08,rgba(26,95,255,.06)); }
+        #tab-seance .en-sel.en-cree .nm .a{ color:var(--accent); }
+        #tab-seance .en-sel.en-cree-1{ border:none; background:var(--accent); box-shadow:0 6px 16px rgba(26,95,255,.32); padding:16px; }
+        #tab-seance .en-sel.en-cree-1 .ic{ background:rgba(255,255,255,.2); color:#fff; }
+        #tab-seance .en-sel.en-cree-1 .nm .a{ color:#fff; font-size:15px; }
+        #tab-seance .en-sel.en-cree-1 .nm .b{ color:rgba(255,255,255,.85); }
         #tab-seance .en-startbtn.cardio{ background:#9D5FD3; box-shadow:0 6px 16px rgba(157,95,211,.32); }
         /* Toggle Muscu / Cardio */
         #tab-seance .en-seg{ display:flex; gap:6px; background:var(--surface2); border-radius:14px; padding:5px; }
@@ -1720,7 +1728,7 @@
         <div id="en-sel-hyrox" style="display:none"></div>
 
         <!-- Démarrer -->
-        <button class="en-startbtn" id="en-start" onclick="_enDemarrer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>Démarrer la séance</button>
+        <button class="en-startbtn" id="en-start" onclick="_enDemarrer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg><span id="en-start-lbl">Démarrer la séance</span></button>
         </div><!-- /en-main -->
 
         <div class="en-rail">
@@ -3540,5 +3548,7 @@
   <script src="js/sommeil-perf.js"></script>
   <script src="js/messages-novalyz.js"></script>
   <script src="js/admin-novalyz.js"></script>
+  <script src="js/creer-seance.js"></script>
+  <script src="js/brouillon-cardio.js"></script>
 </body>
 </html>
