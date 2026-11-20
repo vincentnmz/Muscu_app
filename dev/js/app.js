@@ -15295,14 +15295,14 @@ function _maSportTrend(sesss, metric) {
 }
 // Agrégat muscu sur la fenêtre [startISO,endISO) depuis daily_muscu (historique
 // complet). Mêmes définitions que computeRecent (backend) → à offset 0, les chiffres
-// coïncident avec les fenêtres glissantes. seances = jours distincts d'entraînement.
+// coïncident avec les fenêtres glissantes. seances = séances (date + nom ; 2 le même jour = 2, décision porteur 20/11).
 function _maMuscuAgg(daily, startISO, endISO) {
   daily = daily || {};
   var seances = 0, series = 0, reps = 0, tonnage = 0, rpeSum = 0, rpeN = 0, spm = {}, vpm = {};
   Object.keys(daily).forEach(function (d) {
     if (d >= startISO && d < endISO) {
       var o = daily[d]; if (!o) return;
-      if ((o.series || 0) > 0) seances++;
+      if ((o.series || 0) > 0) seances += (o.nb_seances > 0 ? o.nb_seances : 1);   // 20/11 : 2 séances le même jour = 2 (serveur ancien : 1 par jour)
       series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0;
       rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
       // 07/11 : « Corps entier » (burpees, pneu…) compte dans séances / séries / reps, pas par muscle.
