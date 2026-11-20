@@ -30,7 +30,7 @@ let id = 1;
 const S = (d, exo, mus, c, r, rpe) => ({ id: id++, date: d, semaine: 46, seance_id: 'S', exercice: exo, muscle: mus, exercice_id: exo, serie: 1, charge: c, reps: r, rpe, repos: 90, athlete_id: '5', nom: 'A', volume: c * r });
 const store = {
   athletes: [{ id: '5', login: '5555', nom: 'A', sport: 'muscu', annees: 2, prefs: { semaine_type: 'glissant' } }],
-  exercices: [{ exercice_id: 'Presse', exercice: 'Presse', muscle: 'Quadriceps', muscle_secondaire: 'Fessier' }, { exercice_id: 'Curl', exercice: 'Curl', muscle: 'Biceps', muscle_secondaire: null }],
+  exercices: [{ exercice_id: 'Presse', exercice: 'Presse', muscle: 'Quadriceps', muscle_secondaire: 'Fessier' }, { exercice_id: 'Curl', exercice: 'Curl', muscle: 'Biceps', muscle_secondaire: null, increment_kg: '1.25' }],
   performances: [S(J(9), 'Presse', 'Quadriceps', 100, 10, 8), S(J(9), 'Presse', 'Quadriceps', 100, 8, 9), S(J(5), 'Presse', 'Quadriceps', 100, 10, 9), S(J(5), 'Curl', 'Biceps', 12.5, 10, 9), S(J(1), 'Curl', 'Biceps', 12.5, 12, 10), S(J(1), 'Presse', 'Quadriceps', 90, 12, 8)],
   volume_obti: [{ id: 1, muscle: 'Quadriceps', series_min_semaine: 9, series_opt_semaine: 12 }, { id: 2, muscle: 'Fessier', series_min_semaine: 9, series_opt_semaine: 12 }, { id: 3, muscle: 'Biceps', series_min_semaine: 6, series_opt_semaine: 12 }],
   indicateurs: [], bien_etre: [], programme: [], planning: [], contexte_athlete: [], decisions: [], pauses: [], poids_historique: [], objectif: [], blessures: [],
@@ -54,6 +54,9 @@ const store = {
   const txt = (t) => verifier({ store, appdata: ad, ecrans: t, now: TODAY }).map((e) => e.code);
   eq(txt('######## ÉVOLUTION ▸ Curl\n12 kg\nFORCE ESTIMÉE\nx\nFORCE EST.\n18/11/2026\n12,5×12\n11 kg').includes('force.tuile_tableau'), 'attrape : force estimée 12 kg en haut, 11 kg dans le tableau');
   eq(txt('######## ÉVOLUTION ▸ Curl\nRECORD CHARGE\n12.5 kg').includes('format.decimal'), 'attrape : « 12.5 kg » (point décimal)');
+  // 20/11 (données réelles) : petit pas hors grille (8 → 6,75 kg sur un pas de 1,25) ou différent d'un écran à l'autre (1 pas au lieu de −5 %).
+  eq(txt('######## ANALYSES ▸ resume\nCurl : 8 kg × 8 à RPE 9 — au choix, à titre indicatif : un petit pas en dessous (6,75 kg) pour revenir à 10 reps').includes('cible.petit_pas'), 'attrape : petit pas hors grille (6,75 kg depuis 8 kg, pas 1,25)');
+  eq(!txt('######## ANALYSES ▸ resume\nCurl : 8 kg × 8 à RPE 9 — au choix, à titre indicatif : un petit pas en dessous (7,5 kg) pour revenir à 10 reps').includes('cible.petit_pas'), 'petit pas juste (7,5 kg) : pas d\'alerte');
   eq(txt('######## ANALYSES\nRECORDS PERSONNELS\nPresse\n100 kg\n' + J(5).split('-').reverse().join('/')).includes('records.ecran'), 'attrape : record affiché à la mauvaise date');
   eq(txt('######## AUJOURD\'HUI\nObjectif semaine 1/3\n2 / 3 séances cette semaine').includes('objectif.libelle'), 'attrape : « Objectif semaine » calendaire à côté d\'une semaine glissante');
   eq(txt('######## AUJOURD\'HUI\n1 / 3 séances cette semaine\n######## ENTRAINEMENT\n67% 2/3 cette semaine').includes('seances.ecrans'), 'attrape : deux comptes de séances « cette semaine »');
