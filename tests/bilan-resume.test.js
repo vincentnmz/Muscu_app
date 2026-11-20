@@ -17,7 +17,7 @@ function extractFn(name) {
   for (; j < JS.length; j++) { const c = JS[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
   return JS.slice(m.index, j);
 }
-const names = ['parseFR', 'fmtYMD', 'normDate', 'minus', '_bilanAthlete'];
+const names = ['parseFR', 'fmtYMD', 'normDate', '_cleSeance', 'minus', '_bilanAthlete'];
 const ctx = { console };
 vm.createContext(ctx);
 vm.runInContext(names.map(extractFn).join('\n\n') + '\nthis.__b = _bilanAthlete;', ctx);
@@ -43,7 +43,7 @@ const sante = [
 
 const b = bilan(perfs, programme, bienEtre, sante, now, 'semaine');
 
-eq('seancesFaites', b.seancesFaites, 2);
+eq('seancesFaites', b.seancesFaites, 3);   // 20/11 (décision porteur) : A et B le 10/10 = 2 séances (avant : 1 jour)
 eq('seancesPrevues', b.seancesPrevues, 2);
 eq('seriesFaites', b.seriesFaites, 3);
 eq('seriesPrevues', b.seriesPrevues, 6);

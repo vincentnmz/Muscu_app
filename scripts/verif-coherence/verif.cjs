@@ -37,8 +37,9 @@ function recalculer(store, appdata, now, aidForce) {
     const c = num(r.charge), n = num(r.reps), x = R.records[r.exercice];
     if (!x || c > x.charge || (c === x.charge && n > x.reps)) R.records[r.exercice] = { charge: c, reps: n, date: r.d };
   }
-  // Séances = jours distincts.
-  const jours = (a, b) => new Set(P.filter((r) => r.d >= a && r.d <= b).map((r) => r.d)).size;
+  // Séances = date + nom de séance (décision porteur 20/11 : 2 séances le même jour = 2 ; avant : jours distincts).
+  const cleS = (r) => r.d + '|' + String(r.seance_id == null ? '' : r.seance_id);
+  const jours = (a, b) => new Set(P.filter((r) => r.d >= a && r.d <= b).map(cleS)).size;
   R.lundi = lundiDe(now);
   R.seancesSemaine = jours(R.lundi, now);
   R.seancesJ7 = jours(plusJ(now, -6), now);
@@ -66,7 +67,7 @@ function recalculer(store, appdata, now, aidForce) {
   // Totaux à vie.
   R.totalSeries = P.length; R.totalReps = P.reduce((s, r) => s + num(r.reps), 0);
   R.tonTotal = Math.round(P.reduce((s, r) => s + num(r.charge) * num(r.reps), 0));
-  R.nbSeances = new Set(P.map((r) => r.d)).size;
+  R.nbSeances = new Set(P.map(cleS)).size;
   // Par exercice et par jour : meilleure série (charge, puis reps) et nombre de séries.
   R.parExoJour = {};
   for (const r of P) {
@@ -631,7 +632,8 @@ function verifierBilan(store, b, aid, out) {
   const fin1 = plusJ(d1, -1), R = recalculer(store, null, fin1, aid);   // état à la fin de la période
   const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === String(aid)).map((r) => ({ ...r, d: iso(r.date) }));
   const dansP = P.filter((r) => r.d >= d0 && r.d < d1), dPrec = plusJ(d0, -jours);
-  const seances = new Set(dansP.map((r) => r.d)).size, seancesPrec = new Set(P.filter((r) => r.d >= dPrec && r.d < d0).map((r) => r.d)).size;
+  const cleS2 = (r) => r.d + '|' + String(r.seance_id == null ? '' : r.seance_id);   // 20/11 : séances (date + nom)
+  const seances = new Set(dansP.map(cleS2)).size, seancesPrec = new Set(P.filter((r) => r.d >= dPrec && r.d < d0).map(cleS2)).size;
   if (b.seances !== seances) E('mail.seances', b.seances + ' séance(s), recalculé ' + seances);
   if (b.seancesPrec != null && b.seancesPrec !== seancesPrec && b.per === 'semaine') E('mail.seances_prec', 'période précédente ' + b.seancesPrec + ', recalculé ' + seancesPrec);
   const ton = Math.round(dansP.reduce((x, r) => x + num(r.charge) * num(r.reps), 0)); if (Math.abs(num(b.tonnage) - ton) > 1) E('mail.tonnage', b.tonnage + ' kg, recalculé ' + ton);

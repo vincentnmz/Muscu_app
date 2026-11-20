@@ -27,7 +27,7 @@ Ischios : 6 séries cette semaine · 3 / 6
 SÉANCE DU JOUR
 Full body A + Full body B ✓
 Faite aujourd'hui · 18 séries · 10,4 t · RPE 8
-Semaine complète (2 séances) : récupère bien
+Semaine complète (3 séances) : récupère bien
 TA SÉANCE D'AUJOURD'HUI · FULL BODY A
 Squat
 50×10 · 50×10 · 50×9
@@ -51,8 +51,8 @@ Voir mes analyses
 Voir mon entraînement
 LE DÉTAIL
 RÉCOMPENSES ET OBJECTIF
-Objectif semaine 2/2 ✓
-315 pts · +96 cette semaine
+Objectif semaine 3/2 ✓
+335 pts · +116 cette semaine
 Voir ›
 Ton point du jour
 Mettre à jour ›
@@ -62,10 +62,10 @@ FATIGUE
 Faible
 STRESS
 Faible
-2/2
+3/2
 SÉANCES
 Régularité
-2 / 2 séances cette semaine
+3 / 2 séances cette semaine
 == Analyses ▸ Résumé (muscu) ==
 Mes analyses
 Le verdict, puis les chiffres.
@@ -84,7 +84,7 @@ Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
 Sur la bonne voie
 5 exos en progrès (dont 5 records)
 CE QUE NOVALYZ LIT
-Régularité au rendez-vous (2/2 séances cette semaine).
+Régularité au rendez-vous (3/2 séances cette semaine).
 ★
 Records : Squat 50 × 10 · Développé couché barre 60 × 10 · Rowing barre 70 × 10 · +2 autres
 charge (ou reps à charge égale) battue · 10 derniers jours
@@ -100,26 +100,26 @@ Moyenne 3 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices de pecto
 Ischios : 6 séries cette semaine · 3 / 6
 Moyenne 3 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischios comptent (ex. +3 séries de RDL barre, idéalement sur 2 séances).
 Rien à changer : dos 6 séries/sem, dans ta zone. Ce sont des propositions : c'est toi qui choisis. Calculées sur tes séances jusqu'à dimanche ; chacune se coche toute seule quand ta séance la réalise.
-TES SAISIES · 69/100
-69
+TES SAISIES · 68/100
+68
 PARTIEL
 ○
 Base de comparaison (0 séance avant)
 0/25
 ✓
-Profondeur (8 séances)
+Profondeur (9 séances)
 25/25
 ✓
 RPE renseigné (100 %)
 20/20
 ◑
 Questionnaire du jour (5/28 j)
-9/15
+8/15
 ✓
 Fourchette de reps définie (6/6 exos)
 15/15
-Pour compléter : fais ton questionnaire du jour (+6).
-VOLUME PAR MUSCLE · SÉRIES CETTE SEMAINE (2/2 SÉANCES)
+Pour compléter : fais ton questionnaire du jour (+7).
+VOLUME PAR MUSCLE · SÉRIES CETTE SEMAINE (3/2 SÉANCES)
 Pectoraux
 6 / 6-12
 Dos
@@ -173,9 +173,9 @@ Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). L
 CETTE SEMAINE
 ?
 TONNAGE MOYEN
-7,6t / séance
+5t / séance
 SÉANCES
-2
+3
 SÉRIES TOTALES
 27
 RÉPÉTITIONS
@@ -340,7 +340,7 @@ Endurance
 CHARGE VS FORME
 cette semaine · tendance dès ~4 sem.
 Charge d'entraînement
-2 séances
+3 séances
 sur cette semaine · tendance dès ~4 sem.
 Forme (récupération)
 80/100
