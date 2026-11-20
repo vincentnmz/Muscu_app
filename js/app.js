@@ -12587,6 +12587,7 @@ function _restaurerBrouillon() {
   var cardHP  = document.getElementById('card-hors-programme'); if (cardHP)  cardHP.style.display   = 'none';
   try { afficherListeSeance(); } catch (e) {}
   try { majProgressionSeance(); } catch (e) {}
+  _reinitValidation();
   var bv = document.getElementById('btn-valider');
   if (bv) bv.style.display = 'block';
 
@@ -12644,13 +12645,17 @@ async function demarrerSeance() {
   if (!seanceId) return;
   try { _majSeancePageTitre(); } catch (e) {}
 
-  if (seance.length > 0) {
+  // 20/11 : séance précédente déjà enregistrée (_seanceEnvoyee) → rien à perdre, pas d'alerte « tout sera perdu ».
+  if (seance.length > 0 && !_seanceEnvoyee) {
     const ok = confirm(`Tu as déjà ${seance.length} série${seance.length > 1 ? 's' : ''} enregistrée${seance.length > 1 ? 's' : ''} dans cette séance.\n\nSi tu continues, tout sera perdu.\n\nAbandonner la séance en cours ?`);
     if (!ok) return;
   }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   _seanceEnvoyee = false; _seanceDureeMin = 0; _seanceEnvoiId = _nouvelEnvoiId();
+  _reinitValidation();
+  { const _rb = document.getElementById('recap-block'); if (_rb) _rb.style.display = 'none';
+    const _sb = document.getElementById('saisie-block'); if (_sb) { _sb.style.display = 'block'; _sb.style.visibility = 'visible'; _sb.style.height = 'auto'; _sb.style.overflow = 'visible'; } }
   try { _seanceChronoT0 = Date.now(); _seanceChronoStart(); } catch (e) {}
   _effacerBrouillon();
   { const _b=document.getElementById('brouillon-banner'); if(_b)_b.remove(); }
@@ -14247,7 +14252,15 @@ function selectRPE(btn) {
 async function _envoyerSeance(bilanEnFile) {
   const btn = document.getElementById('btn-valider');
   if (btn) { btn.textContent = '⏳ Envoi...'; btn.disabled = true; }
-  const lignes = _construireLignesSeance();
+  let lignes;
+  try { lignes = _construireLignesSeance(); }
+  catch (e) {
+    // Jamais de bouton figé sur « Envoi... » : on rend la main, le brouillon reste sur le téléphone.
+    console.error('construction séance', e);
+    _reinitValidation(); if (btn) btn.style.display = 'block';
+    showToast('Envoi impossible (erreur de l\'app). Ta séance reste sur le téléphone : réessaie « Valider ».', 'var(--danger)');
+    return 'erreur';
+  }
 
   // La séance n'est JAMAIS perdue : en cas d'échec/incertitude → file d'attente + resync auto.
   function _miseEnFile(msg, couleur) {
@@ -14371,6 +14384,15 @@ async function _envoyerWellness(seanceId, dateSeance) {
 }
 
 let _validationEnCours = false;
+// 20/11 (séance perdue de Célia) : remet la validation à zéro pour une NOUVELLE séance.
+// Avant, seul « + Nouvelle séance » le faisait : en démarrant la 2e séance depuis Aujourd'hui /
+// Entraînement, le verrou restait actif et le bouton affichait encore « ⏳ Envoi... » désactivé
+// → impossible de valider, la séance n'est jamais partie.
+function _reinitValidation() {
+  _validationEnCours = false;
+  const bv = document.getElementById('btn-valider');
+  if (bv) { bv.disabled = false; bv.textContent = 'Valider la séance'; }
+}
 // Masque + désactive immédiatement le bouton de validation (anti-reclic)
 function _bloquerBoutonsValidation() {
   const bv = document.getElementById('btn-valider');
