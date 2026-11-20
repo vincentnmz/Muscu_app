@@ -7065,7 +7065,7 @@ function renderCoachHeroEtat(data) {
 // Front only : la donnée est déjà dans le payload getAppData. Masquée si absente.
 function renderCoachProchaineSeance(data) {
   var el = document.getElementById('cd-prochaine'); if (!el) return;
-  var nom = (data && data.dashboard && data.dashboard.prochaine_seance) ? String(data.dashboard.prochaine_seance) : '';
+  var nom = (data && data.dashboard) ? String(_prochaineSeanceFront(data) || '') : '';   // 20/11 : libres rattachées comptées
   var _sjC = _seanceDuJour(data); if (_sjC && _sjC.suivante) nom = _sjC.suivante;   // jours conseillés (04/11)
   if (!nom) { el.style.display = 'none'; el.innerHTML = ''; return; }
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
@@ -15295,14 +15295,14 @@ function _maSportTrend(sesss, metric) {
 }
 // Agrégat muscu sur la fenêtre [startISO,endISO) depuis daily_muscu (historique
 // complet). Mêmes définitions que computeRecent (backend) → à offset 0, les chiffres
-// coïncident avec les fenêtres glissantes. seances = jours distincts d'entraînement.
+// coïncident avec les fenêtres glissantes. seances = séances (date + nom ; 2 le même jour = 2, décision porteur 20/11).
 function _maMuscuAgg(daily, startISO, endISO) {
   daily = daily || {};
   var seances = 0, series = 0, reps = 0, tonnage = 0, rpeSum = 0, rpeN = 0, spm = {}, vpm = {};
   Object.keys(daily).forEach(function (d) {
     if (d >= startISO && d < endISO) {
       var o = daily[d]; if (!o) return;
-      if ((o.series || 0) > 0) seances++;
+      if ((o.series || 0) > 0) seances += (o.nb_seances > 0 ? o.nb_seances : 1);   // 20/11 : 2 séances le même jour = 2 (serveur ancien : 1 par jour)
       series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0;
       rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
       // 07/11 : « Corps entier » (burpees, pneu…) compte dans séances / séries / reps, pas par muscle.
@@ -19050,18 +19050,29 @@ function _tjEtatSeance(data) {
   prog.forEach(function (p) { if (p && p.seance_id && seances.indexOf(p.seance_id) === -1) seances.push(p.seance_id); });
   if (!seances.length) return { etat: 'libre', seances: seances };
   var dash = (data && data.dashboard) || {};
-  var _pn = dash.prochaine_seance, pn = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : null;
+  var _pn = _prochaineSeanceFront(data), pn = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : null;   // 20/11 : libres rattachées comptées
   var d = dash.derniere_seance || null, t = new Date();
   var todayFR = String(t.getDate()).padStart(2, '0') + '/' + String(t.getMonth() + 1).padStart(2, '0') + '/' + t.getFullYear();
   var SJ = _seanceDuJour(data);   // jours conseillés (04/11)
   if (SJ) pn = SJ.suivante;
-  if (d && d.date === todayFR) return { etat: 'faite', nom: String(d.seance_id || ''), d: d, next: pn, seances: seances };
+  if (d && d.date === todayFR) {
+    // 20/11 : 2 séances le même jour → le serveur donne les chiffres de TOUTE la journée avec le nom de la 1re seulement.
+    var _todIso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    var _nomsJ = []; ((data && data.seances_detail) || []).forEach(function (x) { if (x && x.date === _todIso && x.seance_id != null && _nomsJ.indexOf(String(x.seance_id)) < 0) _nomsJ.push(String(x.seance_id)); });
+    return { etat: 'faite', nom: _nomsJ.length > 1 ? _nomsJ.join(' + ') : String(d.seance_id || ''), nbJour: _nomsJ.length, d: d, next: pn, seances: seances };
+  }
   if (SJ && !SJ.aujourdhui && (SJ.suivante || SJ.manquees.length)) return { etat: 'repos', next: SJ.suivante, jourNext: SJ.jourSuivante, manquees: SJ.manquees, j: SJ.j, seances: seances };
   if (!pn) return { etat: 'semaine_ok', next: seances[0], seances: seances };
   return { etat: 'a_faire', nom: SJ ? SJ.aujourdhui : pn, manquees: SJ ? SJ.manquees : [], j: SJ ? SJ.j : 0, seances: seances };
 }
 function _tjDetailSeanceFaite(data) {
-  var sd = (data && data.seances_detail && data.seances_detail[0]) || null; if (!sd) return '';
+  var sd0 = (data && data.seances_detail && data.seances_detail[0]) || null; if (!sd0) return '';
+  // 20/11 : toutes les séances de ce jour-là (avant : la 1re seulement → les exercices de la 2e séance disparaissaient).
+  var SDs = (data.seances_detail || []).filter(function (x) { return x && x.date === sd0.date; });
+  if (SDs.length > 1) return SDs.map(function (x) { return _tjDetailUneSeance(data, x, x.seance_id); }).join('');
+  return _tjDetailUneSeance(data, sd0, null);
+}
+function _tjDetailUneSeance(data, sd, titre) {
   var esc = escapeHtml, kg = function (x) { return _cdFmtKg(x); };
   var L = null; try { L = _lectureExos(data, Date.now()); } catch (e) {}
   var stat = function (exo) {
@@ -19081,7 +19092,7 @@ function _tjDetailSeanceFaite(data) {
   }).join('');
   if (!rows) return '';
   return '<div style="margin:10px 0 12px;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:10px 12px">'
-    + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px">Ta séance d\'aujourd\'hui</div>'
+    + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px">' + (titre ? 'Ta séance d\'aujourd\'hui · ' + esc(String(titre)) : 'Ta séance d\'aujourd\'hui') + '</div>'
     + '<table style="width:100%;border-collapse:collapse"><tbody>' + rows + '</tbody></table></div>';
 }
 function _tjSeanceDuJour(data) {
@@ -19174,6 +19185,9 @@ function _tjDepuisDerniere(data, L) {
   sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + _pqA(x.exo))); });
   blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances' + _pqA(x.exo))); });
   if (!rows.length) return '';
+  // 20/11 (banc « deux séances le même jour ») : les records peuvent venir des 2 séances du jour → on les nomme toutes.
+  var _noms = []; Object.keys(prog).forEach(function (k) { var p0 = prog[k] && prog[k][0]; if (p0 && p0.date === lastD && p0.seance && _noms.indexOf(p0.seance) < 0) _noms.push(p0.seance); });
+  if (_noms.length > 1) lastS = _noms.join(' + ');
   var dd = new Date(lastT), dtx = String(dd.getDate()).padStart(2, '0') + '/' + String(dd.getMonth() + 1).padStart(2, '0');
   return '<div style="margin:0 0 12px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px">Depuis ta dernière séance · ' + esc(lastS) + ' (' + dtx + ')</div>' + rows.join('') + '</div>';
 }
@@ -23387,10 +23401,27 @@ async function athPasCetteSemaine(sid, jour) {
   _sjMsg = sid.charAt(0).toUpperCase() + sid.slice(1) + ' : pas cette semaine, c\'est noté.';
   try { renderAujourdhui(dernierAppData); } catch (e) {}
 }
+// 20/11 (banc, profil « séance libre ») : la « prochaine séance » du serveur ignore les séances LIBRES rattachées
+// (une libre qui remplace « Full body B » → le serveur re-propose B, alors que la semaine est complète). Sans jours
+// conseillés (_seanceDuJour = null), on corrige ici : séance déjà faite cette semaine (programme ou libre rattachée)
+// → la suivante non faite dans l'ordre du programme ; toutes faites → null (semaine complète).
+function _prochaineSeanceFront(data) {
+  var pn = data && data.dashboard ? data.dashboard.prochaine_seance : null;
+  try {
+    var ordre = _rattProgramme(data).ordre; if (!ordre.length) return pn;
+    var now = new Date(), j = (now.getDay() + 6) % 7, lun = new Date(now); lun.setHours(0, 0, 0, 0); lun.setDate(lun.getDate() - j);
+    var dim = new Date(lun); dim.setDate(dim.getDate() + 6);
+    var faites = _faitesPeriode(data, _sjIso(lun), _sjIso(dim)).faites;
+    if (pn && !faites[_rattNorm(pn)]) return pn;
+    var i0 = pn ? ordre.map(_rattNorm).indexOf(_rattNorm(pn)) : -1;
+    for (var k = 1; k <= ordre.length; k++) { var s = ordre[(Math.max(i0, -1) + k + ordre.length) % ordre.length]; if (!faites[_rattNorm(s)]) return s; }
+    return null;
+  } catch (e) { return pn; }
+}
 function _seanceProposee(order) {
   var _sj = (typeof dernierAppData !== 'undefined') ? _seanceDuJour(dernierAppData) : null;
   if (_sj) { if (_sj.aujourdhui && order.indexOf(_sj.aujourdhui) !== -1) return _sj.aujourdhui; if (_sj.suivante && order.indexOf(_sj.suivante) !== -1) return _sj.suivante; }
-  var n = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.dashboard) ? dernierAppData.dashboard.prochaine_seance : null;
+  var n = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.dashboard) ? _prochaineSeanceFront(dernierAppData) : null;
   if (n && order.indexOf(String(n)) !== -1) return String(n);
   return order.length ? order[0] : null;
 }
@@ -23997,8 +24028,9 @@ function _appliquerAppData(data) {
 
     // Prochaine séance — CTA v2
     const nextEl = document.getElementById('dash-next-seance');
-    if (dash.prochaine_seance) {
-      const n = dash.prochaine_seance;
+    const _pnF = _prochaineSeanceFront(data);   // 20/11 : libres rattachées comptées
+    if (_pnF) {
+      const n = _pnF;
       nextEl.innerHTML = `
         <div class="dc-inner" onclick="demarrerDepuisDashboard('${n}')" style="cursor:pointer;">
           <div class="dc-ico"><svg class="ico ico-btn"><use href="#i-dumbbell"/></svg></div>
