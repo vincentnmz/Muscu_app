@@ -4,7 +4,7 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v635';
+const CACHE = 'novalyz-shell-v637';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const ASSETS = [
   './js/admin-novalyz.js',
   './js/creer-seance.js',
   './js/brouillon-cardio.js',
+  './js/brouillons-saisie.js',
   './css/tokens.css',
   './css/base.css',
   './css/components.css',

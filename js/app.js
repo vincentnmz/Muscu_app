@@ -12546,17 +12546,11 @@ function _restaurerBrouillon() {
   var totalSeries = b.seance.reduce(function(a, e) { return a + (e.series ? e.series.length : 0); }, 0);
   if (totalSeries === 0) { _effacerBrouillon(); return; }
 
-  // Auto-nettoyage : si une séance du MÊME type est déjà enregistrée à cette date
-  // (le brouillon correspond à une séance déjà validée — typiquement un vieux
-  // brouillon d'avant le correctif), on l'efface en silence, sans bandeau trompeur.
-  try {
-    var bd = String(b.date || ''), frDate = bd;
-    if (bd.indexOf('-') !== -1) { var p = bd.split('-'); frDate = p[2] + '/' + p[1] + '/' + p[0]; }
-    var ds = (dernierAppData && dernierAppData.historique && dernierAppData.historique.dates_seances) || {};
-    if (frDate && ds[frDate] && String(ds[frDate]) === String(b.seanceId || '')) {
-      _brouillonRestaure = true; _effacerBrouillon(); return;
-    }
-  } catch (e) {}
+  // Auto-nettoyage : le brouillon n'est effacé en silence que s'il est DÉJÀ enregistré, c.-à-d. si TOUTES ses séries
+  // (exercice, charge, reps) se retrouvent dans la séance enregistrée ce jour-là sous le même nom.
+  // 20/11 : avant, il suffisait qu'une séance du même nom existe à cette date → refaire « Push » deux fois dans la
+  // journée et fermer l'app pendant la 2e effaçait celle-ci sans prévenir.
+  try { if (_brouillonDejaEnregistre(b)) { _brouillonRestaure = true; _effacerBrouillon(); return; } } catch (e) {}
 
   _brouillonRestaure = true;
 
@@ -12601,6 +12595,40 @@ function _restaurerBrouillon() {
     }
   } catch (e) {}
   try { _majCtaSeanceEnCours(); } catch (e) {}
+}
+var _autresBrouillonsRepris = false;
+function _reprendreAutresBrouillons() {
+  if (_autresBrouillonsRepris || typeof hxBrouillonReprendre !== 'function') return; _autresBrouillonsRepris = true;
+  var occupe = _seanceEnCoursN() > 0 || (document.body.classList.contains('seance-active') && typeof _modeSeance !== 'undefined' && _modeSeance === 'cardio');
+  Promise.resolve(occupe ? false : hxBrouillonReprendre()).then(function (hx) {
+    if (!hx && !occupe && typeof wqBrouillonReprendre === 'function') setTimeout(function () { try { wqBrouillonReprendre(); } catch (e) {} }, 400);
+  });
+}
+async function _hxReessayer() {
+  var b = null; try { b = JSON.parse(localStorage.getItem('nv_hyrox_brouillon_' + athlete.athlete_id) || 'null'); } catch (e) {}
+  if (!b || !b.envoi) { showToast('Rien à renvoyer'); return; }
+  var res = await _hxRenvoyer(b.envoi);
+  var ov = _hxOv(); if (ov) ov.innerHTML = _hxDoneHtml(b.envoi.total_sec, res ? 'ok' : 'err');
+  if (res) { if (typeof chargerAppData === 'function') chargerAppData(); try { ouvrirBilanSeance('cardio', res.seance_id || null, b.envoi.date); } catch (e) {} }
+  else showToast('Toujours pas de réseau. Tes temps restent gardés.', 'var(--warn)');
+}
+function _brouillonDejaEnregistre(b) {
+  var bd = String((b && b.date) || ''); if (!bd) return false;
+  if (bd.indexOf('/') !== -1) { var q = bd.split('/'); bd = q[2] + '-' + q[1] + '-' + q[0]; }
+  var sd = ((dernierAppData && dernierAppData.seances_detail) || []).filter(function (x) { return x && x.date === bd && String(x.seance_id) === String(b.seanceId || ''); })[0];
+  if (!sd) return false;
+  var dispo = {};   // séries enregistrées, comptées par (exercice|charge|reps)
+  (sd.exercices || []).forEach(function (e) { (e.series || []).forEach(function (x) { var k = e.nom + '|' + Number(x.charge) + '|' + Number(x.reps); dispo[k] = (dispo[k] || 0) + 1; }); });
+  var n = 0;
+  for (var i = 0; i < (b.seance || []).length; i++) {
+    var ex = b.seance[i]; var ser = (ex && ex.series) || [];
+    for (var j = 0; j < ser.length; j++) {
+      var k = String(ser[j].exerciceNom || ex.exerciceNom || '') + '|' + Number(ser[j].charge) + '|' + Number(ser[j].reps);
+      if (!dispo[k]) return false;
+      dispo[k]--; n++;
+    }
+  }
+  return n > 0;
 }
 // Séance muscu commencée et pas encore enregistrée (en mémoire, sauvegardée en brouillon) ?
 function _seanceEnCoursN() {
@@ -14031,6 +14059,7 @@ function ouvrirEtatDuJour(opts) {
     '<button onclick="_etatSkip()" style="' + _BTN_SEC + '">' + (_wqThen ? 'Passer' : 'Fermer') + '</button>'
     + '<button onclick="enregistrerEtatDuJour()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">Enregistrer</button>';
   _wqPrefillEtat();
+  try { if (typeof wqBrouillonAppliquer === 'function') wqBrouillonAppliquer('etat'); } catch (e) {}   // 20/11 : réponses déjà données (app fermée)
   _wqMajBoutonEtat();
   _wqOpen();
 }
@@ -14048,6 +14077,7 @@ function _wqMajBoutonEtat() {
 function ouvrirPointDuJour(dateOverride) { ouvrirEtatDuJour({ date: dateOverride || null }); }
 
 function _etatSkip() {
+  try { if (typeof wqBrouillonEffacer === 'function') wqBrouillonEffacer(); } catch (e) {}   // fermé volontairement
   var then = _wqThen; _wqThen = null;
   fermerWellnessModal();
   if (then) then();
@@ -14085,6 +14115,7 @@ async function enregistrerEtatDuJour() {
     var _jE = null; try { _jE = await _rE.json(); } catch (_) {}
     if (!_rE.ok || !_jE || _jE.success === false || _jE.error) throw new Error((_jE && _jE.error) || 'refusé');
     showToast('État du jour enregistré');
+    try { if (typeof wqBrouillonEffacer === 'function') wqBrouillonEffacer(); } catch (e2) {}
   } catch (e) {
     showToast((e && e.message && e.message !== 'Failed to fetch') ? 'Non enregistré : ' + e.message : 'Réseau instable — réessaie', '#f59f00');
     if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
@@ -14113,6 +14144,7 @@ function ouvrirBilanSeance(type, seanceId, date) {
   if (footer) footer.innerHTML =
     '<button onclick="_bilanSkip()" style="' + _BTN_SEC + '">Passer</button>'
     + '<button onclick="validerBilanSeance()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">Enregistrer</button>';
+  try { if (typeof wqBrouillonAppliquer === 'function') wqBrouillonAppliquer('bilan'); } catch (e) {}   // 20/11 : réponses déjà données (app fermée)
   _wqOpen();
 }
 
@@ -14204,6 +14236,7 @@ async function validerBilanSeance() {
     var sid = _wqSeanceId, dt = _wqDate;
     fermerWellnessModal();
     var okC = await _envoyerBilan('cardio', sid, dt);
+    try { if (okC && typeof wqBrouillonEffacer === 'function') wqBrouillonEffacer(); } catch (e) {}
     showToast(okC ? 'Bilan enregistré' : 'Bilan non enregistré — vérifie ta connexion', okC ? undefined : '#f59f00');
     if (typeof chargerAppData === 'function') chargerAppData();
     return;
@@ -14213,6 +14246,7 @@ async function validerBilanSeance() {
   _bloquerBoutonsValidation();
   var fs = seance[0] && seance[0].series[0];
   var payloadOffline = fs ? _bilanPayload('muscu', fs.seanceId, fs.date) : null;
+  try { if (typeof wqBrouillonEffacer === 'function') wqBrouillonEffacer(); } catch (e) {}   // le bilan part avec la séance (ou en file avec elle)
   fermerWellnessModal();
   if (_gererValidationHorsLigne(payloadOffline)) return;
   // S4 (audit saisies 02/11) : la séance d'abord ; le bilan seulement si elle est enregistrée
@@ -14223,6 +14257,7 @@ async function validerBilanSeance() {
 
 // « Passer » du bilan. Cardio : rien de plus. Muscu : enregistre la séance seule.
 function _bilanSkip() {
+  try { if (typeof wqBrouillonEffacer === 'function') wqBrouillonEffacer(); } catch (e) {}
   if (_wqType === 'cardio') { fermerWellnessModal(); return; }
   if (_validationEnCours) return;
   _validationEnCours = true;
@@ -14254,6 +14289,7 @@ function selectWQ(question, btn) {
     }
   }
   try { if (typeof _wqMajBoutonEtat === 'function') _wqMajBoutonEtat(); } catch (e) {}   // S3 : compteur n/4
+  try { if (typeof wqBrouillonSauver === 'function') wqBrouillonSauver(); } catch (e) {}   // 20/11 : réponses gardées si l'app est fermée
 }
 
 // RPE de séance — échelle CR-10 de Foster (0 = repos, 10 = effort maximal).
@@ -14270,6 +14306,7 @@ function selectRPE(btn) {
     var col = btn.style.getPropertyValue('--c') || 'var(--text)';
     d.innerHTML = '<b style="color:' + col + '">' + v + '/10 · ' + (_CR10_DESC[v] || '') + '</b>';
   }
+  try { if (typeof wqBrouillonSauver === 'function') wqBrouillonSauver(); } catch (e) {}
 }
 
 async function _envoyerSeance(bilanEnFile) {
@@ -23977,6 +24014,8 @@ function _appliquerAppData(data) {
     try { _restaurerBrouillon(); } catch (e) {}
     // 20/11 : séance cardio laissée en cours (js/brouillon-cardio.js) — sauf si une séance muscu vient d'être reprise.
     try { if (typeof bcRestaurer === 'function' && !_seanceEnCoursN()) bcRestaurer(); } catch (e) {}
+    // 20/11 : Hyrox en cours / fin non enregistrée, puis état du jour commencé (js/brouillons-saisie.js). Une fois par chargement.
+    try { _reprendreAutresBrouillons(); } catch (e) {}
 
     // Étape 8 — masquage réversible des doublons cockpit (no-op si COCKPIT_ON=false).
     _safe('cockpit-layout', () => appliquerMasquageCockpit());
@@ -26880,7 +26919,7 @@ function ouvrirHyroxChrono() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-chrono-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0; ov.innerHTML = _hxStartHtml();
 }
-function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } try { _nvWakeOff(); } catch (e) {} var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
+function fermerHyroxChrono() { try { if (typeof hxBrouillonEffacer === 'function') hxBrouillonEffacer(); } catch (e) {} if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } try { _nvWakeOff(); } catch (e) {} var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
 // Fermeture via la croix : si une Hyrox est EN COURS (chrono actif), on confirme.
 function _hxTryClose() { if (_hxTimer) { if (!confirm('Quitter la Hyrox en cours ? Les temps seront perdus.')) return; } fermerHyroxChrono(); }
 // Bouton RETOUR (flèche ‹) — remplace la croix sur les pages Hyrox (demande porteur).
@@ -26941,6 +26980,7 @@ function _hxLiveHtml() {
 // par l'appelant : _hxStartCircuit() ou _hxStartAtelier().
 function _hxBegin() {
   _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick(); try { _nvWakeOn(); } catch (e) {}
+  try { if (typeof hxBrouillonSauver === 'function') hxBrouillonSauver(); } catch (e) {}   // 20/11 : Hyrox gardée si l'app est fermée
 }
 // Circuit OFFICIEL : les 16 segments, poids officiels de la division (non modifiés).
 // Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
@@ -26958,8 +26998,8 @@ function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = docume
 function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#9D5FD3' : 'var(--accent)') : (i === _hxIdx ? '#FFBC13' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
 function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ' : 'Segment suivant '); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
 function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(157,95,211,.12);color:#9D5FD3' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
-function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
-function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } }
+function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); try { if (typeof hxBrouillonSauver === 'function') hxBrouillonSauver(); } catch (e) {} }
+function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } try { if (typeof hxBrouillonSauver === 'function') hxBrouillonSauver(); } catch (e) {} }
 function _hxCancel() { if (confirm('Annuler cette Hyrox ? Les splits en cours seront perdus.')) fermerHyroxChrono(); }
 async function _hxFinish() {
   if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; }
@@ -26968,9 +27008,13 @@ async function _hxFinish() {
   var segments = {}; _hxSegs.forEach(function (sg, i) { if (_hxSplits[i] != null) segments[sg.k] = Math.round(_hxSplits[i] / 1000); });
   var poids = {}, w = _HYROX_W[_hyroxDiv] || _HYROX_W.mo; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { poids[k] = (_hxWeights && _hxWeights[k] > 0) ? _hxWeights[k] : w[k]; });
   var ov = _hxOv(); if (ov) ov.innerHTML = _hxDoneHtml(total, 'load');
+  // 20/11 : la fin du circuit est gardée sur le téléphone tant qu'elle n'est pas enregistrée (avant : erreur réseau = temps perdus).
+  var _hxPayload = { action: 'saveHyrox', athlete_id: athlete.athlete_id, date: _hxTodayISO(), mode: _hyroxMode, division: _hyroxDiv, segments: segments, poids: poids, total_sec: total, rpe: '' };
+  try { if (typeof hxBrouillonFin === 'function') hxBrouillonFin(_hxPayload); } catch (e) {}
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveHyrox', athlete_id: athlete.athlete_id, date: _hxTodayISO(), mode: _hyroxMode, division: _hyroxDiv, segments: segments, poids: poids, total_sec: total, rpe: '' }) });
-    var res = await r.json(); if (res && res.error) throw new Error(res.error);
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(_hxPayload) });
+    var res = await r.json(); if (!r.ok || !res || res.error || res.success === false) throw new Error((res && res.error) || 'refus');
+    try { if (typeof hxBrouillonEffacer === 'function') hxBrouillonEffacer(true); } catch (e) {}
     if (ov) ov.innerHTML = _hxDoneHtml(total, 'ok');
     if (typeof chargerAppData === 'function') chargerAppData();
     // Bilan de séance (ressenti / douleur) après la Hyrox.
@@ -26979,7 +27023,7 @@ async function _hxFinish() {
 }
 function _hxDoneHtml(total, state) {
   var sp = []; for (var i = 0; i < _hxSplits.length; i++) { if (_hxSplits[i] != null && _hxSegs[i]) { var sg = _hxSegs[i]; sp.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } }
-  var st = state === 'ok' ? '<div style="font-size:11px;font-weight:800;color:var(--good)">Enregistrée</div>' : state === 'err' ? '<div style="font-size:11px;font-weight:800;color:var(--bad,#DC3545)">Erreur — réessaie plus tard</div>' : '<div style="font-size:11px;color:var(--text-subtle)">Enregistrement…</div>';
+  var st = state === 'ok' ? '<div style="font-size:11px;font-weight:800;color:var(--good)">Enregistrée</div>' : state === 'err' ? '<div style="font-size:11px;font-weight:800;color:var(--warn,#B45309)">Pas encore enregistrée (réseau) : tes temps sont gardés sur ton téléphone et seront renvoyés automatiquement.</div><button onclick="_hxReessayer()" style="margin-top:8px;border:1px solid var(--border);background:var(--surface2);border-radius:10px;padding:9px 14px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;color:var(--text)">Réessayer maintenant</button>' : '<div style="font-size:11px;color:var(--text-subtle)">Enregistrement…</div>';
   return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox terminée')
     + '<div style="border-radius:18px;padding:22px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06))">' + st
     + '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">Temps total</div>'
