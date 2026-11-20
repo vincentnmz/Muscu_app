@@ -13,6 +13,9 @@ const T = fs.readFileSync(path.join(__dirname, 'e2e-parcours.test.js'), 'utf8');
 let SRC = T.slice(T.indexOf('function makeEngine'), T.indexOf('// ── Chargement du VRAI backend'));
 SRC = SRC.replace("if (op === 'update') { base().filter(matches).forEach(r => Object.assign(r, payload)); return { data: null, error: null }; }",
   "if (op === 'update') { const m = base().filter(matches); m.forEach(r => Object.assign(r, payload)); return { data: m.map(r => ({ ...r })), error: null }; }");
+// + insert : identifiant et created_at générés comme Postgres (identity / default now()) quand absents.
+SRC = SRC.replace("if (op === 'insert' || op === 'upsert') { base().push(...payload); return { data: payload, error: null }; }",
+  "if (op === 'insert' || op === 'upsert') { payload.forEach((r) => { if (table === 'messages_novalyz') { if (r.id == null) r.id = 1000 + base().length; if (!r.created_at) r.created_at = new Date().toISOString(); if (r.lu_at === undefined) r.lu_at = null; if (r.push_at === undefined) r.push_at = null; } }); base().push(...payload); return { data: payload, error: null }; }");
 eval(SRC);
 
 let ok = 0, ko = 0;
@@ -21,7 +24,7 @@ const eq = (c, n, got) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n
 function charger(store, opts = {}) {
   let js = stripTypeScriptTypes(fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
   js = js.split('\n').filter(l => !/^import\s/.test(l)).join('\n');
-  js += '\n;this.__api = { handleGetAppData, handleLireMessagesNovalyz, handleRepondreMessageNovalyz, handlePushMessagesNovalyz, _messagesNovalyz };';
+  js += '\n;this.__api = { handleGetAppData, handleLireMessagesNovalyz, handleRepondreMessageNovalyz, handlePushMessagesNovalyz, _messagesNovalyz, handleAdminNovalyz, handleGetCoachPrefs };';
   const base = makeEngine(store);
   const client = opts.sansTable ? { from: (t) => {
     if (t !== 'messages_novalyz') return base.from(t);
@@ -118,6 +121,46 @@ const store = () => ({
   el('cv-nv-input').value = 'Bien reçu, merci !';
   await fb.nvmRepondre();
   eq(fb.posts.some(p => p.action === 'repondreMessageNovalyz' && p.message === 'Bien reçu, merci !') && el('cv-nv-input').value === '' && /Bien reçu/.test(els['cv-nv-msgs'].innerHTML), 'front : réponse envoyée et affichée');
+
+  // 7. Écran admin (20/11) : réservé aux comptes de admins_novalyz, revérifié à chaque appel.
+  const SA = () => { const x = store(); x.athletes.push({ id: '19', login: '0101', nom: 'Démo', sport: 'muscu', is_demo: true, prefs: {} }); x.athletes[0].coach_id = '4';
+    x.coachs = [{ coach_id: '1', nom: 'Vincent' }, { coach_id: '4', nom: 'Jim' }]; x.admins_novalyz = [{ role: 'c', compte_id: '1' }]; return x; };
+  S = SA(); sb = charger(S); A = sb.__api;
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '4', op: 'etat' }));
+  eq(r.success === false && !r.athletes, 'admin : un autre coach est refusé (aucune donnée)', r);
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'a', _sessId: '1', op: 'etat' }));
+  eq(r.success === false, 'admin : une session athlète avec le même id est refusée', r);
+  r = await J(A.handleAdminNovalyz({ op: 'envoyer', cible: '17', message: 'Coucou sans session' }));
+  eq(r.success === false && S.messages_novalyz.length === 2, 'admin : sans session → refusé, rien écrit', r);
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '1', op: 'etat' }));
+  const a17 = (r.athletes || []).find((x) => x.id === '17');
+  eq(r.success && r.athletes.length === 2 && !r.athletes.some((x) => x.id === '19') && a17 && a17.coach === 'Jim' && a17.dernier && /RPE/.test(a17.dernier.apercu), 'admin : liste de tous les athlètes sauf démo, coach et dernier message', r.athletes);
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '1', op: 'envoyer', cible: '18', message: 'Bonjour, bienvenue !' }));
+  const nv = S.messages_novalyz.filter((m) => m.athlete_id === '18' && m.message === 'Bonjour, bienvenue !');
+  eq(r.success && nv.length === 1 && nv[0].auteur === 'novalyz' && !!nv[0].push_at, 'admin : message rangé chez l\'athlète visé (même pas son athlète), push_at posé', nv);
+  eq(sb.__push.length === 1 && sb.__push[0].id === '18' && sb.__push[0].p.target === 'novalyz', 'admin : une notification immédiate, une seule', sb.__push);
+  await J(A.handlePushMessagesNovalyz());
+  eq(sb.__push.filter((x) => x.p.body === 'Bonjour, bienvenue !').length === 1, 'admin : le cron ne renvoie pas une 2e notification', sb.__push);
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '1', op: 'envoyer', cible: '19', message: 'Message démo' }));
+  eq(r.success === false && !S.messages_novalyz.some((m) => m.athlete_id === '19'), 'admin : compte de démo refusé', r);
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '1', op: 'envoyer', cible: '18', message: 'ok' }));
+  eq(r.success === false, 'admin : message trop court refusé');
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '1', op: 'envoyer', cible: '999', message: 'Personne ici' }));
+  eq(r.success === false && /introuvable/.test(r.error), 'admin : athlète inconnu refusé', r);
+  r = await J(A.handleAdminNovalyz({ _sessRole: 'c', _sessId: '1', op: 'fil', cible: '17' }));
+  eq(r.success && r.messages.length === 1 && r.messages[0].id === 1, 'admin : fil d\'un athlète', r);
+  d = await J(A.handleGetCoachPrefs(new URLSearchParams({ coach_id: '1', _sess_role: 'c' })));
+  eq(d.admin === true, 'getCoachPrefs : admin:true pour le compte admin', d.admin);
+  d = await J(A.handleGetCoachPrefs(new URLSearchParams({ coach_id: '4', _sess_role: 'c' })));
+  eq(d.admin === false, 'getCoachPrefs : admin:false pour un autre coach', d.admin);
+  // Front : entrée masquée sans le droit, affichée avec.
+  const fa = { document: { getElementById: el, head: { appendChild() {} }, createElement: () => ({ style: {} }) }, _coachPrefs: { admin: false } };
+  fa.escapeHtml = fb.escapeHtml; vm.createContext(fa);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'admin-novalyz.js'), 'utf8'), fa);
+  fa.admNvRenderEntree();
+  eq(el('crgx-admin').style.display === 'none' && el('crgx-admin').innerHTML === '', 'front : entrée admin invisible pour un coach non admin');
+  fa._coachPrefs = { admin: true }; fa.admNvRenderEntree();
+  eq(el('crgx-admin').style.display === 'block' && /Écrire aux athlètes/.test(el('crgx-admin').innerHTML), 'front : entrée admin affichée pour l\'admin');
 
   console.log('-'.repeat(70));
   console.log('messages Novalyz : ' + ok + ' OK / ' + ko + ' KO');
