@@ -160,6 +160,28 @@ const PROFILS = {
     for (let d = 1; d < 50; d += 3) bienEtre(st, d, {});
     return st;
   },
+  // 11. Deux séances le même jour (20/11, nouveauté « 2e séance du jour ») : lundi A ; aujourd'hui (jeudi) A le matin
+  //     puis B le soir. Attendu : 3 séances / 2 jours cette semaine, B pas re-proposée, chiffres identiques partout.
+  deux_seances_jour() {
+    const st = base('14'); athlete(st, { annees: 3 }); programme(st);
+    [24, 21, 17, 14, 10, 7, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10, 8 + (k > 4 ? 1 : 0), 7.5)])));
+    seance(st, 0, 'Full body A', A.A.map(([e, m], i) => [e, m, trois(50 + i * 10, 10, 7.5)]));   // matin
+    seance(st, 0, 'Full body B', A.B.map(([e, m], i) => [e, m, trois(55 + i * 5, 10, 7.5)]));    // 2e séance du jour (soir)
+    [24, 17, 10, 3, 0].forEach((d) => bienEtre(st, d, {}));
+    return st;
+  },
+  // 12. Séances LIBRES (06/11 + création de séance 20/11) : mercredi, une libre rattachée à « Full body B » (elle la remplace) ;
+  //     la semaine dernière, une libre « en plus ». Attendu : B cochée cette semaine, la libre en plus ne remplace rien.
+  seance_libre() {
+    const st = base('15'); athlete(st, { annees: 3 }); programme(st);
+    [24, 21, 17, 14, 10, 7, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10, 9, 7.5)])));
+    seance(st, 1, 'Libre', [['RDL barre', 'Ischio', trois(60, 10, 7.5)], ['Tirage vertical prise large', 'Dos', trois(55, 10, 7.5)], ['Curl barre', 'Biceps', trois(25, 12, 8)]]);
+    seance(st, 8, 'Libre', [['Curl barre', 'Biceps', trois(22.5, 12, 8)], ['Extension poulie corde', 'Triceps', trois(20, 12, 8)]]);
+    st.indicateurs.push({ id: st._id++, athlete_id: st._aid, date: J(1), seance_id: 'Libre', cle: 'rattache', valeur: 'Full body B', unite: 'a', source: 'app' });
+    st.indicateurs.push({ id: st._id++, athlete_id: st._aid, date: J(8), seance_id: 'Libre', cle: 'rattache', valeur: '__plus__', unite: 'a', source: 'app' });
+    [24, 17, 10, 3, 1].forEach((d) => bienEtre(st, d, {}));
+    return st;
+  },
 };
 // Équipe coach (14/11) : un coach fictif + 5 athlètes tirés des profils ci-dessus (mêmes données, reliés au coach).
 const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet', 'charge_hausse_sans_ressenti', 'reprise_apres_pause', 'douleur_forte_recup_ok', 'douleur_moderee'];
