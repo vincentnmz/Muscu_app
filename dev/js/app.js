@@ -8164,7 +8164,10 @@ function _cdPlanSeance(s) {
   try {
     var d = (typeof coachAthleteData !== 'undefined') ? coachAthleteData : null, P = (d && typeof _lv3Plan === 'function') ? _lv3Plan(d) : null;
     if (!P || P.reprise || _cdIsoDeDmy(s.date) < P.lundi) return [];
-    return P.actions.filter(function (a) { return a.seance && String(a.seance).trim().toLowerCase() === String(s.seance || '').trim().toLowerCase(); });
+    // 19/11 (retour porteur) : une action d'exercice est aussi reliée à la séance où l'exercice a réellement été fait
+    // (Tirage trapèze fait mardi dans « dos jambes » alors que le programme le place dans « dos jambe 2 »).
+    var exos = (s.exos || []).map(function (x) { return String((x && (x.exo || x.nom)) || '').trim(); });
+    return P.actions.filter(function (a) { return (a.seance && String(a.seance).trim().toLowerCase() === String(s.seance || '').trim().toLowerCase()) || (a.exo && a.type !== 'series' && exos.indexOf(String(a.exo).trim()) >= 0); });
   } catch (e) { return []; }
 }
 function seancesCardsHTML(entries, prog, all) {
@@ -8306,7 +8309,7 @@ function seancesCardsHTML(entries, prog, all) {
     const B = _cdBilan(s.date, s.seance);
     const bilanHtml = B ? `<div style="background:var(--warn-a, #FFF7EB);border:1px solid rgba(224,120,0,.25);border-radius:12px;padding:9px 11px;font-size:12px;line-height:1.5;margin-bottom:10px"><b>Bilan de l'athlète</b> : ${[B.note != null ? 'séance <b>' + B.note + '/10</b>' : '', B.duree ? _cdFmtDuree(B.duree) : '', B.douleur ? '<b style="color:var(--warn)">⚠ douleur ' + B.douleur + '/5' + (B.zone ? ' · ' + escapeHtml(B.zone.toLowerCase()) : '') + '</b>' : 'pas de douleur signalée'].filter(Boolean).join(' · ')}${B.com ? '<br>« ' + escapeHtml(String(B.com)) + ' »' : ''}</div>` : '';
     const PA = _cdPlanSeance(s);
-    const planHtml = PA.length ? `<div style="margin:2px 0 10px;background:var(--accent-a08, rgba(26,95,255,.08));border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45">➜ <b>Proposé par Novalyz pour cette séance</b> : ${PA.map(a => escapeHtml(a.titre) + (a.fait ? ' <b style="color:var(--good)">✓ fait</b>' : ' <span style="color:var(--text-subtle)">· pas encore</span>')).join(' · ')}</div>` : '';
+    const planHtml = PA.length ? `<div style="margin:2px 0 10px;background:var(--accent-a08, rgba(26,95,255,.08));border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45">➜ <b>Proposé par Novalyz pour cette séance</b> : ${PA.map(a => escapeHtml(a.titre) + (a.fait ? ' <b style="color:var(--good)">✓ fait</b>' : (a.tente ? ' <b style="color:#B35F00">· ' + escapeHtml(a.tente.court) + '</b>' : ' <span style="color:var(--text-subtle)">· pas encore</span>'))).join(' · ')}</div>` : '';
     const _sidJs = String(s.seance || '').replace(/\\/g, '').replace(/'/g, ' ').replace(/"/g, ' ');
     // 06/11 : séance libre → séance prévue qu'elle remplace (le coach peut changer).
     let _raT = '', _raBtn = '';
