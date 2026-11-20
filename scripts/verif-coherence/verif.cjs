@@ -416,11 +416,14 @@ function verifierTexte(R, ad, txt, out) {
     const h = String(L[i + 1] || '').trim().match(/^([\d,]+) × (\d+) →$/), c = String(L[i + 2] || '').trim().match(/^([\d,]+) kg × (\d+)$/), why = String(L[i + 3] || '').trim();
     if (!h || !c) return;
     const S0 = P[0], C = kgN(h[1]), Rp = +h[2], C2 = kgN(c[1]), R2 = +c[2], f = R.fourchette(exo);
-    const ser = S0.series.filter((x) => num(x.reps) > 0), rpes = ser.map((x) => num(x.rpe)).filter((x) => x > 0);
+    // 20/11 : séries de TRAVAIL (échauffement = charge > 0 et < 60 % de la plus lourde, écarté comme dans l'app).
+    const ser0 = S0.series.filter((x) => num(x.reps) > 0), mxC = Math.max(0, ...ser0.map((x) => num(x.charge)));
+    const serT = mxC > 0 ? ser0.filter((x) => !(num(x.charge) > 0 && num(x.charge) < 0.6 * mxC)) : ser0;
+    const ser = serT.length ? serT : ser0, rpes = ser.map((x) => num(x.rpe)).filter((x) => x > 0);
     const err = (t) => E('cible.raison', nom + ' : « ' + why.slice(0, 90) + ' » — ' + t);
     if (num(S0.best.charge) !== C || num(S0.best.reps) !== Rp) E('cible.depart', nom + ' : départ « ' + h[1] + ' × ' + h[2] + ' », meilleure série de la dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps));
     let m;
-    if ((m = why.match(/^RPE (\d+)(?:-(\d+))? sur toutes tes séries la dernière fois/))) { const lo = +m[1], hi = m[2] ? +m[2] : +m[1], rs = ser.map((x) => num(x.rpe)); if (Math.min(...rs) !== lo || Math.max(...rs) !== hi) err('RPE des séries : ' + rs.join(', ') + ' (pas « ' + (m[2] ? lo + '-' + hi : lo) + ' sur toutes »)'); if (C2 !== C || R2 !== Rp) err('« garde charge et reps » mais cible ' + C2 + ' × ' + R2); }
+    if ((m = why.match(/^RPE ([\d,]+)(?:-([\d,]+))? sur toutes tes séries la dernière fois/))) { const lo = num(m[1]), hi = m[2] ? num(m[2]) : num(m[1]), rs = ser.map((x) => num(x.rpe)); if (Math.min(...rs) !== lo || Math.max(...rs) !== hi) err('RPE des séries : ' + rs.join(', ') + ' (pas « ' + (m[2] ? lo + '-' + hi : lo) + ' sur toutes »)'); if (C2 !== C || R2 !== Rp) err('« garde charge et reps » mais cible ' + C2 + ' × ' + R2); }
     if ((m = why.match(/^Échec \(RPE 10\) (\d+) séances de suite/))) { const W = P.slice(0, +m[1]); if (W.length < +m[1] || W.some((p) => Math.max(...p.series.map((x) => num(x.rpe))) < 10)) err('pas ' + m[1] + ' séances de suite avec une série à RPE 10'); if (C2 !== C) err('« garde ta charge » mais cible ' + C2 + ' kg'); }
     if ((m = why.match(/^\+1 rep sur les séries sous (\d+) reps/))) { if (f.rmax != null && +m[1] !== f.rmax) err('haut de fourchette ' + f.rmax + ', pas ' + m[1]); if (C2 !== C || R2 < Rp || R2 > Rp + 1) err('cible ' + C2 + ' × ' + R2 + ' pour « +1 rep »'); }
     // 20/11 : série la plus lourde DANS la fourchette → elle reste ; la phrase cite les séries sous le minimum et leur cible.

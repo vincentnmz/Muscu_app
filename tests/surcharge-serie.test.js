@@ -134,7 +134,7 @@ check('reprise (≥ 21 j) prioritaire sur déload', d.mode === 'reprise');
 // --- Utilitaires ---
 check('petit pas : « 2.5 / 5 kg » → 2,5', S._petitPas('Leg curl') === 2.5);
 check('petit pas : « 2 kg » → 2', S._petitPas('Curl haltère') === 2);
-check('petit pas : non renseigné → 0', S._petitPas('Pompe') === 0);
+check('petit pas : non renseigné → 2,5 kg (20/11 : aligné sur le plan de la semaine)', S._petitPas('Pompe') === 2.5);
 check('poly : squat, développé couché, traction, T-bar row', ['Squat', 'Développé couché barre', 'Traction', 'T-bar row prise basse', 'Presse inclinée', 'RDL haltère'].every(S._estPoly));
 check('pas poly : curl, leg curl, mollets presse, tirage uni, trapèze machine', !['Curl haltére', 'Leg curl allongé', 'Les extensions mollets à la presse', 'Tirage vertical uni à la poulie', 'Tirage trapèze machine', 'Elévation latérale haltère'].some(S._estPoly));
 check('bornes : poly 2-5 min, isolation 1-3 min', S._reposBornes('Squat').min === 120 && S._reposBornes('Squat').max === 300 && S._reposBornes('Leg extension').min === 60);

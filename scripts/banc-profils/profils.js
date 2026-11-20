@@ -182,6 +182,48 @@ const PROFILS = {
     [24, 17, 10, 3, 1].forEach((d) => bienEtre(st, d, {}));
     return st;
   },
+  // ── Point 2 (20/11) : recos dans les cas limites ──
+  // 13. Une seule séance, faite hier : le minimum de données. Aucune phrase ne doit parler de tendance, de plateau ou de normale.
+  premiere_seance() {
+    const st = base('16'); athlete(st, { annees: 1, created_at: '2026-11-09' }); programme(st);
+    seance(st, 1, 'Full body A', A.A.map(([e, m], i) => [e, m, trois(40 + i * 10, 10, 7)]));
+    bienEtre(st, 1, {});
+    return st;
+  },
+  // 14. Exercice remplacé : 3 semaines de « Développé couché barre », puis le programme passe au « Développé couché haltère »
+  //     (1re fois cette semaine). La reco ne doit pas pousser l'ancien exercice ni dire « bloqué » sur le nouveau.
+  exo_remplace() {
+    const st = base('17'); athlete(st, { annees: 3 }); programme(st);
+    st.programme.filter((l) => l.exercice === 'Développé couché barre').forEach((l) => { l.exercice = 'Développé couché haltère'; });
+    [21, 17, 14, 10, 7].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(60, 8, 8)])));
+    seance(st, 3, 'Full body B', A.B.map(([e, m]) => [e, m, trois(60, 9, 8)]));
+    seance(st, 0, 'Full body A', [['Squat', 'Quadriceps', trois(60, 9, 8)], ['Développé couché haltère', 'Pectoraux', trois(26, 10, 8)], ['Rowing barre', 'Dos', trois(60, 9, 8)]]);
+    [21, 14, 7, 3, 0].forEach((d) => bienEtre(st, d, {}));
+    return st;
+  },
+  // 15. Séries très inégales : échauffement léger compté comme série (40 × 12, RPE 5), série lourde (80 × 6, RPE 9),
+  //     puis séries allégées (70 × 8, 70 × 7). La cible part de la série LOURDE, pas de l'échauffement.
+  series_inegales() {
+    const st = base('18'); athlete(st, { annees: 4 }); programme(st);
+    const pyr = (lo, hi, rh) => [[lo, 12, 5], [hi, rh, 9], [hi - 10, 8, 8.5], [hi - 10, 7, 9]];
+    [22, 19, 15, 12, 8, 5, 1].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, pyr(40 + i * 5, 80 + i * 5 + (k > 3 ? 2.5 : 0), 6)])));
+    [21, 14, 7, 0].forEach((d) => bienEtre(st, d, {}));
+    return st;
+  },
+  // 16. RPE jamais renseigné : aucune phrase ne doit citer un RPE ni conclure sur l'effort.
+  sans_rpe() {
+    const st = base('19'); athlete(st, { annees: 2 }); programme(st);
+    [21, 18, 14, 11, 7, 4, 0].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, [[50 + i * 10, 8 + Math.floor(k / 2), null], [50 + i * 10, 8 + Math.floor(k / 2), null], [50 + i * 10, 7 + Math.floor(k / 2), null]]])));
+    return st;
+  },
+  // 17. Poids du corps (charge 0) : tractions, dips, pompes. Pas de « 0 kg », pas de petit pas en kg ni de « +2,5 kg ».
+  poids_du_corps() {
+    const st = base('20'); athlete(st, { annees: 2 });
+    [['Traction', 'Dos', 6, 10], ['Dips pectoraux', 'Pectoraux', 8, 12], ['Pompe', 'Pectoraux', 10, 20]].forEach(([exo, , mi, ma]) => st.programme.push({ id: st._id++, athlete_id: st._aid, seance_id: 'PDC', groupe_id: 'P', exercice: exo, series_prevues: 3, reps_mini: mi, reps_maxi: ma, reps_max: ma, repos_sec: 120, type: 'muscu' }));
+    [21, 17, 14, 10, 7, 3, 0].forEach((d, k) => seance(st, d, 'PDC', [['Traction', 'Dos', [[0, 5 + (k > 3 ? 1 : 0), 9], [0, 5, 9.5], [0, 4, 10]]], ['Dips pectoraux', 'Pectoraux', trois(0, 10 + Math.floor(k / 2), 8)], ['Pompe', 'Pectoraux', trois(0, 20, 7)]]));
+    [21, 14, 7, 0].forEach((d) => bienEtre(st, d, {}));
+    return st;
+  },
 };
 // Équipe coach (14/11) : un coach fictif + 5 athlètes tirés des profils ci-dessus (mêmes données, reliés au coach).
 const EQUIPE = ['intermediaire_plateau', 'douleur_vigilance', 'sous_fourchette', 'coach_sans_propositions', 'gene_poignet', 'charge_hausse_sans_ressenti', 'reprise_apres_pause', 'douleur_forte_recup_ok', 'douleur_moderee'];
