@@ -121,6 +121,12 @@ await etape('5b deuxieme seance meme jour', async () => {
   }
   if (await page.locator('button[onclick="skipTimer()"]:visible').count()) await page.click('button[onclick="skipTimer()"]');
   await page.click('button[onclick="validerSeance()"]');
+  // 20/11 : séance oubliée → « Date de la séance » = hier dans « Terminer la séance ? » (avant : champ date masqué).
+  const hier = await page.evaluate(() => { const d = new Date(); d.setHours(12); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
+  const opts = await page.evaluate(() => [...document.querySelectorAll('#_fin-date-sel option')].map((o) => o.value));
+  const auj = await page.evaluate(() => _todayLocalStr());
+  eq(opts.length === 7 && opts[0] === auj && opts.every((o) => o <= auj), 'Date de la séance : aujourd\'hui + 6 jours passés, aucune date future', opts);
+  await page.selectOption('#_fin-date-sel', hier); await page.waitForTimeout(300);
   await page.click('button[onclick="_validerFinSeance()"]', { timeout: 10000 });
   await page.waitForTimeout(800);
   if (await page.locator('button[onclick="_bilanSkip()"]:visible').count()) await page.click('button[onclick="_bilanSkip()"]');
@@ -128,6 +134,13 @@ await etape('5b deuxieme seance meme jour', async () => {
   for (let i = 0; i < 40 && J().length < 2; i++) await page.waitForTimeout(250);
   eq(J().length === 2 && J().map((x) => Number(x.reps)).join(',') === '12,11', '2e séance : enregistrée en base (2 séries Leg extension)', J().map((x) => [x.exercice, x.charge, x.reps]));
   eq(store.performances.filter((x) => x.athlete_id === 'T1' && x.seance_id === 'Haut A').length === 3, '2e séance : la 1re séance n\'est ni doublée ni écrasée');
+  eq(J().every((x) => String(x.date).slice(0, 10) === hier), 'Séance oubliée : enregistrée à la date choisie (hier)', J().map((x) => x.date));
+  // La séance suivante repart à aujourd'hui (pas la date d'hier héritée).
+  await page.waitForFunction(() => _seanceEnvoyee === true, null, { timeout: 10000 });
+  await page.evaluate(() => { fermerSeancePage(); _enStart('Haut A'); }); await page.waitForTimeout(1200);
+  const d3 = await page.evaluate(() => document.getElementById('inp-date').value);
+  eq(d3 === auj, 'Séance suivante : date remise à aujourd\'hui', d3);
+  await page.evaluate(() => fermerSeancePage());
 });
 await etape('6 rechargement', async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
