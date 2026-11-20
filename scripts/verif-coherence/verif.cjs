@@ -54,6 +54,8 @@ function recalculer(store, appdata, now, aidForce) {
   R.rpe7 = p7.length ? Math.round(p7.reduce((x, r) => x + num(r.rpe), 0) / p7.length * 10) / 10 : null;
   const debVol = R.semaineType === 'glissant' ? plusJ(now, -6) : R.lundi;
   const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
+  // Pas de l'appareil (catalogue, plus petit incrément) : sert au contrôle du « petit pas » (≈ −5 % sur la grille).
+  R.pas = {}; (store.exercices || []).forEach((e) => { const n = e && e.increment_kg != null ? String(e.increment_kg).replace(/,/g, '.').match(/[0-9]+(\.[0-9]+)?/g) : null; if (e && e.exercice && n) R.pas[String(e.exercice).trim()] = Math.min(...n.map(Number)); });
   R.volume = {};
   for (const r of P.filter((x) => x.d >= debVol && x.d <= now)) {
     if (r.muscle && cle(r.muscle) !== 'corps entier') R.volume[cle(r.muscle)] = (R.volume[cle(r.muscle)] || 0) + 1;
@@ -420,10 +422,26 @@ function verifierTexte(R, ad, txt, out) {
     if ((m = why.match(/^RPE (\d+)(?:-(\d+))? sur toutes tes séries la dernière fois/))) { const lo = +m[1], hi = m[2] ? +m[2] : +m[1], rs = ser.map((x) => num(x.rpe)); if (Math.min(...rs) !== lo || Math.max(...rs) !== hi) err('RPE des séries : ' + rs.join(', ') + ' (pas « ' + (m[2] ? lo + '-' + hi : lo) + ' sur toutes »)'); if (C2 !== C || R2 !== Rp) err('« garde charge et reps » mais cible ' + C2 + ' × ' + R2); }
     if ((m = why.match(/^Échec \(RPE 10\) (\d+) séances de suite/))) { const W = P.slice(0, +m[1]); if (W.length < +m[1] || W.some((p) => Math.max(...p.series.map((x) => num(x.rpe))) < 10)) err('pas ' + m[1] + ' séances de suite avec une série à RPE 10'); if (C2 !== C) err('« garde ta charge » mais cible ' + C2 + ' kg'); }
     if ((m = why.match(/^\+1 rep sur les séries sous (\d+) reps/))) { if (f.rmax != null && +m[1] !== f.rmax) err('haut de fourchette ' + f.rmax + ', pas ' + m[1]); if (C2 !== C || R2 < Rp || R2 > Rp + 1) err('cible ' + C2 + ' × ' + R2 + ' pour « +1 rep »'); }
-    if ((m = why.match(/^Sous ta fourchette (\d+)-(\d+) \(RPE ([\d,]+)\)/))) { if (f.rmin !== +m[1] || f.rmax !== +m[2]) err('fourchette ' + f.rmin + '-' + f.rmax); if (Math.max(...rpes) !== num(m[3])) err('RPE max ' + Math.max(...rpes)); if (!(C2 < C) || R2 !== f.rmin) err('cible ' + C2 + ' × ' + R2 + ' : attendu une charge plus basse pour ' + f.rmin + ' reps'); }
+    // 20/11 : série la plus lourde DANS la fourchette → elle reste ; la phrase cite les séries sous le minimum et leur cible.
+    if ((m = why.match(/^Sous ta fourchette (\d+)-(\d+) sur (\d+) séries? sur (\d+) \(RPE ([\d,]+)\) : (?:celles-ci passent|celle-ci passe) à ([\d,]+) kg × (\d+)/))) {
+      const sous = ser.filter((x) => num(x.reps) < +m[1]);
+      if (f.rmin !== +m[1] || f.rmax !== +m[2]) err('fourchette ' + f.rmin + '-' + f.rmax);
+      if (sous.length !== +m[3] || ser.length !== +m[4]) err(sous.length + ' série(s) sous ' + m[1] + ' reps sur ' + ser.length + ', pas ' + m[3] + ' sur ' + m[4]);
+      if (Math.max(...rpes) !== num(m[5])) err('RPE max ' + Math.max(...rpes));
+      if (!sous.length || !(kgN(m[6]) < Math.min(...sous.map((x) => num(x.charge)))) || +m[7] !== f.rmin) err('séries sous la fourchette → ' + m[6] + ' kg × ' + m[7] + ' : attendu une charge plus basse pour ' + f.rmin + ' reps');
+      if (C2 !== C || R2 !== Rp) err('« ta série la plus lourde reste telle quelle » mais cible ' + C2 + ' × ' + R2);
+    } else if ((m = why.match(/^Sous ta fourchette (\d+)-(\d+) \(RPE ([\d,]+)\)/))) { if (f.rmin !== +m[1] || f.rmax !== +m[2]) err('fourchette ' + f.rmin + '-' + f.rmax); if (Math.max(...rpes) !== num(m[3])) err('RPE max ' + Math.max(...rpes)); if (!(C2 < C) || R2 !== f.rmin) err('cible ' + C2 + ' × ' + R2 + ' : attendu une charge plus basse pour ' + f.rmin + ' reps'); }
     if ((m = why.match(/^Haut de fourchette atteint → \+([\d,]+) kg/))) { if (f.rmax != null && Rp < f.rmax) err('meilleure série à ' + Rp + ' reps, haut de fourchette ' + f.rmax); if (Math.abs(C2 - C - kgN(m[1])) > 1e-9) err('cible ' + C2 + ' kg, attendu ' + C + ' + ' + m[1]); }
     if (/^Charge en hausse et ressenti en baisse : pas de progression aujourd'hui/.test(why)) { if (C2 !== C || R2 !== Rp) err('« mêmes charges » mais cible ' + C2 + ' × ' + R2); const cr2 = ad && ad.moteur && ad.moteur.charge_ressenti; if (cr2 && !cr2.degrade) err('le moteur ne signale pas de ressenti en baisse'); }
   });
+  // B9b (20/11). Petit pas « sous la fourchette » = multiple du pas de l'appareil juste sous −5 %, le même sur tous les écrans
+  // (avant : 77,5 dans « au choix » et 75 sur la carte ; 6,75 kg hors grille depuis 8 kg).
+  const petit = (c, p) => Math.round(Math.floor(c * 0.95 / p + 1e-9) * p * 1000) / 1000;
+  Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
+    const m = l.match(/^(.+?) : ([\d,]+) kg × \d+ à RPE [\d,]+ — au choix.*?petit pas en dessous \(([\d,]+) kg\)/); if (!m) return;
+    const exo = m[1].trim(), p = R.pas[exo]; if (!(p > 0)) return;
+    const att = petit(kgN(m[2]), p); if (Math.abs(kgN(m[3]) - att) > 1e-9) E('cible.petit_pas', nom + ' : ' + exo + ' ' + m[2] + ' kg → petit pas « ' + m[3] + ' kg », attendu ' + String(att).replace('.', ',') + ' kg (≈ −5 %, pas de ' + String(p).replace('.', ',') + ' kg)');
+  }));
   // B10. « Pourquoi ça bloque » / levier : repos et effort cités = séries brutes.
   Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
     const exo = nom.replace('ÉVOLUTION ▸ ', ''), P = R.sessions[exo] || []; if (!P.length) return;

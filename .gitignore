@@ -11,3 +11,4 @@ www/
 
 # Config Firebase Android (jamais committée — injectée au build via secret)
 android/app/google-services.json
+livrables/

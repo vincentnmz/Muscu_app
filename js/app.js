@@ -13698,10 +13698,13 @@ function _progDecision(ctx) {
   // Alternative « sûre » en mode sous : charge permettant rmin reps à RPE 9 d'après la force estimée.
   var alt = null;
   try { if (mode === 'sous' && typeof _sousAlt === 'function') { var r0 = ref(1); alt = _sousAlt(Number(r0.charge) || 0, last.concat(ctx.prev || []), rmin, ctx.pas); } } catch (e) {}
-  return { mode: mode, rpe: rpe, rpeMin: rpes.length ? Math.min.apply(null, rpes) : null, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, bloque: ctx.bloque || null, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt };
+  return { mode: mode, rpe: rpe, rpeMin: rpes.length ? Math.min.apply(null, rpes) : null, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, bloque: ctx.bloque || null, vigilanceTxt: ctx.vigilanceTxt || '', joursSansSeance: ctx.joursSansSeance, alt: alt, nSous: sousN, nSeries: last.length, kLourde: (function () { var k = 0; last.forEach(function (x, i) { var b = last[k]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) k = i; }); return Number((last[k] || {}).serie) || (k + 1); })(), nums: last.map(function (x, i) { return Number(x.serie) || (i + 1); }) };   // kLourde : même série que la carte « Ce que Novalyz vise » (_tjCibles)
 }
 // Petit pas en « sous la fourchette » : ≈ −5 % arrondi au pas de l'appareil, au moins un pas (80 → 75 kg).
-function _sousPetitPas(ch, pas) { pas = pas > 0 ? pas : 2.5; var c = Math.floor(ch * 0.95 / pas) * pas; if (c > ch - pas) c = ch - pas; return Math.max(0, c); }
+// 20/11 (vérificateur, données réelles) : la garde « au moins un pas » (c ≤ ch − pas) sortait de la grille quand la charge
+// de départ n'en fait pas partie (8 kg, pas 1,25 → 6,75 kg, introuvable sur l'appareil). Le multiple du pas juste sous
+// ≈ −5 % est toujours < ch : 80 → 75, 20 → 17,5, 8 → 7,5.
+function _sousPetitPas(ch, pas) { pas = pas > 0 ? pas : 2.5; var c = Math.floor(ch * 0.95 / pas + 1e-9) * pas; return Math.max(0, Math.round(c * 1000) / 1000); }
 // Charge « sûre » : rmin reps à RPE 9 (1 rep en réserve) d'après la MEILLEURE force estimée des séries
 // récentes, jamais plus de −12,5 % sous la charge actuelle. null si elle n'est pas plus basse que le petit pas.
 function _sousAlt(ch, series, rmin, pas) {
@@ -13719,7 +13722,15 @@ function _sousAlt(ch, series, rmin, pas) {
 function _progWhy(d, f, pas) {
   var kg = function (x) { return String(x).replace('.', ','); };
   if (!d || d.mode === 'premier') return '1re fois : trouve ta charge de travail';
-  if (d.mode === 'sous') return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ')' + (d.alt ? ' · ou ' + kg(d.alt.charge) + ' kg pour assurer ' + f.rmin + ' reps' : '') + ' · proposition, c\'est toi qui choisis';
+  if (d.mode === 'sous') {
+    // 20/11 (vérificateur, données réelles) : seules les séries SOUS le minimum descendent. Quand la série affichée
+    // (la plus lourde) est dans la fourchette, elle ne change pas → on dit lesquelles changent et vers quoi
+    // (avant : « sous ta fourchette » à côté d'une cible identique, on lisait « rien ne change »).
+    var kL = d.kLourde || 1, c1 = (typeof d.cible === 'function') ? (d.cible(kL) || {}) : {}, cb = null;
+    if (c1.up !== 'baisse' && typeof d.cible === 'function') { (d.nums || []).forEach(function (k) { if (cb || k === kL) return; var ck = d.cible(k) || {}; if (ck.up === 'baisse') cb = ck; }); }
+    if (cb) return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' sur ' + d.nSous + ' série' + (d.nSous > 1 ? 's' : '') + ' sur ' + d.nSeries + ' (RPE ' + d.rpe + ') : ' + (d.nSous > 1 ? 'celles-ci passent' : 'celle-ci passe') + ' à ' + kg(cb.charge) + ' kg × ' + cb.reps + ', ta série la plus lourde reste telle quelle · proposition, c\'est toi qui choisis';
+    return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ')' + (d.alt ? ' · ou ' + kg(d.alt.charge) + ' kg pour assurer ' + f.rmin + ' reps' : '') + ' · proposition, c\'est toi qui choisis';
+  }
   if (d.mode === 'deload') return 'déload : même charge, 1 série de moins, garde 3 reps en réserve (RPE ≤ 7)';
   if (d.mode === 'reprise') return 'reprise après ' + Math.floor(d.joursSansSeance / 7) + ' semaines sans séance : refais ta dernière fois, sans pousser · indicatif';
   if (d.mode === 'vigilance') return (/^charge en hausse/.test(d.vigilanceTxt || '') ? d.vigilanceTxt : 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '')) + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';   // E (14/11)
@@ -16323,7 +16334,7 @@ function _leviersBlocage(data, exo) {
 // 1 « à pousser » (record / progrès → même cible que la saisie), 1 bloqué, puis volume / régularité.
 var _OPTIONS_SOUS = function (x, kg, data) {
   var rep = _levierRepos(data || dernierAppData, x.exo);
-  return 'au choix, à titre indicatif : ' + (x.pas > 0 ? 'un petit pas en dessous (' + kg(x.c - x.pas) + ' kg) pour revenir à ' + x.rmin + ' reps' : 'alléger un peu pour revenir à ' + x.rmin + ' reps')
+  return 'au choix, à titre indicatif : ' + (x.pas > 0 ? 'un petit pas en dessous (' + kg(_sousPetitPas(x.c, x.pas)) + ' kg) pour revenir à ' + x.rmin + ' reps' : 'alléger un peu pour revenir à ' + x.rmin + ' reps')
     + (rep ? ', garder ' + kg(x.c) + ' kg et viser +1 rep, ou ' + rep + '.' : ', ou garder ' + kg(x.c) + ' kg et viser +1 rep.');
 };
 function _lxRecos(L, V, niveau, data) {
@@ -24900,12 +24911,16 @@ function dessinerGraphPoids(pesees, periode, ids) {
   // Poids actuel et évolution
   const dernier = filtered[filtered.length - 1];
   const premier = filtered[0];
-  document.getElementById(ids.actuel).textContent = dernier.poids;
+  // 20/11 (vérificateur, données réelles) : « 76.9 » (point) et « ▼ 0kg » quand le poids ne bouge pas.
+  document.getElementById(ids.actuel).textContent = String(dernier.poids).replace('.', ',');
   if (filtered.length > 1) {
-    const diff = (dernier.poids - premier.poids).toFixed(1);
-    const sign = diff > 0 ? '▲' : '▼';
-    const col = diff > 0 ? '#ff9500' : '#00a854';
-    document.getElementById(ids.evol).innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+    const diff = Math.round((dernier.poids - premier.poids) * 10) / 10;
+    if (diff === 0) document.getElementById(ids.evol).innerHTML = '<span style="color:var(--text-muted)">= stable</span>';
+    else {
+      const sign = diff > 0 ? '▲ +' : '▼ −';
+      const col = diff > 0 ? '#ff9500' : '#00a854';
+      document.getElementById(ids.evol).innerHTML = `<span style="color:${col}">${sign}${String(Math.abs(diff)).replace('.', ',')} kg</span>`;
+    }
   } else {
     document.getElementById(ids.evol).innerHTML = '';
   }
