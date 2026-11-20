@@ -9508,6 +9508,7 @@ function renderProgrammeCoach() {
   // ─── Rendu éditeur athlète (vue semaine) — réutilise les helpers ci-dessus ───
   function _progRenderEditor(elE, seancesE, ordreE) {
     if (ordreE.length === 0) { elE.innerHTML = _progStartHTML(); return; }
+    if (typeof _csOuvrirSid !== 'undefined' && _csOuvrirSid) { var _csI = ordreE.indexOf(_csOuvrirSid); if (_csI >= 0) { _progTab = _csI; _csOuvrirSid = null; } }   // 20/11 : nouvelle séance
     if (_progTab >= ordreE.length) _progTab = 0;
     var blocEditE = function (l, seanceId, extraBtn, extraSel) {
       var ouvertExo = !!cdExoOpen[l.row_index];
@@ -9587,19 +9588,22 @@ function renderProgrammeCoach() {
     }).join('');
     var tabs = ordreE.map(function (seanceId, si) {
       return '<button class="prog-tab' + (si === _progTab ? ' on' : '') + '" onclick="progSetTab(' + si + ')">J' + (si + 1) + '<small>' + escapeHtml(String(seanceId)) + '</small></button>';
-    }).join('') + '<button class="prog-tab prog-tab-add" onclick="cdAjouterSeance()">＋<small>Jour</small></button>';
+    }).join('');
     var head = '<div class="prog-head">'
       + '<div class="prog-seg"><button class="' + (_progView === 'semaine' ? 'on' : '') + '" onclick="progSetView(\'semaine\')">Vue semaine</button><button class="' + (_progView === 'liste' ? 'on' : '') + '" onclick="progSetView(\'liste\')">Liste</button></div>'
       + (_nvPropsAthlete() ? '<button class="prog-btn-ia" onclick="ouvrirGenProgramme()">✦ Novalyz propose</button>' : '<span style="font-size:11.5px;color:var(--text-muted);font-weight:700">✎ Géré par ' + escapeHtml(_nvCoachNom()) + '</span>')
       + '</div>';
     elE.innerHTML = head + _semBlockHtml()
       + '<div class="prog-tabs">' + tabs + '</div>'
+      // 20/11 (porteur : « le + Séance est trop discret ») : vrai bouton pleine largeur sous les onglets (mobile).
+      + '<button class="prog-newseance" onclick="creerSeance()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Créer une séance</button>'
       + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols
       +   '<button class="prog-addday" onclick="cdAjouterSeance()"><svg class="ico" style="width:18px;height:18px"><use href="#i-plus"/></svg> Ajouter une séance</button>'
       + '</div>';
   }
   // ═══ Builder pro (desktop) : 3 panneaux rail/plan/inspecteur — réutilise la CRUD ═══
   function _progRenderBuilder(elB, seancesB, ordreB, blocEditE, gripSvg) {
+    if (typeof _csOuvrirSid !== 'undefined' && _csOuvrirSid) { var _csI = ordreB.indexOf(_csOuvrirSid); if (_csI >= 0) { _progTab = _csI; _csOuvrirSid = null; } }   // 20/11 : nouvelle séance
     if (_progTab >= ordreB.length) _progTab = 0;
     var esc = escapeHtml;
     var exoOptions = function (sel) { return exercicesData.map(function (e) { return '<option value="' + esc(e.exercice).replace(/"/g, '&quot;') + '"' + (e.exercice === sel ? ' selected' : '') + '>' + esc(e.exercice) + '</option>'; }).join(''); };
@@ -9639,7 +9643,7 @@ function renderProgrammeCoach() {
           return '<div class="pb-dayrow' + (si === _progTab ? ' on' : '') + '" onclick="progSetTab(' + si + ')" ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sj + ')\'>'
             + '<span class="dot" style="background:' + musColOf(lg) + '"></span><div class="nm"><b>' + esc(String(sid)) + '</b><span>' + (jr ? _PROG_JOURS_LONG[jr - 1] : 'non planifié') + '</span></div><span class="ct">' + lg.length + '</span></div>';
         }).join('')
-      + '<button class="pb-railadd" onclick="cdAjouterSeance()"><svg class="ico" style="width:15px;height:15px"><use href="#i-plus"/></svg> Nouvelle séance</button></div>';
+      + '<button class="pb-railadd" onclick="cdAjouterSeance()"><svg class="ico" style="width:15px;height:15px"><use href="#i-plus"/></svg> Créer une séance</button></div>';
     // ── Plan central (séance active) ──
     var activeSid = ordreB[_progTab], activeLignes = seancesB[activeSid] || [];
     var aJour = activeLignes[0] && activeLignes[0].jour, aMcol = musColOf(activeLignes);
@@ -10377,7 +10381,7 @@ async function ouvrirPickerExos(seanceId, onDone) {
   try { document.body.classList.add('xp-open'); } catch (e) {}
   _xpRender();
 }
-function fermerPickerExos() { var ov = document.getElementById('xp-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('xp-open'); } catch (e) {} }
+function fermerPickerExos() { var ov = document.getElementById('xp-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('xp-open'); } catch (e) {} try { if (_xp && !_xp.fini && typeof _xp.onCancel === 'function') { var f = _xp.onCancel; _xp.onCancel = null; f(); } } catch (e) {} }
 function _xpFilter(q) { _xp.q = String(q || ''); _xpRender(); }
 function _xpSetGrp(k) { _xp.grp = k; _xpRender(); var l = document.getElementById('xp-list'); if (l) l.scrollTop = 0; }
 function _xpKeyOrder(k, on) { var i = _xp.order.indexOf(k); if (on && i < 0) _xp.order.push(k); if (!on && i >= 0) _xp.order.splice(i, 1); }
@@ -10459,14 +10463,23 @@ async function _xpConfirm() {
   var grpOf = function (nom) { var e = exercicesData.find(function (x) { return x.exercice === nom; }); return e ? (_exoGrpOf(e.muscle) || 'autres') : 'autres'; };
   noms.sort(function (a, b) { return ((_XP_RANK[grpOf(a)] || 9) - (_XP_RANK[grpOf(b)] || 9)) || (_xp.order.indexOf('m|' + a) - _xp.order.indexOf('m|' + b)); });
   var post = function (body) { return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); };
-  for (var i = 0; i < noms.length; i++) {
-    try { await post({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, exercice: noms[i], series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: _reposDefaut(noms[i]), groupe_id: '', type: 'muscu' }); } catch (e) {}
-  }
-  for (var j = 0; j < cards.length; j++) {
-    var a = _xpCardioList().find(function (x) { return x.key === cards[j]; });
-    try { await post({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, exercice: a ? a.label : cards[j], series_prevues: null, reps_mini: null, reps_max: null, repos_sec: null, groupe_id: '', type: 'cardio', cardio_cible: _xp.cardio[cards[j]], cardio_unite: 'min' }); } catch (e) {}
+  var lignes = noms.map(function (nom) { return { exercice: nom, series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: _reposDefaut(nom), groupe_id: '', type: 'muscu' }; })
+    .concat(cards.map(function (k) { var a = _xpCardioList().find(function (x) { return x.key === k; }); return { exercice: a ? a.label : k, type: 'cardio', cardio_cible: _xp.cardio[k], cardio_unite: 'min', groupe_id: '' }; }));
+  // 20/11 (D) : un seul envoi, tout ou rien (saveProgrammeLignes). Serveur pas encore à jour (404 « Action inconnue »)
+  // → ancien mode, un envoi par exercice. Échec réseau / refus → rien n'est ajouté, on le dit (pas de séance à moitié).
+  var lot = null, statut = 0;
+  try { var r = await post({ action: 'saveProgrammeLignes', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, lignes: lignes }); statut = r.status; lot = await r.json(); } catch (e) { lot = null; }
+  if (statut === 404 && lot && /Action inconnue/.test(String(lot.erreur || ''))) {
+    for (var i = 0; i < lignes.length; i++) {
+      try { await post(Object.assign({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid }, lignes[i])); } catch (e) {}
+    }
+  } else if (!lot || !lot.ok) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Ajouter (' + lignes.length + ')'; }
+    showToast('Pas enregistré' + (lot && lot.erreur ? ' : ' + lot.erreur : ' : vérifie ta connexion') + '. Ta sélection est gardée, réessaie.', 'var(--danger)');
+    return;
   }
   var total = noms.length + cards.length;
+  _xp.fini = true;
   fermerPickerExos();
   try { showToast(total + ' ajouté' + (total > 1 ? 's' : '') + ' à ' + _xp.sid); } catch (e) {}
   if (typeof _xp.onDone === 'function') { try { _xp.onDone(); } catch (e) {} }
@@ -10635,29 +10648,9 @@ function _jgRender() {
     + '<div class="jg-foot"><button class="xp-add" onclick="fermerConstruireProgramme()">Terminer mon programme</button></div></div>';
 }
 
-async function cdAjouterSeance() {
-  // Athlète : page « Construis ton programme » (plus de boîte système).
-  if (typeof coach === 'undefined' || !coach || !coach.coach_id) { if (typeof athlete !== 'undefined' && athlete) { try { var _peo = document.getElementById('prog-editor-overlay'); if (_peo) _peo.style.display = 'none'; document.body.classList.remove('prog-editor-open'); } catch (e) {} return ouvrirConstruireProgramme(); } }
-  // Coach : même logique qu'avant (nommer → ajouter des exercices), mais dans une
-  // fenêtre au style de l'app au lieu de la boîte système prompt().
-  var p = document.getElementById('cd-newseance');
-  if (!p) { p = document.createElement('div'); p.id = 'cd-newseance'; p.className = 'jg-panel-ov'; document.body.appendChild(p); p.addEventListener('click', function (e) { if (e.target === p) p.style.display = 'none'; }); }
-  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip cta" onclick="document.getElementById(\'cd-ns-in\').value=\'' + n + '\';_cdNouvelleSeanceOk()">+ ' + n + '</button>'; }).join('');
-  p.innerHTML = '<div class="jg-panel jg-panel-sm">'
-    + '<div class="xp-hd"><button class="xp-back" onclick="document.getElementById(\'cd-newseance\').style.display=\'none\'" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Nouvelle séance</div><div class="b">Nomme-la, puis choisis ses exercices</div></div></div>'
-    + '<div class="jg-pbody"><div class="jg-chips">' + chips + '</div>'
-    + '<label class="jg-f"><span>Nom de la séance</span><input id="cd-ns-in" type="text" placeholder="ex. Push, Pull, Jambes…" style="text-align:left" onkeydown="if(event.key===\'Enter\')_cdNouvelleSeanceOk()"></label></div>'
-    + '<div class="jg-pfoot"><button class="xp-add" onclick="_cdNouvelleSeanceOk()">Choisir les exercices</button></div></div>';
-  p.style.display = 'flex';
-  setTimeout(function () { var i = document.getElementById('cd-ns-in'); if (i) i.focus(); }, 30);
-}
-async function _cdNouvelleSeanceOk() {
-  var i = document.getElementById('cd-ns-in'); var nom = i ? String(i.value || '').trim() : '';
-  if (!nom) { if (i) i.focus(); return; }
-  var p = document.getElementById('cd-newseance'); if (p) p.style.display = 'none';
-  cdProgOpen[nom] = true;   // ouvrir la nouvelle séance après rechargement (voir le +Ajouter)
-  await cdAjouterExercice(nom);
-}
+// 20/11 : création de séance = UN parcours commun (js/creer-seance.js), athlète comme coach. Avant : l'athlète
+// basculait vers un 2e éditeur (« Construis ton programme ») ; le coach avait sa propre fenêtre.
+function cdAjouterSeance() { return creerSeance(); }
 
 async function cdSupprimerLigne(rowIndex) {
   if (!confirm('Supprimer cet exercice du programme ?')) return;
@@ -12592,6 +12585,34 @@ function _restaurerBrouillon() {
   if (bv) bv.style.display = 'block';
 
   _afficherBandeauBrouillon(totalSeries, b.ts);
+
+  // 20/11 (« quand on ferme l'app, tout disparaît ? ») : les séries étaient bien gardées mais l'app rouvrait sur
+  // Aujourd'hui avec « Commencer ma séance » (→ « tout sera perdu, abandonner ? »). On rouvre la séance là où elle en était.
+  try { _etatAutoChecked = true; } catch (e) {}
+  try {
+    if (!_saisieCoach) {
+      if (typeof switchTab === 'function') switchTab('seance');
+      ouvrirSeancePage();
+      if (typeof switchModeSeance === 'function') switchModeSeance('muscu');
+      var cl2 = document.getElementById('card-liste-seance'); if (cl2) cl2.style.display = 'block';
+      var bv2 = document.getElementById('btn-valider'); if (bv2) bv2.style.display = 'block';
+      try { afficherListeSeance(); majProgressionSeance(); } catch (e) {}
+      showToast('Séance reprise : ' + totalSeries + ' série' + (totalSeries > 1 ? 's' : '') + ' gardée' + (totalSeries > 1 ? 's' : ''));
+    }
+  } catch (e) {}
+  try { _majCtaSeanceEnCours(); } catch (e) {}
+}
+// Séance muscu commencée et pas encore enregistrée (en mémoire, sauvegardée en brouillon) ?
+function _seanceEnCoursN() {
+  try { return (!_seanceEnvoyee && Array.isArray(seance)) ? seance.reduce(function (a, e) { return a + ((e && e.series) ? e.series.length : 0); }, 0) : 0; } catch (e) { return 0; }
+}
+function reprendreSeance() { if (typeof switchTab === 'function') switchTab('seance'); ouvrirSeancePage(); try { afficherListeSeance(); } catch (e) {} }
+// Aujourd'hui : « Reprendre ma séance (N séries) » au lieu de « Commencer » tant qu'une séance est en cours.
+function _majCtaSeanceEnCours() {
+  var n = _seanceEnCoursN(); if (!n) return;
+  var cta = document.querySelector('#tab-accueil .tj-seance .tj-cta'); if (!cta) return;
+  cta.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Reprendre ma séance (' + n + ' série' + (n > 1 ? 's' : '') + ')';
+  cta.setAttribute('onclick', 'reprendreSeance()');
 }
 
 function _afficherBandeauBrouillon(totalSeries, ts) {
@@ -19690,7 +19711,7 @@ function renderAujourdhui(data) {
     var _E = _tjEtatSeance(data);
     var _card = document.querySelector('#tab-accueil .tj-seance');
     var _lbl = _card && _card.querySelector('.tj-label'), _cta = _card && _card.querySelector('.tj-cta');
-    var _ctaTxt = function (t, fn) { if (!_cta) return; _cta.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>' + t; _cta.setAttribute('onclick', fn); };
+    var _ctaTxt = function (t, fn) { if (!_cta) return; _cta.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>' + t; _cta.setAttribute('onclick', fn); try { _majCtaSeanceEnCours(); } catch (e) {} };   // 20/11 : séance en cours → « Reprendre »
     if (_lbl) _lbl.textContent = 'Séance du jour';
     _ctaTxt('Commencer ma séance', "switchTab('seance')");
     var _elCibX = document.getElementById('tj-seance-cibles');
@@ -21014,6 +21035,7 @@ function fermerSeancePage() {
       var _bv = document.getElementById('btn-valider'); if (_bv) _bv.style.display = 'none';
     } catch (e) {}
   }
+  try { if (typeof _modeSeance !== 'undefined' && _modeSeance === 'cardio' && typeof bcEffacer === 'function') bcEffacer(); } catch (e) {}   // 20/11 : quitter = abandon volontaire
   document.body.classList.remove('seance-active');
   try { _majFabNovalyz(); } catch (e) {}
   _seanceChronoStop();
@@ -21072,6 +21094,7 @@ function ouvrirEditeurProgramme() {
   var ov = document.getElementById('prog-editor-overlay');
   if (ov) ov.style.display = 'flex';
   try { document.body.classList.add('prog-editor-open'); } catch (e) {}
+  try { _etatAutoChecked = true; } catch (e) {}   // 20/11 (C) : pas de questionnaire du jour pendant / juste après l'édition (demandé à « Démarrer »)
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
 }
 // Même éditeur (Builder) côté COACH, pointé sur l'athlète courant du coach.
@@ -23080,6 +23103,10 @@ function _enSetMode(m) {
       else if (_hasProg) { strong(creer); soft(gen); if (cl) cl.textContent = 'Modifier mon programme'; if (gl) gl.textContent = 'Régénérer avec Novalyz'; }
       else { strong(gen); soft(creer); if (gl) gl.textContent = 'Novalyz me propose un programme'; if (cl) cl.textContent = 'Créer / modifier mon programme'; }
     }
+    // 20/11 (A) : sans programme, le gros bouton n'est plus « Démarrer la séance » (il n'y en a pas) → séance libre, en retrait.
+    var _sl = document.getElementById('en-start-lbl'), _sansProg = (m === 'muscu') && !(typeof dernierAppData !== 'undefined' && dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length);
+    if (st) st.classList.toggle('en-start-soft', _sansProg);
+    if (_sl) _sl.textContent = _sansProg ? 'Séance libre (sans programme)' : 'Démarrer la séance';
   } catch (e) {}
   if (m === 'hyrox') { try { renderHyroxHome(); } catch (e) {} }
   // Le bloc « dernières séances / sorties » suit le mode (muscu vs cardio ; masqué en hyrox).
@@ -23324,7 +23351,9 @@ function _enSelectActivite(t) { _enSelActivite = t; _enRenderSelCardio(); }
 function _enRenderSelMuscu() {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var sl = document.getElementById('en-slist'); if (!sl) return;
-  if (!_enOrder.length) { sl.innerHTML = '<div class="en-muted">Aucune séance au programme. Utilise « Créer / modifier mon programme ».</div>'; return; }
+  // 20/11 (A, retours testeurs) : bouton « créer une séance » visible ici (avant : caché dans Modifier mon programme ▸ ＋ Jour).
+  var _svgPlus = '<span class="ic"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>';
+  if (!_enOrder.length) { sl.innerHTML = '<div class="en-sel en-cree en-cree-1" onclick="creerSeance()" role="button">' + _svgPlus + '<div class="nm"><div class="a">Créer ma première séance</div><div class="b">Choisis un nom (Push, Jambes…) puis coche tes exercices</div></div></div>'; return; }
   if (!_enSelSeance || (_enSelSeance !== 'Libre' && _enOrder.indexOf(_enSelSeance) === -1)) _enSelSeance = _seanceProposee(_enOrder) || 'Libre';
   var svgD = '<svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>';
   // Réalisé cette semaine (n'importe quel jour) → statut ✓/○ directement sur la carte.
@@ -23348,6 +23377,7 @@ function _enRenderSelMuscu() {
       + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div>' + (_plS[sid] ? '<div class="b" style="color:var(--accent);font-weight:700">Novalyz propose : ' + esc(_plS[sid].join(' · ')) + '</div>' : '') + '</div>'
       + tag + '<span class="en-rad"></span></div>';
   }).join('');
+  html += '<div class="en-sel en-cree" onclick="creerSeance()" role="button">' + _svgPlus + '<div class="nm"><div class="a">Créer une séance</div><div class="b">Ajoute une séance à ton programme</div></div></div>';
   // Carte « Séance libre » (toujours proposée) : exercices choisis à la volée.
   var onL = (_enSelSeance === 'Libre');
   html += '<div class="en-sel' + (onL ? ' on' : '') + '" onclick=\'_enSelectSeance("Libre")\'>'
@@ -23395,7 +23425,7 @@ function _maybeQuotidienEtat() {
     var _pe = document.getElementById('prog-editor-overlay'); if (_pe && getComputedStyle(_pe).display !== 'none') return;
     // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, génération de
     // programme, modales…).
-    var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
+    var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay', 'jg-overlay', 'xp-overlay', 'cs-sheet'].some(function (id) {
       var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none';
     });
     if (busy) return;   // on réessaiera au prochain chargement
@@ -23423,6 +23453,7 @@ function _enDemarrerNow() {
     try { _buildCardioTypeOptions(); var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
     try { var cd = document.getElementById('cardio-date'); if (cd && !cd.value) { var t = new Date(); cd.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); } } catch (e) {}
     try { _majSeancePageTitre(); } catch (e) {}
+    try { if (typeof bcSauver === 'function') bcSauver(); } catch (e) {}   // 20/11 : séance cardio gardée si l'app est fermée
   } else {
     if (_enSelSeance) _enStart(_enSelSeance);
     else ouvrirSeancePage();
@@ -23944,6 +23975,8 @@ function _appliquerAppData(data) {
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
     // Une seule fois par chargement de page (garde interne _brouillonRestaure).
     try { _restaurerBrouillon(); } catch (e) {}
+    // 20/11 : séance cardio laissée en cours (js/brouillon-cardio.js) — sauf si une séance muscu vient d'être reprise.
+    try { if (typeof bcRestaurer === 'function' && !_seanceEnCoursN()) bcRestaurer(); } catch (e) {}
 
     // Étape 8 — masquage réversible des doublons cockpit (no-op si COCKPIT_ON=false).
     _safe('cockpit-layout', () => appliquerMasquageCockpit());
@@ -27232,6 +27265,7 @@ async function sauvegarderCardio() {
     if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Terminer & enregistrer'; }
     return;
   }
+  try { if (typeof bcEffacer === 'function') bcEffacer(); } catch (e) {}   // 20/11 : enregistrée → plus de brouillon
   // Récap
   var typeLabel = _CARDIO_TYPE_LABELS[type] || type;
   var stats = [];
