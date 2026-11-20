@@ -228,6 +228,10 @@ async function _insererAvecMotDePasse(table: 'athletes' | 'coachs', row: any, ch
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
+// 20/11 (décision porteur) : une SÉANCE = une date + un nom de séance. Deux séances le même jour (Push le matin, Pull le soir)
+// comptent pour 2 dans l'objectif, la régularité, les moyennes par séance, les points, le bilan et le mail. Les calculs
+// qui ont besoin de JOURS (pauses, dernière date, jours actifs du moteur) restent sur les dates.
+function _cleSeance(r: any): string { return normDate(r.date) + '|' + String(r?.seance_id ?? '') }
 function normDate(d: unknown): string {
   const dt = parseFR(d)
   return dt ? fmtYMD(dt) : String(d ?? '').slice(0, 10)
@@ -334,7 +338,7 @@ function computeGlobal(perfs: any[]): any {
       muscles: [...s.muscles],
     }))
 
-  const totalSeances = datesSet.size
+  const totalSeances = new Set(perfs.map(_cleSeance)).size
   return {
     source: 'GLOBAL_ENGINE',
     total_seances: totalSeances,
@@ -360,8 +364,7 @@ function computeRecent(perfs: any[], now: Date): any {
     const cutoff = fmtYMD(minus(now, days - 1))
     const filtered = perfs.filter(r => normDate(r.date) >= cutoff)
     // séances = nombre de JOURS d'entraînement distincts (comme Code.gs finalizeWindow: w.dates.size)
-    const datesSet = new Set(filtered.map(r => normDate(r.date)))
-    const seances = datesSet.size
+    const seances = new Set(filtered.map(_cleSeance)).size   // 20/11 : séances (date + nom), plus des jours
     const tonnage = filtered.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
     const rpeRows = filtered.filter(r => r.rpe)
     const parMuscle: Record<string, number> = {}
@@ -408,7 +411,7 @@ function computeRecent(perfs: any[], now: Date): any {
     const tonnage = filtered.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
     const rpeRows = filtered.filter(r => r.rpe)
     result['semaineCal'] = {
-      seances: new Set(filtered.map(r => normDate(r.date))).size,
+      seances: new Set(filtered.map(_cleSeance)).size,
       series: filtered.length,
       reps: filtered.reduce((s, r) => s + (Number(r.reps) || 0), 0),
       tonnage: Math.round(tonnage / 100) / 10,
@@ -432,7 +435,7 @@ function computeComparison(perfs: any[], now: Date): any {
     const rpeRows = rows.filter(r => r.rpe)
     const maxChargePerExo: Record<string, number> = {}
     for (const r of rows) if (r.exercice) maxChargePerExo[r.exercice] = Math.max(maxChargePerExo[r.exercice] || 0, Number(r.charge) || 0)
-    return { seances: new Set(rows.map(r => normDate(r.date))).size, tonnage: Math.round(tonnage), rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null, maxCharge: maxChargePerExo }
+    return { seances: new Set(rows.map(_cleSeance)).size, tonnage: Math.round(tonnage), rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null, maxCharge: maxChargePerExo }
   }
 
   const j7w  = calcWindow(perfs.filter(r => normDate(r.date) >= c7))
@@ -1176,8 +1179,10 @@ function buildDailyMuscu(perfs: any[], secByExo?: Record<string, string>): Recor
     const d = normDate(r.date); if (!d) continue
     const charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
     let o = out[d]
-    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, spm: {} as Record<string, number>, vpm: {} as Record<string, number>, ppm: {} as Record<string, number> }
+    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, nb_seances: 0, sids: {} as Record<string, number>, spm: {} as Record<string, number>, vpm: {} as Record<string, number>, ppm: {} as Record<string, number> }
     o.series++
+    // 20/11 : nombre de SÉANCES du jour (2 séances le même jour = 2) pour les compteurs de l'app.
+    const sidK = String(r.seance_id ?? ''); if (!o.sids[sidK]) { o.sids[sidK] = 1; o.nb_seances++ }
     // 13/11 : séries en muscle PRINCIPAL seulement (spm ajoute ½ pour le secondaire) → « Fréquence par muscle » ne compte
     // plus un jour de rowing comme un jour de biceps.
     if (r.muscle && normMuscle(r.muscle) !== 'Corps entier') o.ppm[r.muscle] = (o.ppm[r.muscle] || 0) + 1
@@ -1187,6 +1192,7 @@ function buildDailyMuscu(perfs: any[], secByExo?: Record<string, string>): Recor
     _addSeriesMuscle(o.spm, r, secByExo)
     if (r.muscle) o.vpm[r.muscle] = (o.vpm[r.muscle] || 0) + charge * reps
   }
+  for (const k of Object.keys(out)) delete out[k].sids
   return out
 }
 
@@ -2686,7 +2692,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // regularite as object
   const seancesJ7 = recentData.j7?.seances ?? 0
   // séances de la SEMAINE CALENDAIRE (depuis lundi) → l'anneau d'objectif se remet à zéro chaque lundi
-  const seancesCetteSemaine = new Set(perfsWeek.map(r => normDate(r.date))).size
+  const seancesCetteSemaine = new Set(perfsWeek.map(_cleSeance)).size   // 20/11 : 2 séances le même jour = 2
   // séances prévues/semaine : valeur explicite (table objectif) sinon DÉRIVÉE du
   // programme = nombre de séances distinctes (chaque séance ≈ 1×/semaine). Ainsi
   // l'adhérence « X/N » reflète le vrai programme (issu de l'onboarding ou du builder).
@@ -5405,7 +5411,7 @@ function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: a
   const inWin = (perfs || []).filter(r => normDate(r.date) >= cut)
   const inPrev = (perfs || []).filter(r => { const dd = normDate(r.date); return dd >= cutPrev && dd < cut })
 
-  const seancesFaites = new Set(inWin.map(r => normDate(r.date))).size
+  const seancesFaites = new Set(inWin.map(_cleSeance)).size
   const seancesProg = new Set((programme || []).map((p: any) => String(p.seance_id ?? '')).filter(Boolean)).size
   const seancesPrevues = Math.round(seancesProg * weeks)
   const seriesFaites = inWin.length
@@ -5932,9 +5938,9 @@ function _bilanRecapV2(in_: any, per: string, now: Date): any {
   const out: any = { per, bornes: { debut: d0, fin: d1 }, label: B.label, sousTitre: B.sousTitre }
   // Régularité
   const objectif = Number(ad.dashboard && ad.dashboard.regularite && ad.dashboard.regularite.seances_prevues) || 0
-  const jours = Array.from(new Set(inP.map((r: any) => normDate(r.date)))).sort()
+  const jours = Array.from(new Set(inP.map(_cleSeance))).sort().map((k: any) => String(k).split('|')[0])   // une entrée par SÉANCE (date répétée si 2 le même jour)
   out.seances = jours.length
-  out.seancesPrec = new Set(inPrev.map((r: any) => normDate(r.date))).size
+  out.seancesPrec = new Set(inPrev.map(_cleSeance)).size
   out.objectif = objectif
   out.prevues = objectif ? Math.round(objectif * sem) : 0
   // 18/11 (audit mail) : jours de vacances (mode pause) dans la période → dits dans le bilan (« 1/4 » d'une semaine de vacances).
@@ -7363,12 +7369,15 @@ function calculerPoints(perfs: any[], beRows: any[], progRows: any[], objectifSe
   for (const d of Object.keys(parJour).sort()) {
     const rows = parJour[d]
     const sem = _lundiYMD(d)
-    seancesSem[sem] = (seancesSem[sem] || 0) + 1
-    const cnt: Record<string, number> = {}; rows.forEach(r => { const k = String(r.seance_id || ''); cnt[k] = (cnt[k] || 0) + 1 })
-    const sid = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || ''
-    ev.push({ date: d, k: 'seance', pts: B.seance, detail: sid })
-    if (rows.every(r => r.rpe != null && String(r.rpe).trim() !== '' && Number(r.rpe) > 0)) ev.push({ date: d, k: 'rpe', pts: B.rpe, detail: sid })
-    if (prevues[sid] && rows.filter(r => String(r.seance_id || '') === sid).length >= prevues[sid]) ev.push({ date: d, k: 'complete', pts: B.complete, detail: sid })
+    // 20/11 : chaque séance du jour compte (avant : 1 seule par jour, celle qui avait le plus de séries).
+    const sids = [...new Set(rows.map(r => String(r.seance_id || '')))].sort()
+    for (const sid of sids) {
+      const rs = rows.filter(r => String(r.seance_id || '') === sid)
+      seancesSem[sem] = (seancesSem[sem] || 0) + 1
+      ev.push({ date: d, k: 'seance', pts: B.seance, detail: sid })
+      if (rs.every(r => r.rpe != null && String(r.rpe).trim() !== '' && Number(r.rpe) > 0)) ev.push({ date: d, k: 'rpe', pts: B.rpe, detail: sid })
+      if (prevues[sid] && rs.length >= prevues[sid]) ev.push({ date: d, k: 'complete', pts: B.complete, detail: sid })
+    }
     // Record = charge max battue sur un exercice déjà fait (1er passage ≠ record). 3 max / semaine.
     const maxJour: Record<string, number> = {}
     rows.forEach(r => { const e = String(r.exercice || ''); const c = Number(r.charge) || 0; if (e && c > (maxJour[e] || 0)) maxJour[e] = c })

@@ -28,7 +28,7 @@ function extractFn(name) {
 }
 
 const WINDOWS_SRC = SRC.match(/const WINDOWS = \{[^}]*\}/)[0] + ';';   // { ACUTE:7, MID:14, CHRONIC:28, LONG:56 }
-const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek', 'getLundi',
+const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', '_cleSeance', 'isoWeek', 'prevIsoWeek', 'getLundi',
   'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'computeTendances', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle', 'buildDailyMuscu', 'normMuscle', '_secMap', '_addSeriesMuscle', '_recordsEvenements'];
 const ALIAS_SRC = SRC.match(/const _MUSCLE_ALIAS[^=]*= \{[^}]*\}/)[0] + ';';
 const tsCode = WINDOWS_SRC + '\n' + ALIAS_SRC + '\n\n' + FN_NAMES.map(extractFn).join('\n\n');
