@@ -2302,7 +2302,7 @@ async function chargerCoachPrefs() {
   if (typeof coach === 'undefined' || !coach || !coach.coach_id) return _coachPrefs;
   try {
     var d = await nvFetchJSON(SCRIPT_URL + '?action=getCoachPrefs&coach_id=' + encodeURIComponent(coach.coach_id));
-    if (d && d.success) { _coachPrefs = { notif: d.notif || _coachPrefs.notif, groupes: d.groupes || [], defauts: d.defauts || _coachPrefs.defauts, telephone: !!d.telephone, charge: true }; }
+    if (d && d.success) { _coachPrefs = { notif: d.notif || _coachPrefs.notif, groupes: d.groupes || [], defauts: d.defauts || _coachPrefs.defauts, telephone: !!d.telephone, admin: d.admin === true, charge: true }; }
   } catch (e) {}
   return _coachPrefs;
 }
@@ -2542,7 +2542,7 @@ async function envoyerRetourNovalyz() {
   } catch (e) { showToast('Erreur réseau : réessaie plus tard', '#ff4444'); }
   if (btn) { btn.disabled = false; btn.textContent = 'Envoyer'; }
 }
-function renderCoachReglagesV2() { renderCoachNotifs(); renderCoachAthletesRg(); renderCoachExport(); }
+function renderCoachReglagesV2() { renderCoachNotifs(); renderCoachAthletesRg(); renderCoachExport(); try { if (typeof admNvRenderEntree === 'function') admNvRenderEntree(); } catch (e) {} }
 function ouvrirReglagesCoach() {
   const overlay = document.getElementById('coach-reglages-overlay');
   const drawer  = document.getElementById('coach-reglages-drawer');
