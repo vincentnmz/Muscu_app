@@ -12651,6 +12651,8 @@ async function demarrerSeance() {
     if (!ok) return;
   }
 
+  // 20/11 : après une séance enregistrée (éventuellement datée d'un jour passé), la suivante repart à aujourd'hui.
+  if (_seanceEnvoyee) { const _di = document.getElementById('inp-date'); if (_di) _di.value = _todayLocalStr(); }
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   _seanceEnvoyee = false; _seanceDureeMin = 0; _seanceEnvoiId = _nouvelEnvoiId();
   _reinitValidation();
@@ -14583,7 +14585,7 @@ function _confirmerFinSeance() {
         + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalVol + ' kg</div>'
         + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">volume</div></div>'
     + '</div>'
-    + _rattHtml + _nuitDateHtml()
+    + _rattHtml + (_nuitDateHtml() || _finDateHtml())
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="_annulerFinSeance()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">↩ Continuer</button>'
       + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Terminer</button>'
@@ -14607,12 +14609,51 @@ function _nuitDateHtml() {
       + '<div style="display:flex;gap:8px">' + btn(yIso, 'Hier soir (' + fr(yIso) + ')', false) + btn(tIso, 'Aujourd\'hui (' + fr(tIso) + ')', true) + '</div></div>';
   } catch (e) { return ''; }
 }
-function _nuitDateChoix(b) {
-  var di = document.getElementById('inp-date'), nd = b.getAttribute('data-nd'); if (di) di.value = nd;
+// 20/11 (séance perdue de Célia) : « Date de la séance » dans « Terminer la séance ? » — aujourd'hui par défaut,
+// ou l'un des 6 jours précédents (séance oubliée à ressaisir). Jamais une date future. Avant : le champ date était
+// masqué pendant la séance → impossible de saisir une séance passée (seule exception : « hier soir ? » de 0 h à 5 h).
+var FIN_DATE_JOURS = 7;
+function _isoLocal(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _finDateOptions() {
+  var out = [], base = new Date(); base.setHours(12, 0, 0, 0);   // midi : pas de saut de jour au changement d'heure
+  var J = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  for (var i = 0; i < FIN_DATE_JOURS; i++) {
+    var d = new Date(base); d.setDate(base.getDate() - i);
+    var dm = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+    out.push({ iso: _isoLocal(d), lbl: i === 0 ? 'Aujourd\'hui (' + dm + ')' : i === 1 ? 'Hier (' + J[d.getDay()] + ' ' + dm + ')' : J[d.getDay()] + ' ' + dm });
+  }
+  return out;
+}
+function _finDateHtml() {
+  try {
+    var di = document.getElementById('inp-date'), cur = (di && di.value) || _todayLocalStr();
+    var opts = _finDateOptions();
+    if (!opts.some(function (o) { return o.iso === cur; })) opts.push({ iso: cur, lbl: cur.split('-').reverse().join('/') });   // brouillon plus ancien : on garde sa date
+    return '<div id="_fin-date" style="display:flex;align-items:center;gap:10px;margin:-6px 0 16px;background:var(--surface2);border-radius:12px;padding:9px 12px">'
+      + '<span style="font-size:12.5px;font-weight:700;color:var(--text);flex:none">Date de la séance</span>'
+      + '<select id="_fin-date-sel" onchange="_finDateChoix(this.value)" aria-label="Date de la séance" style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;font-weight:700;padding:8px 6px">'
+      + opts.map(function (o) { return '<option value="' + o.iso + '"' + (o.iso === cur ? ' selected' : '') + '>' + o.lbl + '</option>'; }).join('')
+      + '</select></div>'
+      + (cur !== _todayLocalStr() ? '<div style="font-size:11.5px;color:var(--text-muted);margin:-10px 0 14px;line-height:1.4">La séance sera enregistrée à cette date (séance oubliée).</div>' : '');
+  } catch (e) { return ''; }
+}
+// Re-date la séance (champ + toutes les séries + brouillon). Partagé avec le choix « hier soir » de la nuit.
+function _redaterSeance(nd) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(nd || '')) || nd > _todayLocalStr()) return false;
+  var di = document.getElementById('inp-date'); if (di) di.value = nd;
   // Les séries portent leur date (prise à la saisie) : on les re-date toutes, sinon la séance partirait à l'ancienne date.
   try { (seance || []).forEach(function (e) { (e.series || []).forEach(function (x) { x.date = nd; try { x.semaine = getNumSemaine(nd); } catch (_) {} }); }); _saveBrouillon(); } catch (e) {}
+  try { if (_rattChoix) _rattChoix.date = _rattIso(nd); } catch (e) {}
+  return true;
+}
+function _finDateChoix(nd) {
+  if (!_redaterSeance(nd)) return;
+  _confirmerFinSeance();   // la fenêtre est reconstruite (séance libre : « remplace laquelle ? » dépend de la semaine)
+}
+function _nuitDateChoix(b) {
+  var nd = b.getAttribute('data-nd');
+  _redaterSeance(nd);
   document.querySelectorAll('#_nuit-date [data-nd]').forEach(function (x) { var on = x === b; x.style.borderColor = on ? 'var(--accent)' : 'var(--border)'; x.style.background = on ? 'var(--accent-a10,rgba(26,95,255,.1))' : 'var(--surface2)'; });
-  try { if (_rattChoix) _rattChoix.date = _rattIso(di.value); } catch (e) {}
 }
 function _annulerFinSeance() {
   var ov = document.getElementById('_confirm-fin-seance');
