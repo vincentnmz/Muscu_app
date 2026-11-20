@@ -30,7 +30,7 @@ function recalculer(store, appdata, now, aidForce) {
   const aid = String(aidForce || (store.athletes && store.athletes[0] && store.athletes[0].id) || '');
   const ath = (store.athletes || []).find((a) => String(a.id) === aid) || {};
   const P = (store.performances || []).filter((r) => !aid || String(r.athlete_id) === aid).map((r) => ({ ...r, d: iso(r.date) })).filter((r) => r.d && r.d <= now);
-  const R = { now };
+  const R = { now, aid };
   // Records : meilleure série à vie (charge, puis reps), datée de la PREMIÈRE fois où elle a été atteinte.
   R.records = {};
   for (const r of P.slice().sort((a, b) => a.d.localeCompare(b.d))) {
@@ -156,6 +156,7 @@ function recalculer(store, appdata, now, aidForce) {
     return { parSem: Math.round(s / div * 10) / 10, freq: Math.round(j / div * 10) / 10, recul: sem };
   };
   R.muscles = [...new Set(P.map((r) => r.muscle).filter(Boolean))];
+  R.P = P;
   R.muscleDe = (exo) => { const r = P.find((x) => x.exercice === exo && x.muscle); return r ? r.muscle : null; };
   // Journal des décisions : statut de chaque action enregistrée, recalculé sur les séances de SA semaine (lundi → dimanche).
   const pauses = [];
@@ -529,6 +530,23 @@ function verifierTexte(R, ad, txt, out) {
           const det = String(L[i + 3] || '').trim(); if (!/km|h\d|min/.test(det)) return;
           const cand = R.cardio.filter((o) => o.d === d), fmt = (o) => [num(o.distance) ? f1(num(o.distance)) + ' km' : null, num(o.duree) ? hms(o.duree) : null, num(o.vitesse_moy) ? f1(num(o.vitesse_moy)) + ' km/h' : null].filter(Boolean).join(' · ');
           if (!cand.some((o) => fmt(o) === det)) E('cardio.historique', nom + ' : ' + l + ' ' + String(L[i + 1]).trim() + ' « ' + det + ' », séances ce jour-là : ' + (cand.map(fmt).join(' | ') || 'aucune'));
+        }
+      });
+    });
+  }
+  // B16. Plan : « Séance « X » » ne renvoie jamais vers une séance déjà faite cette semaine ; « Tenté <jour> : C kg × R à
+  // RPE x » = meilleure série de l'exercice cette semaine, ce jour-là (retour porteur 19/11).
+  {
+    const faitesSem = new Set(R.P.filter((r) => r.d >= R.lundi && r.d <= R.now).map((r) => String(r.seance_id || '').trim().toLowerCase()));
+    const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    Object.entries(S).forEach(([nom, L]) => { let cur = null;
+      L.forEach((l0) => { const l = l0.trim(); let m;
+        const t = l.match(/^(.+?) : (garde|proposé|vise|\d+ séries)/); if (t) cur = t[1].replace(/^★ /, '').trim();
+        if ((m = l.match(/Séance « ([^»]+) »\.?$/)) && faitesSem.has(m[1].trim().toLowerCase())) E('plan.seance_faite', nom + ' : renvoie vers « ' + m[1] + ' », déjà faite cette semaine');
+        if ((m = l.match(/^Tenté (\w+) : ([\d,]+) kg × (\d+)(?: à RPE ([\d,]+))?/)) && cur) {
+          const P2 = (R.sessions[cur] || []).filter((p) => p.d >= R.lundi); let b = null, bd = null;
+          P2.forEach((p) => p.series.forEach((x) => { const dc = b ? num(x.charge) - num(b.charge) : 1, dr = b ? num(x.reps) - num(b.reps) : 0, de = b ? num(x.rpe) - num(b.rpe) : 0; if (!b || dc > 0 || (dc === 0 && (dr > 0 || (dr === 0 && de > 0)))) { b = x; bd = p.d; } }));   // à égalité : la plus dure
+          if (!b || num(b.charge) !== kgN(m[2]) || num(b.reps) !== +m[3] || (m[4] && num(b.rpe) !== num(m[4])) || JOURS[new Date(bd + 'T12:00:00Z').getUTCDay()] !== m[1]) E('plan.tente', nom + ' · ' + cur + ' : « ' + m[0] + ' », recalculé ' + (b ? JOURS[new Date(bd + 'T12:00:00Z').getUTCDay()] + ' ' + num(b.charge) + ' × ' + num(b.reps) + ' RPE ' + num(b.rpe) : 'pas fait cette semaine'));
         }
       });
     });

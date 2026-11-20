@@ -24,6 +24,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 18/11 : mail : « (au Sun N, fin de la période) » au lieu de la date → corrigé (« au 15/11 »).
 - 18/11 : contexte IA : « RPE moyen 9.2 » (point décimal que l'IA pouvait recopier) → « 9,2 ».
 - 18/11 : cardio : « 11.6 km », « 1.7 km · 1.5 km/h » → virgule ; fenêtres « 4 sem. » (29 j → 28 j) et « Charge 7 j » (8 j → 7 j) alignées sur le serveur.
+- 19/11 (retour porteur) : plan : Tirage trapèze fait mardi dans « dos jambes » mais le plan renvoyait vers « dos jambe 2 » comme s'il restait à faire ; Quadriceps / Ischios renvoyaient vers « dos jambes », déjà faite → le plan dit « tenté mardi (50 kg × 8, RPE 9) » et indique la PROCHAINE séance pas encore faite (aucune s'il n'y en a plus) ; fiche coach : l'action s'affiche sur la séance où l'exercice a été réellement fait.
 - 18/11 : carte « Charge & fraîcheur » : « tonnage pondéré par l'effort » alors que la source est le tonnage brut (charge × reps) → « tonnage : charge × répétitions ».
 
 ## Ce qu'il vérifie aujourd'hui
@@ -59,6 +60,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | texte cassé (partout) | jamais « undefined », « NaN », « Invalid Date » ni date brute « Sun Nov … » |
 | contexte envoyé à l'IA | dernier questionnaire, dernière séance (séries, RPE), séances depuis lundi, records récents, bloqués, sous la fourchette, volume de la semaine (et sa fenêtre), poids ; aucun point décimal |
 | cardio | « N sorties ces 4 semaines (X km) » (28 jours, micro-sorties exclues), tuiles Sorties / Distance 4 sem., Charge 7 j (RPE × durée, marche = 0), chaque ligne d'historique (distance, durée, vitesse) |
+| plan : séance et tentative | « Séance « X » » jamais une séance déjà faite cette semaine ; « Tenté <jour> : C kg × R à RPE x » = meilleure série de l'exercice cette semaine |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert
