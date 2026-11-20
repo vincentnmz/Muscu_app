@@ -170,9 +170,15 @@ await etape('5c creer une seance', async () => {
 // 20/11 (« quand on ferme l'app, tout disparaît ? ») : séance commencée, app fermée → à la réouverture, la séance
 // se rouvre avec ses séries (avant : gardées mais invisibles, retour sur Aujourd'hui avec « Commencer ma séance »).
 await etape('5d fermeture en pleine seance', async () => {
-  // « Push » (créée en 5c, pas encore faite aujourd'hui).
-  await page.evaluate(() => { switchTab('seance'); _enStart('Push'); }); await page.waitForTimeout(1500); await fermerAnnonces();
-  await page.locator('#liste-exercices-seance').getByText('Leg extension').first().click();
+  // « Haut A » DÉJÀ enregistrée aujourd'hui (étape 5) : 2e « Haut A » du jour. Avant le 20/11, ce brouillon était
+  // effacé sans prévenir (règle « même nom, même jour ») ; il n'est effacé que si ses séries sont déjà enregistrées.
+  const auj = await page.evaluate(() => _todayLocalStr());
+  const regle = await page.evaluate((d) => ({
+    identique: _brouillonDejaEnregistre({ date: d, seanceId: 'Haut A', seance: [{ exerciceNom: 'Développé couché barre', series: [{ exerciceNom: 'Développé couché barre', charge: 60, reps: 10 }, { exerciceNom: 'Développé couché barre', charge: 60, reps: 9 }] }] }),
+    differente: _brouillonDejaEnregistre({ date: d, seanceId: 'Haut A', seance: [{ exerciceNom: 'Développé couché barre', series: [{ exerciceNom: 'Développé couché barre', charge: 50, reps: 12 }] }] }) }), auj);
+  eq(regle.identique === true && regle.differente === false, 'Brouillon effacé seulement s\'il est déjà enregistré (mêmes séries), pas pour une 2e séance du même nom', regle);
+  await page.evaluate(() => { switchTab('seance'); _enStart('Haut A'); }); await page.waitForTimeout(1500); await fermerAnnonces();
+  await page.locator('#liste-exercices-seance').getByText('Développé couché barre').first().click();
   await page.waitForSelector('#inp-charge', { state: 'visible', timeout: 10000 });
   await page.fill('#inp-charge', '50'); await page.fill('#inp-reps', '12');
   await page.click('#rpe-chips >> text="7"').catch(() => {});

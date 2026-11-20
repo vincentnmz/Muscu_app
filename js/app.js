@@ -12546,17 +12546,11 @@ function _restaurerBrouillon() {
   var totalSeries = b.seance.reduce(function(a, e) { return a + (e.series ? e.series.length : 0); }, 0);
   if (totalSeries === 0) { _effacerBrouillon(); return; }
 
-  // Auto-nettoyage : si une séance du MÊME type est déjà enregistrée à cette date
-  // (le brouillon correspond à une séance déjà validée — typiquement un vieux
-  // brouillon d'avant le correctif), on l'efface en silence, sans bandeau trompeur.
-  try {
-    var bd = String(b.date || ''), frDate = bd;
-    if (bd.indexOf('-') !== -1) { var p = bd.split('-'); frDate = p[2] + '/' + p[1] + '/' + p[0]; }
-    var ds = (dernierAppData && dernierAppData.historique && dernierAppData.historique.dates_seances) || {};
-    if (frDate && ds[frDate] && String(ds[frDate]) === String(b.seanceId || '')) {
-      _brouillonRestaure = true; _effacerBrouillon(); return;
-    }
-  } catch (e) {}
+  // Auto-nettoyage : le brouillon n'est effacé en silence que s'il est DÉJÀ enregistré, c.-à-d. si TOUTES ses séries
+  // (exercice, charge, reps) se retrouvent dans la séance enregistrée ce jour-là sous le même nom.
+  // 20/11 : avant, il suffisait qu'une séance du même nom existe à cette date → refaire « Push » deux fois dans la
+  // journée et fermer l'app pendant la 2e effaçait celle-ci sans prévenir.
+  try { if (_brouillonDejaEnregistre(b)) { _brouillonRestaure = true; _effacerBrouillon(); return; } } catch (e) {}
 
   _brouillonRestaure = true;
 
@@ -12617,6 +12611,24 @@ async function _hxReessayer() {
   var ov = _hxOv(); if (ov) ov.innerHTML = _hxDoneHtml(b.envoi.total_sec, res ? 'ok' : 'err');
   if (res) { if (typeof chargerAppData === 'function') chargerAppData(); try { ouvrirBilanSeance('cardio', res.seance_id || null, b.envoi.date); } catch (e) {} }
   else showToast('Toujours pas de réseau. Tes temps restent gardés.', 'var(--warn)');
+}
+function _brouillonDejaEnregistre(b) {
+  var bd = String((b && b.date) || ''); if (!bd) return false;
+  if (bd.indexOf('/') !== -1) { var q = bd.split('/'); bd = q[2] + '-' + q[1] + '-' + q[0]; }
+  var sd = ((dernierAppData && dernierAppData.seances_detail) || []).filter(function (x) { return x && x.date === bd && String(x.seance_id) === String(b.seanceId || ''); })[0];
+  if (!sd) return false;
+  var dispo = {};   // séries enregistrées, comptées par (exercice|charge|reps)
+  (sd.exercices || []).forEach(function (e) { (e.series || []).forEach(function (x) { var k = e.nom + '|' + Number(x.charge) + '|' + Number(x.reps); dispo[k] = (dispo[k] || 0) + 1; }); });
+  var n = 0;
+  for (var i = 0; i < (b.seance || []).length; i++) {
+    var ex = b.seance[i]; var ser = (ex && ex.series) || [];
+    for (var j = 0; j < ser.length; j++) {
+      var k = String(ser[j].exerciceNom || ex.exerciceNom || '') + '|' + Number(ser[j].charge) + '|' + Number(ser[j].reps);
+      if (!dispo[k]) return false;
+      dispo[k]--; n++;
+    }
+  }
+  return n > 0;
 }
 // Séance muscu commencée et pas encore enregistrée (en mémoire, sauvegardée en brouillon) ?
 function _seanceEnCoursN() {
