@@ -84,7 +84,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | texte cassé (partout) | jamais « undefined », « NaN », « Invalid Date » ni date brute « Sun Nov … » |
 | contexte envoyé à l'IA | dernier questionnaire, dernière séance (séries, RPE), séances depuis lundi, records récents, bloqués, sous la fourchette, volume de la semaine (et sa fenêtre), poids ; aucun point décimal |
 | cardio | « N sorties ces 4 semaines (X km) » (28 jours, micro-sorties exclues), tuiles Sorties / Distance 4 sem., Charge 7 j (RPE × durée, marche = 0), chaque ligne d'historique (distance, durée, vitesse) |
-| Résumé ▸ période (B18) | tonnage moyen / séance, séances, séries, répétitions, RPE moyen des séries, records battus (meilleur précédent dépassé, 1re fois exclue), volume musculaire (secondaire = ½), balance agoniste / antagoniste |
+| Résumé ▸ période (B18) | tonnage moyen / séance, séances, séries, répétitions, RPE moyen des séries, records battus (meilleur précédent dépassé, 1re fois exclue), volume musculaire (secondaire = ½) et son statut Sous-MEV / Suffisant / Optimal / Au-delà (cibles × semaines couvertes), balance agoniste / antagoniste |
 | Historique (B19) | « N exos · N séries · X t » de chaque séance (date + nom) |
 | force estimée 6 semaines (B20) | exercices listés (≥ 4 séances sur 42 j, dernière ≤ 21 j), « sur N séances », % (2 dernières vs 2 premières, réserve 10 − RPE) |
 | Tendances (B12), Évolution (B13), poids (B14), cardio tendances (B17), saisie (B11) | voir l'historique des bugs ci-dessus |

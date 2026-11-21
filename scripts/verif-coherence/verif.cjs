@@ -876,7 +876,7 @@ function verifierCardioTendances(R, S, out) {
 // répétitions, RPE moyen des séries, records battus = meilleur précédent dépassé, 1re fois exclue), volume musculaire
 // (séries par muscle, secondaire = ½), balance agoniste / antagoniste (% de séries).
 // ── B19 (21/11). Analyses ▸ Historique : « N exos · N séries · X t » de chaque séance (date + nom).
-function verifierResume(R, store, S, out) {
+function verifierResume(R, store, S, out, ad) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
   const fx = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
@@ -896,8 +896,18 @@ function verifierResume(R, store, S, out) {
     const spmB = {}; PP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') spmB[r.muscle] = (spmB[r.muscle] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) spmB[sm] = (spmB[sm] || 0) + 0.5; });
     const spm = {}; PP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') spm[cle(r.muscle)] = (spm[cle(r.muscle)] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) spm[cle(sm)] = (spm[cle(sm)] || 0) + 0.5; });
     const iV = L.indexOf('VOLUME MUSCULAIRE', iK), iB = L.indexOf('BALANCE MUSCULAIRE', iK);
-    if (iV > 0) for (let k = iV + 1; k + 1 < (iB > 0 ? iB : L.length); k++) { const m = L[k + 1].match(/^([\d,]+) séries? · /) || L[k + 1].match(/^(0) série$/); if (!m) continue;
-      const v = spm[cle(L[k].replace(/ \(hors programme\)$/, ''))] || 0; if (num(m[1]) !== Math.round(v * 10) / 10) E('resume.volume', nom + ' : ' + L[k] + ' ' + m[1] + ' séries, recalculé ' + fx(v)); }
+    // Statut (21/11) : cibles du muscle (volume_obti servi, sinon cibles de Pectoraux = niveau) × semaines couvertes
+    // (1re séance → demain, bornées à la période) ; Sous-MEV < min · Suffisant < opt · Optimal ≤ 1,5 × opt · Au-delà.
+    const obti = {}; ((ad && ad.volume_obti) || []).forEach((o) => { if (o && o.muscle) obti[cle(o.muscle)] = o; });
+    const tg = obti[cle('Pectoraux')] && num(obti[cle('Pectoraux')].series_min) > 0 ? { min: num(obti[cle('Pectoraux')].series_min), opt: num(obti[cle('Pectoraux')].series_opt) } : null;
+    const premS = R.P.map((r) => r.d).sort()[0], aS = premS && premS > per[0] ? premS : per[0], dem = plusJ(R.now, 1), bS = per[1] < dem ? per[1] : dem;
+    const njS = Math.round((new Date(bS + 'T12:00:00Z') - new Date(aS + 'T12:00:00Z')) / 864e5), wS = Math.max(1, (njS > 0 ? njS : 7) / 7);
+    if (iV > 0) for (let k = iV + 1; k + 1 < (iB > 0 ? iB : L.length); k++) { const m = L[k + 1].match(/^([\d,]+) séries? · (.+)$/) || L[k + 1].match(/^(0) série$/); if (!m) continue;
+      const v = spm[cle(L[k].replace(/ \(hors programme\)$/, ''))] || 0; if (num(m[1]) !== Math.round(v * 10) / 10) E('resume.volume', nom + ' : ' + L[k] + ' ' + m[1] + ' séries, recalculé ' + fx(v));
+      const o = obti[cle(L[k])], mn = (o && num(o.series_min)) || (tg && tg.min), op = (o && num(o.series_opt)) || (tg && tg.opt);
+      if (m[2] && mn && op && !/^Réduit/.test(m[2])) { const MEV = Math.round(mn * wS), MAV = Math.round(op * wS), MRV = Math.round(Math.round(op * 1.5) * wS), tot = Math.round(v * 10) / 10;
+        const st = tot < MEV ? 'Sous-MEV' : tot < MAV ? 'Suffisant' : tot <= MRV ? 'Optimal' : 'Au-delà';
+        if (m[2] !== st) E('resume.statut', nom + ' : ' + L[k] + ' « ' + m[2] + ' », recalculé « ' + st + ' » (' + fx(tot) + ' séries, cibles ' + MEV + ' / ' + MAV + ' / ' + MRV + ' sur ' + fx(wS) + ' sem.)'); } }
     // Balance.
     if (iB > 0) { const nrm = (x) => String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''), sumK = (keys, ex) => Object.keys(spmB).reduce((t, m) => t + ((keys.some((k) => nrm(m).includes(k)) && !(ex || []).some((e) => nrm(m).includes(e))) ? spmB[m] : 0), 0);
       [['Pectoraux', ['pector'], null, ['dos', 'dorsa'], 'Dos'], ['Quadriceps', ['quadri'], null, ['ischio'], 'Ischios'], ['Biceps', ['biceps'], ['femor'], ['triceps'], 'Triceps']].forEach(([la, ka, xa, kb, lb]) => {
@@ -1091,7 +1101,7 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierEvolution(R, sections(ecrans), out);
   if (ecrans) verifierPoids(store, R.aid, sections(ecrans), out);
   if (ecrans) verifierCardioTendances(R, sections(ecrans), out);
-  if (ecrans) verifierResume(R, store, sections(ecrans), out);
+  if (ecrans) verifierResume(R, store, sections(ecrans), out, appdata);
   if (ecrans) verifierForce6(R, sections(ecrans), out);
   if (ecrans) verifierEvolutionVues(R, sections(ecrans), out);
   if (ecrans) verifierEvolutionModes(R, store, sections(ecrans), out);
