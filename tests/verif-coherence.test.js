@@ -150,6 +150,18 @@ const store = {
     eq(vC('######## CARDIO ▸ resume\n3 sorties cardio ces 4 semaines (10,8 km au total).').includes('cardio.resume'), 'attrape : micro-sortie comptée dans le résumé cardio');
     eq(vC('######## CARDIO ▸ resume\nCHARGE 7 J\n490 UA').includes('cardio.tuile'), 'attrape : charge 7 j fausse');
     eq(vC('######## CARDIO ▸ resume\nDISTANCE 4 SEM.\n10.7 km').includes('format.decimal'), 'attrape : « 10.7 km » (point décimal)'); }
+  // Écran de saisie (B11, 21/11) : fourchette de la ligne de CETTE séance + catégorie, exercice lu sur la carte (superset), dernière fois.
+  { const stS = JSON.parse(JSON.stringify(store)); stS.athletes[0].prefs.exo_categories = { Curl: 'petit' };
+    stS.programme = [{ athlete_id: '5', seance_id: 'A', exercice: 'Curl', reps_mini: 8, reps_max: 12, series_prevues: 3 }, { athlete_id: '5', seance_id: 'B', exercice: 'Curl', reps_mini: 10, reps_max: 12, series_prevues: 3 }];
+    const vS = (t) => verifier({ store: stS, appdata: ad, ecrans: t, now: TODAY }).map((e) => e.code);
+    const dd = J(1).slice(8, 10) + '/' + J(1).slice(5, 7);
+    eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-12 reps').includes('saisie.fourchette'), 'attrape : en-tête de saisie 8-12 alors que la catégorie Léger donne 8-20');
+    eq(!vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps').includes('saisie.fourchette'), 'saisie : 8-20 (catégorie) accepté');
+    eq(!vS('######## SAISIE ▸ B ▸ Curl\nCurl\nBiceps · 10-12 reps').includes('saisie.fourchette'), 'saisie : ligne 10-12 de la séance B acceptée (pas la 1re ligne du programme)');
+    eq(!vS('######## SAISIE ▸ A ▸ Presse\n Superset · Tour 1/3\nCurl → Presse\nCurl\nBiceps · 8-20 reps').includes('saisie.fourchette'), 'saisie : superset → exercice lu sur la carte (Curl), pas sur le clic');
+    eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps\nTES SÉRIES · 0/4 PRÉVUES').includes('saisie.prevues'), 'attrape : séries prévues fausses');
+    eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps\nDERNIÈRE FOIS · ' + dd + '\tCIBLE\t\nS1\t12,5×11\nRPE 10\n\t12,5×12').includes('saisie.derniere'), 'attrape : dernière fois 12,5 × 11 au lieu de 12,5 × 12');
+    eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps\nDERNIÈRE FOIS · 01/01\tCIBLE\t').includes('saisie.date'), 'attrape : dernière fois à la mauvaise date'); }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

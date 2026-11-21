@@ -203,8 +203,11 @@ function recalculer(store, appdata, now, aidForce) {
   // Fourchette de reps : programme ; une catégorie (moyen / gros 6-12, petit 8-20) ne remplace que la fourchette par défaut 8-12.
   const cats = (store.athletes && store.athletes[0] && store.athletes[0].prefs && store.athletes[0].prefs.exo_categories) || (appdata && appdata.exo_categories) || {};
   const CAT = { gros: [6, 12], moyen: [6, 12], petit: [8, 20] };
-  R.fourchette = (exo) => {
-    const pl = (store.programme || []).filter((l) => (!aid || String(l.athlete_id) === aid) && String(l.exercice || '').trim() === String(exo).trim() && l.type !== 'cardio')[0];
+  R.prog = (store.programme || []).filter((l) => (!aid || String(l.athlete_id) === aid) && l.type !== 'cardio');
+  // sid (optionnel) : la ligne de CETTE séance (un exercice peut avoir 8-12 dans une séance et 10-12 dans une autre).
+  R.fourchette = (exo, sid) => {
+    const ls = (store.programme || []).filter((l) => (!aid || String(l.athlete_id) === aid) && String(l.exercice || '').trim() === String(exo).trim() && l.type !== 'cardio');
+    const pl = (sid != null && ls.find((l) => String(l.seance_id) === String(sid))) || ls[0];
     const a = pl && pl.reps_mini != null && pl.reps_mini !== '' ? Number(pl.reps_mini) : null, b = pl && pl.reps_max != null && pl.reps_max !== '' ? Number(pl.reps_max) : null;
     const c = CAT[cats[String(exo).trim()] || cats[exo] || ''];
     return (c && ((a == null && b == null) || (a === 8 && b === 12))) ? { rmin: c[0], rmax: c[1] } : { rmin: a, rmax: b };
@@ -446,6 +449,37 @@ function verifierTexte(R, ad, txt, out) {
     const exo = m[1].trim(), p = R.pas[exo]; if (!(p > 0)) return;
     const att = petit(kgN(m[2]), p); if (Math.abs(kgN(m[3]) - att) > 1e-9) E('cible.petit_pas', nom + ' : ' + exo + ' ' + m[2] + ' kg → petit pas « ' + m[3] + ' kg », attendu ' + String(att).replace('.', ',') + ' kg (≈ −5 %, pas de ' + String(p).replace('.', ',') + ' kg)');
   }));
+  // B11 (20/11, point 3). ÉCRAN DE SAISIE (carte « exercice en cours ») : dernière fois = séries brutes (date, charge × reps,
+  // RPE, repos), résumé « N séries, RPE moyen », fourchette, séries prévues, et cibles cohérentes avec le message affiché.
+  Object.entries(S).filter(([n]) => /^SAISIE ▸ /.test(n)).forEach(([nom, L]) => {
+    // L'exercice réellement affiché = la ligne au-dessus de « muscle · x-y reps » (un clic dans un superset ouvre le 1er du groupe).
+    const sid = nom.split(' ▸ ')[1], iF = L.findIndex((l) => /· \d+-\d+ reps|· null-null reps/.test(l));
+    const exo = (iF > 0 ? L[iF - 1] : nom.split(' ▸ ').slice(2).join(' ▸ ')).trim(), P = R.sessions[exo] || [], f = R.fourchette(exo, sid);
+    const err = (code, t) => E(code, nom + ' : ' + t);
+    const mF = L.join('\n').match(/· (\d+)-(\d+) reps/); if (mF && f.rmin != null && (+mF[1] !== f.rmin || +mF[2] !== f.rmax)) err('saisie.fourchette', 'fourchette affichée ' + mF[1] + '-' + mF[2] + ', programme ' + f.rmin + '-' + f.rmax);
+    const pl = R.prog.find((l) => String(l.exercice || '').trim() === exo && String(l.seance_id) === String(sid)) || R.prog.filter((l) => String(l.exercice || '').trim() === exo)[0], mP = L.join('\n').match(/TES SÉRIES · \d+\/(\d+) PRÉVUES/);
+    if (mP && pl && pl.series_prevues != null && +mP[1] !== num(pl.series_prevues)) err('saisie.prevues', mP[1] + ' séries prévues affichées, programme ' + num(pl.series_prevues));
+    if (!P.length) return;   // 1re fois : rien à comparer
+    const S0 = P[0], dd = S0.d.slice(8, 10) + '/' + S0.d.slice(5, 7);
+    const hd = L.find((l) => /\tCIBLE\t/.test(l)); if (hd && !hd.includes(dd)) err('saisie.date', 'colonne « ' + hd.trim().split('\t')[0] + ' », dernière séance de l\'exercice le ' + dd);
+    // Lignes S1… : « Sk\tC×R » puis « RPE x · repos » puis « \tC×R\tétat » (cible).
+    const lignes = []; for (let i = 0; i < L.length; i++) { const m = L[i].match(/^S(\d+)\t(PDC|[\d,]+)×(\d+)\s*$/); if (!m) continue; const t = (L[i + 2] || '').match(/^\t?(PDC|[\d,]+)×(\d+)/); lignes.push({ k: +m[1], c: m[2] === 'PDC' ? 0 : kgN(m[2]), r: +m[3], rpe: ((L[i + 1] || '').match(/RPE ([\d,]+)/) || [])[1], tc: t ? (t[1] === 'PDC' ? 0 : kgN(t[1])) : null, tr: t ? +t[2] : null }); }
+    const ser = S0.series.filter((x) => num(x.reps) > 0);
+    lignes.forEach((x) => { const b = ser.find((y) => num(y.serie) === x.k) || ser[x.k - 1]; if (!b) { err('saisie.derniere', 'S' + x.k + ' affichée, pas de série ' + x.k + ' le ' + dd); return; }
+      if (num(b.charge) !== x.c || num(b.reps) !== x.r) err('saisie.derniere', 'S' + x.k + ' « ' + x.c + ' × ' + x.r + ' », séance du ' + dd + ' : ' + num(b.charge) + ' × ' + num(b.reps));
+      if (x.rpe != null && num(b.rpe) > 0 && num(x.rpe) !== num(b.rpe)) err('saisie.derniere', 'S' + x.k + ' RPE ' + x.rpe + ', séance : ' + num(b.rpe)); });
+    const mR = L.join('\n').match(/Dernière fois \([^)]*\) : (\d+) séries?[^.]*?RPE moyen ([\d,]+)/);
+    if (mR) { const rs = ser.map((y) => num(y.rpe)).filter((v) => v > 0), moy = rs.length ? Math.round(rs.reduce((a, v) => a + v, 0) / rs.length * 10) / 10 : null;
+      if (+mR[1] !== ser.length) err('saisie.resume', mR[1] + ' séries, séance du ' + dd + ' : ' + ser.length); if (moy != null && num(mR[2]) !== moy) err('saisie.resume', 'RPE moyen ' + mR[2] + ', recalculé ' + String(moy).replace('.', ',')); }
+    // Message ↔ cibles.
+    const msg = (L.find((l) => /la dernière fois|sous ta fourchette|Haut de fourchette|\+1 rep sur les séries/i.test(l)) || '');
+    const T = lignes.filter((x) => x.tc != null);
+    if (/garde charge et reps/.test(msg)) T.forEach((x) => { if (x.tc !== x.c || x.tr !== x.r) err('saisie.cible', '« garde charge et reps » mais S' + x.k + ' : ' + x.c + ' × ' + x.r + ' → ' + x.tc + ' × ' + x.tr); });
+    if (/^\+1 rep sur les séries sous/.test(msg)) T.forEach((x) => { if (x.tc !== x.c || x.tr < x.r || x.tr > x.r + 1) err('saisie.cible', '« +1 rep » mais S' + x.k + ' : ' + x.c + ' × ' + x.r + ' → ' + x.tc + ' × ' + x.tr); });
+    if (/^Sous ta fourchette|^Proposition : la dernière fois tu étais sous ta fourchette/i.test(msg) && f.rmin) T.forEach((x) => { const sous = x.r < f.rmin;
+      if (sous && !(x.tc < x.c && x.tr === f.rmin) && x.tc !== 0) err('saisie.cible', 'S' + x.k + ' sous la fourchette (' + x.r + ' reps) → ' + x.tc + ' × ' + x.tr + ' : attendu une charge plus basse pour ' + f.rmin + ' reps');
+      if (!sous && (x.tc !== x.c || x.tr !== x.r)) err('saisie.cible', 'S' + x.k + ' dans la fourchette (' + x.r + ' reps) mais cible ' + x.tc + ' × ' + x.tr); });
+  });
   // B10. « Pourquoi ça bloque » / levier : repos et effort cités = séries brutes.
   Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
     const exo = nom.replace('ÉVOLUTION ▸ ', ''), P = R.sessions[exo] || []; if (!P.length) return;
