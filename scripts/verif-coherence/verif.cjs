@@ -1100,9 +1100,9 @@ function verifierPourquoi(R, S, out) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
   const f1v = (v) => String(Math.round(v * 10) / 10).replace('.', ','), kgv = (v) => String(Math.round(num(v) * 100) / 100).replace('.', ',');
   const secs = (t) => { const m = String(t).match(/^(\d+) min(?: (\d+))?$/); if (m) return +m[1] * 60 + +(m[2] || 0); const s2 = String(t).match(/^(\d+) s$/); return s2 ? +s2[1] : null; };
-  Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
-    const exo = nom.replace('ÉVOLUTION ▸ ', '').trim(), A = R.sessions[exo]; if (!A || A.length < 2) return;
-    const i0 = L.indexOf('Pourquoi ça bloque'); if (i0 < 0) return;
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION(-\w+|@[\w-]+)? ▸ /.test(n)).forEach(([nom, L]) => {   // toutes les vues (le diagnostic est le même)
+    const exo = nom.split(' ▸ ').slice(1).join(' ▸ ').trim(), A = R.sessions[exo]; if (!A || A.length < 2) return;
+    const i0 = L.findIndex((l) => /^Pourquoi (ça|tu)/.test(l)); if (i0 < 0) return;   // « Pourquoi ça bloque / ça recule / … »
     const iL = L.findIndex((l, k) => k > i0 && /^Levier/.test(l)), bloc = L.slice(i0 + 1, iL < 0 ? i0 + 12 : iL + 1), lev = iL >= 0 ? L[iL] : '';
     const f = R.fourchette(exo), rmin = num(f.rmin) || 6, rmax = num(f.rmax) || 12, p0 = A[0], c0 = num(p0.best.charge), r0 = num(p0.best.reps);
     const trav = (x) => x.series.filter((y) => num(y.charge) === num(x.best.charge)), moy = (arr, k) => { const v = arr.map((y) => num(y[k])).filter((v) => v > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
@@ -1119,6 +1119,10 @@ function verifierPourquoi(R, S, out) {
       if ((m = l.match(/^✗ Marche suivante : \+([\d,]+) kg = \+(\d+) %/))) { const pas = R.pas[exo] || 2.5; if (num(m[1]) !== pas || +m[2] !== Math.round(pas / c0 * 100)) err('« ' + l.slice(2) + ' », recalculé +' + kgv(pas) + ' kg = +' + Math.round(pas / c0 * 100) + ' %'); }
       if (/^✗ 3 séances d'affilée à RPE 10/.test(l)) { const n10 = A.slice(0, 3).filter((x) => x.series.some((y) => num(y.rpe) >= 10)).length; if (n10 < 3) err('« 3 séances d\'affilée à RPE 10 », seulement ' + n10 + ' sur les 3 dernières'); }
     });
+    // Contradiction sur le même écran : la cible garde charge et reps, le diagnostic dit la charge trop lourde.
+    if (bloc.some((l) => /^✗ Charge : /.test(l)) && L.some((l) => /garde charge et reps/.test(l))) E('pourquoi.contradiction', nom + ' : « garde charge et reps » (cible) et « charge trop lourde » (pourquoi) sur le même écran');
+    if (bloc.some((l) => /^✗ Charge : /.test(l))) { const ss = p0.series.filter((y) => num(y.reps) > 0), mx = Math.max(0, ...ss.map((y) => num(y.charge))), tv = ss.filter((y) => !(num(y.charge) > 0 && num(y.charge) < 0.6 * mx)), sn = tv.filter((y) => num(y.reps) < rmin).length;
+      if (sn * 2 <= tv.length) err('« charge trop lourde » alors que ' + sn + ' série(s) de travail sur ' + tv.length + ' sont sous ' + rmin + ' reps (règle : la majorité)'); }
     let m;
     if ((m = lev.match(/tu t'arrêtes avec ≈ (\d+) reps? en réserve/)) && (rpeT == null || +m[1] !== Math.round(10 - rpeT))) err('levier « ≈ ' + m[1] + ' reps en réserve », recalculé ' + (rpeT == null ? '—' : Math.round(10 - rpeT)));
     if ((m = lev.match(/tu pousses déjà tes séries \(RPE ([\d,]+)\)/)) && (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10)) err('levier « RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT)));
