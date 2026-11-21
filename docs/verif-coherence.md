@@ -36,6 +36,8 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 20/11 : petit pas hors grille (8 kg → 6,75 kg sur une poulie au pas de 1,25) et différent d'un écran à l'autre (« au choix » : 1 pas → 77,5 ; carte : −5 % → 75) → un seul calcul, multiple du pas juste sous −5 %. Règle `cible.petit_pas`.
 - 20/11 : poids « 76.9 kg » et « ▼ 0kg » (onglet Forme) → « 76,9 », « = stable ».
 - 18/11 : carte « Charge & fraîcheur » : « tonnage pondéré par l'effort » alors que la source est le tonnage brut (charge × reps) → « tonnage : charge × répétitions ».
+- 21/11 (point 3, écran de saisie — capture de chaque exercice de chaque séance sur les 9 athlètes) : en-tête « Biceps · 8-12 reps » alors que la catégorie de l'exercice (Léger 8-20 / Lourd-moyen 6-12) s'appliquait partout ailleurs (Vincent ×4, Sébastien, Idris ×4) → même fourchette que cibles et lecture ; « Tu as déjà 1 série enregistrée… tout sera perdu » en changeant de séance alors qu'on avait seulement ouvert un exercice (le compte était celui des exercices ouverts) → séries réellement saisies, et plus d'alerte à 0 série.
+  Faux positifs du vérificateur corrigés au passage : fourchette prise sur la 1re ligne du programme (au lieu de la ligne de la séance ouverte) ; superset (le clic ouvre le 1er exercice du groupe, l'exercice est maintenant lu sur la carte).
 
 ## Ce qu'il vérifie aujourd'hui
 | Règle | Ce qui est recalculé |
@@ -74,4 +76,4 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 
 ## Pas encore couvert
-Tous les blocs listés le 18/11 sont couverts. Restent hors vérificateur : la saisie de séance elle-même (formulaire), les écrans foot / multisport, les graphiques (dessin, pas les chiffres affichés à côté). À ajouter dès qu'ils portent un chiffre affiché.
+Tous les blocs listés le 18/11 sont couverts. Écran de saisie couvert le 21/11 (règle B11 : fourchette de la séance + catégorie, séries prévues, dernière fois série par série, résumé, cibles ↔ message). Restent hors vérificateur : les écrans foot / multisport, les graphiques (dessin, pas les chiffres affichés à côté). À ajouter dès qu'ils portent un chiffre affiché.
