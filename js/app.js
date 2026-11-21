@@ -16580,7 +16580,7 @@ function _maMuscuResume(data) {
   if (_rev) { var _rx = {}; _rev.forEach(function (e) { if (e && e.date >= w.startISO && e.date < w.endISO) _rx[e.exo] = 1; }); nRec = Object.keys(_rx).length; }
   Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= w.startISO && iso < w.endISO) nRec++; } });
   var kpi = [
-    ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), 't / séance'],
+    ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), tMoy != null ? 't / séance' : ''],   // 21/11 : plus de « —t / séance »
     ['Séances', String(seances), ''],
     ['Séries totales', String(r.series != null ? r.series : '—'), ''],
     ['Répétitions', String(r.reps != null ? r.reps : '—'), ''],
