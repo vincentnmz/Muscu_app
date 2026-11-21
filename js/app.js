@@ -8738,11 +8738,11 @@ function _aeModele(enrich, datas) {
     r.nbProg = sids.length; r.obj = obj; r.sids = sids;
     // Semaines terminées (6, ancienne → récente) : jours de muscu + séries
     var dm = (d.historique && d.historique.daily_muscu) || {}, keys = Object.keys(dm).filter(function (k) { return dm[k] && Number(dm[k].series) > 0; }).sort();
-    r.sem = []; for (var w = 6; w >= 1; w--) { var a = _aeYmd(new Date(lun.getTime() - w * 7 * D)), b = _aeYmd(new Date(lun.getTime() - (w - 1) * 7 * D)), n = 0, s = 0; keys.forEach(function (k) { if (k >= a && k < b) { n++; s += Number(dm[k].series) || 0; } }); r.sem.push({ n: n, s: Math.round(s) }); }
+    r.sem = []; for (var w = 6; w >= 1; w--) { var a = _aeYmd(new Date(lun.getTime() - w * 7 * D)), b = _aeYmd(new Date(lun.getTime() - (w - 1) * 7 * D)), n = 0, s = 0; keys.forEach(function (k) { if (k >= a && k < b) { n += (Number(dm[k].nb_seances) > 0 ? Number(dm[k].nb_seances) : 1); s += Number(dm[k].series) || 0; } }); r.sem.push({ n: n, s: Math.round(s) }); }   // 21/11 : séances (2 le même jour = 2), comme côté athlète
     r.histOk = keys.length && keys[0] < _aeYmd(new Date(lun.getTime() - 21 * D));
     r.reg4 = (obj > 0 && r.nbProg) ? { f: r.sem.slice(2).reduce(function (t, x) { return t + Math.min(x.n, obj); }, 0), p: obj * 4 } : null;
     // Cette semaine à date
-    r.faitesSem = keys.filter(function (k) { return k >= lunIso; }).length;
+    r.faitesSem = keys.filter(function (k) { return k >= lunIso; }).reduce(function (t, k) { return t + (Number(dm[k].nb_seances) > 0 ? Number(dm[k].nb_seances) : 1); }, 0);   // 21/11 : séances, pas jours
     var SJ = null; try { SJ = _seanceDuJour(d); } catch (x) {}
     r.retard = SJ ? SJ.manquees : [];
     // 05/11 (retour porteur : « 2 à venir » le jeudi alors que la séance du jour était faite, en séance libre) :
@@ -11267,7 +11267,9 @@ var _BL_MON = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep'
 function _blDate(s) { var d = _maFRtoDate(s); if (d) return d; var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
 function _blTs(fr) { var d = _blDate(fr); return d ? d.getTime() : 0; }
 // Zone de douleur lisible : les anciennes lignes « NaN » (bug de saisie corrigé le 30/10) = zone perdue.
-function _zoneDouleur(z) { var t = String(z == null ? '' : z).trim(); if (!t || t === 'NaN' || t === 'null' || t === 'undefined') return ''; return t; }
+function _zoneDouleur(z) { var t = String(z == null ? '' : z).trim(); if (!t || t === 'NaN' || t === 'null' || t === 'undefined') return '';
+  // 21/11 : libellé lisible (la saisie stocke « epaule », « haut_dos »…) et majuscule partout (avant : « Épaule 4/5 » / « poignet 4/5 »).
+  var l = (typeof _anZoneLabel === 'function') ? String(_anZoneLabel(t.toLowerCase())) : t; if (l === t.toLowerCase()) l = t; return l.charAt(0).toUpperCase() + l.slice(1); }
 function _blToISO(fr) { var d = _maFRtoDate(fr); if (!d) return ''; return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function renderBlessures(data) {
   var el = document.getElementById('bl-body'); if (!el) return;
