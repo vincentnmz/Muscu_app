@@ -59,11 +59,6 @@ RDL barre : bloqué · +4 séries de RDL barre
 Plan 0/1 fait
 ›
 AC
-Athlète charge_hausse_sans_ressenti
-Squat : bloqué
-✓ Plan de la semaine fait
-›
-AC
 Athlète coach_sans_propositions
 Quadriceps : 10 séries cette semaine
 Plan 0/3 fait · +2 autres actions
@@ -206,10 +201,6 @@ AD
 Athlète douleur_moderee
 ■ 6 bloqués ▼ 0 recule
 Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
-AC
-Athlète charge_hausse_sans_ressenti
-■ 3 bloqués ▼ 0 recule
-Bloqués : Squat, Développé couché barre, Rowing barre
 AC
 Athlète coach_sans_propositions
 ■ 0 bloqué ▼ 0 recule ★ 6 records
@@ -1321,27 +1312,6 @@ Contexte : saison normale · changer ›
 Modifier le programme
 Planifier la semaine
 À DÉCIDER
-VOLUME
-Squat : bloqué
-12/11 : 60 kg × 8 à RPE 9 (fourchette 6-10) · Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 1 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Développé couché barre : bloqué
-12/11 : 70 kg × 8 à RPE 9 (fourchette 6-10) · Volume pectoraux : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 1 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Rowing barre : bloqué
-12/11 : 80 kg × 8 à RPE 9 (fourchette 8-12) · Volume dos : 8,3 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 1 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
 À SURVEILLER
 CHARGE
 Volume sous le minimum (moyenne des 4 dernières semaines terminées) — Ischio 3,8/10 · Pectoraux 4,5/10 · Quadriceps 4,5/10 · +2 autres

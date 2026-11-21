@@ -18,11 +18,6 @@ DEPUIS TA DERNIÈRE SÉANCE · PDC (12/11)
 ▲
 En progrès : Dips pectoraux
 ⏸
-Traction bloqué à 6 reps au poids du corps depuis 3 séances (atteint le 05/11)
-Pourquoi : 3 séances d'affilée à RPE 10 (à l'échec) · Volume dos : 5,8 séries/sem (minimum 6)
-Levier : +1 série de Traction (5,8 → 6 séries/sem).
-Voir le détail →
-⏸
 Pompe bloqué à 20 reps au poids du corps depuis 7 séances (atteint le 22/10)
 Pourquoi : Séries arrêtées à RPE 7,5 (≈ 3 reps en réserve) sur les 3 dernières séances
 Levier : le blocage peut venir de l'arrêt de tes séries : tu t'arrêtes avec ≈ 3 reps en réserve. Au choix : sur ta dernière série, va jusqu'à RPE 9-10 (0 à 1 rep en réserve), ou ajoute 1 série. Tu es au haut de ta fourchette (20 reps) au poids du corps : pour continuer à progresser, ajoute du lest ou passe à une variante plus difficile.
@@ -40,7 +35,6 @@ Semaine complète (2 séances) : récupère bien
 TA SÉANCE D'AUJOURD'HUI
 Traction
 PDC×6 · PDC×5 · PDC×4
-⏸ bloqué
 Dips pectoraux
 PDC×13 · PDC×13 · PDC×12
 ▲ progrès
@@ -81,17 +75,17 @@ Historique
 LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
-Ajuste le tir
-1 exo en progrès · 2 bloqués
+Sur la bonne voie
+1 exo en progrès · 1 bloqué
 CE QUE NOVALYZ LIT
 Régularité au rendez-vous (2/1 séances cette semaine).
 ▲
 Progresse : Dips pectoraux 12 → 13 reps
 vs la séance précédente de l'exercice
 ⏸
-Bloqué : Traction 6 reps au poids du corps depuis 3 séances (atteint le 05/11) · Pompe 20 reps au poids du corps depuis 7 séances (atteint le 22/10)
-Pourquoi (Traction) : 3 séances d'affilée à RPE 10 (à l'échec) · Volume dos : 5,8 séries/sem (minimum 6)
-Levier : +1 série de Traction (5,8 → 6 séries/sem).
+Bloqué : Pompe 20 reps au poids du corps depuis 7 séances (atteint le 22/10)
+Pourquoi : Séries arrêtées à RPE 7,5 (≈ 3 reps en réserve) sur les 3 dernières séances
+Levier : le blocage peut venir de l'arrêt de tes séries : tu t'arrêtes avec ≈ 3 reps en réserve. Au choix : sur ta dernière série, va jusqu'à RPE 9-10 (0 à 1 rep en réserve), ou ajoute 1 série. Tu es au haut de ta fourchette (20 reps) au poids du corps : pour continuer à progresser, ajoute du lest ou passe à une variante plus difficile.
 Voir le détail →
 même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE

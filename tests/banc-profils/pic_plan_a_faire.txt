@@ -14,22 +14,6 @@ Fatigue aucune (1/5)
 Stress aucun (1/5)
 1 saisie cette semaine (1) · comparaison à ta normale dès 3 saisies sur 7 jours
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
-DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (10/11)
-⏸
-Squat bloqué à 60 kg × 8 depuis 3 séances (atteint le 05/11)
-Pourquoi : Volume quadriceps : 5,3 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
-Voir le détail →
-⏸
-Développé couché barre bloqué à 70 kg × 8 depuis 3 séances (atteint le 05/11)
-Pourquoi : Volume pectoraux : 5,3 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
-Voir le détail →
-⏸
-Rowing barre bloqué à 80 kg × 8 depuis 3 séances (atteint le 05/11)
-Pourquoi : Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
-Voir le détail →
 TON PLAN DE LA SEMAINE
 en pause
 ⏸
@@ -90,17 +74,10 @@ Historique
 LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
-Ajuste le tir
-3 bloqués
+Ta lecture d'entraînement
 CE QUE NOVALYZ LIT
 Volume stable sur 4 semaines (+161%).
 Régularité : 1/2 séances cette semaine.
-⏸
-Bloqué : Squat 60 × 8 depuis 3 séances (atteint le 05/11) · Développé couché barre 70 × 8 depuis 3 séances (atteint le 05/11) · +1 autre
-Pourquoi (Squat) : Volume quadriceps : 5,3 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
-Voir le détail →
-même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 en pause
 ⏸
@@ -157,19 +134,19 @@ Abdominaux
 Cibles min-optimum du moteur. En cours de semaine, un muscle n'est signalé (orange) que s'il est sous le minimum au prorata des séances déjà faites.
 TA FORCE ESTIMÉE · 6 SEMAINES
 Squat (+20 % sans le RPE)
-sur 7 séances · bloqué depuis 3 séances
+sur 7 séances
 +17 %
 RDL barre (+20 % sans le RPE)
 sur 6 séances
 +17 %
 Développé couché barre (+16,7 % sans le RPE)
-sur 7 séances · bloqué depuis 3 séances
+sur 7 séances
 +14 %
 Développé militaire aux haltères (+16,7 % sans le RPE)
 sur 6 séances
 +14 %
 Rowing barre (+14,3 % sans le RPE)
-sur 7 séances · bloqué depuis 3 séances
+sur 7 séances
 +12 %
 Tirage vertical prise large (+14,3 % sans le RPE)
 sur 6 séances

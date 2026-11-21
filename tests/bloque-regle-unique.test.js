@@ -35,10 +35,10 @@ const D = (n) => new Date(Date.UTC(2026, 10, 12) - n * 864e5).toISOString().slic
 const nowT = Date.UTC(2026, 10, 13, 20);
 const perfs = [];
 const add = (exo, sessions) => sessions.forEach(([d, sets]) => sets.forEach(([c, r, rpe], i) => perfs.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe, serie: i + 1 })));
-add('Deux', [[30, [[50, 10, 8]]], [9, [[60, 8, 8]]], [2, [[60, 8, 8]]]]);                                     // 2 identiques (après une montée)
+add('Deux', [[30, [[50, 10, 8]]], [16, [[60, 8, 8]]], [2, [[60, 8, 8]]]]);                                    // 2 identiques (après une montée)
 add('Trois', [[23, [[50, 10, 8]]], [16, [[70, 8, 8]]], [9, [[70, 8, 8]]], [2, [[70, 8, 8]]]]);                  // 3 identiques
 add('Quatre', [[30, [[40, 12, 8]]], [23, [[80, 6, 8]]], [16, [[80, 6, 8]]], [9, [[80, 6, 8]]], [2, [[80, 6, 8]]]]); // 4 identiques
-add('Second', [[23, [[30, 10, 9]]], [16, [[30, 10, 9]]], [9, [[30, 10, 9], [30, 10, 9]]], [2, [[30, 10, 9], [30, 10, 9]]]]); // plus de séries au top (S-3→S-2) : progrès secondaire → pas bloqué en intermédiaire+ ; débutant : 2 dernières identiques → bloqué
+add('Second', [[30, [[30, 10, 9]]], [23, [[30, 10, 9]]], [16, [[30, 10, 9], [30, 10, 9]]], [2, [[30, 10, 9], [30, 10, 9]]]]); // plus de séries au top (S-3→S-2) : progrès secondaire → pas bloqué en intermédiaire+ ; débutant : 2 dernières identiques → bloqué
 const prog = A.buildProgressionParExo(perfs);
 const ATT = { debutant: 'Deux,Quatre,Second,Trois', intermediaire: 'Quatre,Trois', avance: 'Quatre', expert: 'Quatre' };
 for (const niv of ['debutant', 'intermediaire', 'avance', 'expert']) {
@@ -46,6 +46,16 @@ for (const niv of ['debutant', 'intermediaire', 'avance', 'expert']) {
   const front = F.lecture({ historique: { progression_par_exo: prog }, programme: [], exo_categories: {}, niveau_experience: niv }, nowT).bloque.map((x) => x.exo).sort().join(',');
   eq(back === front, niv + ' : « bloqué » serveur (mail, IA) = app', { back, front });
   eq(front === ATT[niv], niv + ' : liste attendue « ' + ATT[niv] + ' »', front);
+}
+// 21/11 (porteur : « bloqué arrive très vite ») : plateau d'au moins 14 jours, app ET serveur.
+{
+  const pf = []; const ad = (exo, ss) => ss.forEach(([d, c, r]) => [1, 2].forEach((s) => pf.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe: 8, serie: s })));
+  ad('Semaine', [[20, 50, 10], [6, 60, 8], [4, 60, 8], [2, 60, 8]]);          // 3 identiques en 4 jours
+  ad('DeuxSem', [[30, 50, 10], [16, 60, 8], [9, 60, 8], [2, 60, 8]]);         // 3 identiques sur 14 jours
+  const pg = A.buildProgressionParExo(pf);
+  const bk = A._rcLectureExos(pg, [], {}, nowT, null, 'intermediaire').bloque.map((x) => x.exo).sort().join(',');
+  const fr = F.lecture({ historique: { progression_par_exo: pg }, programme: [], exo_categories: {}, niveau_experience: 'intermediaire' }, nowT).bloque.map((x) => x.exo).sort().join(',');
+  eq(fr === 'DeuxSem' && bk === fr, '3 séances identiques en 4 jours → pas « bloqué » ; sur 14 jours → bloqué (app = serveur)', { fr, bk });
 }
 eq(A._rcLectureExos(prog, [], {}, nowT).bloque.map((x) => x.exo).sort().join(',') === 'Quatre,Trois', 'niveau inconnu → 3 séances (comme l\'app)');
 // Mail récap : le niveau de l'athlète (getAppData.niveau_experience) est bien transmis.
