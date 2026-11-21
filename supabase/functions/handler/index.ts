@@ -1109,12 +1109,28 @@ function buildProgressionParExo(perfs: any[], nowMs?: number): Record<string, an
     // de série vient de la colonne `serie` ; à défaut, l'ordre d'insertion (1-indexé).
     // + repos réel de la série (secondes) : la lecture (Aujourd'hui / Analyses) et les
     // cibles de saisie s'appuient sur le repos de la dernière fois (décision 29/10).
-    cur.series.push({ serie: Number(r.serie) || (cur.series.length + 1), charge, reps, rpe: Number(r.rpe) || null, repos: Number(r.repos) > 0 ? Number(r.repos) : null })
+    const _sr = { serie: Number(r.serie) || (cur.series.length + 1), charge, reps, rpe: Number(r.rpe) || null, repos: Number(r.repos) > 0 ? Number(r.repos) : null }
+    cur.series.push(_sr)
+    // 21/11 : même exercice dans 2 séances le même jour → on garde les séries par séance ; la DERNIÈRE séance (ordre des id)
+    // devient la référence « dernière fois » (avant : les 2 séances mélangées → « 60 × 6 → 50 kg × 10 »).
+    const _sid = String(r.seance_id || '')
+    ;((cur._parSid ||= {})[_sid] ||= []).push(_sr); cur._sidLast = _sid
   }
   const out: Record<string, any[]> = {}
   for (const exo of Object.keys(byExo)) {
     const pts = Object.values(byExo[exo])
-    for (const p of pts) p.series.sort((a: any, b: any) => (a.serie || 0) - (b.serie || 0))   // S1, S2, S3…
+    for (const p of pts) {
+      const _ps = p._parSid || {}
+      if (Object.keys(_ps).length > 1) {
+        p.series_jour = p.series   // toutes les séries de la journée (les 2 séances)
+        p.series = _ps[p._sidLast].slice()
+        let b: any = null; for (const x of p.series) if (!b || x.charge > b.charge || (x.charge === b.charge && x.reps > b.reps)) b = x
+        p.charge = b.charge; p.reps = b.reps; p.volume = b.charge * b.reps; p.seance = p._sidLast
+      }
+      delete p._parSid; delete p._sidLast
+      p.series.sort((a: any, b: any) => (a.serie || 0) - (b.serie || 0))   // S1, S2, S3…
+      if (p.series_jour) p.series_jour.sort((a: any, b: any) => (a.serie || 0) - (b.serie || 0))
+    }
     const _tri = pts.sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0))
     const _lim = (nowMs != null ? nowMs : Date.now()) - PROG_FENETRE_JOURS * 864e5
     out[exo] = _tri.filter((p: any, i: number) => i < PROG_MIN_DATES || (parseFR(p.date)?.getTime() || 0) >= _lim)
@@ -3161,7 +3177,7 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
     const exo = String(r.exercice || '')
     const rpeN = (r.rpe == null || r.rpe === '') ? null : Number(r.rpe)
     const reposN = Number(r.repos)
-    const s = { serie: r.serie, charge: Number(r.charge) || 0, reps: Number(r.reps) || 0, rpe: (rpeN != null && !isNaN(rpeN)) ? rpeN : null, repos: reposN > 0 ? reposN : null }
+    const s = { serie: r.serie, charge: Number(r.charge) || 0, reps: Number(r.reps) || 0, rpe: (rpeN != null && !isNaN(rpeN)) ? rpeN : null, repos: reposN > 0 ? reposN : null, _sid: String(r.seance_id || '') }
     if (!toutesSeances[exo]) toutesSeances[exo] = {}
     ;(toutesSeances[exo][date] ||= []).push(s)
   }
@@ -3171,7 +3187,10 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
     for (const s of series) if (s.charge > ref.charge || (s.charge === ref.charge && s.reps > ref.reps)) ref = s
     return ref
   }
-  const buildForExo = (byDate: Record<string, any[]>) => {
+  const buildForExo = (byDate0: Record<string, any[]>) => {
+    // 21/11 : 2 séances le même jour avec cet exercice → la DERNIÈRE séance (ordre des id) est « la dernière fois ».
+    const byDate: Record<string, any[]> = {}
+    for (const d of Object.keys(byDate0)) { const a = byDate0[d], last = a[a.length - 1]._sid; byDate[d] = a.filter((x: any) => x._sid === last).map((x: any) => { const { _sid, ...y } = x; return y }) }
     const dates = Object.keys(byDate).sort().reverse()
     const last = dates[0], prev = dates[1], prev2 = dates[2]
     if (!last) return null

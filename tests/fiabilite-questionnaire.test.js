@@ -15,14 +15,14 @@ const crit = (r) => r.rows.find((x) => /Questionnaire/.test(x.l));
 
 // Cas John : questionnaire tous les jours d'entraînement, aucune note de séance.
 let r = S.F(Object.assign({}, base, { bien_etre: [1, 4, 7, 10, 13, 16, 19, 22].map((n) => ({ date: fr(n), sommeil: 4 })) }));
-eq(crit(r).g === 15 && /Questionnaire du jour \(8\/28 j\)/.test(crit(r).l), 'questionnaire rempli 8 jours / 8 séances → 15/15', crit(r));
+eq(crit(r).g === 15 && /Questionnaire du jour \(8 jours remplis pour 8 séances\)/.test(crit(r).l), 'questionnaire rempli 8 jours / 8 séances → 15/15', crit(r));
 eq(!r.tips.some((t) => /questionnaire/.test(t)), 'plus de conseil « fais ton questionnaire » quand il est rempli', r.tips);
 // Notes de séance seules (bilan de fin de séance) : ne comptent plus comme questionnaire.
 r = S.F(Object.assign({}, base, { bien_etre: [], analyses: { rpe_muscu: [{ date: iso(1), seance_id: 'S', valeur: 7 }] } }));
 eq(crit(r).g === 0 && r.tips.some((t) => /fais ton questionnaire du jour \(\+15\)/.test(t)), 'note de séance seule → 0/15 et conseil questionnaire (désormais juste)', { c: crit(r), t: r.tips });
 // Moitié des jours, date au format ISO, doublon le même jour, questionnaire trop ancien ignoré.
 r = S.F(Object.assign({}, base, { bien_etre: [{ date: iso(1) }, { date: iso(1) }, { date: fr(4) }, { date: iso(7) }, { date: iso(10) }, { date: iso(40) }] }));
-eq(crit(r).g === 8 && /\(4\/28 j\)/.test(crit(r).l), '4 jours distincts / 8 séances → 8/15 (doublon et > 28 j ignorés)', crit(r));
+eq(crit(r).g === 8 && /\(4 jours remplis pour 8 séances\)/.test(crit(r).l), '4 jours distincts / 8 séances → 8/15 (doublon et > 28 j ignorés)', crit(r));
 eq(r.pct === 25 * 0 + 25 + 20 + 8 + 0 || r.pct === r.rows.reduce((a, x) => a + x.g, 0), 'score = somme des critères', r.pct);
 eq(!/_maEffortSeries/.test(ex('_maFiabilite')), 'le calcul ne lit plus les notes de séance');
 

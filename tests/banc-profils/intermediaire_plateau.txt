@@ -112,7 +112,7 @@ Profondeur (12 séances)
 RPE renseigné (100 %)
 20/20
 ✓
-Questionnaire du jour (14/28 j)
+Questionnaire du jour (14 jours remplis pour 12 séances)
 15/15
 ✓
 Fourchette de reps définie (6/6 exos)
