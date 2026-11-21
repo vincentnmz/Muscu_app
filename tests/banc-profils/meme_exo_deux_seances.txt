@@ -14,12 +14,12 @@ ta normale arrive dans 7 questionnaires (il en faut 10 sur 5 semaines, tu en as 
 Stress faible (2/5)
 ta normale arrive dans 7 questionnaires (il en faut 10 sur 5 semaines, tu en as 3)
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
-DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (12/11)
+DEPUIS TA DERNIÈRE SÉANCE · JAMBES SOIR + FULL BODY A (12/11)
 ★
-Records : Squat 50 kg × 10, Développé couché barre 60 kg × 10, Rowing barre 70 kg × 10
+Records : Squat 60 kg × 6, Développé couché barre 60 kg × 10, Rowing barre 70 kg × 10
 SÉANCE DU JOUR
 Full body A + Jambes soir ✓
-Faite aujourd'hui · 11 séries · 6 t · RPE 8
+Faite aujourd'hui · 11 séries · 5,9 t · RPE 8
 Prochaine : Full body B
 TA SÉANCE D'AUJOURD'HUI · FULL BODY A
 Squat
@@ -33,14 +33,14 @@ Rowing barre
 ★ record
 TA SÉANCE D'AUJOURD'HUI · JAMBES SOIR
 Squat
-50×8 · 50×8
+60×6 · 60×6
 ★ record
 Voir mes analyses
 Voir mon entraînement
 LE DÉTAIL
 RÉCOMPENSES ET OBJECTIF
 Objectif semaine 3/2 ✓
-164 pts · +91 cette semaine
+184 pts · +111 cette semaine
 Voir ›
 Ton point du jour
 Mettre à jour ›
@@ -74,10 +74,10 @@ Sur la bonne voie
 CE QUE NOVALYZ LIT
 Régularité au rendez-vous (3/2 séances cette semaine).
 ★
-Records : Squat 50 × 10 · Développé couché barre 60 × 10 · Rowing barre 70 × 10
+Records : Squat 60 × 6 · Développé couché barre 60 × 10 · Rowing barre 70 × 10
 charge (ou reps à charge égale) battue · 10 derniers jours
 RECO ENTRAÎNEMENT · PAR PRIORITÉ
-Rowing barre : record (70 × 10). Prochaine fois : vise 70 kg × 11 (+1 rep).
+Squat : record (60 × 6). Prochaine fois : vise 60 kg × 7 (+1 rep).
 Volume : Fessier 0/6, Ischio 0/6, Epaule 0/6 séries cette semaine (3/2 séances faites) — semaine complète : priorise ces muscles la semaine prochaine.
 TES SAISIES · 65/100
 65
@@ -92,7 +92,7 @@ Profondeur (5 séances)
 RPE renseigné (100 %)
 20/20
 ◑
-Questionnaire du jour (3/28 j)
+Questionnaire du jour (3 jours remplis pour 5 séances)
 9/15
 ✓
 Fourchette de reps définie (6/6 exos)
@@ -132,13 +132,13 @@ Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). L
 CETTE SEMAINE
 ?
 TONNAGE MOYEN
-3,6t / séance
+3,5t / séance
 SÉANCES
 3
 SÉRIES TOTALES
 20
 RÉPÉTITIONS
-181
+177
 RPE MOYEN DES SÉRIES
 8/10
 RECORDS BATTUS
@@ -197,12 +197,12 @@ Rowing barre
 Tirage vertical prise large
 70 kg
 05/11/2026
+Squat
+60 kg
+12/11/2026
 Développé couché barre
 60 kg
 12/11/2026
-Développé militaire aux haltères
-60 kg
-05/11/2026
 == Forme ==
 AUJOURD'HUI
 80
@@ -352,15 +352,15 @@ TONNAGE SOULEVÉ
 ?
 par semaine · ce mois-ci
 Tonnage
-10,7 t
-10,7
-10,4
-10,1
+10,6 t
+10,6
+10,3
+10
 9,7
 9,4
 t
 9,4
-10,7 t
+10,6 t
 1/11
 8/11
 Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
@@ -433,23 +433,23 @@ novembre 2026
 Squat
 Quadriceps · 3 séances suivies
 ★
-Record : 50 kg × 10 le 12/11/2026
+Record : 60 kg × 6 le 12/11/2026
 AFFICHER
 Charge + reps
 Force estimée
 Volume (toutes séries)
 Par série
 Charge + Reps
-50×10 +1 rep
-52
-51
+60×6 +10 kg · −3 reps
+60
+57,5
+55
+52,5
 50
-49
-48
 kg
 50×9
 50×9
-50×10
+60×6
 02/11/2026
 09/11/2026
 12/11/2026
@@ -457,26 +457,26 @@ Charge (kg)
 Étiquette = charge × reps · dernier point en vert
 Charge + reps de ta meilleure série (ex. 90×5) : la lecture la plus concrète. La courbe suit la charge, l'étiquette montre charge × reps — tu vois d'un coup si tu montes en charge ou en répétitions.
 Ce que Novalyz vise la prochaine fois
-50 × 10 →
-50 kg × 10
-+1 rep sur les séries sous 10 reps (haut de ta fourchette) · 2 séries à RPE 8,5-10 gardées telles.
+60 × 6 →
+60 kg × 7
++1 rep sur les séries sous 10 reps (haut de ta fourchette) · 1 série à RPE 8,5-10 gardée telle.
 Sur ta série la plus lourde, même calcul que l'écran de saisie. C'est toi qui décides.
 ⓘ Comment Novalyz te fait progresser ›
-71 kg
+76 kg
 FORCE ESTIMÉE
-50×10
+60×6
 MEILLEURE SÉRIE
-+1 rep
++10 kg · −3 reps
 SUR LA PÉRIODE
-50 kg
+60 kg
 RECORD CHARGE
 DERNIÈRES SÉANCES
 DATE
 SÉRIES (CHARGE × REPS)
 FORCE EST.
 12/11/2026
-50×10 · 50×10 · 50×9 · 50×8 · 50×8
-71 kg
+50×10 · 50×10 · 50×9 · 60×6 · 60×6
+76 kg
 09/11/2026
 50×9 · 50×9 · 50×8
 69 kg

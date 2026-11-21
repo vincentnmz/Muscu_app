@@ -171,12 +171,12 @@ const PROFILS = {
     return st;
   },
   // 11 bis (21/11). Même exercice (Squat) dans 2 séances le même jour : le point de la courbe Évolution = la journée,
-  //     le tableau « Dernières séances » doit montrer les séries des DEUX séances (avant : une seule).
+  //     le tableau « Dernières séances » doit montrer les séries des DEUX séances (avant : une seule) ; « dernière fois » et cible = la séance du soir (60 × 6), pas un mélange.
   meme_exo_deux_seances() {
     const st = base('24'); athlete(st, { annees: 3 }); programme(st); st._evolution = ['Squat'];
     [10, 7, 3].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10, 9, 7.5)])));
     seance(st, 0, 'Full body A', A.A.map(([e, m], i) => [e, m, trois(50 + i * 10, 10, 7.5)]));
-    seance(st, 0, 'Jambes soir', [['Squat', 'Quadriceps', [[50, 8, 8], [50, 8, 8.5]]]]);   // même charge : la limite « charges différentes le même jour » est notée dans docs/verif-coherence.md
+    seance(st, 0, 'Jambes soir', [['Squat', 'Quadriceps', [[60, 6, 8], [60, 6, 8.5]]]]);   // charges différentes : la dernière séance (soir) fait référence (21/11)
     [10, 3, 0].forEach((d) => bienEtre(st, d, {}));
     return st;
   },
