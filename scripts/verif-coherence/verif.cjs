@@ -759,7 +759,7 @@ function verifierTendances(R, S, out) {
     if (!lp) return;
     let d0, d1, tranches = [];
     if (/^\d{4}$/.test(lp)) { d0 = lp + '-01-01'; d1 = (+lp + 1) + '-01-01'; for (let m = 1; m <= 12; m++) tranches.push([lp + '-' + String(m).padStart(2, '0') + '-01', m === 12 ? d1 : lp + '-' + String(m + 1).padStart(2, '0') + '-01']); }
-    else { const [mo, an] = lp.split(' '), m = MOIS.indexOf(mo) + 1; d0 = an + '-' + String(m).padStart(2, '0') + '-01'; d1 = m === 12 ? (+an + 1) + '-01-01' : an + '-' + String(m + 1).padStart(2, '0') + '-01'; for (let c = d0; c < d1; c = plusJ(c, 7)) tranches.push([c, plusJ(c, 7) < d1 ? plusJ(c, 7) : d1]); }
+    else { const [mo, an] = lp.split(' '), m = MOIS.indexOf(mo) + 1; d0 = an + '-' + String(m).padStart(2, '0') + '-01'; d1 = m === 12 ? (+an + 1) + '-01-01' : an + '-' + String(m + 1).padStart(2, '0') + '-01'; for (let c = d0; c < d1;) { const dow = (new Date(c + 'T12:00:00Z').getUTCDay() + 6) % 7, e = plusJ(c, 7 - dow) < d1 ? plusJ(c, 7 - dow) : d1; tranches.push([c, e]); c = e; } }   // 21/11 : semaines lun → dim coupées au mois
     const dans = (r) => r.d >= d0 && r.d < d1, PP = P.filter(dans);
     const bloc = (deb, fin) => { const i = L.findIndex((l) => l === deb); if (i < 0) return null; const j = L.findIndex((l, k) => k > i && fin.test(l)); return L.slice(i + 1, j < 0 ? L.length : j); };
     // Tonnage : valeurs des points (tranches non vides) en tonnes.

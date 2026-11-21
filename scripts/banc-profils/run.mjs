@@ -32,12 +32,13 @@ let ko = 0;
 try {
   for (const id of ids) {
     const st = PROFILS[id]();
-    const data = await getAppData(st, st._aid, NOW);
+    const T0 = st._now || NOW;   // 21/11 : un profil peut fixer sa propre date (passage d'année)
+    const data = await getAppData(st, st._aid, T0);
     const a = st.athletes[0];
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 }, timezoneId: 'Europe/Paris', locale: 'fr-FR', serviceWorkers: 'block' });
     const pg = await ctx.newPage();
     const erreurs = []; pg.on('pageerror', (e) => erreurs.push(e.message));
-    await pg.clock.install({ time: NOW }); await pg.clock.pauseAt(NOW);
+    await pg.clock.install({ time: T0 }); await pg.clock.pauseAt(T0);
     await pg.addInitScript(() => { let s = 20261114; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; });
     await pg.route((u) => !u.href.startsWith(URL0.replace('/index.html', '')), (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
     await pg.goto(URL0);
@@ -87,7 +88,7 @@ try {
     if (inc.length) { ko++; console.error('  ✗ ' + id + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
     // 18/11 (fiabilité des calculs, décision porteur) : chaque chiffre servi / affiché est RECALCULÉ depuis les données brutes
     // par un code indépendant du moteur (scripts/verif-coherence) — bloquant même en --maj.
-    const _jour = new Date(NOW).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+    const _jour = new Date(T0).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
     const cal = verifierCalculs({ store: st, appdata: data, ecrans: normaliser(txt).split('\n').map((l) => (/^== .+ ==$/.test(l) ? l : l)).join('\n'), now: _jour });
     if (cal.length) { ko++; console.error('  ✗ ' + id + ' : calcul ≠ recalcul indépendant'); cal.forEach((e) => console.error('      ⚠ [' + e.code + '] ' + e.message)); }
     const f = path.join(ATT, id + '.txt');

@@ -180,6 +180,18 @@ const PROFILS = {
     [10, 3, 0].forEach((d) => bienEtre(st, d, {}));
     return st;
   },
+  // 11 ter (21/11). PASSAGE D'ANNÉE : « aujourd'hui » = jeudi 7 janvier 2027, séances du 14/12/2026 au 06/01/2027
+  //     (dont le 31/12 et le 1er janvier). Semaine, régularité, périodes, records, dates sans année : rien ne doit casser.
+  passage_annee() {
+    const st = base('25'); athlete(st, { annees: 3 }); programme(st); st._evolution = ['Squat'];
+    [24, 21, 17, 14, 10, 7, 6, 3, 1].forEach((d, k) => seance(st, d, 'Full body ' + (k % 2 ? 'B' : 'A'), A[k % 2 ? 'B' : 'A'].map(([e, m], i) => [e, m, trois(50 + i * 10 + (k > 5 ? 2.5 : 0), 8 + (k > 3 ? 1 : 0), 7.5)])));
+    [24, 17, 10, 6, 3, 1].forEach((d) => bienEtre(st, d, {}));
+    // Décalage : dates calculées depuis le 12/11/2026, ramenées au 07/01/2027 (+56 jours).
+    const dec = (iso) => new Date(Date.parse(iso + 'T12:00:00Z') + 56 * 864e5).toISOString().slice(0, 10);
+    st.performances.forEach((r) => { r.date = dec(r.date); }); st.bien_etre.forEach((r) => { r.date = dec(r.date); });
+    st._now = Date.UTC(2027, 0, 7, 17, 0, 0);
+    return st;
+  },
   // 12. Séances LIBRES (06/11 + création de séance 20/11) : mercredi, une libre rattachée à « Full body B » (elle la remplace) ;
   //     la semaine dernière, une libre « en plus ». Attendu : B cochée cette semaine, la libre en plus ne remplace rien.
   seance_libre() {

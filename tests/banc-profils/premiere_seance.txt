@@ -340,8 +340,7 @@ TONNAGE SOULEVÉ
 par semaine · ce mois-ci
 Tonnage
 4,4 t
-8/11
-cette sem.
+9/11
 Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
 EXERCICES EN PROGRÈS
 ?
