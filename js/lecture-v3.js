@@ -229,7 +229,12 @@ function _lv3Diag(data, exo, kind, nowT) {
   var nom = _lv3MusNom(muscle);
 
   // 1) Charge trop lourde pour la fourchette (reps sous le minimum, effort maximal).
-  var lourd = r0 > 0 && r0 < rmin && (rpeMax(p0) || 0) >= 9 && c0 > 0;
+  // 21/11 : même règle que la cible (« sous la fourchette » = la MAJORITÉ des séries de travail sous le minimum, échauffement
+  // < 60 % de la plus lourde exclu). Avant : la seule meilleure série → « 30 kg pour 5 reps : trop lourd, 27,5 kg » à côté de
+  // la cible « garde 30 × 5 » (1 série sur 3 sous 8 reps : 30×5 puis 25×8, 25×8).
+  var _trv = (function () { var ss = (p0.series || []).filter(function (x) { return _lv3Num(x.reps) > 0; }), mx = Math.max.apply(null, [0].concat(ss.map(function (x) { return _lv3Num(x.charge); }))); return ss.filter(function (x) { var c = _lv3Num(x.charge); return !(c > 0 && c < 0.6 * mx); }); })();
+  var _sousN = _trv.filter(function (x) { return _lv3Num(x.reps) < rmin; }).length;
+  var lourd = r0 > 0 && r0 < rmin && (rpeMax(p0) || 0) >= 9 && c0 > 0 && _sousN * 2 > _trv.length;
   if (lourd) {
     var cPrev = 0; for (var i = 1; i < pts.length; i++) { if (_lv3Num(pts[i].charge) !== c0) { cPrev = _lv3Num(pts[i].charge); break; } }
     var saut = cPrev > 0 && (c0 - cPrev) / cPrev >= 0.08 && cPrev < c0;
@@ -389,9 +394,13 @@ function _lv3Diag(data, exo, kind, nowT) {
     : (kind === 'bloque' && typeof rpeT !== 'undefined' && rpeT != null && rpeT >= 8.5)
       ? 'aucune cause visible dans tes données : repos stable, tu pousses déjà tes séries (RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '). Garde ta charge ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.'
       : 'aucune cause visible dans tes données — persiste en visant RPE 8-9 ; si ça dure encore 2 séances, change de fourchette de reps pendant 3-4 semaines.';
-  if (!cause && _optRepos && !_dF && !_pic) levier = levier.replace(/\.$/, '') + ' Option à tester : ' + _optRepos + '.';
-  var n = pts.filter(function (p) { return (nowT - _lv3T(p.date)) / 864e5 <= 42; }).length;
-  var sem = Math.max(1, Math.round((_lv3T(pts[0].date) - _lv3T(pts[Math.min(pts.length, n) - 1].date)) / 864e5 / 7));
+  // 21/11 : « RPE 8-9 Option à tester » (point manquant) → « RPE 8-9. Option à tester ».
+  if (!cause && _optRepos && !_dF && !_pic) levier = levier.replace(/\.?$/, '.') + ' Option à tester : ' + _optRepos + '.';
+  // 21/11 : « Basé sur N séances en S semaines » = les séances RÉELLEMENT lues par ce diagnostic (les 4 dernières pour un
+  // blocage : repos comparé aux 3 précédentes ; sinon les 3 dernières) et l'écart réel entre la 1re et la dernière.
+  // Avant : seulement celles des 42 derniers jours → « Basé sur 1 séance » sous « sur les 3 dernières séances ».
+  var n = Math.min(pts.length, kind === 'bloque' ? 4 : 3);
+  var sem = Math.max(1, Math.round((_lv3T(pts[0].date) - _lv3T(pts[n - 1].date)) / 864e5 / 7));
   return { exo: exo, kind: kind, checks: checks, cause: cause, pourquoi: pourquoi, levier: levier, action: action, n: n, sem: sem, rmin: rmin, rmax: rmax, avant: avant };
 }
 // Exercices à diagnostiquer (même classement que l'app + effort à charge égale du moteur).
@@ -635,7 +644,7 @@ function _lv3DiagCardHtml(d) {
     + '<div style="font-size:13px;font-weight:800">' + (d.kind === 'effort' ? 'Pourquoi l\'effort monte' : d.kind === 'recule' ? 'Pourquoi ça recule' : 'Pourquoi ça bloque') + '</div>'
     + '<div style="font-size:12.5px;line-height:1.6;margin-top:6px">' + (d.checks.length ? d.checks.map(function (c) { return ic[c.s] + ' ' + c.t; }).join('<br>') : 'Aucune cause visible dans tes données.') + '</div>'
     + (typeof _nvPropsAthlete === 'function' && !_nvPropsAthlete() ? '' : '<div style="margin-top:8px;font-size:13px"><b>Levier :</b> ' + _maE(d.levier) + '</div>')   // écran 6 : le coach a la main
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Basé sur ' + d.n + ' séance' + (d.n > 1 ? 's' : '') + ' en ' + d.sem + ' semaine' + (d.sem > 1 ? 's' : '') + (d.n >= 4 ? ' · fiable' : ' · à confirmer') + '. C\'est toi qui décides.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Basé sur ' + d.n + ' séance' + (d.n > 1 ? 's' : '') + ' en ' + d.sem + ' semaine' + (d.sem > 1 ? 's' : '') + (d.n >= 4 && d.sem <= 6 ? ' · fiable' : ' · à confirmer')   /* 21/11 : 4 séances étalées sur 11 semaines ≠ fiable */ + '. C\'est toi qui décides.</div></div>';
 }
 function _lv3ApprentissageHtml(data) {
   var a = null; try { a = _lv3Apprentissage(data); } catch (_) {}

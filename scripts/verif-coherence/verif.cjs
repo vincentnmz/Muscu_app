@@ -301,7 +301,7 @@ function verifierTexte(R, ad, txt, out) {
   const S = sections(txt);
   // B1. Nombres décimaux au format français (virgule) : « 12.5 kg », « 4.5 / 9 » interdits.
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
-    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|km\/h|km\b|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/);
+    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|km\/h|km\b|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/) || l.match(/RPE (\d+\.\d+)/);   // 21/11 : « RPE 8.5 (… » aussi
     if (m && !/^\d{1,2}\.\d{2}$/.test(m[2]) && !/v\d|version/i.test(l)) E('format.decimal', nom + ' : « ' + l.trim().slice(0, 80) + ' » (point au lieu de virgule)');
   }));
   // B0. Texte cassé : valeur absente ou date brute affichée (« undefined », « NaN », « Invalid Date », « Sun Nov … »).
@@ -876,7 +876,7 @@ function verifierCardioTendances(R, S, out) {
 // répétitions, RPE moyen des séries, records battus = meilleur précédent dépassé, 1re fois exclue), volume musculaire
 // (séries par muscle, secondaire = ½), balance agoniste / antagoniste (% de séries).
 // ── B19 (21/11). Analyses ▸ Historique : « N exos · N séries · X t » de chaque séance (date + nom).
-function verifierResume(R, store, S, out) {
+function verifierResume(R, store, S, out, ad) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
   const fx = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
@@ -896,8 +896,18 @@ function verifierResume(R, store, S, out) {
     const spmB = {}; PP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') spmB[r.muscle] = (spmB[r.muscle] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) spmB[sm] = (spmB[sm] || 0) + 0.5; });
     const spm = {}; PP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') spm[cle(r.muscle)] = (spm[cle(r.muscle)] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) spm[cle(sm)] = (spm[cle(sm)] || 0) + 0.5; });
     const iV = L.indexOf('VOLUME MUSCULAIRE', iK), iB = L.indexOf('BALANCE MUSCULAIRE', iK);
-    if (iV > 0) for (let k = iV + 1; k + 1 < (iB > 0 ? iB : L.length); k++) { const m = L[k + 1].match(/^([\d,]+) séries? · /) || L[k + 1].match(/^(0) série$/); if (!m) continue;
-      const v = spm[cle(L[k].replace(/ \(hors programme\)$/, ''))] || 0; if (num(m[1]) !== Math.round(v * 10) / 10) E('resume.volume', nom + ' : ' + L[k] + ' ' + m[1] + ' séries, recalculé ' + fx(v)); }
+    // Statut (21/11) : cibles du muscle (volume_obti servi, sinon cibles de Pectoraux = niveau) × semaines couvertes
+    // (1re séance → demain, bornées à la période) ; Sous-MEV < min · Suffisant < opt · Optimal ≤ 1,5 × opt · Au-delà.
+    const obti = {}; ((ad && ad.volume_obti) || []).forEach((o) => { if (o && o.muscle) obti[cle(o.muscle)] = o; });
+    const tg = obti[cle('Pectoraux')] && num(obti[cle('Pectoraux')].series_min) > 0 ? { min: num(obti[cle('Pectoraux')].series_min), opt: num(obti[cle('Pectoraux')].series_opt) } : null;
+    const premS = R.P.map((r) => r.d).sort()[0], aS = premS && premS > per[0] ? premS : per[0], dem = plusJ(R.now, 1), bS = per[1] < dem ? per[1] : dem;
+    const njS = Math.round((new Date(bS + 'T12:00:00Z') - new Date(aS + 'T12:00:00Z')) / 864e5), wS = Math.max(1, (njS > 0 ? njS : 7) / 7);
+    if (iV > 0) for (let k = iV + 1; k + 1 < (iB > 0 ? iB : L.length); k++) { const m = L[k + 1].match(/^([\d,]+) séries? · (.+)$/) || L[k + 1].match(/^(0) série$/); if (!m) continue;
+      const v = spm[cle(L[k].replace(/ \(hors programme\)$/, ''))] || 0; if (num(m[1]) !== Math.round(v * 10) / 10) E('resume.volume', nom + ' : ' + L[k] + ' ' + m[1] + ' séries, recalculé ' + fx(v));
+      const o = obti[cle(L[k])], mn = (o && num(o.series_min)) || (tg && tg.min), op = (o && num(o.series_opt)) || (tg && tg.opt);
+      if (m[2] && mn && op && !/^Réduit/.test(m[2])) { const MEV = Math.round(mn * wS), MAV = Math.round(op * wS), MRV = Math.round(Math.round(op * 1.5) * wS), tot = Math.round(v * 10) / 10;
+        const st = tot < MEV ? 'Sous-MEV' : tot < MAV ? 'Suffisant' : tot <= MRV ? 'Optimal' : 'Au-delà';
+        if (m[2] !== st) E('resume.statut', nom + ' : ' + L[k] + ' « ' + m[2] + ' », recalculé « ' + st + ' » (' + fx(tot) + ' séries, cibles ' + MEV + ' / ' + MAV + ' / ' + MRV + ' sur ' + fx(wS) + ' sem.)'); } }
     // Balance.
     if (iB > 0) { const nrm = (x) => String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''), sumK = (keys, ex) => Object.keys(spmB).reduce((t, m) => t + ((keys.some((k) => nrm(m).includes(k)) && !(ex || []).some((e) => nrm(m).includes(e))) ? spmB[m] : 0), 0);
       [['Pectoraux', ['pector'], null, ['dos', 'dorsa'], 'Dos'], ['Quadriceps', ['quadri'], null, ['ischio'], 'Ischios'], ['Biceps', ['biceps'], ['femor'], ['triceps'], 'Triceps']].forEach(([la, ka, xa, kb, lb]) => {
@@ -1070,6 +1080,58 @@ function verifierPoints(R, store, ad, S, out) {
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.replace(/ | /g, ' ').match(/^([\d ]+) pts · ([+−-]?[\d ]+) cette semaine$/); if (!m) return;
     if (num(m[1].replace(/ /g, '')) !== solde || num(m[2].replace(/[ +]/g, '')) !== tot) E('points.ecran', nom + ' : « ' + l + ' », recalculé ' + fmt(solde) + ' pts · +' + fmt(tot) + ' cette semaine'); }));
 }
+// ── B27 (21/11). Alertes (et donc notifications, qui en reprennent titre et texte) : « Aucune séance … depuis N jours » =
+// jours depuis la dernière séance muscu ou cardio hors marche ; zone de douleur lisible (pas une clé brute « epaule »).
+function verifierAlertes(R, ad, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const jA = [...new Set(R.P.map((r) => r.d).concat((R.cardio || []).filter((o) => !/^marche/i.test(o.type)).map((o) => o.d)))].sort().pop();
+  ((ad && ad.alertes_centre) || []).forEach((a) => {
+    const txt = [a.title, a.evidence, a.action].filter(Boolean).join(' · ');
+    const m = txt.match(/depuis (\d+) jours/);
+    if (a.type === 'absence' && m && jA) { const n = Math.round((new Date(R.now + 'T12:00:00Z') - new Date(jA + 'T12:00:00Z')) / 864e5); if (+m[1] !== n) E('alertes.absence', 'Alerte absence : « depuis ' + m[1] + ' jours », dernière séance le ' + fr(jA) + ' (' + n + ' jours)'); }
+    const z = txt.match(/\((epaule|haut_dos|avant_bras|aine|abdos|nan|null|undefined)\)/i); if (z) E('alertes.zone', 'Alerte : zone brute « ' + z[1] + ' » dans « ' + txt.slice(0, 90) + ' »');
+  });
+}
+// ── B28 (21/11, demande porteur « vérifier les pourquoi et leviers »). « Pourquoi ça bloque » et le levier, sur les séries
+// brutes de l'exercice (dernière séance du jour, récent → ancien) : charge vs fourchette, saut de charge, RPE des séries de
+// travail (charge du jour) sur les 3 dernières séances et la réserve qui en découle, repos raccourci, marche suivante,
+// 3 séances à l'échec ; dans le levier : réserve, RPE cité, haut de fourchette ; « Basé sur N séances en S semaines ».
+function verifierPourquoi(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const f1v = (v) => String(Math.round(v * 10) / 10).replace('.', ','), kgv = (v) => String(Math.round(num(v) * 100) / 100).replace('.', ',');
+  const secs = (t) => { const m = String(t).match(/^(\d+) min(?: (\d+))?$/); if (m) return +m[1] * 60 + +(m[2] || 0); const s2 = String(t).match(/^(\d+) s$/); return s2 ? +s2[1] : null; };
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION(-\w+|@[\w-]+)? ▸ /.test(n)).forEach(([nom, L]) => {   // toutes les vues (le diagnostic est le même)
+    const exo = nom.split(' ▸ ').slice(1).join(' ▸ ').trim(), A = R.sessions[exo]; if (!A || A.length < 2) return;
+    const i0 = L.findIndex((l) => /^Pourquoi (ça|tu)/.test(l)); if (i0 < 0) return;   // « Pourquoi ça bloque / ça recule / … »
+    const iL = L.findIndex((l, k) => k > i0 && /^Levier/.test(l)), bloc = L.slice(i0 + 1, iL < 0 ? i0 + 12 : iL + 1), lev = iL >= 0 ? L[iL] : '';
+    const f = R.fourchette(exo), rmin = num(f.rmin) || 6, rmax = num(f.rmax) || 12, p0 = A[0], c0 = num(p0.best.charge), r0 = num(p0.best.reps);
+    const trav = (x) => x.series.filter((y) => num(y.charge) === num(x.best.charge)), moy = (arr, k) => { const v = arr.map((y) => num(y[k])).filter((v) => v > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const rec3 = A.slice(0, 3), rpeT = moy([].concat(...rec3.map(trav)), 'rpe');
+    const err = (t) => E('pourquoi.chiffre', nom + ' : ' + t);
+    bloc.forEach((l) => { let m;
+      if ((m = l.match(/^✗ Charge : ([\d,]+) kg pour (\d+) reps?, ta fourchette est (\d+)-(\d+)$/))) { if (num(m[1]) !== c0 || +m[2] !== r0 || +m[3] !== rmin || +m[4] !== rmax) err('« ' + l.slice(2) + ' », recalculé ' + kgv(c0) + ' kg pour ' + r0 + ' reps, fourchette ' + rmin + '-' + rmax); }
+      if ((m = l.match(/^✗ Saut de ([\d,]+) à ([\d,]+) kg \(\+(\d+) %\)$/))) { const pr = A.slice(1).find((x) => num(x.best.charge) !== c0), cp = pr ? num(pr.best.charge) : 0, pc = cp ? Math.round((c0 - cp) / cp * 100) : null;
+        if (num(m[1]) !== cp || num(m[2]) !== c0 || +m[3] !== pc) err('« ' + l.slice(2) + ' », recalculé ' + kgv(cp) + ' → ' + kgv(c0) + ' kg (+' + pc + ' %)'); }
+      if ((m = l.match(/^✗ Séries arrêtées à RPE ([\d,]+) \(≈ (\d+) reps? en réserve\) sur les (\d+) dernières séances$/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10 || +m[2] !== Math.round(10 - rpeT) || +m[3] !== rec3.length) err('« ' + l.slice(2) + ' », recalculé RPE ' + (rpeT == null ? '—' : f1v(rpeT)) + ' sur les ' + rec3.length + ' dernières séances (' + rec3.map((x) => fr(x.d).slice(0, 5)).join(', ') + ')'); }
+      if ((m = l.match(/^✓ Effort : RPE ([\d,]+) sur tes séries de travail/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10) err('« Effort : RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT))); }
+      if ((m = l.match(/^✗ Repos raccourci : (.+) → (.+) à la dernière séance$/))) { const r0s = moy(trav(p0), 'repos'), rav = moy([].concat(...A.slice(1, 4).map(trav)), 'repos');
+        if (r0s == null || rav == null || secs(m[1]) !== Math.round(rav) || secs(m[2]) !== Math.round(r0s)) err('« ' + l.slice(2) + ' », recalculé ' + Math.round(rav || 0) + ' s → ' + Math.round(r0s || 0) + ' s'); }
+      if ((m = l.match(/^✗ Marche suivante : \+([\d,]+) kg = \+(\d+) %/))) { const pas = R.pas[exo] || 2.5; if (num(m[1]) !== pas || +m[2] !== Math.round(pas / c0 * 100)) err('« ' + l.slice(2) + ' », recalculé +' + kgv(pas) + ' kg = +' + Math.round(pas / c0 * 100) + ' %'); }
+      if (/^✗ 3 séances d'affilée à RPE 10/.test(l)) { const n10 = A.slice(0, 3).filter((x) => x.series.some((y) => num(y.rpe) >= 10)).length; if (n10 < 3) err('« 3 séances d\'affilée à RPE 10 », seulement ' + n10 + ' sur les 3 dernières'); }
+    });
+    // Contradiction sur le même écran : la cible garde charge et reps, le diagnostic dit la charge trop lourde.
+    if (bloc.some((l) => /^✗ Charge : /.test(l)) && L.some((l) => /garde charge et reps/.test(l))) E('pourquoi.contradiction', nom + ' : « garde charge et reps » (cible) et « charge trop lourde » (pourquoi) sur le même écran');
+    if (bloc.some((l) => /^✗ Charge : /.test(l))) { const ss = p0.series.filter((y) => num(y.reps) > 0), mx = Math.max(0, ...ss.map((y) => num(y.charge))), tv = ss.filter((y) => !(num(y.charge) > 0 && num(y.charge) < 0.6 * mx)), sn = tv.filter((y) => num(y.reps) < rmin).length;
+      if (sn * 2 <= tv.length) err('« charge trop lourde » alors que ' + sn + ' série(s) de travail sur ' + tv.length + ' sont sous ' + rmin + ' reps (règle : la majorité)'); }
+    let m;
+    if ((m = lev.match(/tu t'arrêtes avec ≈ (\d+) reps? en réserve/)) && (rpeT == null || +m[1] !== Math.round(10 - rpeT))) err('levier « ≈ ' + m[1] + ' reps en réserve », recalculé ' + (rpeT == null ? '—' : Math.round(10 - rpeT)));
+    if ((m = lev.match(/tu pousses déjà tes séries \(RPE ([\d,]+)\)/)) && (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10)) err('levier « RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT)));
+    if ((m = lev.match(/\+1 rep par séance jusqu'à (\d+)/)) && +m[1] !== rmax) err('levier « jusqu\'à ' + m[1] + ' », haut de fourchette ' + rmax);
+    const mb = L.slice(i0).join('\n').match(/Basé sur (\d+) séances? en (\d+) semaines?/);
+    if (mb) { const ok = [3, 4].some((k) => { const n = Math.min(A.length, k), sem = Math.max(1, Math.round((new Date(A[0].d + 'T12:00:00Z') - new Date(A[n - 1].d + 'T12:00:00Z')) / 864e5 / 7)); return +mb[1] === n && +mb[2] === sem; });
+      if (!ok) err('« Basé sur ' + mb[1] + ' séances en ' + mb[2] + ' semaines », séances lues : ' + A.slice(0, 4).map((x) => fr(x.d).slice(0, 5)).join(', ')); }
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -1079,13 +1141,15 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierEvolution(R, sections(ecrans), out);
   if (ecrans) verifierPoids(store, R.aid, sections(ecrans), out);
   if (ecrans) verifierCardioTendances(R, sections(ecrans), out);
-  if (ecrans) verifierResume(R, store, sections(ecrans), out);
+  if (ecrans) verifierResume(R, store, sections(ecrans), out, appdata);
   if (ecrans) verifierForce6(R, sections(ecrans), out);
   if (ecrans) verifierEvolutionVues(R, sections(ecrans), out);
   if (ecrans) verifierEvolutionModes(R, store, sections(ecrans), out);
   if (ecrans) verifierEntrainement(R, store, sections(ecrans), out);
   if (ecrans) verifierSaisies(R, store, sections(ecrans), out);
   if (appdata) verifierPoints(R, store, appdata, sections(ecrans || ''), out);
+  if (appdata) verifierAlertes(R, appdata, out);
+  if (ecrans) verifierPourquoi(R, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }

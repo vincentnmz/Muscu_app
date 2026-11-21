@@ -6773,7 +6773,7 @@ function renderCoachDecider(data) {
     var p0 = (prog[g.exo] || [])[0], rmx = 0;
     if (p0) (p0.series || []).forEach(function (x) { var r = Number(x && x.rpe); if (r > rmx) rmx = r; });
     var faits = [];
-    if (p0 && g.kind !== 'effort') faits.push(_coachDdmm(p0.date) + ' : <b>' + _cdFmtKg(p0.charge) + ' kg × ' + p0.reps + (rmx ? ' à RPE ' + rmx : '') + '</b> (fourchette ' + g.rmin + '-' + g.rmax + ')');
+    if (p0 && g.kind !== 'effort') faits.push(_coachDdmm(p0.date) + ' : <b>' + _cdFmtKg(p0.charge) + ' kg × ' + p0.reps + (rmx ? ' à RPE ' + String(rmx).replace('.', ',') : '') + '</b> (fourchette ' + g.rmin + '-' + g.rmax + ')');
     (g.checks || []).filter(function (c) { return c.s === 'ko' && !/^<b>Charge :/.test(c.t); }).forEach(function (c) { faits.push(c.t.replace(/ta fourchette est/g, 'fourchette').replace(/\bta série\b/g, 'sa série').replace(/\btes séries\b/g, 'ses séries').replace(/\bta charge\b/g, 'sa charge').replace(/\btu pousses\b/g, 'il pousse')); });
     var prop = (_propsOn && g.action && g.action.titre) ? String(g.action.titre).split(' : ').slice(1).join(' : ').replace(/^proposé /, '').replace(/\bgarde\b/, 'garder').replace(/\bvise\b/, 'viser') : '';
     var bad = g.kind === 'sous' || g.kind === 'recule', col = bad ? '#f0505a' : '#f59f00', tcol = bad ? '#c0303a' : '#b86e00';
@@ -16434,7 +16434,7 @@ function _lxRecos(L, V, niveau, data) {
   var sous = L.sous.slice().sort(function (a, b) { return (b.rpe - a.rpe) || (a.r - b.r); });
   if (sous.length) {
     var x = sous[0];
-    out.push('<b>' + _maE(x.exo) + '</b> : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ', sous ta fourchette (' + x.rmin + '-' + x.rmax + '). ' + _OPTIONS_SOUS(x, kg, data).charAt(0).toUpperCase() + _OPTIONS_SOUS(x, kg, data).slice(1)
+    out.push('<b>' + _maE(x.exo) + '</b> : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ',') + ', sous ta fourchette (' + x.rmin + '-' + x.rmax + '). ' + _OPTIONS_SOUS(x, kg, data).charAt(0).toUpperCase() + _OPTIONS_SOUS(x, kg, data).slice(1)
       + (sous.length > 1 ? ' <span style="color:var(--text-subtle)">(+' + (sous.length - 1) + ' autre' + (sous.length > 2 ? 's' : '') + ' sous la fourchette)</span>' : ''));
   }
   // E (14/11) : pic de charge non interprétable → ni « à pousser » ni volume en plus (maintien / allègement restent).
@@ -16469,7 +16469,7 @@ function _lxRecos(L, V, niveau, data) {
     out.push('<b>Régularité</b> : ' + V.faites + '/' + V.prevues + ' séances cette semaine — encore ' + (V.prevues - V.faites) + ' pour tenir ton objectif.');
   }
   // 5) Encore de la place : 2ᵉ exercice sous la fourchette (toujours avec options).
-  if (out.length < 3 && sous.length > 1) { var y = sous[1]; out.push('<b>' + _maE(y.exo) + '</b> : ' + kg(y.c) + ' kg × ' + y.r + ' à RPE ' + y.rpe + ' — ' + _OPTIONS_SOUS(y, kg, data)); }
+  if (out.length < 3 && sous.length > 1) { var y = sous[1]; out.push('<b>' + _maE(y.exo) + '</b> : ' + kg(y.c) + ' kg × ' + y.r + ' à RPE ' + String(y.rpe).replace('.', ',') + ' — ' + _OPTIONS_SOUS(y, kg, data)); }
   return out.slice(0, 3);
 }
 function _maLectureNovalyzBloc(data) {
@@ -16946,7 +16946,7 @@ function _maProgExo(data) {
     var _L = _lectureExos(data, Date.now()), _st = null;
     [['records', '#00A854', '★', function (x) { return '<b>Record</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' le ' + _maE(x.date); }],
      ['progresse', '#00A854', '▲', function (x) { return '<b>En progrès</b> : ' + (x.why ? _maE(x.why) : _cdFmtKg(x.c1) + ' × ' + x.r1 + ' → ' + _cdFmtKg(x.c0) + ' × ' + x.r0); }],
-     ['sous', '#DC3545', '!', function (x) { return '<b>Sous ta fourchette ' + x.rmin + '-' + x.rmax + '</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe; }],
+     ['sous', '#DC3545', '!', function (x) { return '<b>Sous ta fourchette ' + x.rmin + '-' + x.rmax + '</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ','); }],
      ['bloque', '#E07800', '⏸', function (x) { return '<b>Bloqué</b> à ' + (Number(x.c) > 0 ? _cdFmtKg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances'; }],
      ['recule', '#DC3545', '▼', function (x) { return '<b>En recul</b> par rapport à la fois d\'avant'; }]].some(function (k) {
       var it = (_L[k[0]] || []).filter(function (x) { return x.exo === sel; })[0];
@@ -19290,7 +19290,7 @@ function _tjDepuisDerniere(data, L) {
   // Lecture v3 : rappel du « Pourquoi » + levier (détail dans Évolution).
   var _dgA = {}; try { (typeof _lv3Diags === 'function' ? _lv3Diags(data) : []).forEach(function (d) { _dgA[d.exo] = d; }); } catch (e) {}
   var _pqA = function (exo) { var d = _dgA[exo]; return d ? (_lv3PourquoiHtml(d) + '<div onclick="maVoirPourquoi(\'' + _maOnc(exo) + '\')" style="font-size:11px;color:var(--accent);font-weight:700;cursor:pointer;margin-top:3px">Voir le détail →</div>') : ''; };
-  sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + _pqA(x.exo))); });
+  sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ',') + _pqA(x.exo))); });
   blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + (Number(x.c) > 0 ? kg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _pqA(x.exo))); });
   if (!rows.length) return '';
   // 20/11 (banc « deux séances le même jour ») : les records peuvent venir des 2 séances du jour → on les nomme toutes.
