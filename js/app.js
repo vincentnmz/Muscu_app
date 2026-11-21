@@ -17214,12 +17214,19 @@ function _maRegulariteBloc(data) {
   var monday = new Date(now); monday.setDate(now.getDate() - dow);
   var start = new Date(monday); start.setDate(monday.getDate() - (WEEKS - 1) * 7);
   var counts = new Array(WEEKS).fill(0);
+  // 21/11 : on compte des SÉANCES (2 séances le même jour = 2, décision 20/11), comme Aujourd'hui et le Résumé.
+  // Avant : jours entraînés → « 1 » sur la barre à côté de « 2 séances » sur Aujourd'hui (cas réel).
+  // Jour entraîné = au moins une série (daily_muscu) : une séance au poids du corps (tonnage 0) compte aussi.
+  var dmR = (data.historique && data.historique.daily_muscu) || {};
+  var _joursReg = {}; Object.keys(vpj).forEach(function (k) { if (Number(vpj[k]) > 0) _joursReg[k] = 1; });
+  Object.keys(dmR).forEach(function (k) { if (dmR[k] && Number(dmR[k].series) > 0) _joursReg[k] = 1; });
+  vpj = _joursReg;
   Object.keys(vpj).forEach(function (k) {
-    if (!(Number(vpj[k]) > 0)) return;                    // jour entraîné (volume > 0)
+    var nS = (dmR[k] && Number(dmR[k].nb_seances) > 0) ? Number(dmR[k].nb_seances) : 1;
     var d = new Date(k + 'T00:00:00'); if (isNaN(d.getTime())) return;
     d.setHours(0, 0, 0, 0);
     var wi = Math.floor(Math.round((d - start) / 864e5) / 7);   // jours entiers puis semaines (18/11 : au changement d'heure de printemps, un lundi tombait dans la semaine d'avant)
-    if (wi >= 0 && wi < WEEKS) counts[wi]++;
+    if (wi >= 0 && wi < WEEKS) counts[wi] += nS;
   });
   if (!counts.some(function (c) { return c > 0; })) {
     return _maSec('Régularité', '', 'regularite') + _maEmpty('Pas encore de séances pour mesurer la régularité.');
@@ -17267,7 +17274,7 @@ function _maRegulariteBloc(data) {
     + '<div style="position:relative;height:124px;display:flex;align-items:flex-end;gap:5px">' + objLine + bars + '</div>'
     + countsRow
     + stats
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = jours d\'entraînement de la semaine · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide' + (nW < WEEKS ? ' · gris = avant ta 1re séance' : '') + '.</div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = séances de la semaine (2 le même jour = 2) · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide' + (nW < WEEKS ? ' · gris = avant ta 1re séance' : '') + '.</div>'
     + '</div>';
 }
 function _maMuscuTendances(data) {

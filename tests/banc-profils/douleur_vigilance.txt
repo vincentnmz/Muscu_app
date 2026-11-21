@@ -374,3 +374,104 @@ Forme (récupération)
 40/100
 forme actuelle · tendance dès ~4 sem.
 Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+== Analyses ▸ Tendances ==
+Mes analyses
+Le verdict, puis les chiffres.
+V
+Importer mes séances (montre & capteurs)
+Muscu
+Cardio
+Croisé
+Résumé
+Évolution
+Tendances
+Historique
+RÉGULARITÉ
+?
+objectif 2/sem · depuis ta 1re séance (5 sem.)
+obj. 2
+0
+0
+0
+0
+0
+0
+0
+1
+2
+2
+2
+1
+🔥 3
+SÉRIE À L'OBJECTIF
+3/5
+SEM. À L'OBJECTIF
+1,6
+SÉANCES/SEM. MOY.
+1 barre = séances de la semaine (2 le même jour = 2) · vert objectif atteint · orange en dessous · rouge semaine vide · gris = avant ta 1re séance.
+👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.
+Semaine
+Mois
+Année
+‹
+novembre 2026
+›
+Le graphique suit la période choisie (par semaine).
+TONNAGE SOULEVÉ
+?
+par semaine · ce mois-ci
+Tonnage
+5,5 t
+10,9
+9,6
+8,2
+6,9
+5,5
+t
+10,9
+5,5 t
+1/11
+8/11
+Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
+EXERCICES EN PROGRÈS
+?
+par semaine · ce mois-ci
+En progrès
+0 exos
+1
+0,5
+0
+-0,5
+-1
+exos
+0
+0 exos
+1/11
+8/11
+Sur la période : 0 progrès sur 9 exercices réalisés (un exercice compte à chaque séance où tu le fais). Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».
+CE QUI BOUGE
+Régularité (séances/sem.)
+1
+RPE moyen (global)
+8,5
+FRÉQUENCE PAR MUSCLE
+?
+ce mois-ci
+Dos
+1,8×/sem
+Epaule
+1,2×/sem
+Ischio
+1,2×/sem
+Pectoraux
+0,6×/sem
+Quadriceps
+0,6×/sem
+Jours où le muscle est travaillé en principal, ramenés à la semaine (12 jours mesurés). Pour l'hypertrophie, viser ≥ 2×/semaine par muscle.
+RÉPARTITION D'INTENSITÉ
+?
+27 séries
+Lourd <6 reps · 0%
+Moyen 6-12 · 100%
+Léger >12 · 0%
+Répartition de tes séries par zone de répétitions. Pour l'hypertrophie, le gros du volume en 6-12 reps est idéal ; le lourd (<6) développe la force, le léger (>12) l'endurance musculaire.

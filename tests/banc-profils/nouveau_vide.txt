@@ -165,3 +165,40 @@ Forme (récupération)
 —
 forme actuelle · tendance dès ~4 sem.
 Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+== Analyses ▸ Tendances ==
+Mes analyses
+Le verdict, puis les chiffres.
+V
+Importer mes séances (montre & capteurs)
+Muscu
+Cardio
+Croisé
+Résumé
+Évolution
+Tendances
+Historique
+RÉGULARITÉ
+?
+Pas encore de séances pour mesurer la régularité.
+👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.
+Semaine
+Mois
+Année
+‹
+novembre 2026
+›
+Le graphique suit la période choisie (par semaine).
+Pas assez d'historique sur cette période pour une tendance.
+EXERCICES EN PROGRÈS
+?
+Aucune séance sur la période.
+CE QUI BOUGE
+Régularité (séances/sem.)
+0
+FRÉQUENCE PAR MUSCLE
+?
+ce mois-ci
+Pas de séance sur la période.
+RÉPARTITION D'INTENSITÉ
+?
+Pas encore de séries enregistrées sur la période.

@@ -56,7 +56,12 @@ try {
           var el = document.getElementById('tab-historique'); if (!el) return '';
           document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
           for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
-          return '\n\n== Analyses ▸ Croisé ==\n' + el.innerText; })();
+          return '\n\n== Analyses ▸ Croisé ==\n' + el.innerText; })()
+        + (function () { try { maSetDisc('muscu'); maSetTab('tendances'); } catch (e) { return ''; }   // 21/11 : Tendances (régularité, tonnage, fréquence, intensité)
+          var el = document.getElementById('tab-historique'); if (!el) return '';
+          document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
+          for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
+          return '\n\n== Analyses ▸ Tendances ==\n' + el.innerText; })();
     }, { data, a, ECRANS });
     await pg.clock.runFor(2500);
     // R8b (H, 14/11) — même décision : un exercice dont la cible athlète dit « pas de progression aujourd'hui » (mode vigilance)
