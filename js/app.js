@@ -7221,6 +7221,8 @@ function cdAgRender() {
     pills += _cdAgGhosts().filter(function (g) { return g.jour === i + 1; }).map(function (g) {
       return '<span class="cdag-chip cdag-ghost' + (_cdAgSelChip === g.id ? ' sel' : '') + '" draggable="true" data-sid="' + _cdAgEsc(g.id) + '" style="border-color:' + g.col + ';color:' + g.col + '" title="Semaine type — glisse pour déplacer">' + _cdAgEsc(g.nom) + '</span>' + _etat(g.id);
     }).join('');
+    // 21/11 : jour sans séance planifiée mais où l'athlète s'est entraîné → on le montre (avant : « — repos » alors qu'il avait fait sa séance).
+    if (!pills) { try { var _fj = (((typeof coachAthleteData !== 'undefined' && coachAthleteData) || {}).seances_detail || []).filter(function (x) { return x && x.date === iso; }).map(function (x) { return x.seance_id || 'Séance'; }); if (_fj.length) pills = '<span class="cdag-ok">✓ ' + _cdAgEsc(_fj.join(' + ')) + ' faite' + (_fj.length > 1 ? 's' : '') + '</span>'; } catch (e) {} }
     rowsHtml += '<div class="cdag-day' + (dayRows.length ? ' has' : '') + '" data-iso="' + iso + '"><div class="cdag-dd"><b>' + _CD_AG_ABBR[i] + '</b><span>' + dt.getDate() + '</span></div><div class="cdag-ct">' + (pills || '<span class="cdag-empty">— repos</span>') + '</div></div>';
   }
   var unpl = _cdAgUnplanned();
@@ -17660,6 +17662,9 @@ function _maCroise(data) {
   var muscuT = r.tonnage_kg || 0;
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
   var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
+  // 21/11 : micro-sorties (< 5 min et < 0,3 km) hors charge et hors compte, comme partout ailleurs.
+  var _micro = function (s) { return (Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3; };
+  hist = hist.filter(function (s) { return !_micro(s); });
   hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO) return; var ua = _chargeInterneCardio(s); if (ua <= 0) return; if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
   var _muJ = _muscuUAJours(data), muscuUA = 0;
   Object.keys(_muJ).forEach(function (k) { if (k >= _w.startISO && k < _w.endISO) muscuUA += _muJ[k]; });
