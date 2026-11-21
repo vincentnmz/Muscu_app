@@ -410,6 +410,70 @@ AR
 Athlète reprise_apres_pause
 2 séances / semaine · plan de la semaine 0/3 · 10 j sans séance · propositions Novalyz : au coach
 Ouvrir
+== Coach ▸ Programme 2 ==
+Aperçu
+Analyses
+Séances
+Programme
+Forme
+‹
+Cette semaine
+9 nov. – 15 nov.
+›
+Glisse une séance pour la déplacer cette semaine · ✕ pour revenir à la semaine type.
+L
+9
+✓ Full body A faite
+M
+10
+— repos
+M
+11
+✓ Full body B faite
+J
+12
+— repos
+V
+13
+— repos
+S
+14
+— repos
+D
+15
+— repos
+Pointillé = semaine type (jours conseillés), rien à faire. Plein = posé ou déplacé pour cette semaine.
+SANS JOUR CONSEILLÉ · À PLANIFIER
+Full body A
+Full body B
+Full body A
+3 exos
+›
+Full body B
+3 exos
+›
++ Nouvelle séance
+Propositions Novalyz pour Athlète
+Au coach seulement — Novalyz te propose ; Athlète voit tes consignes et ses faits.
+Aussi à Athlète — il voit le plan, les cibles et les leviers de Novalyz comme un athlète sans coach.
+✦ Novalyz propose un programme
+Niveau et zones de Athlète ; tu relis avant de créer.
+Zones à développer en priorité · 2 max
+Fessiers
+Jambes
+Pectoraux
+Dos
+Épaules
+Bras
+Abdos
+Équilibré
+Relève la cible de volume (haut de la fourchette) dans ses Analyses et son plan de la semaine. Le programme n'est pas modifié tout seul : « Novalyz propose » pour le régénérer avec ces zones.
+MA SEMAINE
+Lundi → dimanche
+repart à 0 le lundi
+7 derniers jours
+glissant
+Comment compter les séances de la semaine de l'athlète (régularité, volume, analyses).
 == Coach ▸ Fiche athlète 2 ==
 Aperçu
 Analyses
