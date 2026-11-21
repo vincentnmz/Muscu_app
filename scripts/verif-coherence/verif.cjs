@@ -1041,6 +1041,34 @@ function verifierSaisies(R, store, S, out) {
      [/Questionnaire du jour \((\d+) jours? remplis? pour \d+ séances?\)\n(\d+)\/15/, be, g.be], [/Fourchette de reps définie \((\d+)\/\d+ exos\)\n(\d+)\/15/, nF, g.f]].forEach(([re, n, pts]) => {
       const m = J.match(re); if (m && (+m[1] !== n || +m[2] !== pts)) E('saisies.critere', nom + ' : « ' + m[0].replace('\n', ' → ') + ' », recalculé ' + n + ' → ' + pts + ' pts'); }); });
 }
+// ── B26 (21/11). Points (récompenses) : recalcul du barème sur les séries brutes — séance (date + nom) 10, RPE sur toutes ses
+// séries 5, séance complète (séries ≥ prévues au programme pour ce nom) 5, questionnaire 3 par jour, record = charge max d'un
+// exercice battue (1er passage exclu, 3 max par semaine) 20, objectif de la semaine (séances lun → dim ≥ objectif) 30.
+// Contrôle : points gagnés, total et lignes de la semaine servis, et « N pts · +M cette semaine » à l'écran.
+function verifierPoints(R, store, ad, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const rec = ad && ad.recompenses; if (!rec || rec.version !== 2) return;
+  const B = { seance: 10, rpe: 5, questionnaire: 3, complete: 5, record: 20, recordMaxSem: 3, objectif: 30 };
+  const prev = {}; (store.programme || []).filter((l) => (!R.aid || String(l.athlete_id) === R.aid) && l.type !== 'cardio' && l.seance_id).forEach((l) => { prev[String(l.seance_id)] = (prev[String(l.seance_id)] || 0) + num(l.series_prevues); });
+  const ev = [], best = {}, recSem = {}, seSem = {}, jours = [...new Set(R.P.map((r) => r.d))].sort();
+  jours.forEach((d) => { const rows = R.P.filter((r) => r.d === d), sem = lundiDe(d);
+    [...new Set(rows.map((r) => String(r.seance_id || '')))].forEach((sid) => { const rs = rows.filter((r) => String(r.seance_id || '') === sid);
+      seSem[sem] = (seSem[sem] || 0) + 1; ev.push({ d, k: 'seance', p: B.seance });
+      if (rs.every((r) => num(r.rpe) > 0)) ev.push({ d, k: 'rpe', p: B.rpe });
+      if (prev[sid] && rs.length >= prev[sid]) ev.push({ d, k: 'complete', p: B.complete }); });
+    const mx = {}; rows.forEach((r) => { const c = num(r.charge); if (r.exercice && c > (mx[r.exercice] || 0)) mx[r.exercice] = c; });
+    Object.keys(mx).forEach((e) => { if (best[e] != null && mx[e] > best[e] && (recSem[sem] || 0) < B.recordMaxSem) { recSem[sem] = (recSem[sem] || 0) + 1; ev.push({ d, k: 'record', p: B.record }); } best[e] = Math.max(best[e] || 0, mx[e]); }); });
+  new Set((store.bien_etre || []).filter((b) => !R.aid || String(b.athlete_id) === R.aid).map((b) => iso(b.date)).filter(Boolean)).forEach((d) => ev.push({ d, k: 'questionnaire', p: B.questionnaire }));
+  const objS = num(ad.dashboard && ad.dashboard.regularite && ad.dashboard.regularite.seances_prevues), obj = Math.max(1, Math.round(objS));
+  if (objS > 0) Object.keys(seSem).forEach((sem) => { if (seSem[sem] >= obj) ev.push({ d: sem, k: 'objectif', p: B.objectif }); });
+  const gagnes = ev.reduce((a, e) => a + e.p, 0), sem = ev.filter((e) => e.d >= R.lundi), tot = sem.reduce((a, e) => a + e.p, 0);
+  if (num(rec.gagnes) !== gagnes) E('points.gagnes', 'Points gagnés servis ' + rec.gagnes + ', recalculés ' + gagnes);
+  if (rec.semaine && num(rec.semaine.total) !== tot) E('points.semaine', 'Points de la semaine servis ' + rec.semaine.total + ', recalculés ' + tot);
+  ((rec.semaine && rec.semaine.lignes) || []).forEach((l) => { const n = sem.filter((e) => e.k === l.k).length; if (num(l.n) !== n) E('points.ligne', 'Points de la semaine, « ' + l.k + ' » : ' + l.n + ', recalculé ' + n); });
+  const solde = gagnes - num(rec.depenses), fmt = (n) => Number(n).toLocaleString('fr-FR').replace(/ | /g, ' ');
+  Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.replace(/ | /g, ' ').match(/^([\d ]+) pts · ([+−-]?[\d ]+) cette semaine$/); if (!m) return;
+    if (num(m[1].replace(/ /g, '')) !== solde || num(m[2].replace(/[ +]/g, '')) !== tot) E('points.ecran', nom + ' : « ' + l + ' », recalculé ' + fmt(solde) + ' pts · +' + fmt(tot) + ' cette semaine'); }));
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -1056,6 +1084,7 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierEvolutionModes(R, store, sections(ecrans), out);
   if (ecrans) verifierEntrainement(R, store, sections(ecrans), out);
   if (ecrans) verifierSaisies(R, store, sections(ecrans), out);
+  if (appdata) verifierPoints(R, store, appdata, sections(ecrans || ''), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }

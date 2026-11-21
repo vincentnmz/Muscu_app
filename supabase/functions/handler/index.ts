@@ -7456,8 +7456,19 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   try { const d: any = await (await handleGetAppData(new URLSearchParams({ athlete_id }))).json(); solde = Number(d?.recompenses?.solde) || 0 } catch (_) {}
   if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })
 
-  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: item.repetable ? reward_id + '_' + Date.now() : reward_id, valeur: String(item.cout), unite: 'pts', source: 'app' })
+  const cleClaim = item.repetable ? reward_id + '_' + Date.now() + String(Math.floor(Math.random() * 1000)).padStart(3, '0') : reward_id
+  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: cleClaim, valeur: String(item.cout), unite: 'pts', source: 'app' })
   if (error) return jsonResp({ success: false, error: error.message })
+  // 21/11 : deux achats simultanés (double appui, renvoi réseau) lisaient le même solde et passaient tous les deux → solde
+  // négatif. Contrôle APRÈS écriture : si le solde réel est passé sous zéro, cet achat est annulé (l'athlète réessaie).
+  try {
+    const d2: any = await (await handleGetAppData(new URLSearchParams({ athlete_id }))).json()
+    const s2 = Number(d2?.recompenses?.solde)
+    if (isFinite(s2) && s2 < 0) {
+      await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'recompense').eq('cle', cleClaim)
+      return jsonResp({ success: false, error: 'Achat déjà en cours : réessaie dans un instant.', solde })
+    }
+  } catch (_) {}
   return jsonResp({ success: true, reward_id, cout: item.cout, type: item.type, solde: solde - item.cout })
 }
 

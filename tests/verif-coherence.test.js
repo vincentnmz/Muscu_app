@@ -66,7 +66,7 @@ const store = {
   const st2 = JSON.parse(JSON.stringify(store));
   st2.bien_etre = [0, 1, 2].map((i) => ({ athlete_id: '5', date: J(i), sommeil: 3, fatigue_musculaire: 4, stress: 2, courbatures: 2 }))
     .concat([8, 9, 10, 11, 12, 13, 14, 15].map((i) => ({ athlete_id: '5', date: J(i), sommeil: 4, fatigue_musculaire: 2, stress: 2, courbatures: 2 })));
-  const adSansMoteur = { ...ad, moteur: undefined };   // le moteur de `ad` a été calculé sur l'autre base
+  const adSansMoteur = { ...ad, moteur: undefined, recompenses: undefined };   // moteur et points de `ad` calculés sur l'autre base
   const t2 = (t) => verifier({ store: st2, appdata: adSansMoteur, ecrans: t, now: TODAY }).map((e) => e.code);
   eq(t2('######## AUJOURD\'HUI\nFatigue élevée (4/5)\n3 dernières saisies 4 · au-dessus de ta normale (2)').length === 0, 'normale : fatigue 4 contre 2 → « au-dessus » accepté');
   eq(t2('######## AUJOURD\'HUI\nFatigue élevée (4/5)\n3 dernières saisies 4 · dans ta normale (2)').includes('normale.ecran'), 'attrape : « dans ta normale » alors que +2 points');
