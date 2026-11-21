@@ -162,6 +162,12 @@ const store = {
     eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps\nTES SÉRIES · 0/4 PRÉVUES').includes('saisie.prevues'), 'attrape : séries prévues fausses');
     eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps\nDERNIÈRE FOIS · ' + dd + '\tCIBLE\t\nS1\t12,5×11\nRPE 10\n\t12,5×12').includes('saisie.derniere'), 'attrape : dernière fois 12,5 × 11 au lieu de 12,5 × 12');
     eq(vS('######## SAISIE ▸ A ▸ Curl\nCurl\nBiceps · 8-20 reps\nDERNIÈRE FOIS · 01/01\tCIBLE\t').includes('saisie.date'), 'attrape : dernière fois à la mauvaise date'); }
+  // Analyses ▸ Tendances (B12, 21/11) : répartition d'intensité et fréquence par muscle recalculées sur l'année affichée.
+  { const an = TODAY.slice(0, 4), T = (corps) => txt('######## ANALYSES ▸ tendances\n' + an + '\n' + corps);
+    const ok = 'RÉPARTITION D\'INTENSITÉ\n?\n6 séries\nLourd <6 reps · 0%\nMoyen 6-12 · 100%\nLéger >12 · 0%';
+    eq(!T(ok).includes('tendances.intensite'), 'tendances : 6 séries, 100 % en 6-12 accepté');
+    eq(T(ok.replace('6 séries', '7 séries')).includes('tendances.intensite'), 'attrape : nombre de séries faux dans la répartition d\'intensité');
+    eq(T('FRÉQUENCE PAR MUSCLE\n?\ncette année\nQuadriceps\n9 séances').includes('tendances.frequence'), 'attrape : fréquence par muscle fausse'); }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

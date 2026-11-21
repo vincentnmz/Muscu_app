@@ -363,3 +363,106 @@ Forme (récupération)
 95/100
 forme actuelle · tendance dès ~4 sem.
 Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+== Analyses ▸ Tendances ==
+Mes analyses
+Le verdict, puis les chiffres.
+V
+Importer mes séances (montre & capteurs)
+Muscu
+Cardio
+Croisé
+Résumé
+Évolution
+Tendances
+Historique
+RÉGULARITÉ
+?
+objectif 2/sem · depuis ta 1re séance (7 sem.)
+obj. 2
+0
+0
+0
+0
+0
+2
+2
+2
+2
+2
+3
+3
+🔥 7
+SÉRIE À L'OBJECTIF
+7/7
+SEM. À L'OBJECTIF
+2,3
+SÉANCES/SEM. MOY.
+1 barre = séances de la semaine (2 le même jour = 2) · vert objectif atteint · orange en dessous · rouge semaine vide · gris = avant ta 1re séance.
+👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.
+Semaine
+Mois
+Année
+‹
+novembre 2026
+›
+Le graphique suit la période choisie (par semaine).
+TONNAGE SOULEVÉ
+?
+par semaine · ce mois-ci
+Tonnage
+29 t
+29
+27,6
+26,3
+24,9
+23,5
+t
+23,5
+29 t
+1/11
+8/11
+Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
+EXERCICES EN PROGRÈS
+?
+par semaine · ce mois-ci
+En progrès
+0 exos
+6
+4,5
+3
+1,5
+0
+exos
+6
+0 exos
+1/11
+8/11
+Sur la période : 6 progrès sur 18 exercices réalisés (un exercice compte à chaque séance où tu le fais). Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».
+CE QUI BOUGE
+Tonnage 28j vs 28j précédents
+▲ +178%
+Régularité (séances/sem.)
+3
+RPE moyen (global)
+7,9
+FRÉQUENCE PAR MUSCLE
+?
+ce mois-ci
+Dos
+3,5×/sem
+Pectoraux
+2,3×/sem
+Quadriceps
+2,3×/sem
+Epaule
+1,2×/sem
+Ischio
+1,2×/sem
+Jours où le muscle est travaillé en principal, ramenés à la semaine (12 jours mesurés). Pour l'hypertrophie, viser ≥ 2×/semaine par muscle.
+RÉPARTITION D'INTENSITÉ
+?
+99 séries
+Lourd <6 reps · 0%
+Moyen 6-12 · 100%
+Léger >12 · 0%
+Répartition de tes séries par zone de répétitions. Pour l'hypertrophie, le gros du volume en 6-12 reps est idéal ; le lourd (<6) développe la force, le léger (>12) l'endurance musculaire.

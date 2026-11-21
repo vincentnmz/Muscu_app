@@ -722,11 +722,73 @@ function verifierIA(store, txt, now, aid, out) {
   });
 }
 
+// ── B12 (21/11, point 3). Analyses ▸ Tendances : chiffres affichés à côté des graphiques, recalculés sur les séries brutes.
+// Régularité (séances par semaine lun → dim sur 12 semaines, 2 le même jour = 2 ; série, semaines à l'objectif, moyenne),
+// tonnage par tranche de 7 jours, exercices en progrès, fréquence par muscle (jours en muscle principal / semaines mesurées),
+// répartition d'intensité (séries < 6 / 6-12 / > 12 reps). Période lue sur l'écran (« novembre 2026 » = Mois, « 2026 » = Année).
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+function verifierTendances(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const fx = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+  Object.entries(S).filter(([n]) => /^ANALYSES ▸ tendances$/i.test(n)).forEach(([nom, L]) => {
+    const P = R.P.filter((r) => num(r.reps) > 0), cleS = (r) => r.d + '|' + String(r.seance_id == null ? '' : r.seance_id);
+    // Régularité.
+    const iO = L.findIndex((l) => /^obj\. \d+$/.test(l) || /^objectif (?:\d+\/sem|non défini)/.test(l));
+    if (iO >= 0) {
+      const obj = num((L.find((l) => /^objectif \d+\/sem/.test(l)) || '').replace(/^objectif (\d+).*/, '$1'));
+      const lun = lundiDe(R.now), deb = plusJ(lun, -77), cnt = Array(12).fill(0);
+      [...new Set(P.map(cleS))].forEach((k) => { const d = k.slice(0, 10); if (d >= deb && d <= R.now) cnt[Math.floor(Math.round((new Date(d + 'T12:00:00Z') - new Date(deb + 'T12:00:00Z')) / 864e5) / 7)]++; });
+      const aff = L.slice(iO + 1).filter((l) => /^\d+$/.test(l)).slice(0, 12).map(Number);
+      const iObj = L.findIndex((l) => /^obj\. \d+$/.test(l)), barres = iObj >= 0 ? L.slice(iObj + 1, iObj + 13).map(Number) : aff;
+      if (barres.length === 12 && barres.join(' ') !== cnt.join(' ')) E('tendances.regularite', nom + ' : barres ' + barres.join(' ') + ', séances par semaine ' + cnt.join(' '));
+      const prem = P.map((r) => r.d).sort()[0]; let nW = 12; if (prem) { const w0 = Math.floor(Math.round((new Date(prem + 'T12:00:00Z') - new Date(deb + 'T12:00:00Z')) / 864e5) / 7); if (w0 > 0) nW = 12 - w0; }
+      const ok = (c) => obj > 0 ? c >= obj : c > 0, fen = cnt.slice(12 - nW);
+      let st = 0; for (let i = 11; i >= 0; i--) { if (ok(cnt[i])) st++; else if (i === 11) continue; else break; }
+      const at = fen.filter(ok).length, moy = Math.round(fen.reduce((a, c) => a + c, 0) / Math.max(1, nW) * 10) / 10, J = L.join('\n');
+      const mS = J.match(/🔥 (\d+)\nSÉRIE À L'OBJECTIF/i), mA = J.match(/(\d+)\/(\d+)\nSEM\. À L'OBJECTIF/i), mM = J.match(/([\d,]+)\nSÉANCES\/SEM\. MOY\./i);
+      if (mS && +mS[1] !== st) E('tendances.regularite', nom + ' : série à l\'objectif ' + mS[1] + ', recalculée ' + st);
+      if (mA && (+mA[1] !== at || +mA[2] !== nW)) E('tendances.regularite', nom + ' : ' + mA[1] + '/' + mA[2] + ' semaines à l\'objectif, recalculé ' + at + '/' + nW);
+      if (mM && num(mM[1]) !== moy) E('tendances.regularite', nom + ' : ' + mM[1] + ' séances/sem., recalculé ' + fx(moy));
+    }
+    // Période des graphiques.
+    const lp = L.find((l) => new RegExp('^(' + MOIS.join('|') + ') \\d{4}$').test(l)) || L.find((l) => /^\d{4}$/.test(l) && +l > 2000);
+    if (!lp) return;
+    let d0, d1, tranches = [];
+    if (/^\d{4}$/.test(lp)) { d0 = lp + '-01-01'; d1 = (+lp + 1) + '-01-01'; for (let m = 1; m <= 12; m++) tranches.push([lp + '-' + String(m).padStart(2, '0') + '-01', m === 12 ? d1 : lp + '-' + String(m + 1).padStart(2, '0') + '-01']); }
+    else { const [mo, an] = lp.split(' '), m = MOIS.indexOf(mo) + 1; d0 = an + '-' + String(m).padStart(2, '0') + '-01'; d1 = m === 12 ? (+an + 1) + '-01-01' : an + '-' + String(m + 1).padStart(2, '0') + '-01'; for (let c = d0; c < d1; c = plusJ(c, 7)) tranches.push([c, plusJ(c, 7) < d1 ? plusJ(c, 7) : d1]); }
+    const dans = (r) => r.d >= d0 && r.d < d1, PP = P.filter(dans);
+    const bloc = (deb, fin) => { const i = L.findIndex((l) => l === deb); if (i < 0) return null; const j = L.findIndex((l, k) => k > i && fin.test(l)); return L.slice(i + 1, j < 0 ? L.length : j); };
+    // Tonnage : valeurs des points (tranches non vides) en tonnes.
+    const bT = bloc('TONNAGE SOULEVÉ', /^EXERCICES EN PROGRÈS$/);
+    if (bT) { const iu = bT.indexOf('t'), id = bT.findIndex((l, k) => k > iu && /^\d{1,2}\/\d{1,2}$/.test(l));
+      if (iu >= 0 && id > iu) { const aff = bT.slice(iu + 1, id).map((l) => num(l.replace(/ t$/, ''))), att = tranches.map(([a, b]) => Math.round(PP.filter((r) => r.d >= a && r.d < b).reduce((x, r) => x + num(r.charge) * num(r.reps), 0) / 100) / 10).filter((v) => v > 0);
+        if (aff.length && aff.join(' ') !== att.join(' ')) E('tendances.tonnage', nom + ' : points ' + aff.map(fx).join(' · ') + ' t, recalculé ' + att.map(fx).join(' · ') + ' t'); } }
+    // Exercices en progrès : M = (exercice, jour) faits sur la période ; N entre les progrès simples (charge / reps à charge égale) et M.
+    const mP = L.join('\n').match(/Sur la période : (\d+) progrès sur (\d+) exercices réalisés/);
+    if (mP) { let m = 0, n = 0; Object.values(R.sessions).forEach((a) => a.forEach((x, i) => { if (x.d < d0 || x.d >= d1) return; m++; const q = a[i + 1]; if (q && (num(x.best.charge) > num(q.best.charge) || (num(x.best.charge) === num(q.best.charge) && num(x.best.reps) > num(q.best.reps)))) n++; }));
+      if (+mP[2] !== m) E('tendances.progres', nom + ' : ' + mP[2] + ' exercices réalisés, recalculé ' + m);
+      if (+mP[1] < n || +mP[1] > +mP[2]) E('tendances.progres', nom + ' : ' + mP[1] + ' progrès, au moins ' + n + ' recalculés (charge ou reps à charge égale)'); }
+    // Fréquence par muscle.
+    const bF = bloc('FRÉQUENCE PAR MUSCLE', /^RÉPARTITION D'INTENSITÉ$|^Jours où le muscle|^Moins de 7 jours/);
+    if (bF) { const jt = [...new Set(P.map((r) => r.d))].sort(), lend = plusJ(R.now, 1), s0 = jt[0] && jt[0] > d0 ? jt[0] : d0, e0 = d1 < lend ? d1 : lend;
+      const jd = Math.round((new Date(e0 + 'T12:00:00Z') - new Date(s0 + 'T12:00:00Z')) / 864e5), parM = {};
+      P.filter((r) => r.d >= s0 && r.d < e0 && r.muscle).forEach((r) => { (parM[cle(r.muscle)] = parM[cle(r.muscle)] || new Set()).add(r.d); });
+      for (let i = 0; i + 1 < bF.length; i++) { const m = bF[i + 1].match(/^([\d,]+)×\/sem$|^(\d+) séances?$/); if (!m) continue; const n = parM[cle(bF[i])] ? parM[cle(bF[i])].size : 0;
+        const att = m[1] != null ? fx(n / (jd / 7)) : String(n), vu = m[1] != null ? m[1] : m[2];
+        if (vu !== att) E('tendances.frequence', nom + ' : ' + bF[i] + ' ' + bF[i + 1] + ', recalculé ' + att + (m[1] != null ? '×/sem (' + n + ' jours sur ' + jd + ')' : ' séances')); } }
+    // Répartition d'intensité.
+    const J = L.join('\n'), mI = J.match(/RÉPARTITION D'INTENSITÉ\n\?\n(\d+) séries\nLourd <6 reps · (\d+)%\nMoyen 6-12 · (\d+)%\nLéger >12 · (\d+)%/);
+    if (mI) { const lo = PP.filter((r) => num(r.reps) < 6).length, mi = PP.filter((r) => num(r.reps) >= 6 && num(r.reps) <= 12).length, tot = PP.length, hi = tot - lo - mi;
+      const pL = tot ? Math.round(lo / tot * 100) : 0, pM = tot ? Math.round(mi / tot * 100) : 0;
+      if (+mI[1] !== tot || +mI[2] !== pL || +mI[3] !== pM || +mI[4] !== 100 - pL - pM) E('tendances.intensite', nom + ' : ' + mI[1] + ' séries ' + mI[2] + '/' + mI[3] + '/' + mI[4] + ' %, recalculé ' + tot + ' séries ' + pL + '/' + pM + '/' + (100 - pL - pM) + ' % (' + lo + '/' + mi + '/' + hi + ')'); }
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
   if (appdata) verifierDonnees(R, appdata, out);
   if (appdata) verifierTexte(R, appdata, ecrans, out);
+  if (ecrans) verifierTendances(R, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }

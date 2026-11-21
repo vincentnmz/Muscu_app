@@ -292,3 +292,79 @@ Forme (récupération)
 80/100
 forme actuelle · tendance dès ~4 sem.
 Les tendances s'affichent dès ~4 semaines de données (vois Mois / Année).
+== Analyses ▸ Tendances ==
+Mes analyses
+Le verdict, puis les chiffres.
+V
+Importer mes séances (montre & capteurs)
+Muscu
+Cardio
+Croisé
+Résumé
+Évolution
+Tendances
+Historique
+RÉGULARITÉ
+?
+objectif 2/sem · depuis ta 1re séance (1 sem.)
+obj. 2
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+🔥 0
+SÉRIE À L'OBJECTIF
+0/1
+SEM. À L'OBJECTIF
+1
+SÉANCES/SEM. MOY.
+1 barre = séances de la semaine (2 le même jour = 2) · vert objectif atteint · orange en dessous · rouge semaine vide · gris = avant ta 1re séance.
+👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.
+Semaine
+Mois
+Année
+‹
+novembre 2026
+›
+Le graphique suit la période choisie (par semaine).
+TONNAGE SOULEVÉ
+?
+par semaine · ce mois-ci
+Tonnage
+4,4 t
+8/11
+cette sem.
+Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
+EXERCICES EN PROGRÈS
+?
+Sur cette semaine : 0 exercice en progrès sur 3 exercices réalisés (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 semaines sur la période.
+CE QUI BOUGE
+Régularité (séances/sem.)
+1
+RPE moyen (global)
+7,5
+FRÉQUENCE PAR MUSCLE
+?
+ce mois-ci · depuis le 11/11
+Dos
+1 séance
+Pectoraux
+1 séance
+Quadriceps
+1 séance
+Moins de 7 jours sur la période : nombre de séances où le muscle est travaillé en principal (pas de moyenne par semaine). Repère : ≥ 2 séances par semaine et par muscle.
+RÉPARTITION D'INTENSITÉ
+?
+9 séries
+Lourd <6 reps · 0%
+Moyen 6-12 · 100%
+Léger >12 · 0%
+Répartition de tes séries par zone de répétitions. Pour l'hypertrophie, le gros du volume en 6-12 reps est idéal ; le lourd (<6) développe la force, le léger (>12) l'endurance musculaire.
