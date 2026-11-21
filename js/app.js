@@ -17368,6 +17368,8 @@ function _maCardioAgg(hist, days, cutOverride, cutEndOverride) {
   var cut = cutOverride || _maCutISO(days), end = cutEndOverride || '9999-12-31', by = {};
   (hist || []).forEach(function (s) {
     if ((s.date || '') < cut || (s.date || '') >= end) return;
+    // 21/11 : micro-sorties (< 5 min et < 0,3 km, chrono lancé par erreur) hors comptes, comme le Résumé et les repères.
+    if ((Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3) return;
     var t = s.type_cardio || 'autre';
     if (!by[t]) by[t] = { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, cal: 0, nd: 0, dd: 0 };
     var o = by[t]; o.n++; o.dist += (+s.distance || 0); o.duree += (+s.duree || 0); o.cal += (+s.calories || 0);
