@@ -15511,7 +15511,7 @@ function _maSingleRich(value, date, unit, color) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">'
     + '<line x1="46" y1="' + cy + '" x2="' + (W - 16) + '" y2="' + cy + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="5 5"/>'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="6.5" fill="#00A854" stroke="#fff" stroke-width="2.5"/>'
-    + '<text x="' + cx + '" y="' + (cy - 15) + '" text-anchor="middle" font-size="16" font-weight="800" fill="#00A854">' + v + (unit ? ' ' + unit : '') + '</text>'
+    + '<text x="' + cx + '" y="' + (cy - 15) + '" text-anchor="middle" font-size="16" font-weight="800" fill="#00A854">' + String(v).replace('.', ',') + (unit ? ' ' + unit : '') + '</text>'
     + '<text x="' + cx + '" y="' + (cy + 26) + '" text-anchor="middle" font-size="11.5" fill="var(--text-subtle)">' + _maE(_maShortDate(date)) + '</text>'
     + '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="var(--text-muted)">1 seul point sur la période · la courbe apparaît dès 2 points</text>'
     + '</svg>';
@@ -15623,7 +15623,7 @@ function _maMultiLineRich(lines, dates, unit) {
       if (v == null) return;
       var last = (i === lastI);
       paths += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="' + (last ? 4.2 : 3) + '" fill="' + L.color + '"' + (last ? ' stroke="#fff" stroke-width="1.6"' : '') + '/>';
-      if (last) paths += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(v) - 8).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + L.color + '">' + (Math.round(v * 10) / 10) + '</text>';
+      if (last) paths += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(v) - 8).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + L.color + '">' + String(Math.round(v * 10) / 10).replace('.', ',') + '</text>';   // 21/11 : « 7,5 » (pas « 7.5 »)
     });
   });
   var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
@@ -16092,7 +16092,8 @@ function _maFiabilite(data) {
     { l: 'Base de comparaison (' + prev.seances + ' séance' + (prev.seances > 1 ? 's' : '') + ' avant)', g: pBase, m: 25, s: st(pBase, 25) },
     { l: 'Profondeur (' + cur.seances + ' séance' + (cur.seances > 1 ? 's' : '') + ')', g: pDepth, m: 25, s: st(pDepth, 25) },
     { l: 'RPE renseigné (' + Math.round(rpeCov * 100) + ' %)', g: pRpe, m: 20, s: st(pRpe, 20) },
-    { l: 'Questionnaire du jour (' + nBE + '/28 j)', g: pBE, m: 15, s: st(pBE, 15) },
+    // 21/11 : le libellé dit ce que le score calcule (jours remplis comparés aux séances des 28 j) — avant « 5/28 j » laissait lire 5 jours sur 28.
+    { l: 'Questionnaire du jour (' + nBE + ' jour' + (nBE > 1 ? 's' : '') + ' rempli' + (nBE > 1 ? 's' : '') + ' pour ' + cur.seances + ' séance' + (cur.seances > 1 ? 's' : '') + ')', g: pBE, m: 15, s: st(pBE, 15) },
     { l: 'Fourchette de reps définie (' + (_lgM.length ? _nF + '/' + _lgM.length + ' exos' : 'pas de programme') + ')', g: pCible, m: 15, s: st(pCible, 15) }
   ];
   // Conseils pour atteindre 100 % (uniquement les critères non pleins).
@@ -16852,7 +16853,7 @@ function _maProgExo(data) {
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
   }
   var _chipTxt = isSrv ? 'Par série' : (isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')'));
-  var _topVal = isSrv ? ((_srvLines ? _srvLines.length : 0) + ' série' + ((_srvLines && _srvLines.length > 1) ? 's' : '')) : (isCR ? (_kgTxt(pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last);
+  var _topVal = isSrv ? ((_srvLines ? _srvLines.length : 0) + ' série' + ((_srvLines && _srvLines.length > 1) ? 's' : '')) : (isCR ? (_kgTxt(pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : String(Math.round(last * 10) / 10).replace('.', ','));   // 21/11 : « 742,5 » (pas « 742.5 »)
   var _topTail = isSrv ? '' : (' ' + dspan);   // pas de delta global en vue « par série »
   // Retour 31/10 : les onglets de métrique (Charge + reps / 1RM / Volume / Par série) passent DANS la carte blanche du graphique.
   var chart = '<div class="ma-chart">' + seg + '<div class="ma-ctop" style="margin-top:10px"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + _topTail + '</span></div>' + chartBody + legend + '</div>';
@@ -16874,7 +16875,7 @@ function _maProgExo(data) {
     var series = sdByDate[p.date] || [{ charge: p.charge, reps: p.reps }];
     var setsTxt = series.map(function (x) { return _kgTxt(x.charge || 0) + '×' + (x.reps || 0); }).join(' · ');
     var bd = series.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, series[0]);
-    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps, rpe: bd.rpe, series: series }) + ' kg</span></div>';   // 18/11 : meilleure force du jour sur TOUTES les séries (comme la tuile du haut ; avant 7,5×15 RPE 10 → 11 kg en bas, 12 kg en haut)
+    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM(p.series && p.series.length ? p : { charge: bd.charge, reps: bd.reps, rpe: bd.rpe, series: series }) + ' kg</span></div>';   // 21/11 : force = celle du point (dernière séance du jour), comme la tuile   // 18/11 : meilleure force du jour sur TOUTES les séries (comme la tuile du haut ; avant 7,5×15 RPE 10 → 11 kg en bas, 12 kg en haut)
   }).join('');
   // Explication de la métrique affichée (sous le graphe) — reprend la maquette validée.
   var EXPL = {
@@ -17004,7 +17005,9 @@ function _maProgGrp(data) {
       if (!mus) return; var k = _musKey(mus); if (!k) return;
       if (!a[k]) a[k] = { label: _musCap(mus), direct: 0, indirect: 0, ton: 0, days: {} };
       else if (kind === 'direct') a[k].label = _musCap(mus);
-      a[k][kind] += sets; a[k].ton += ton; if (date) a[k].days[date] = 1;
+      // 21/11 : fréquence = jours où le muscle est travaillé en PRINCIPAL (règle du 13/11, comme Tendances ▸ Fréquence par muscle).
+      // Avant : un jour de rowing comptait un jour de biceps ici (Trapèze 2×/sem ici, 0,3×/sem dans Tendances).
+      a[k][kind] += sets; a[k].ton += ton; if (date && kind === 'direct') a[k].days[date] = 1;
     }
     sessions.forEach(function (s) {
       (s.exercices || []).forEach(function (e) {
@@ -17030,7 +17033,7 @@ function _maProgGrp(data) {
     var indTxt = rw.ind > 0 ? ' <span style="color:var(--text-subtle);font-weight:600">· dont ' + _maNum1(rw.ind) + ' indir.</span>' : '';
     return '<div class="ma-grow"><div class="ma-grh"><span class="n">' + _maE(rw.label) + ' <span style="font-size:11px;font-weight:800;color:' + st.c + '">· ' + st.t + '</span></span>' + tb + '</div>'
       + '<div class="ma-gbar"><div class="ma-gfill" style="width:' + Math.min(100, rw.spw / scale * 100).toFixed(0) + '%;background:' + st.c + '"></div><div class="ma-gmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div>'
-      + '<div class="ma-gmet"><span>Séries <b>' + _maNum1(rw.spw) + '/' + optW + '</b>/sem' + indTxt + '</span><span>Fréq. <b>' + _maNum1(rw.freq) + '×</b>/sem</span>' + (rw.ton > 0 ? '<span>Tonnage <b>' + _maNum1(rw.ton) + ' t</b></span>' : '') + '</div></div>';
+      + '<div class="ma-gmet"><span>Séries <b>' + _maNum1(rw.spw) + '/' + optW + '</b>/sem' + indTxt + '</span><span>Fréq. <b>' + _maNum1(rw.freq) + '×</b>/sem' + (rw.freq === 0 ? ' (en secondaire seulement)' : '') + '</span>' + (rw.ton > 0 ? '<span>Tonnage <b>' + _maNum1(rw.ton) + ' t</b></span>' : '') + '</div></div>';
   }).join('')
     + (zero.length ? '<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:800;margin:0;padding:12px 14px 2px;border-top:1px solid var(--border)">' + ((_maGran === 'S' && _w.isCurrent) ? 'Pas encore travaillés cette semaine' : 'Pas travaillés sur la période') + '</div>'
       + zero.map(function (m) { return '<div class="ma-grow" style="padding-top:6px;padding-bottom:6px"><div class="ma-grh"><span class="n" style="color:var(--text-muted)">' + _maE(m) + '</span><span class="t" style="color:var(--text-subtle)">0 série</span></div></div>'; }).join('') : '')
@@ -17087,7 +17090,8 @@ function _maProgSea(data) {
     var libre = /libre|^séance$/i.test(sid);
     var nSeries = (s.exercices || []).reduce(function (a, e) { return a + ((e.series || []).length); }, 0);
     var ton = _maNum1((s.tonnage || 0) / 1000), dur = _maEstDuree(s);
-    var rv = rs[sid + '|' + s.date]; if (rv == null) rv = rsByDate[s.date];
+    // 21/11 : repli « même date » seulement s'il n'y a qu'UNE séance ce jour-là (sinon on affichait le RPE de l'autre séance).
+    var rv = rs[sid + '|' + s.date]; if (rv == null && sd.filter(function (x) { return x.date === s.date; }).length === 1) rv = rsByDate[s.date];
     var dd = new Date((s.date || '') + 'T00:00:00');
     var day = isNaN(dd.getTime()) ? '' : String(dd.getDate()), mon = isNaN(dd.getTime()) ? '' : _MA_MON[dd.getMonth()];
     // E8 (a) : tonnage vs même séance précédente en GRIS neutre (une séance plus courte n'est pas une régression).
@@ -23505,7 +23509,7 @@ function _enRenderSelMuscu() {
     var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + (_libreDe[sid] ? ' · libre' : '') + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
     return '<div class="en-sel' + (on ? ' on' : '') + '" onclick=\'_enSelectSeance(' + JSON.stringify(String(sid)) + ')\'>'
       + '<span class="ic">' + svgD + '</span>'
-      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div>' + (_plS[sid] ? '<div class="b" style="color:var(--accent);font-weight:700">Novalyz propose : ' + esc(_plS[sid].join(' · ')) + '</div>' : '') + '</div>'
+      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + (function () { var nm = exos.filter(function (p) { return p && p.type !== 'cardio'; }).length, nc = exos.length - nm; return [nm ? nm + ' exo' + (nm > 1 ? 's' : '') : '', nc ? nc + ' cardio' : ''].filter(Boolean).join(' · ') || '0 exo'; })() + (noms ? ' · ' + esc(noms) : '') + '</div>' + (_plS[sid] ? '<div class="b" style="color:var(--accent);font-weight:700">Novalyz propose : ' + esc(_plS[sid].join(' · ')) + '</div>' : '') + '</div>'
       + tag + '<span class="en-rad"></span></div>';
   }).join('');
   html += '<div class="en-sel en-cree" onclick="creerSeance()" role="button">' + _svgPlus + '<div class="nm"><div class="a">Créer une séance</div><div class="b">Ajoute une séance à ton programme</div></div></div>';
@@ -23626,7 +23630,9 @@ function renderEntrainement(data) {
     if (nomEl) nomEl.textContent = _enOrder.length ? (_enOrder.length + ' séance' + (_enOrder.length > 1 ? 's' : '')) : 'Aucune séance';
     var strat = ''; try { strat = (athlete && athlete.strategie) ? String(athlete.strategie).trim() : ''; } catch (e0) {}
     var subEl = document.getElementById('en-prog-sub');
-    if (subEl) subEl.textContent = _enOrder.length ? ((strat || 'Programme personnalisé') + ' · ' + prog.length + ' exercice' + (prog.length > 1 ? 's' : '')) : 'Crée ton programme pour commencer';
+    // 21/11 : les lignes cardio du programme ne sont pas des exercices (« 39 exercices » comptait la boxe).
+    var _nMu = prog.filter(function (p) { return p && p.type !== 'cardio'; }).length, _nCa = prog.length - _nMu;
+    if (subEl) subEl.textContent = _enOrder.length ? ((strat || 'Programme personnalisé') + ' · ' + _nMu + ' exercice' + (_nMu > 1 ? 's' : '') + (_nCa ? ' · ' + _nCa + ' cardio' : '')) : 'Crée ton programme pour commencer';
     try { _enProgUneSeance(data, prog); } catch (eU) {}
     var reg = (data.dashboard && data.dashboard.regularite) || {};
     var done = _seancesFaites(reg);
