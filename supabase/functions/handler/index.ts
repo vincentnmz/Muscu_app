@@ -2986,6 +2986,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const joursHautsM = chargeSoutenueJours(chargeSrcM, now)
     const ressM = ressentiConcordant(beRows || [], perfs, now, sante_historique, ctxEtatM === 'intensification')
     const etatM = evaluerEtatAthlete({
+      joursSansActivite: _joursDepuis([..._joursActifs].sort().pop() || null, now),
       chargeSoutenue: ffFiable && joursHautsM >= 3,
       ressentiDegrade: ressM.degrade, ressentiEvaluable: ressM.evaluable,
       sousChargeSoutenue: ffFiable && sousChargeSoutenue(chargeSrcM, now),
@@ -3588,6 +3589,9 @@ async function handleDetacherCoach(body: any): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
+// 21/11 : zone de douleur lisible (la saisie stocke une clé : « epaule », « haut_dos »…) — avant : « Gêne légère signalée (epaule) ».
+const _ZONES_LBL: Record<string, string> = { nuque: 'nuque', epaule: 'épaule', pectoraux: 'pectoraux', biceps: 'biceps', triceps: 'triceps', avant_bras: 'avant-bras', coude: 'coude', poignet: 'poignet', main: 'main', haut_dos: 'haut du dos', lombaires: 'lombaires', abdos: 'abdos', hanche: 'hanche', aine: 'aine', fessier: 'fessier', quadriceps: 'quadriceps', ischios: 'ischios', genou: 'genou', mollet: 'mollet', cheville: 'cheville', pied: 'pied', autre: 'autre zone' }
+function _zoneLabel(z: any): string { const t = String(z == null ? '' : z).trim(); return _ZONES_LBL[t.toLowerCase()] || t.toLowerCase() }
 function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number; fatigueVerdict: number|null; sommeilVerdict: number|null } {
   // Zone lisible : anciennes saisies perdues stockées « NaN » → aucune zone (sinon l'alerte
   // affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
@@ -3647,6 +3651,7 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
 
 interface EtatInput {
   acwr: number | null
+  joursSansActivite?: number | null   // 21/11 : jours depuis la dernière séance (muscu ou cardio hors marche) → texte d'absence exact
   acwrFiable?: boolean         // false = chronique insuffisante (reprise) → ACWR non interprétable
   // Modèle fitness-fatigue (Banister) — SIGNAL DE CHARGE PRIMAIRE (muscu). Plus
   // robuste que l'ACWR couplé (EWMA). Si fourni & fiable, il pilote la charge ;
@@ -3731,7 +3736,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // un nouveau (ou quelqu'un qui n'a jamais loggé de séance) recevrait « Absence
   // prolongée » (haute) + push dès le 1er jour — faux positif (fiabilité).
   if (s.seances7 === 0 && s.injStatut !== 'indispo' && !reposPrevu && s.q.hasCharge)
-    alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance (muscu ou cardio) depuis 7 jours' })
+    alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance (muscu ou cardio) depuis ' + ((s.joursSansActivite != null && s.joursSansActivite >= 7) ? s.joursSansActivite : 7) + ' jours' })   // 21/11 : vrai nombre (avant : « 7 » en dur, notifié 9 jours après)
   // Messages SANS mention ACWR (repère secondaire peu fiable) : on parle de « charge
   // récente » (modèle fitness-fatigue). L'action concrète reste dans buildAlertesCentre.
   const sousCharge = ffOk ? (s.ffRatio != null && (s.ffRatio as number) < 0.80)
@@ -3749,7 +3754,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: 'Charge en hausse' })
     else if (sousCharge && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: 'Charge en baisse' })
   }
-  const _zoneTxt = s.douleurZone ? ' (' + String(s.douleurZone).toLowerCase() + ')' : ''
+  const _zoneTxt = s.douleurZone ? ' (' + _zoneLabel(s.douleurZone) + ')' : ''
   if (douleurForte) alertes.push({ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée' + _zoneTxt })
   else if (douleurGene) alertes.push({ type: 'douleur', severite: 'moyenne', message: 'Douleur modérée signalée' + _zoneTxt })
   else if (douleurLegere) alertes.push({ type: 'douleur', severite: 'basse', message: 'Gêne légère signalée' + _zoneTxt })
@@ -5171,7 +5176,7 @@ async function _notifCoachDouleur(aid: string, niv: number, zone: string): Promi
     const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', aid).eq('seance_id', 'alerte_push_coach').eq('cle', ckey).limit(1)
     if (deja && deja.length) return
     const who = String((aRow as any).nom || 'Ton athlète').trim().split(/\s+/)[0]
-    const n = await notifyCoach(cId, { title: '⚠️ ' + who + ' · douleur ' + niv + '/5' + (zone ? ' (' + zone + ')' : ''), body: 'Signalée à l\'instant. Ouvre sa fiche pour adapter la suite.', tag: 'novalyz-coach-douleur', target: 'coach' })
+    const n = await notifyCoach(cId, { title: '⚠️ ' + who + ' · douleur ' + niv + '/5' + (zone ? ' (' + _zoneLabel(zone) + ')' : ''), body: 'Signalée à l\'instant. Ouvre sa fiche pour adapter la suite.', tag: 'novalyz-coach-douleur', target: 'coach' })
     if (n > 0) await sb().from('indicateurs').insert({ athlete_id: aid, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'app' })
   } catch (_) {}
 }

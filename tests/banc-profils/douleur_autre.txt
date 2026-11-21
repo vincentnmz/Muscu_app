@@ -16,7 +16,7 @@ Stress faible (2/5)
 3 dernières saisies 2 · dans ta normale (2)
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
 POINT DE VIGILANCE
-Douleur modérée signalée (autre)
+Douleur modérée signalée (autre zone)
 → Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.
 DEPUIS TA DERNIÈRE SÉANCE · FULL BODY B (09/11)
 ⏸
@@ -300,7 +300,7 @@ Courbatures
 —
 Douleur
 Modérée
-Analyse — Douleur modérée signalée (autre)
+Analyse — Douleur modérée signalée (autre zone)
 Conseil — Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.
 📍 Zone : autre
 —
@@ -320,7 +320,7 @@ Photos avant/après + mensurations
 Mes objectifs
 Suivre et fixer tes objectifs
 Douleurs & blessures
-Douleur modérée signalée (autre)
+Douleur modérée signalée (autre zone)
 à évaluer
 == Analyses ▸ Croisé ==
 Mes analyses

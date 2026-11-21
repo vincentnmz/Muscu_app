@@ -1070,6 +1070,18 @@ function verifierPoints(R, store, ad, S, out) {
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.replace(/ | /g, ' ').match(/^([\d ]+) pts · ([+−-]?[\d ]+) cette semaine$/); if (!m) return;
     if (num(m[1].replace(/ /g, '')) !== solde || num(m[2].replace(/[ +]/g, '')) !== tot) E('points.ecran', nom + ' : « ' + l + ' », recalculé ' + fmt(solde) + ' pts · +' + fmt(tot) + ' cette semaine'); }));
 }
+// ── B27 (21/11). Alertes (et donc notifications, qui en reprennent titre et texte) : « Aucune séance … depuis N jours » =
+// jours depuis la dernière séance muscu ou cardio hors marche ; zone de douleur lisible (pas une clé brute « epaule »).
+function verifierAlertes(R, ad, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const jA = [...new Set(R.P.map((r) => r.d).concat((R.cardio || []).filter((o) => !/^marche/i.test(o.type)).map((o) => o.d)))].sort().pop();
+  ((ad && ad.alertes_centre) || []).forEach((a) => {
+    const txt = [a.title, a.evidence, a.action].filter(Boolean).join(' · ');
+    const m = txt.match(/depuis (\d+) jours/);
+    if (a.type === 'absence' && m && jA) { const n = Math.round((new Date(R.now + 'T12:00:00Z') - new Date(jA + 'T12:00:00Z')) / 864e5); if (+m[1] !== n) E('alertes.absence', 'Alerte absence : « depuis ' + m[1] + ' jours », dernière séance le ' + fr(jA) + ' (' + n + ' jours)'); }
+    const z = txt.match(/\((epaule|haut_dos|avant_bras|aine|abdos|nan|null|undefined)\)/i); if (z) E('alertes.zone', 'Alerte : zone brute « ' + z[1] + ' » dans « ' + txt.slice(0, 90) + ' »');
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -1086,6 +1098,7 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierEntrainement(R, store, sections(ecrans), out);
   if (ecrans) verifierSaisies(R, store, sections(ecrans), out);
   if (appdata) verifierPoints(R, store, appdata, sections(ecrans || ''), out);
+  if (appdata) verifierAlertes(R, appdata, out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
