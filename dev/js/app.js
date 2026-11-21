@@ -15352,8 +15352,10 @@ function _maTrendData(dict, agg) {
   if (w.gran === 'S') {
     for (i = 0; i < 7; i++) { d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate() + i); buckets.push([d, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)]); }
   } else if (w.gran === 'M') {
+    // 21/11 : vraies semaines lundi → dimanche (coupées au début / à la fin du mois). Avant : tranches de 7 jours depuis le
+    // 1er, et celle du jour était appelée « cette semaine » (le 7 janvier : 1er-7 janv. ≠ semaine du lundi 4).
     cur = new Date(w.start);
-    while (cur < w.end) { e = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7); if (e > w.end) e = new Date(w.end); buckets.push([new Date(cur), e]); cur = e; }
+    while (cur < w.end) { e = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + (7 - (cur.getDay() + 6) % 7)); if (e > w.end) e = new Date(w.end); buckets.push([new Date(cur), e]); cur = e; }
   } else {
     for (m = 0; m < 12; m++) buckets.push([new Date(w.start.getFullYear(), m, 1), new Date(w.start.getFullYear(), m + 1, 1)]);
   }
@@ -15825,7 +15827,7 @@ function _maChartBlock(label, pts, unit, color, fill, axisFirst, note, datesOver
   return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
     + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
     + _maArea(pts, color, fill)
-    + '<div class="ma-axis"><span>' + axisFirst + '</span><span>cette sem.</span></div>'
+    + '<div class="ma-axis"><span>' + ((datesOverride && datesOverride[0]) ? _maE(_maShortDate(datesOverride[0])) : axisFirst + '</span><span>cette sem.') + '</span></div>'   // 21/11 : 1 point = sa vraie date (pas « cette sem. » en dur)
     + (note ? _maCap(note) : '') + '</div>';
 }
 // Courbe hebdo nue (sans en-tête) : RICHE avec dates en bureau (_maLineRich),
@@ -16314,8 +16316,13 @@ function _maForceChart(data) {
   // en vue Mois avec 3 séances faites (une seule semaine dans le mois → un seul point). On donne le chiffre du point.
   if (pts.length < 2) {
     var bPl = { 'séance': 'séances', 'semaine': 'semaines', 'mois': 'mois' }[bNoun];
+    // 21/11 : « cette semaine / ce mois » seulement si le point est bien la période en cours (sinon sa date).
+    var _p0 = dts[0] || '', _auj = _ymdLocal(new Date()), _lun = (function () { var t = new Date(); t.setDate(t.getDate() - (t.getDay() + 6) % 7); return _ymdLocal(t); })();
+    var _enCours = bNoun === 'semaine' ? _p0 >= _lun : bNoun === 'mois' ? _p0.slice(0, 7) === _auj.slice(0, 7) : true;   // tranches = semaines lun → dim (coupées au mois)
+    var _MOISL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    var _surP = bNoun === 'séance' ? 'Sur ta séance' : _enCours ? (bNoun === 'semaine' ? 'Sur cette semaine' : 'Sur ce mois') : (bNoun === 'semaine' ? 'Sur la semaine du ' + _p0.slice(8, 10) + '/' + _p0.slice(5, 7) : 'Sur ' + _MOISL[+_p0.slice(5, 7) - 1]);
     return _maSec('Exercices en progrès', null, 'progres') + _maEmpty(pts.length === 1
-      ? (bNoun === 'séance' ? 'Sur ta séance' : (bNoun === 'semaine' ? 'Sur cette semaine' : 'Sur ce mois')) + ' : ' + Math.round(nUp) + ' exercice' + (nUp >= 2 ? 's' : '') + ' en progrès sur ' + Math.round(nF) + ' exercice' + (nF >= 2 ? 's' : '') + ' réalisé' + (nF >= 2 ? 's' : '') + ' (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 ' + bPl + ' sur la période.'
+      ? _surP + ' : ' + Math.round(nUp) + ' exercice' + (nUp >= 2 ? 's' : '') + ' en progrès sur ' + Math.round(nF) + ' exercice' + (nF >= 2 ? 's' : '') + ' réalisé' + (nF >= 2 ? 's' : '') + ' (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 ' + bPl + ' sur la période.'
       : 'Aucune séance sur la période.');
   }
   return _maSec('Exercices en progrès', 'par ' + bNoun + ' · ' + w.plabel, 'progres')
