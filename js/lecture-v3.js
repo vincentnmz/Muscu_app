@@ -200,6 +200,7 @@ function _lv3PauseLong(g) {
     : 'Ta charge est en hausse et ton ressenti n\'est pas assez renseigné pour savoir si tu l\'encaisses : on n\'ajoute rien tant qu\'on ne sait pas. Renseigne ton état du jour ; l\'action revient d\'elle-même.';
   return 'Gêne ' + _maE(g.zone) + ' ' + g.val + '/5 signalée le ' + g.date + ' : n\'ajoute ni charge ni séries sur cette zone tant qu\'elle revient (avis kiné si ça persiste). L\'action revient d\'elle-même quand ton questionnaire ne signale plus la gêne.';
 }
+function _r5(x) { return Math.round((Number(x) || 0) / 5) * 5; }   // 21/11 : repos affichés arrondis à 5 s, partout pareil
 function _lv3Diag(data, exo, kind, nowT) {
   nowT = nowT || Date.now();
   if (typeof _ctxAttendu === 'function' && _ctxAttendu(data)) return null;   // déload / reprise : baisse attendue (X1)
@@ -224,7 +225,7 @@ function _lv3Diag(data, exo, kind, nowT) {
   // 18/11 (validé porteur) : leviers « au choix » — l'option « +30 s de repos » s'appuie sur le repos RÉEL des séries de
   // travail de la dernière séance, proposée seulement s'il est connu et < 3 min.
   var _rtx = function (x) { var n = Math.round(Number(x) || 0), m = Math.floor(n / 60), r = n % 60; return m ? (m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '')) : (r + ' s'); };   // même format que _reposTxt (app.js)
-  var _repJ = (function () { var c = _lv3Num(p0.charge), v = (p0.series || []).filter(function (x) { return _lv3Num(x.charge) === c; }).map(function (x) { return _lv3Num(x.repos); }).filter(function (x) { return x > 0; }); return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length / 15) * 15 : null; })();
+  var _repJ = (function () { var c = _lv3Num(p0.charge), v = (p0.series || []).filter(function (x) { return _lv3Num(x.charge) === c; }).map(function (x) { return _lv3Num(x.repos); }).filter(function (x) { return x > 0; }); return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length / 5) * 5 : null; })();   // 21/11 : même arrondi (5 s) que la ligne « Repos : X » (avant : 15 s → « 50 s » puis « tu prends 45 s »)
   var _optRepos = (_repJ && _repJ < 180) ? '+30 s de repos entre tes séries (tu prends ' + _rtx(_repJ) + ', essaie ' + _rtx(_repJ + 30) + ')' : '';
   var nom = _lv3MusNom(muscle);
 
@@ -298,9 +299,9 @@ function _lv3Diag(data, exo, kind, nowT) {
     // 7) Repos raccourci à la dernière séance (≥ 30 s de moins que les précédentes).
     var rep0 = moyK(trav(p0), 'repos'), repAv = moyK([].concat.apply([], pts.slice(1, 4).map(trav)), 'repos');
     if (rep0 != null && repAv != null && repAv - rep0 >= 30) {
-      checks.push({ s: 'ko', t: '<b>Repos raccourci</b> : ' + _rt(Math.round(repAv)) + ' → ' + _rt(Math.round(rep0)) + ' à la dernière séance' });
-      if (!cause) { cause = 'repos'; levier = 'reviens à ' + _rt(Math.round(repAv)) + ' de repos entre tes séries (' + _rt(Math.round(rep0)) + ' la dernière fois).'; }
-    } else if (rep0 != null) checks.push({ s: 'ok', t: 'Repos : ' + _rt(Math.round(rep0)) + ', stable — pas en cause' });
+      checks.push({ s: 'ko', t: '<b>Repos raccourci</b> : ' + _rt(_r5(repAv)) + ' → ' + _rt(_r5(rep0)) + ' à la dernière séance' });
+      if (!cause) { cause = 'repos'; levier = 'reviens à ' + _rt(_r5(repAv)) + ' de repos entre tes séries (' + _rt(_r5(rep0)) + ' la dernière fois).'; }
+    } else if (rep0 != null) checks.push({ s: 'ok', t: 'Repos : ' + _rt(_r5(rep0)) + ', stable — pas en cause' });
     // 8) Effort laissé en réserve : séries de travail arrêtées à RPE ≤ 8 (≈ 2 reps ou plus en réserve).
     rpeT = moyK([].concat.apply([], recentes.map(trav)), 'rpe');
     // 16/11 (retour porteur) : pas de « réserve d'effort » quand l'effort MONTE déjà (cause « effort », signe de fatigue)
