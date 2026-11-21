@@ -382,6 +382,7 @@ function verifierTexte(R, ad, txt, out) {
     const W = P.slice(0, n); if (W.some((p) => num(p.best.charge) !== c)) return 'les ' + n + ' dernières séances ne sont pas toutes à ' + c + ' kg';
     const M = Math.max(...W.map((p) => num(p.best.reps))); if (M !== r) return 'meilleur nombre de reps sur ces séances : ' + M;
     if (num(W[n - 1].best.reps) !== r) return 'la plus ancienne des ' + n + ' séances n\'atteint pas ' + r + ' reps (le plateau est plus court)';
+    { const j = Math.round((new Date(W[0].d + 'T12:00:00Z') - new Date(W[n - 1].d + 'T12:00:00Z')) / 864e5); if (j < 14) return 'plateau sur ' + j + ' jours seulement (< 14 : pas « bloqué »)'; }   // 21/11
     if (ref !== undefined) { let iR = 0; for (let k = n - 1; k >= 0; k--) if (num(W[k].best.reps) === r) { iR = k; break; }
       const att = iR > 0 ? W[iR].d.slice(8, 10) + '/' + W[iR].d.slice(5, 7) : '';
       if ((ref || '') !== att) return att ? 'séance de référence : ' + r + ' reps atteintes le ' + att + ' (à citer)' : 'référence « ' + ref + ' » alors que la dernière séance est la référence'; }
@@ -706,7 +707,7 @@ function verifierBilan(store, b, aid, out) {
     if (!ok || !(S0.length > i + 1) || !(num(x.c) > bc || (num(x.c) === bc && num(x.r) > br))) E('mail.record', x.exo + ' ' + x.c + ' × ' + x.r + ' le ' + fr(iso(x.date)) + ' : ' + (!ok ? 'série absente ce jour-là' : 'ne bat pas le meilleur d\'avant (' + bc + ' × ' + br + ')')); });
   // Classement à la fin de la période (bloqué / sous la fourchette) = séries brutes jusqu'à cette date.
   const L = b.lecture || {};
-  (L.bloque || []).forEach((x) => { const P2 = R.sessions[x.exo] || [], n = num(x.n); const W = P2.slice(0, n); const bad = P2.length < n ? 'seulement ' + P2.length + ' séances' : (W.some((p) => num(p.best.charge) !== num(x.c)) ? 'les ' + n + ' dernières séances ne sont pas toutes à ' + x.c + ' kg' : (Math.max(...W.map((p) => num(p.best.reps))) !== num(x.r) ? 'meilleur nombre de reps ' + Math.max(...W.map((p) => num(p.best.reps))) : (num(W[n - 1].best.reps) !== num(x.r) ? 'plateau plus court' : null))); if (bad) E('mail.bloque', x.exo + ' ' + x.c + ' × ' + x.r + ' depuis ' + n + ' séances (au ' + fr(fin1).slice(0, 5) + ') : ' + bad); });
+  (L.bloque || []).forEach((x) => { const P2 = R.sessions[x.exo] || [], n = num(x.n); const W = P2.slice(0, n); const bad = P2.length < n ? 'seulement ' + P2.length + ' séances' : (W.some((p) => num(p.best.charge) !== num(x.c)) ? 'les ' + n + ' dernières séances ne sont pas toutes à ' + x.c + ' kg' : (Math.max(...W.map((p) => num(p.best.reps))) !== num(x.r) ? 'meilleur nombre de reps ' + Math.max(...W.map((p) => num(p.best.reps))) : (num(W[n - 1].best.reps) !== num(x.r) ? 'plateau plus court' : (Math.round((new Date(W[0].d + 'T12:00:00Z') - new Date(W[n - 1].d + 'T12:00:00Z')) / 864e5) < 14 ? 'plateau de moins de 14 jours' : null)))); if (bad) E('mail.bloque', x.exo + ' ' + x.c + ' × ' + x.r + ' depuis ' + n + ' séances (au ' + fr(fin1).slice(0, 5) + ') : ' + bad); });
   (L.sous || []).forEach((x) => { const P2 = R.sessions[x.exo] || []; if (!P2.length) return; const S0 = P2[0], ser = S0.series.filter((sr) => num(sr.reps) > 0), rp = Math.max(...ser.map((sr) => num(sr.rpe))); if (num(S0.best.charge) !== num(x.c) || num(S0.best.reps) !== num(x.r) || rp !== num(x.rpe) || !(ser.filter((sr) => num(sr.reps) < num(x.rmin)).length * 2 > ser.length)) E('mail.sous', x.exo + ' ' + x.c + ' × ' + x.r + ' (RPE ' + x.rpe + ') : dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps) + ' (RPE ' + rp + ')'); });
 }
 
@@ -1138,6 +1139,8 @@ function verifierPourquoi(R, S, out) {
     if ((m = lev.match(/\+1 rep par séance jusqu'à (\d+)/)) && +m[1] !== rmax) err('levier « jusqu\'à ' + m[1] + ' », haut de fourchette ' + rmax);
     const mb = L.slice(i0).join('\n').match(/Basé sur (\d+) séances? en (\d+) semaines?/);
     if (mb) { const ok = [3, 4].some((k) => { const n = Math.min(A.length, k), sem = Math.max(1, Math.round((new Date(A[0].d + 'T12:00:00Z') - new Date(A[n - 1].d + 'T12:00:00Z')) / 864e5 / 7)); return +mb[1] === n && +mb[2] === sem; });
+      { const mf = L.slice(i0).join('\n').match(/Basé sur \d+ séances? en \d+ semaines? · (fiable|à confirmer)/), n4 = Math.min(A.length, +mb[1]), jj = Math.round((new Date(A[0].d + 'T12:00:00Z') - new Date(A[n4 - 1].d + 'T12:00:00Z')) / 864e5);
+        const fiable = +mb[1] >= 4 && jj >= 14 && +mb[2] <= 6; if (mf && (mf[1] === 'fiable') !== fiable) err('« ' + mf[1] + ' » alors que ' + mb[1] + ' séances sur ' + jj + ' jours (fiable = ≥ 4 séances, ≥ 14 jours, ≤ 6 semaines)'); }   // 21/11
       if (!ok) err('« Basé sur ' + mb[1] + ' séances en ' + mb[2] + ' semaines », séances lues : ' + A.slice(0, 4).map((x) => fr(x.d).slice(0, 5)).join(', ')); }
   });
 }
