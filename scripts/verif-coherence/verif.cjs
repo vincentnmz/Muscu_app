@@ -734,7 +734,7 @@ const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 
 function verifierTendances(R, S, out) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
   const fx = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
-  Object.entries(S).filter(([n]) => /^ANALYSES ▸ tendances$/i.test(n)).forEach(([nom, L]) => {
+  Object.entries(S).filter(([n]) => /^ANALYSES ▸ tendances( · .+)?$/i.test(n)).forEach(([nom, L]) => {
     const P = R.P.filter((r) => num(r.reps) > 0), cleS = (r) => r.d + '|' + String(r.seance_id == null ? '' : r.seance_id);
     // Régularité.
     const iO = L.findIndex((l) => /^obj\. \d+$/.test(l) || /^objectif (?:\d+\/sem|non défini)/.test(l));
@@ -756,9 +756,11 @@ function verifierTendances(R, S, out) {
     }
     // Période des graphiques.
     const lp = L.find((l) => new RegExp('^(' + MOIS.join('|') + ') \\d{4}$').test(l)) || L.find((l) => /^\d{4}$/.test(l) && +l > 2000);
-    if (!lp) return;
     let d0, d1, tranches = [];
-    if (/^\d{4}$/.test(lp)) { d0 = lp + '-01-01'; d1 = (+lp + 1) + '-01-01'; for (let m = 1; m <= 12; m++) tranches.push([lp + '-' + String(m).padStart(2, '0') + '-01', m === 12 ? d1 : lp + '-' + String(m + 1).padStart(2, '0') + '-01']); }
+    const pS = !lp ? periodeEcran(L, R.now) : null;   // 21/11 (point 5) : vue Semaine = 7 jours, un point par jour
+    if (!lp && !pS) return;
+    if (pS) { [d0, d1] = pS; for (let c = d0; c < d1; c = plusJ(c, 1)) tranches.push([c, plusJ(c, 1)]); }
+    else if (/^\d{4}$/.test(lp)) { d0 = lp + '-01-01'; d1 = (+lp + 1) + '-01-01'; for (let m = 1; m <= 12; m++) tranches.push([lp + '-' + String(m).padStart(2, '0') + '-01', m === 12 ? d1 : lp + '-' + String(m + 1).padStart(2, '0') + '-01']); }
     else { const [mo, an] = lp.split(' '), m = MOIS.indexOf(mo) + 1; d0 = an + '-' + String(m).padStart(2, '0') + '-01'; d1 = m === 12 ? (+an + 1) + '-01-01' : an + '-' + String(m + 1).padStart(2, '0') + '-01'; for (let c = d0; c < d1;) { const dow = (new Date(c + 'T12:00:00Z').getUTCDay() + 6) % 7, e = plusJ(c, 7 - dow) < d1 ? plusJ(c, 7 - dow) : d1; tranches.push([c, e]); c = e; } }   // 21/11 : semaines lun → dim coupées au mois
     const dans = (r) => r.d >= d0 && r.d < d1, PP = P.filter(dans);
     const bloc = (deb, fin) => { const i = L.findIndex((l) => l === deb); if (i < 0) return null; const j = L.findIndex((l, k) => k > i && fin.test(l)); return L.slice(i + 1, j < 0 ? L.length : j); };
@@ -806,8 +808,8 @@ function periodeEcran(L, now) {
 function verifierEvolution(R, S, out) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
   const kg = (v) => String(Math.round(num(v) * 100) / 100).replace('.', ','), cr = (x) => kg(x.charge) + '×' + num(x.reps);
-  Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
-    const exo = nom.replace('ÉVOLUTION ▸ ', '').trim(), A = R.sessions[exo]; if (!A || !A.length) return;
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION(@[\w-]+)? ▸ /.test(n)).forEach(([nom, L]) => {
+    const exo = nom.split(' ▸ ').slice(1).join(' ▸ ').trim(), A = R.sessions[exo]; if (!A || !A.length) return;
     const iE = L.findIndex((l) => l.trim() === exo); if (iE < 0) return;
     const mN = (L[iE + 1] || '').match(/(\d+) séances? suivies?$/);
     if (mN && +mN[1] !== A.length) E('evolution.suivies', nom + ' : ' + mN[1] + ' séances suivies, recalculé ' + A.length);
@@ -879,7 +881,7 @@ function verifierResume(R, store, S, out) {
   const fx = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
   const cleS = (r) => r.d + '|' + String(r.seance_id == null ? '' : r.seance_id);
-  Object.entries(S).filter(([n]) => /^(ANALYSES ▸ resume|Analyses ▸ Résumé \(muscu\))$/i.test(n)).forEach(([nom, L]) => {
+  Object.entries(S).filter(([n]) => /^(ANALYSES ▸ resume( · .+)?|Analyses ▸ Résumé \(muscu\))$/i.test(n)).forEach(([nom, L]) => {
     const iK = L.findIndex((l) => l === 'TONNAGE MOYEN'); if (iK < 0) return;
     const per = periodeEcran(L.slice(0, iK), R.now); if (!per) return;
     const PP = R.P.filter((r) => r.d >= per[0] && r.d < per[1]);
@@ -959,8 +961,7 @@ function verifierEvolutionModes(R, store, S, out) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
   const f1v = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
-  const S1 = S['ÉVOLUTION-MODE ▸ grp'];
-  if (S1) { const per = periodeEcran(S1, R.now); if (per) {
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION-MODE ▸ grp( · .+)?$/.test(n)).forEach(([nomG, S1]) => { const per = periodeEcran(S1, R.now); if (per) {
     const prem = R.P.map((r) => r.d).sort()[0], a = prem && prem > per[0] ? prem : per[0], dem = plusJ(R.now, 1), b = per[1] < dem ? per[1] : dem;
     const nj = Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5), w = Math.max(1, nj / 7);
     const M = {}, g = (m) => M[cle(m)] || (M[cle(m)] = { d: 0, i: 0, t: 0, j: new Set() });
@@ -972,7 +973,7 @@ function verifierEvolutionModes(R, store, S, out) {
       if (ms && num(ms[1]) !== Math.round((o.d + o.i) / w * 10) / 10) E('evolution.groupe', 'Par groupe : ' + mh[1] + ' ' + ls + ', recalculé ' + f1v((o.d + o.i) / w) + ' séries/sem (' + o.d + ' + ' + o.i + ' indir. sur ' + f1v(w) + ' sem.)');
       if (ms && ms[2] && num(ms[2]) !== Math.round(o.i / w * 10) / 10) E('evolution.groupe', 'Par groupe : ' + mh[1] + ' dont ' + ms[2] + ' indir., recalculé ' + f1v(o.i / w));
       if (mf && num(mf[1]) !== Math.round(o.j.size / w * 10) / 10) E('evolution.groupe', 'Par groupe : ' + mh[1] + ' ' + lf + ', recalculé ' + f1v(o.j.size / w) + '×/sem (' + o.j.size + ' jours en principal)');
-      if (lt) { const mt = lt.match(/^Tonnage ([\d,]+) t$/); if (mt && num(mt[1]) !== Math.round(o.t / 100) / 10) E('evolution.groupe', 'Par groupe : ' + mh[1] + ' ' + lt + ', recalculé ' + f1v(o.t / 1000) + ' t'); } } } }
+      if (lt) { const mt = lt.match(/^Tonnage ([\d,]+) t$/); if (mt && num(mt[1]) !== Math.round(o.t / 100) / 10) E('evolution.groupe', 'Par groupe : ' + mh[1] + ' ' + lt + ', recalculé ' + f1v(o.t / 1000) + ' t'); } } } });
   const S2 = S['ÉVOLUTION-MODE ▸ sea'];
   if (S2) { const MO = { JANV: '01', 'FÉVR': '02', MARS: '03', AVR: '04', MAI: '05', JUIN: '06', JUIL: '07', 'AOÛT': '08', SEPT: '09', OCT: '10', NOV: '11', 'DÉC': '12' };
     const best = (rs) => rs.reduce((b, x) => (!b || num(x.charge) > b.c || (num(x.charge) === b.c && num(x.reps) > b.r)) ? { c: num(x.charge), r: num(x.reps) } : b, null);
