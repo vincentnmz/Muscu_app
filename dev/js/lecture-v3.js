@@ -226,7 +226,7 @@ function _lv3Diag(data, exo, kind, nowT) {
   // travail de la dernière séance, proposée seulement s'il est connu et < 3 min.
   var _rtx = function (x) { var n = Math.round(Number(x) || 0), m = Math.floor(n / 60), r = n % 60; return m ? (m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '')) : (r + ' s'); };   // même format que _reposTxt (app.js)
   var _repJ = (function () { var c = _lv3Num(p0.charge), v = (p0.series || []).filter(function (x) { return _lv3Num(x.charge) === c; }).map(function (x) { return _lv3Num(x.repos); }).filter(function (x) { return x > 0; }); return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length / 5) * 5 : null; })();   // 21/11 : même arrondi (5 s) que la ligne « Repos : X » (avant : 15 s → « 50 s » puis « tu prends 45 s »)
-  var _optRepos = (_repJ && _repJ < 180) ? '+30 s de repos entre tes séries (tu prends ' + _rtx(_repJ) + ', essaie ' + _rtx(Math.min(180, _repJ + 30)) + ')' : '';
+  var _optRepos = (_repJ && _repJ < 180) ? '+' + (Math.min(180, _repJ + 30) - _repJ) + ' s de repos entre tes séries (tu prends ' + _rtx(_repJ) + ', essaie ' + _rtx(Math.min(180, _repJ + 30)) + ')'   /* 21/11 : écart réel quand le plafond 3 min s'applique */ : '';
   var nom = _lv3MusNom(muscle);
 
   // 1) Charge trop lourde pour la fourchette (reps sous le minimum, effort maximal).
