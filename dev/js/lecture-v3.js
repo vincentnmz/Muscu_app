@@ -229,7 +229,12 @@ function _lv3Diag(data, exo, kind, nowT) {
   var nom = _lv3MusNom(muscle);
 
   // 1) Charge trop lourde pour la fourchette (reps sous le minimum, effort maximal).
-  var lourd = r0 > 0 && r0 < rmin && (rpeMax(p0) || 0) >= 9 && c0 > 0;
+  // 21/11 : même règle que la cible (« sous la fourchette » = la MAJORITÉ des séries de travail sous le minimum, échauffement
+  // < 60 % de la plus lourde exclu). Avant : la seule meilleure série → « 30 kg pour 5 reps : trop lourd, 27,5 kg » à côté de
+  // la cible « garde 30 × 5 » (1 série sur 3 sous 8 reps : 30×5 puis 25×8, 25×8).
+  var _trv = (function () { var ss = (p0.series || []).filter(function (x) { return _lv3Num(x.reps) > 0; }), mx = Math.max.apply(null, [0].concat(ss.map(function (x) { return _lv3Num(x.charge); }))); return ss.filter(function (x) { var c = _lv3Num(x.charge); return !(c > 0 && c < 0.6 * mx); }); })();
+  var _sousN = _trv.filter(function (x) { return _lv3Num(x.reps) < rmin; }).length;
+  var lourd = r0 > 0 && r0 < rmin && (rpeMax(p0) || 0) >= 9 && c0 > 0 && _sousN * 2 > _trv.length;
   if (lourd) {
     var cPrev = 0; for (var i = 1; i < pts.length; i++) { if (_lv3Num(pts[i].charge) !== c0) { cPrev = _lv3Num(pts[i].charge); break; } }
     var saut = cPrev > 0 && (c0 - cPrev) / cPrev >= 0.08 && cPrev < c0;
