@@ -15934,7 +15934,7 @@ var _MA_TON_COACH = [
   [/\bsi tu montes\b/g, 's\'il monte'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\bta progression\b/g, 'sa progression'],
   [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire'], [/\bTous tes exercices\b/g, 'Tous ses exercices'],
   // Audit 06/11 : phrases du diagnostic « Pourquoi ça bloque » encore à la 2ᵉ personne dans la fiche coach.
-  [/\bPossible : ta série\b/g, 'Possible : sa série'], [/\btu pousses déjà/g, 'il pousse déjà'], [/\bde ta charge\b/g, 'de sa charge'], [/\bdans tes données\b/g, 'dans ses données']
+  [/\bPossible : ta série\b/g, 'Possible : sa série'], [/\btu indiques pousser/g, 'il indique pousser'], [/\btu pousses déjà/g, 'il pousse déjà'], [/\bde ta charge\b/g, 'de sa charge'], [/\bdans tes données\b/g, 'dans ses données']
 ];
 function _maCoachTon(root) {
   if (!root || typeof _maCoach === 'undefined' || !_maCoach) return;
