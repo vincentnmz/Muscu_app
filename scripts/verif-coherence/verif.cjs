@@ -1092,6 +1092,42 @@ function verifierAlertes(R, ad, out) {
     const z = txt.match(/\((epaule|haut_dos|avant_bras|aine|abdos|nan|null|undefined)\)/i); if (z) E('alertes.zone', 'Alerte : zone brute « ' + z[1] + ' » dans « ' + txt.slice(0, 90) + ' »');
   });
 }
+// ── B28 (21/11, demande porteur « vérifier les pourquoi et leviers »). « Pourquoi ça bloque » et le levier, sur les séries
+// brutes de l'exercice (dernière séance du jour, récent → ancien) : charge vs fourchette, saut de charge, RPE des séries de
+// travail (charge du jour) sur les 3 dernières séances et la réserve qui en découle, repos raccourci, marche suivante,
+// 3 séances à l'échec ; dans le levier : réserve, RPE cité, haut de fourchette ; « Basé sur N séances en S semaines ».
+function verifierPourquoi(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const f1v = (v) => String(Math.round(v * 10) / 10).replace('.', ','), kgv = (v) => String(Math.round(num(v) * 100) / 100).replace('.', ',');
+  const secs = (t) => { const m = String(t).match(/^(\d+) min(?: (\d+))?$/); if (m) return +m[1] * 60 + +(m[2] || 0); const s2 = String(t).match(/^(\d+) s$/); return s2 ? +s2[1] : null; };
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
+    const exo = nom.replace('ÉVOLUTION ▸ ', '').trim(), A = R.sessions[exo]; if (!A || A.length < 2) return;
+    const i0 = L.indexOf('Pourquoi ça bloque'); if (i0 < 0) return;
+    const iL = L.findIndex((l, k) => k > i0 && /^Levier/.test(l)), bloc = L.slice(i0 + 1, iL < 0 ? i0 + 12 : iL + 1), lev = iL >= 0 ? L[iL] : '';
+    const f = R.fourchette(exo), rmin = num(f.rmin) || 6, rmax = num(f.rmax) || 12, p0 = A[0], c0 = num(p0.best.charge), r0 = num(p0.best.reps);
+    const trav = (x) => x.series.filter((y) => num(y.charge) === num(x.best.charge)), moy = (arr, k) => { const v = arr.map((y) => num(y[k])).filter((v) => v > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const rec3 = A.slice(0, 3), rpeT = moy([].concat(...rec3.map(trav)), 'rpe');
+    const err = (t) => E('pourquoi.chiffre', nom + ' : ' + t);
+    bloc.forEach((l) => { let m;
+      if ((m = l.match(/^✗ Charge : ([\d,]+) kg pour (\d+) reps?, ta fourchette est (\d+)-(\d+)$/))) { if (num(m[1]) !== c0 || +m[2] !== r0 || +m[3] !== rmin || +m[4] !== rmax) err('« ' + l.slice(2) + ' », recalculé ' + kgv(c0) + ' kg pour ' + r0 + ' reps, fourchette ' + rmin + '-' + rmax); }
+      if ((m = l.match(/^✗ Saut de ([\d,]+) à ([\d,]+) kg \(\+(\d+) %\)$/))) { const pr = A.slice(1).find((x) => num(x.best.charge) !== c0), cp = pr ? num(pr.best.charge) : 0, pc = cp ? Math.round((c0 - cp) / cp * 100) : null;
+        if (num(m[1]) !== cp || num(m[2]) !== c0 || +m[3] !== pc) err('« ' + l.slice(2) + ' », recalculé ' + kgv(cp) + ' → ' + kgv(c0) + ' kg (+' + pc + ' %)'); }
+      if ((m = l.match(/^✗ Séries arrêtées à RPE ([\d,]+) \(≈ (\d+) reps? en réserve\) sur les (\d+) dernières séances$/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10 || +m[2] !== Math.round(10 - rpeT) || +m[3] !== rec3.length) err('« ' + l.slice(2) + ' », recalculé RPE ' + (rpeT == null ? '—' : f1v(rpeT)) + ' sur les ' + rec3.length + ' dernières séances (' + rec3.map((x) => fr(x.d).slice(0, 5)).join(', ') + ')'); }
+      if ((m = l.match(/^✓ Effort : RPE ([\d,]+) sur tes séries de travail/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10) err('« Effort : RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT))); }
+      if ((m = l.match(/^✗ Repos raccourci : (.+) → (.+) à la dernière séance$/))) { const r0s = moy(trav(p0), 'repos'), rav = moy([].concat(...A.slice(1, 4).map(trav)), 'repos');
+        if (r0s == null || rav == null || secs(m[1]) !== Math.round(rav) || secs(m[2]) !== Math.round(r0s)) err('« ' + l.slice(2) + ' », recalculé ' + Math.round(rav || 0) + ' s → ' + Math.round(r0s || 0) + ' s'); }
+      if ((m = l.match(/^✗ Marche suivante : \+([\d,]+) kg = \+(\d+) %/))) { const pas = R.pas[exo] || 2.5; if (num(m[1]) !== pas || +m[2] !== Math.round(pas / c0 * 100)) err('« ' + l.slice(2) + ' », recalculé +' + kgv(pas) + ' kg = +' + Math.round(pas / c0 * 100) + ' %'); }
+      if (/^✗ 3 séances d'affilée à RPE 10/.test(l)) { const n10 = A.slice(0, 3).filter((x) => x.series.some((y) => num(y.rpe) >= 10)).length; if (n10 < 3) err('« 3 séances d\'affilée à RPE 10 », seulement ' + n10 + ' sur les 3 dernières'); }
+    });
+    let m;
+    if ((m = lev.match(/tu t'arrêtes avec ≈ (\d+) reps? en réserve/)) && (rpeT == null || +m[1] !== Math.round(10 - rpeT))) err('levier « ≈ ' + m[1] + ' reps en réserve », recalculé ' + (rpeT == null ? '—' : Math.round(10 - rpeT)));
+    if ((m = lev.match(/tu pousses déjà tes séries \(RPE ([\d,]+)\)/)) && (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10)) err('levier « RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT)));
+    if ((m = lev.match(/\+1 rep par séance jusqu'à (\d+)/)) && +m[1] !== rmax) err('levier « jusqu\'à ' + m[1] + ' », haut de fourchette ' + rmax);
+    const mb = L.slice(i0).join('\n').match(/Basé sur (\d+) séances? en (\d+) semaines?/);
+    if (mb) { const ok = [3, 4].some((k) => { const n = Math.min(A.length, k), sem = Math.max(1, Math.round((new Date(A[0].d + 'T12:00:00Z') - new Date(A[n - 1].d + 'T12:00:00Z')) / 864e5 / 7)); return +mb[1] === n && +mb[2] === sem; });
+      if (!ok) err('« Basé sur ' + mb[1] + ' séances en ' + mb[2] + ' semaines », séances lues : ' + A.slice(0, 4).map((x) => fr(x.d).slice(0, 5)).join(', ')); }
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -1109,6 +1145,7 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierSaisies(R, store, sections(ecrans), out);
   if (appdata) verifierPoints(R, store, appdata, sections(ecrans || ''), out);
   if (appdata) verifierAlertes(R, appdata, out);
+  if (ecrans) verifierPourquoi(R, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
