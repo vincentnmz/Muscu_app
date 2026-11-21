@@ -843,6 +843,23 @@ function verifierPoids(store, aid, S, out) {
     if (dbl) E('poids.doublon', nom + ' : la date ' + dbl + ' apparaît 2 fois sous la courbe (une pesée par jour attendue)');
   });
 }
+// ── B17 (21/11, point 3). Cardio ▸ Tendances, « Volume par sport » sur la période affichée : par sport, temps, sorties, km
+// (micro-sorties < 5 min et < 0,3 km exclues, comme le Résumé). Comparé sport par sport (temps + nombre de sorties).
+function verifierCardioTendances(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  // Lecture cardio : « charge cardio a fortement augmenté (+N % sur 4 semaines) » = charge J-27 → J vs J-55 → J-28 (micro-sorties exclues).
+  { let a = 0, b = 0, nb = 0; (R.cardio || []).filter((o) => !R.cxMicro(o)).forEach((o) => { if (o.d >= plusJ(R.now, -27)) a += R.cxCharge(o); else if (o.d >= plusJ(R.now, -55)) { b += R.cxCharge(o); nb++; } });
+    const ev = (b > 0 && nb >= 2) ? Math.round((a - b) / b * 100) : null;
+    Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.match(/charge cardio a fortement augmenté \(\+(\d+)% sur 4 semaines\)/); if (m && (ev == null || +m[1] !== ev)) E('cardio.evolution', nom + ' : +' + m[1] + ' % sur 4 semaines, recalculé ' + (ev == null ? 'non calculable' : (ev >= 0 ? '+' : '') + ev + ' %')); })); }
+  const hms = (m) => { m = Math.round(m || 0); const h = Math.floor(m / 60); return h ? h + 'h' + String(m % 60).padStart(2, '0') : m + ' min'; };
+  Object.entries(S).filter(([n]) => /^CARDIO ▸ tendances$/i.test(n)).forEach(([nom, L]) => {
+    const per = periodeEcran(L), i0 = L.indexOf('VOLUME PAR SPORT'); if (!per || i0 < 0) return;
+    const by = {}; (R.cardio || []).filter((o) => o.d >= per[0] && o.d < per[1] && !R.cxMicro(o)).forEach((o) => { const b = by[o.type] || (by[o.type] = { n: 0, du: 0, km: 0 }); b.n++; b.du += num(o.duree); b.km += num(o.distance); });
+    const att = Object.values(by).map((b) => hms(b.du) + ' · ' + b.n + ' sortie' + (b.n > 1 ? 's' : '')).sort();
+    const aff = []; for (let k = i0 + 2; k + 1 < L.length; k += 2) { const m = L[k + 1].match(/^(\S+(?: min)?) · (\d+) sorties?/); if (!m) break; aff.push(m[1] + ' · ' + m[2] + ' sortie' + (+m[2] > 1 ? 's' : '')); }
+    if (aff.slice().sort().join(' | ') !== att.join(' | ')) E('cardio.volume_sport', nom + ' : ' + (aff.join(' | ') || 'rien') + ', recalculé ' + (att.join(' | ') || 'rien') + ' (micro-sorties exclues)');
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -851,6 +868,7 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierTendances(R, sections(ecrans), out);
   if (ecrans) verifierEvolution(R, sections(ecrans), out);
   if (ecrans) verifierPoids(store, R.aid, sections(ecrans), out);
+  if (ecrans) verifierCardioTendances(R, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
