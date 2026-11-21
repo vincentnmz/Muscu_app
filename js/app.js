@@ -6645,7 +6645,7 @@ function _ctxAttendu(data) {
 // 20/11 (banc « poids du corps ») : charge 0 = exercice au poids du corps → « 6 reps au poids du corps », jamais « 0 kg × 6 ».
 function _cxr(c, r) { c = Number(c) || 0; return c > 0 ? _cdFmtKg(c) + ' kg × ' + r : r + ' reps au poids du corps'; }
 function _lectureExos(data, nowT) {
-  var BLOQUE_JOURS_MIN = 14;   // 21/11 : durée minimale d'un plateau avant « bloqué » (même valeur côté serveur)
+  var BLOQUE_JOURS_MIN = 28;   // 21/11 (porteur) : plateau d'au moins 4 semaines avant « bloqué » (≈ 1 fois/sem par exercice) ; même valeur côté serveur
   // L1 (audit 14/11) — partagé avec le serveur (_rcDepasse / _rcPlateau dans index.ts, même algorithme).
   // pts = séances de l'exercice, la plus récente en [0]. Dépasse les k précédentes : hausse de charge au-dessus de la plus
   // haute récente (ou égale avec plus de reps), ou à charge égale plus de reps qu'aux séances récentes à cette charge.
@@ -6725,8 +6725,8 @@ function _lectureExos(data, nowT) {
     // L1 (14/11) : bloqué = même charge et AUCUNE séance au-dessus du meilleur nombre de reps depuis au moins _NB séances
     // (couvre les oscillations 9-10-9-10), sans progrès secondaire (plus de séries au top / RPE plus bas).
     var n = (pts.length >= Math.max(_NB, 3)) ? _lxPlateau(pts, _progSecondaire) : 0;
-    // 21/11 (porteur : « bloqué arrive très vite ») : le plateau doit couvrir au moins 14 jours (1re → dernière séance du plateau) ;
-    // 3 séances dans la même semaine ne suffisent plus à parler de blocage.
+    // 21/11 (porteur : « bloqué arrive très vite ») : le plateau doit couvrir au moins 4 semaines (1re → dernière séance du plateau) ;
+    // 3 séances en 2 ou 3 semaines ne suffisent plus à parler de blocage.
     if (n >= _NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < BLOQUE_JOURS_MIN) n = 0;
     if (n >= _NB) {
       for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
@@ -15934,7 +15934,7 @@ var _MA_TON_COACH = [
   [/\bsi tu montes\b/g, 's\'il monte'], [/\bton programme\b/g, 'son programme'], [/\bTon programme\b/g, 'Son programme'], [/\bta progression\b/g, 'sa progression'],
   [/Choisis ton activité/gi, 'Activité'], [/\bTa force estimée/g, 'Force estimée'], [/\bton minimum\b/g, 'son minimum'], [/\bta zone prioritaire\b/g, 'sa zone prioritaire'], [/\bTous tes exercices\b/g, 'Tous ses exercices'],
   // Audit 06/11 : phrases du diagnostic « Pourquoi ça bloque » encore à la 2ᵉ personne dans la fiche coach.
-  [/\bPossible : ta série\b/g, 'Possible : sa série'], [/\btu pousses déjà/g, 'il pousse déjà'], [/\bde ta charge\b/g, 'de sa charge'], [/\bdans tes données\b/g, 'dans ses données']
+  [/\bPossible : ta série\b/g, 'Possible : sa série'], [/\btu indiques pousser/g, 'il indique pousser'], [/\btu pousses déjà/g, 'il pousse déjà'], [/\bde ta charge\b/g, 'de sa charge'], [/\bdans tes données\b/g, 'dans ses données']
 ];
 function _maCoachTon(root) {
   if (!root || typeof _maCoach === 'undefined' || !_maCoach) return;
@@ -16422,7 +16422,7 @@ function _levierRepos(data, exo) {
   var r = _reposExo(data, exo);
   if (r == null) return 'un repos un peu plus long (+30 s)';
   var cat = ''; try { cat = _exoCat(exo, (data && data.exo_categories) || {}); } catch (e) {}
-  var cible = (cat === 'gros' || cat === 'moyen') ? [120, '2 à 3 min'] : (cat === 'petit') ? [60, '1 à 2 min'] : null;
+  var cible = (cat === 'gros' || cat === 'moyen') ? [120, '2 à 3 min'] : (cat === 'petit') ? [90, '1 min 30 à 2 min'] : null;   // 21/11 : isolation 90 s (Singer 2024)
   if (cible && r >= cible[0]) return '';
   if (r >= 180) return '';   // déjà ≥ 3 min : au-delà, aucun bénéfice démontré → pas de levier repos
   if (cible) return 'un repos plus long (tu prends ' + _fmtRepos(r) + ' ; sur ce type d\'exercice, ' + cible[1] + ' aident à garder tes reps)';
