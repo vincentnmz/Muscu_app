@@ -43,6 +43,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
   **Limite connue, non corrigée (à décider)** : dans ce même cas avec des charges différentes (50 × 10 le matin, 60 × 6 le soir), la « dernière fois » et les cibles mélangent les 2 séances (« 60 × 6 → 50 kg × 10 »). Jamais vu dans les données réelles (vérifié sur les 9 athlètes le 21/11). Corriger = choisir côté serveur la dernière SÉANCE (date + nom) au lieu de la journée.
 - 21/11 (point 3, Forme ▸ poids — règle B14) : pesée enregistrée 2 fois le même jour → 2 points « 18/11 · 18/11 » → une pesée par jour.
 - 21/11 (point 3, Cardio — règle B17, 1re capture des écrans cardio sur les données réelles : 3 athlètes) : chiffres justes (volume par sport, « +79 % sur 4 semaines » recalculé : 26 sorties contre 13 les 4 semaines d'avant). Écart de règle corrigé : les micro-sorties (< 5 min et < 0,3 km) étaient exclues du Résumé et des repères mais comptées dans « Volume par sport » et « Par sport » → exclues partout (aucun cas réel aujourd'hui).
+- 21/11 (muscu à 100 % — règles B18 à B20 : bas du Résumé, Historique, force estimée 6 semaines, jusque-là non vérifiés) : tous les chiffres justes sur les 9 athlètes (tuiles de la période, volume musculaire, balance, historique séance par séance, force 6 semaines) ; seul défaut : tuile « —t / séance » sur une période vide → « — ».
 
 ## Ce qu'il vérifie aujourd'hui
 | Règle | Ce qui est recalculé |
@@ -77,6 +78,10 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | texte cassé (partout) | jamais « undefined », « NaN », « Invalid Date » ni date brute « Sun Nov … » |
 | contexte envoyé à l'IA | dernier questionnaire, dernière séance (séries, RPE), séances depuis lundi, records récents, bloqués, sous la fourchette, volume de la semaine (et sa fenêtre), poids ; aucun point décimal |
 | cardio | « N sorties ces 4 semaines (X km) » (28 jours, micro-sorties exclues), tuiles Sorties / Distance 4 sem., Charge 7 j (RPE × durée, marche = 0), chaque ligne d'historique (distance, durée, vitesse) |
+| Résumé ▸ période (B18) | tonnage moyen / séance, séances, séries, répétitions, RPE moyen des séries, records battus (meilleur précédent dépassé, 1re fois exclue), volume musculaire (secondaire = ½), balance agoniste / antagoniste |
+| Historique (B19) | « N exos · N séries · X t » de chaque séance (date + nom) |
+| force estimée 6 semaines (B20) | exercices listés (≥ 4 séances sur 42 j, dernière ≤ 21 j), « sur N séances », % (2 dernières vs 2 premières, réserve 10 − RPE) |
+| Tendances (B12), Évolution (B13), poids (B14), cardio tendances (B17), saisie (B11) | voir l'historique des bugs ci-dessus |
 | plan : séance et tentative | « Séance « X » » jamais une séance déjà faite cette semaine ; « Tenté <jour> : C kg × R à RPE x » = meilleure série de l'exercice cette semaine |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 

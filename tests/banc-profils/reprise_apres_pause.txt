@@ -189,7 +189,7 @@ Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). L
 CETTE SEMAINE
 ?
 TONNAGE MOYEN
-—t / séance
+—
 SÉANCES
 0
 SÉRIES TOTALES

@@ -786,7 +786,13 @@ function verifierTendances(R, S, out) {
 // ── B13 (21/11, point 3). Évolution ▸ Par exercice (vue Charge + reps) : chiffres autour de la courbe, recalculés sur les séries brutes.
 // « N séances suivies » (à vie), étiquettes charge × reps des points de la période (meilleure série du jour), meilleure série,
 // écart 1er → dernier point (« = identique », « +2,5 kg · −1 rep »), record charge (à vie), tableau « Dernières séances » (toutes les séries).
-function periodeEcran(L) {
+const MOISC = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+function periodeEcran(L, now) {
+  // Semaine : « 9 – 15 nov. » ou « 26 oct. – 1 nov. » (année = celle de « now », décembre → janvier géré).
+  const ls = L.find((l) => /^\d{1,2}(?: \S+)? – \d{1,2} \S+$/.test(l) && MOISC.includes(l.split(' ').pop()));
+  if (ls && now) { const m = ls.match(/^(\d{1,2})(?: (\S+))? – (\d{1,2}) (\S+)$/), m2 = MOISC.indexOf(m[4]) + 1, m1 = m[2] ? MOISC.indexOf(m[2]) + 1 : m2;
+    let an2 = +now.slice(0, 4); if (m2 > +now.slice(5, 7) + 1) an2--; const an1 = m1 > m2 ? an2 - 1 : an2;
+    const d0 = an1 + '-' + String(m1).padStart(2, '0') + '-' + m[1].padStart(2, '0'); return [d0, plusJ(d0, 7)]; }
   const lp = L.find((l) => new RegExp('^(' + MOIS.join('|') + ') \\d{4}$').test(l)) || L.find((l) => /^\d{4}$/.test(l) && +l > 2000);
   if (!lp) return null;
   if (/^\d{4}$/.test(lp)) return [lp + '-01-01', (+lp + 1) + '-01-01'];
@@ -860,6 +866,63 @@ function verifierCardioTendances(R, S, out) {
     if (aff.slice().sort().join(' | ') !== att.join(' | ')) E('cardio.volume_sport', nom + ' : ' + (aff.join(' | ') || 'rien') + ', recalculé ' + (att.join(' | ') || 'rien') + ' (micro-sorties exclues)');
   });
 }
+// ── B18 (21/11). Analyses ▸ Résumé, zone « détail » (période du sélecteur) : tuiles (tonnage moyen / séance, séances, séries,
+// répétitions, RPE moyen des séries, records battus = meilleur précédent dépassé, 1re fois exclue), volume musculaire
+// (séries par muscle, secondaire = ½), balance agoniste / antagoniste (% de séries).
+// ── B19 (21/11). Analyses ▸ Historique : « N exos · N séries · X t » de chaque séance (date + nom).
+function verifierResume(R, store, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const fx = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+  const sec = {}; (store.exercices || []).forEach((e) => { if (e && e.exercice && e.muscle_secondaire) sec[String(e.exercice).trim().toLowerCase()] = e.muscle_secondaire; });
+  const cleS = (r) => r.d + '|' + String(r.seance_id == null ? '' : r.seance_id);
+  Object.entries(S).filter(([n]) => /^(ANALYSES ▸ resume|Analyses ▸ Résumé \(muscu\))$/i.test(n)).forEach(([nom, L]) => {
+    const iK = L.findIndex((l) => l === 'TONNAGE MOYEN'); if (iK < 0) return;
+    const per = periodeEcran(L.slice(0, iK), R.now); if (!per) return;
+    const PP = R.P.filter((r) => r.d >= per[0] && r.d < per[1]);
+    const nS = new Set(PP.map(cleS)).size, ton = PP.reduce((a, r) => a + num(r.charge) * num(r.reps), 0), rp = PP.filter((r) => num(r.rpe) > 0);
+    // Records battus : par exercice, meilleur du jour (charge > 0) contre le meilleur des jours précédents.
+    const jours = {}; R.P.forEach((r) => { const c = num(r.charge); if (c <= 0) return; const k = r.exercice + '|' + r.d, x = jours[k]; if (!x || c > x.c || (c === x.c && num(r.reps) > x.r)) jours[k] = { e: r.exercice, d: r.d, c, r: num(r.reps) }; });
+    const best = {}, recEx = new Set(); Object.values(jours).sort((a, b) => a.d.localeCompare(b.d)).forEach((x) => { const b = best[x.e]; if (b && (x.c > b.c || (x.c === b.c && x.r > b.r)) && x.d >= per[0] && x.d < per[1]) recEx.add(x.e); if (!b || x.c > b.c || (x.c === b.c && x.r > b.r)) best[x.e] = x; });
+    const att = { 'TONNAGE MOYEN': nS ? fx(ton / nS / 1000) + 't / séance' : '—', 'SÉANCES': String(nS), 'SÉRIES TOTALES': String(PP.length), 'RÉPÉTITIONS': String(PP.reduce((a, r) => a + num(r.reps), 0)),
+      'RPE MOYEN DES SÉRIES': rp.length ? fx(rp.reduce((a, r) => a + num(r.rpe), 0) / rp.length) + '/10' : '—/10', 'RECORDS BATTUS': String(recEx.size) };
+    Object.keys(att).forEach((k) => { const i = L.indexOf(k, iK); if (i < 0) return; const v = L[i + 1]; if (v !== att[k]) E('resume.periode', nom + ' : ' + k.toLowerCase() + ' « ' + v + ' », recalculé « ' + att[k] + ' » (' + fr(per[0]) + ' → ' + fr(plusJ(per[1], -1)) + ')'); });
+    // Volume musculaire.
+    const spmB = {}; PP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') spmB[r.muscle] = (spmB[r.muscle] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) spmB[sm] = (spmB[sm] || 0) + 0.5; });
+    const spm = {}; PP.forEach((r) => { if (r.muscle && cle(r.muscle) !== 'corps entier') spm[cle(r.muscle)] = (spm[cle(r.muscle)] || 0) + 1; const sm = sec[String(r.exercice || '').trim().toLowerCase()]; if (sm && cle(sm) !== cle(r.muscle)) spm[cle(sm)] = (spm[cle(sm)] || 0) + 0.5; });
+    const iV = L.indexOf('VOLUME MUSCULAIRE', iK), iB = L.indexOf('BALANCE MUSCULAIRE', iK);
+    if (iV > 0) for (let k = iV + 1; k + 1 < (iB > 0 ? iB : L.length); k++) { const m = L[k + 1].match(/^([\d,]+) séries? · /) || L[k + 1].match(/^(0) série$/); if (!m) continue;
+      const v = spm[cle(L[k].replace(/ \(hors programme\)$/, ''))] || 0; if (num(m[1]) !== Math.round(v * 10) / 10) E('resume.volume', nom + ' : ' + L[k] + ' ' + m[1] + ' séries, recalculé ' + fx(v)); }
+    // Balance.
+    if (iB > 0) { const nrm = (x) => String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''), sumK = (keys, ex) => Object.keys(spmB).reduce((t, m) => t + ((keys.some((k) => nrm(m).includes(k)) && !(ex || []).some((e) => nrm(m).includes(e))) ? spmB[m] : 0), 0);
+      [['Pectoraux', ['pector'], null, ['dos', 'dorsa'], 'Dos'], ['Quadriceps', ['quadri'], null, ['ischio'], 'Ischios'], ['Biceps', ['biceps'], ['femor'], ['triceps'], 'Triceps']].forEach(([la, ka, xa, kb, lb]) => {
+        const i = L.indexOf(L.slice(iB).find((l) => new RegExp('^' + la + ' \\d+%$').test(l)) || '§', iB); if (i < 0) return;
+        const va = sumK(ka, xa), vb = sumK(kb), pct = va + vb > 0 ? Math.round(va / (va + vb) * 100) : null, aff = +L[i].match(/(\d+)%$/)[1], affB = +((L[i + 1] || '').match(/^(\d+)% /) || [])[1];
+        if (pct == null || aff !== pct || affB !== 100 - pct) E('resume.balance', nom + ' : ' + la + ' ' + aff + '% / ' + affB + '% ' + lb + ', recalculé ' + pct + '% / ' + (100 - pct) + '%'); }); }
+  });
+  Object.entries(S).filter(([n]) => /^ANALYSES ▸ historique$/i.test(n)).forEach(([nom, L]) => {
+    const MO = { JANV: '01', 'FÉVR': '02', MARS: '03', AVR: '04', MAI: '05', JUIN: '06', JUIL: '07', 'AOÛT': '08', SEPT: '09', OCT: '10', NOV: '11', 'DÉC': '12' };
+    for (let k = 0; k + 2 < L.length; k++) { if (!/^\d{1,2}$/.test(L[k]) || !MO[L[k + 1]]) continue;
+      const mo = MO[L[k + 1]], an = mo > R.now.slice(5, 7) ? +R.now.slice(0, 4) - 1 : +R.now.slice(0, 4), d = an + '-' + mo + '-' + L[k].padStart(2, '0'), sid = L[k + 2];
+      const det = L.slice(k + 3, k + 6).find((l) => /^\d+ exos · \d+ séries · [\d,]+ t$/.test(l)); if (!det) continue;
+      const rs = R.P.filter((r) => r.d === d && String(r.seance_id || 'Séance') === sid), att = new Set(rs.map((r) => r.exercice)).size + ' exos · ' + rs.length + ' séries · ' + fx(rs.reduce((a, r) => a + num(r.charge) * num(r.reps), 0) / 1000) + ' t';
+      if (det !== att) E('historique.seance', nom + ' : ' + L[k] + ' ' + L[k + 1] + ' « ' + sid + ' » ' + det + ', recalculé ' + att); }
+  });
+}
+// ── B20 (21/11). « Ta force estimée · 6 semaines » (Résumé) : par exercice, séances des 42 derniers jours (≥ 4, dernière ≤ 21 j),
+// force du jour = meilleure série en charge × (1 + (reps + reps en réserve) / 30), réserve = 10 − RPE bornée 0-4 (0 sans RPE) ;
+// % = moyenne des 2 dernières contre les 2 premières. Contrôle « sur N séances » et le %.
+function verifierForce6(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const fS = (x) => { const c = num(x.charge), r = num(x.reps), rpe = num(x.rpe); return (c > 0 && r > 0) ? c * (1 + (r + (rpe > 0 ? Math.max(0, Math.min(4, 10 - rpe)) : 0)) / 30) : 0; };
+  const pctTxt = (p) => { const a = Math.abs(p); return (p > 0 ? '+' : p < 0 ? '−' : '') + (a >= 10 ? String(Math.round(a)) : String(Math.round(a * 10) / 10).replace('.', ',')) + ' %'; };
+  Object.entries(S).forEach(([nom, L]) => { const i0 = L.findIndex((l) => /^TA FORCE ESTIMÉE · 6 SEMAINES$/i.test(l)); if (i0 < 0) return;
+    for (let k = i0 + 1; k + 2 < L.length; k++) { const mN = L[k + 1].match(/^sur (\d+) séances/); if (!mN || !/ %$/.test(L[k + 2])) continue;
+      const exo = L[k].replace(/ \([+−][\d,]+ % sans le RPE\)$/, '').trim(), A = (R.sessions[exo] || []).filter((x) => x.d > plusJ(R.now, -42) && x.d <= R.now).slice().reverse();
+      if (A.length < 4 || A[A.length - 1].d <= plusJ(R.now, -21)) { E('force6.exercice', nom + ' : ' + exo + ' listé (' + A.length + ' séances sur 42 j, dernière le ' + (A.length ? fr(A[A.length - 1].d) : '—') + ')'); continue; }
+      const v = A.map((x) => Math.max(0, ...x.series.map(fS))), m = (a) => (a[0] + a[1]) / 2, p = Math.round((m(v.slice(-2)) - m(v)) / m(v) * 1000) / 10;
+      if (+mN[1] !== A.length) E('force6.seances', nom + ' : ' + exo + ' sur ' + mN[1] + ' séances, recalculé ' + A.length);
+      if (L[k + 2] !== pctTxt(p)) E('force6.pct', nom + ' : ' + exo + ' ' + L[k + 2] + ', recalculé ' + pctTxt(p)); } });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -869,6 +932,8 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (ecrans) verifierEvolution(R, sections(ecrans), out);
   if (ecrans) verifierPoids(store, R.aid, sections(ecrans), out);
   if (ecrans) verifierCardioTendances(R, sections(ecrans), out);
+  if (ecrans) verifierResume(R, store, sections(ecrans), out);
+  if (ecrans) verifierForce6(R, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
