@@ -4373,7 +4373,7 @@ async function demarrerRenfoJoueur(seanceId) {
 
 // Retour à la fiche joueur depuis l'écran d'exécution du renfo.
 function retourFicheDepuisRenfo() {
-  const enCours = (typeof seance !== 'undefined' && seance.length > 0 && !_seanceEnvoyee);
+  const enCours = (_nbSeriesSaisies() > 0 && !_seanceEnvoyee);
   if (enCours && !confirm('Quitter la séance ? Les séries non validées seront perdues.')) return;
   document.body.classList.remove('renfo-exec');
   document.getElementById('view-app').classList.remove('active');
@@ -6388,7 +6388,7 @@ async function coachSaisirSeance() {
 }
 function coachQuitterSaisie(apresEnvoi) {
   if (!_saisieCoach) return;
-  if (!apresEnvoi && typeof seance !== 'undefined' && seance && seance.length && !_seanceEnvoyee) {
+  if (!apresEnvoi && _nbSeriesSaisies() > 0 && !_seanceEnvoyee) {
     if (!confirm('Quitter sans enregistrer ? Les séries saisies pour ' + (_saisieCoach.a.nom || 'ton athlète') + ' seront perdues.')) return;
   }
   try { arreterChronoEtReinitSeance(); } catch (e) {}
@@ -12704,14 +12704,20 @@ document.addEventListener('visibilitychange', function () {
 window.addEventListener('pagehide', function () { _saveBrouillon(); });
 
 // ==================== SÉANCE GUIDÉE ====================
+// Nombre de séries réellement saisies dans la séance en cours (un exercice ouvert sans série = rien à perdre).
+function _nbSeriesSaisies() {
+  try { return (typeof seance !== 'undefined' && seance ? seance : []).reduce(function (n, e) { return n + ((e && e.series) ? e.series.length : 0); }, 0); } catch (e) { return 0; }
+}
 async function demarrerSeance() {
   const seanceId = document.getElementById('sel-seance-id').value;
   if (!seanceId) return;
   try { _majSeancePageTitre(); } catch (e) {}
 
   // 20/11 : séance précédente déjà enregistrée (_seanceEnvoyee) → rien à perdre, pas d'alerte « tout sera perdu ».
-  if (seance.length > 0 && !_seanceEnvoyee) {
-    const ok = confirm(`Tu as déjà ${seance.length} série${seance.length > 1 ? 's' : ''} enregistrée${seance.length > 1 ? 's' : ''} dans cette séance.\n\nSi tu continues, tout sera perdu.\n\nAbandonner la séance en cours ?`);
+  // 21/11 : on compte les SÉRIES saisies (avant : le nombre d'exercices ouverts, même à 0 série → « 1 série enregistrée » faux).
+  const _nbS = _nbSeriesSaisies();
+  if (_nbS > 0 && !_seanceEnvoyee) {
+    const ok = confirm(`Tu as déjà ${_nbS} série${_nbS > 1 ? 's' : ''} saisie${_nbS > 1 ? 's' : ''} dans cette séance.\n\nSi tu continues, tout sera perdu.\n\nAbandonner la séance en cours ?`);
     if (!ok) return;
   }
 
@@ -18992,6 +18998,10 @@ function formatDateDisplay(d) {
 }
 
 function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
+  // 21/11 : même fourchette que partout ailleurs (catégorie de l'exercice appliquée quand la ligne est au 8-12 par défaut :
+  // Léger → 8-20, Lourd/moyen → 6-12). Avant, l'en-tête affichait la ligne brute (8-12) alors que cibles et lecture
+  // utilisaient la fourchette de la catégorie.
+  try { var _fq = _exoFourchette(exerciceNom, repsMini, repsMax); repsMini = _fq.rmin; repsMax = _fq.rmax; } catch (e) {}
   document.getElementById('card-liste-seance').style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'block';
 
@@ -21115,7 +21125,7 @@ function _seanceBack() {
 function fermerSeancePage() {
   var enCours = false;
   // Séance DÉJÀ validée (_seanceEnvoyee) = plus rien à perdre → pas d'avertissement.
-  try { enCours = (typeof seance !== 'undefined' && seance && seance.length > 0 && !_seanceEnvoyee); } catch (e) {}
+  try { enCours = (_nbSeriesSaisies() > 0 && !_seanceEnvoyee); } catch (e) {}
   if (enCours && !confirm('Quitter la séance ? Les séries non validées seront perdues.')) return;
   // Quitter = abandonner la séance en cours (une seule confirmation ; pas de 2e
   // avertissement au prochain démarrage puisque l'état est remis à zéro).
