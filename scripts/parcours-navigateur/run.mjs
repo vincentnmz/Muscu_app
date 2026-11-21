@@ -334,6 +334,7 @@ await etape('13 file qui survit a la fermeture', async () => {
   await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 });
   for (let i = 0; i < 30 && nLeg(44) < 1; i++) await page.waitForTimeout(300);
   eq(nLeg(44) === 1, 'App fermée avec une séance en file : envoyée toute seule à la réouverture', nLeg(44));
+  for (let i = 0; i < 20 && await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length) > 0; i++) await page.waitForTimeout(250);
   eq(await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length) === 0, 'À la réouverture : file vidée après l\'envoi');
 });
 // ── 21/11 : saisie par le COACH en présentiel — app fermée en pleine saisie, puis coupure réseau à la validation. ──
@@ -366,6 +367,7 @@ await etape('14 coach present : brouillon et file', async () => {
   await pc.reload({ waitUntil: 'domcontentloaded' }); await pret();
   for (let i = 0; i < 30 && n33() < 2; i++) await pc.waitForTimeout(300);
   eq(n33() === 2, 'Coach : réseau revenu → séance envoyée à la réouverture (2 séries)', n33());
+  for (let i = 0; i < 20 && await pc.evaluate(() => _lireQueueOffline().length) > 0; i++) await pc.waitForTimeout(250);   // la base est écrite avant que la réponse revienne au téléphone
   eq(await pc.evaluate(() => _lireQueueOffline().length) === 0, 'Coach : file vidée après l\'envoi');
   await pc.evaluate(() => flushSeancesOffline()); await pc.waitForTimeout(600);
   eq(n33() === 2, 'Coach : pas de doublon au renvoi', n33());

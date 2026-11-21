@@ -102,6 +102,314 @@ Aucun message non lu.
 LECTURE NOVALYZ · ÉQUIPE
 Athlète douleur_forte_recup_ok — Douleur signalée. Une douleur significative a été déclarée · zone : Épaule.
 Adapte la charge et surveille l'évolution de la douleur.
+== Coach ▸ Analyses équipe ==
+86 %
+Régularité · 4 sem.
+62 séances / 72 prévues
+11
+Séances faites cette semaine
+6 à venir
+8 / 9
+Athlètes actifs · 7 j
+Athlète reprise_apres_pause 10 j sans séance
+4
+Douleurs signalées · 7 j
+0 blessure déclarée
+ÉTAT DE L'ÉQUIPE
+même règle que l'accueil · touche pour filtrer
+4
+Prêts
+Athlète charge_hausse_sans_ressenti
+Athlète coach_sans_propositions
+Athlète intermediaire_plateau
+Athlète sous_fourchette
+4
+À surveiller
+Athlète douleur_forte_recup_ok · douleur forte signalée (épaule) · aujourd'hui
+Athlète douleur_vigilance · douleur forte signalée (épaule) · aujourd'hui
+Athlète gene_poignet · douleur forte signalée (poignet) · aujourd'hui
+Athlète douleur_moderee · douleur modérée signalée (épaule) · aujourd'hui
+1
+Inactifs
+Athlète reprise_apres_pause · 10 j sans séance
+0
+Vacances
+ASSIDUITÉ
+cette semaine à date · régularité 4 sem.
+AD
+Athlète douleur_forte_recup_ok
+1 faite sur 2 prévues cette semaine
+4 sem. : 7/8
+AD
+Athlète douleur_vigilance
+1 faite sur 2 prévues cette semaine
+4 sem. : 7/8
+AG
+Athlète gene_poignet
+1 faite sur 2 prévues cette semaine
+4 sem. : 7/8
+AD
+Athlète douleur_moderee
+1 faite sur 2 prévues cette semaine
+4 sem. : 7/8
+AC
+Athlète charge_hausse_sans_ressenti
+3 faites sur 2 prévues cette semaine
+4 sem. : 8/8
+AC
+Athlète coach_sans_propositions
+1 faite sur 2 prévues cette semaine
+4 sem. : 5/8
+AI
+Athlète intermediaire_plateau
+2 faites sur 2 prévues cette semaine
+4 sem. : 8/8
+AS
+Athlète sous_fourchette
+1 faite sur 2 prévues cette semaine
+4 sem. : 6/8
+AR
+Athlète reprise_apres_pause
+10 j sans séance
+4 sem. : 7/8
+Écrire
+DOULEURS & BLESSURES
+signalées sur 7 j · dès 2/5 · dates sur 10 j
+AD
+Athlète douleur_forte_recup_ok
+Épaule 4/5 · aujourd'hui
+AD
+Athlète douleur_vigilance
+Épaule 4/5 · aujourd'hui
+AG
+Athlète gene_poignet
+Poignet 4/5 · aujourd'hui
+AD
+Athlète douleur_moderee
+Épaule 3/5 · aujourd'hui
+Blessures déclarées : aucune en cours.
+PROGRESSION
+même classement que la fiche
+AD
+Athlète douleur_forte_recup_ok
+■ 6 bloqués ▼ 0 recule
+Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
+AD
+Athlète douleur_vigilance
+■ 6 bloqués ▼ 0 recule
+Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
+AG
+Athlète gene_poignet
+■ 6 bloqués ▼ 0 recule
+Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
+AD
+Athlète douleur_moderee
+■ 6 bloqués ▼ 0 recule
+Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
+AC
+Athlète charge_hausse_sans_ressenti
+■ 3 bloqués ▼ 0 recule
+Bloqués : Squat, Développé couché barre, Rowing barre
+AC
+Athlète coach_sans_propositions
+■ 0 bloqué ▼ 0 recule ★ 6 records
+Records : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
+AI
+Athlète intermediaire_plateau
+■ 5 bloqués ▼ 0 recule ★ 1 record
+Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +1 autre
+Record : Développé couché barre
+AS
+Athlète sous_fourchette
+■ 5 bloqués ▼ 0 recule
+Bloqués : Squat, Rowing barre, RDL barre, Développé militaire aux haltères · +1 autre
+AR
+Athlète reprise_apres_pause
+■ 6 bloqués ▼ 0 recule
+Bloqués : Squat, Développé couché barre, Rowing barre, RDL barre · +2 autres
+BIEN-ÊTRE
+dernier ressenti · comparé à sa normale
+AD
+Athlète douleur_forte_recup_ok
+Aujourd'hui · sommeil, fatigue et stress dans sa normale · gêne 4/5 (Épaule)
+à regarder
+AD
+Athlète douleur_vigilance
+Aujourd'hui · sommeil, fatigue et stress dans sa normale · gêne 4/5 (Épaule)
+à regarder
+AG
+Athlète gene_poignet
+Aujourd'hui · sommeil, fatigue et stress dans sa normale · gêne 4/5 (Poignet)
+à regarder
+AD
+Athlète douleur_moderee
+Aujourd'hui · sommeil, fatigue et stress dans sa normale · gêne 3/5 (Épaule)
+à regarder
+AC
+Athlète charge_hausse_sans_ressenti
+11/11 (il y a 1 j) · pas encore assez de ressentis pour sa normale
+normal
+AC
+Athlète coach_sans_propositions
+Aujourd'hui · pas encore assez de ressentis pour sa normale
+normal
+AI
+Athlète intermediaire_plateau
+Aujourd'hui · sommeil, fatigue et stress dans sa normale
+normal
+AS
+Athlète sous_fourchette
+Aujourd'hui · pas encore assez de ressentis pour sa normale
+normal
+AR
+Athlète reprise_apres_pause
+11/11 (il y a 1 j) · pas encore assez de ressentis pour sa normale
+normal
+Ressenti sur 7 j : 9/9
+VOLUME PAR MUSCLE
+4 semaines terminées
+ATHLÈTE PECS DOS QUADRI ISCHIO FESSIERS ÉPAULES BICEPS TRICEPS
+Athlète douleur_forte_recup_ok
+3,5/10
+6,1/10
+3,5/10
+2,6/10
+—
+2,6/8
+—
+—
+Athlète douleur_vigilance
+3,5/10
+6,1/10
+3,5/10
+2,6/10
+—
+2,6/8
+—
+—
+Athlète gene_poignet
+3,5/10
+6,1/10
+3,5/10
+2,6/10
+—
+2,6/8
+—
+—
+Athlète douleur_moderee
+3,5/10
+6,1/10
+3,5/10
+2,6/10
+—
+2,6/8
+—
+—
+Athlète charge_hausse_sans_ressenti
+4,5/10
+8,3/10
+4,5/10
+3,8/10
+—
+3,8/8
+—
+—
+Athlète intermediaire_plateau
+4,5/10
+9/10
+4,5/10
+4,5/10
+—
+4,5/8
+—
+—
+Athlète reprise_apres_pause
+3/10
+5,3/10
+3/10
+2,3/10
+—
+2,3/8
+—
+—
+Séries / semaine, moyenne des 4 dernières semaines terminées, vs le minimum de chacun. « — » = muscle absent de son programme.
+CHARGE D'ENTRAÎNEMENT
+séries / semaine · 6 sem.
+AD
+Athlète douleur_forte_recup_ok
+0 · 0 · 9 · 18 · 18 · 18
+pas de hausse brutale
+AD
+Athlète douleur_vigilance
+0 · 0 · 9 · 18 · 18 · 18
+pas de hausse brutale
+AG
+Athlète gene_poignet
+0 · 0 · 9 · 18 · 18 · 18
+pas de hausse brutale
+AD
+Athlète douleur_moderee
+0 · 0 · 9 · 18 · 18 · 18
+pas de hausse brutale
+AC
+Athlète charge_hausse_sans_ressenti
+18 · 18 · 18 · 18 · 18 · 45
++150 % vs 3 sem.
+AC
+Athlète coach_sans_propositions
+0 · 0 · 0 · 9 · 18 · 18
++100 % vs 3 sem.
+AI
+Athlète intermediaire_plateau
+9 · 27 · 27 · 27 · 27 · 27
+pas de hausse brutale
+AS
+Athlète sous_fourchette
+0 · 0 · 0 · 18 · 18 · 18
++50 % vs 3 sem.
+AR
+Athlète reprise_apres_pause
+18 · 18 · 18 · 18 · 18 · 9
+pas de hausse brutale
+Séries par semaine terminée (6 sem.). Hausse brutale = dernière semaine > +30 % de la moyenne des 3 précédentes.
+PROGRAMMES
+suivi
+AD
+Athlète douleur_forte_recup_ok
+2 séances / semaine · propositions Novalyz : au coach
+Ouvrir
+AD
+Athlète douleur_vigilance
+2 séances / semaine · propositions Novalyz : au coach
+Ouvrir
+AG
+Athlète gene_poignet
+2 séances / semaine · propositions Novalyz : au coach
+Ouvrir
+AD
+Athlète douleur_moderee
+2 séances / semaine · plan de la semaine 0/1 · propositions Novalyz : au coach
+Ouvrir
+AC
+Athlète charge_hausse_sans_ressenti
+2 séances / semaine · plan ✓ fait · propositions Novalyz : au coach
+Ouvrir
+AC
+Athlète coach_sans_propositions
+2 séances / semaine · plan de la semaine 0/3 · propositions Novalyz : au coach
+Ouvrir
+AI
+Athlète intermediaire_plateau
+2 séances / semaine · plan de la semaine 0/3 · propositions Novalyz : aussi à Athlète
+Ouvrir
+AS
+Athlète sous_fourchette
+2 séances / semaine · plan de la semaine 0/3 · propositions Novalyz : au coach
+Ouvrir
+AR
+Athlète reprise_apres_pause
+2 séances / semaine · plan de la semaine 0/3 · 10 j sans séance · propositions Novalyz : au coach
+Ouvrir
 == Coach ▸ Fiche athlète 2 ==
 Aperçu
 Analyses
@@ -766,7 +1074,7 @@ récup excellent · 1/2 séances cette semaine · dernière le 09/11/2026
 Sommeil : Bon
 Stress : Faible
 Fatigue : Faible
-Douleur : Forte (poignet)
+Douleur : Forte (Poignet)
 Ressenti aujourd'hui
 Contexte : saison normale · changer ›
 ▶ Saisir sa séance
