@@ -25,6 +25,12 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 18/11 : contexte IA : « RPE moyen 9.2 » (point décimal que l'IA pouvait recopier) → « 9,2 ».
 - 18/11 : cardio : « 11.6 km », « 1.7 km · 1.5 km/h » → virgule ; fenêtres « 4 sem. » (29 j → 28 j) et « Charge 7 j » (8 j → 7 j) alignées sur le serveur.
 - 19/11 (retour porteur) : plan : Tirage trapèze fait mardi dans « dos jambes » mais le plan renvoyait vers « dos jambe 2 » comme s'il restait à faire ; Quadriceps / Ischios renvoyaient vers « dos jambes », déjà faite → le plan dit « tenté mardi (50 kg × 8, RPE 9) » et indique la PROCHAINE séance pas encore faite (aucune s'il n'y en a plus) ; fiche coach : l'action s'affiche sur la séance où l'exercice a été réellement fait.
+- 20/11 (point 2, cas limites — profils `premiere_seance`, `exo_remplace`, `series_inegales`, `sans_rpe`, `poids_du_corps`) :
+  exercice remplacé dans le programme encore « bloqué » + « +3 séries » dessus → plus classé, exemple pris dans le programme actuel ;
+  échauffement (40 × 12 avant 80 × 6) compté dans la décision → séries < 60 % de la plus lourde écartées (« sous ta fourchette » enfin vu) ;
+  « 0 kg × 6 », « vise 0 kg × 13 », records « 0 kg » → « 6 reps au poids du corps » + conseil lest / variante au haut de la fourchette ;
+  pas inconnu : 0 sur la carte, 2,5 dans le plan (carte « garde charge » / plan « 77,5 kg ») → 2,5 partout ; « RPE 8.5-9 » → « 8,5-9 » ;
+  « RPE 9-10 gardées telles » avec une série à 8,5 → plage réelle.
 - 20/11 (banc, profils `deux_seances_jour` et `seance_libre`) : 2 séances le même jour → « Full body A ✓ · 18 séries » (nom de la 1re, chiffres de la journée), exercices de la 2e invisibles, « 2/2 séances » pour 3 faites ; séance libre rattachée → la séance qu'elle remplace re-proposée. Corrigé ; une séance = date + nom partout (objectif, régularité, moyennes, points, bilan, mail).
 - 20/11 (relance sur les 9 athlètes actifs, données du jour) : « Sous ta fourchette » à côté d'une cible inchangée (8 kg × 8) — seules les séries SOUS le minimum descendent, la série affichée (la plus lourde) restait identique sans que la phrase le dise → la phrase cite les séries concernées et leur cible (« sur 2 séries sur 3 : celles-ci passent à 7,5 kg × 8, ta série la plus lourde reste telle quelle »), sur la même série que la carte.
 - 20/11 : petit pas hors grille (8 kg → 6,75 kg sur une poulie au pas de 1,25) et différent d'un écran à l'autre (« au choix » : 1 pas → 77,5 ; carte : −5 % → 75) → un seul calcul, multiple du pas juste sous −5 %. Règle `cible.petit_pas`.
