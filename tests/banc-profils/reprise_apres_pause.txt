@@ -371,12 +371,11 @@ TONNAGE SOULEVÉ
 par semaine · ce mois-ci
 Tonnage
 5,5 t
-1/11
-cette sem.
+2/11
 Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
 EXERCICES EN PROGRÈS
 ?
-Sur cette semaine : 0 exercice en progrès sur 3 exercices réalisés (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 semaines sur la période.
+Sur la semaine du 02/11 : 0 exercice en progrès sur 3 exercices réalisés (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 semaines sur la période.
 CE QUI BOUGE
 Tonnage 28j vs 28j précédents
 ▼ -37%

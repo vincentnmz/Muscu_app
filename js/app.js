@@ -1910,6 +1910,7 @@ window.addEventListener('load', async () => {
     try {
       coach = JSON.parse(savedCoach);
       await ouvrirEspaceCoach();
+      try { setTimeout(function () { try { flushSeancesOffline(); } catch (e) {} }, 1500); } catch (e) {}   // 21/11 : séances saisies en présentiel restées en file
       // 05/11 : l'écran de démarrage (logo animé) reste jusqu'à la fin de l'analyse d'équipe (renderCoachSynthese) ; sécurité 12 s.
       return;
     } catch(e) { localStorage.removeItem('muscu_coach'); }
@@ -2673,6 +2674,7 @@ function seDeconnecterCoach() {
 }
 
 async function ouvrirEspaceCoach() {
+  try { setTimeout(function () { try { flushSeancesOffline(); } catch (e) {} }, 2500); } catch (e) {}   // 21/11 : file des séances saisies en présentiel
   try { if (coach) localStorage.setItem('nv_last_sport', String(coach.sport || 'muscu')); } catch (e) {}
   arreterChronoEtReinitSeance();
   coachBandeauTab = 'aujourdhui';   // le bandeau démarre toujours sur « Aujourd'hui »
@@ -6384,7 +6386,12 @@ async function coachSaisirSeance() {
   if (!bar) { bar = document.createElement('div'); bar.id = 'saisie-coach-bar'; document.body.appendChild(bar); }
   bar.innerHTML = '<div><b>Saisie pour ' + escapeHtml(a.nom || 'ton athlète') + '</b><span>Présentiel · demande-lui son RPE à chaque série</span></div><button onclick="coachQuitterSaisie()">Quitter</button>';
   try { peuplerSeancesProgramme(); } catch (e) {}
+  // 21/11 (test navigateur) : la date de séance n'était remplie qu'à l'ouverture de l'app ATHLÈTE → sur le téléphone d'un
+  // coach, elle restait vide et chaque série était refusée (« Remplis tous les champs ! »). Séance du jour par défaut.
+  try { var _diC = document.getElementById('inp-date'); if (_diC) _diC.value = _todayLocalStr(); } catch (e) {}
   switchTab('seance');
+  // 21/11 : séance de cet athlète commencée puis app fermée → reprise là où elle en était.
+  try { _brouillonRestaure = false; _restaurerBrouillon(); } catch (e) {}
 }
 function coachQuitterSaisie(apresEnvoi) {
   if (!_saisieCoach) return;
@@ -12509,7 +12516,9 @@ var _brouillonRestaure = false;
 var _seanceEnvoyee = false;
 
 function _brouillonKey() {
-  if (_saisieCoach) return null;   // saisie coach : pas de brouillon sur le téléphone du coach
+  // 21/11 : saisie coach en présentiel → brouillon propre au coach ET à l'athlète (avant : aucun → séance perdue si l'app
+  // du coach se fermait en pleine séance). Repris quand le coach rouvre la saisie pour cet athlète.
+  if (_saisieCoach) return (typeof coach !== 'undefined' && coach && athlete) ? 'muscu_brouillon_coach_' + coach.coach_id + '_' + athlete.athlete_id : null;
   return athlete ? 'muscu_brouillon_' + athlete.athlete_id : null;
 }
 
@@ -12599,7 +12608,7 @@ function _restaurerBrouillon() {
   // Aujourd'hui avec « Commencer ma séance » (→ « tout sera perdu, abandonner ? »). On rouvre la séance là où elle en était.
   try { _etatAutoChecked = true; } catch (e) {}
   try {
-    if (!_saisieCoach) {
+    {   // 21/11 : aussi en saisie coach (brouillon du coach repris quand il rouvre la saisie pour cet athlète)
       if (typeof switchTab === 'function') switchTab('seance');
       ouvrirSeancePage();
       if (typeof switchModeSeance === 'function') switchModeSeance('muscu');
@@ -14373,6 +14382,7 @@ async function _envoyerSeance(bilanEnFile) {
 
   // La séance n'est JAMAIS perdue : en cas d'échec/incertitude → file d'attente + resync auto.
   function _miseEnFile(msg, couleur) {
+    if (_saisieCoach && _coachMiseEnFile(lignes)) return;   // 21/11 : gardée sur le téléphone du coach, envoyée au retour du réseau
     if (_saisieCoach) { _validationEnCours = false; showToast('Envoi impossible pour le moment : réessaie (la séance n\'est pas perdue tant que tu ne quittes pas).', '#f59f00'); var b0 = document.getElementById('btn-valider'); if (b0) { b0.style.display = 'block'; b0.disabled = false; b0.textContent = 'Valider la séance'; } return; }
     if (!enregistrerSeanceOffline(lignes, bilanEnFile || null)) {
       _validationEnCours = false;
@@ -14523,7 +14533,7 @@ function _ecrireQueueOffline(q) {
 }
 // Athlète d'un élément de la file (les anciens éléments n'ont que les lignes : athlete_id en [4]).
 function _queueAthlete(item) { try { return String(item.athlete_id || (item.lignes && item.lignes[0] && item.lignes[0][4]) || ''); } catch (e) { return ''; } }
-function _nbSeancesEnAttente() { try { var id = athlete ? String(athlete.athlete_id) : ''; return id ? _lireQueueOffline().filter(function (it) { return _queueAthlete(it) === id && !it.bilan_seul; }).length : 0; } catch (e) { return 0; } }
+function _nbSeancesEnAttente() { try { var id = athlete ? String(athlete.athlete_id) : ''; return id ? _lireQueueOffline().filter(function (it) { return _queueAthlete(it) === id && !it.bilan_seul && !it.coach; }).length : 0; } catch (e) { return 0; } }
 function _construireLignesSeance() {
   const lignes = [];
   seance.forEach(exo => exo.series.forEach(s => {
@@ -14558,9 +14568,44 @@ async function _envoyerBilanFile(w) {
 }
 var _flushingOffline = false;        // verrou anti-concurrence (online + load + resume peuvent coïncider)
 var _lastPendingToast = 0;           // throttle de la notice « en attente »
+// 21/11 : séance saisie par le COACH en présentiel, non envoyée (réseau) → file du téléphone du coach, marquée « coach ».
+// Renvoyée par la session du coach (saisi_par_coach), jamais par celle d'un athlète ; même envoi_id → pas de doublon.
+function _coachMiseEnFile(lignes) {
+  try {
+    if (!coach || !_saisieCoach) return false;
+    var q = _lireQueueOffline(); if (!_seanceEnvoiId) _seanceEnvoiId = _nouvelEnvoiId();
+    q.push({ lignes: lignes, ts: Date.now(), envoi_id: _seanceEnvoiId, athlete_id: String(athlete.athlete_id), coach: String(coach.coach_id) });
+    if (!_ecrireQueueOffline(q)) return false;
+    var nom = _saisieCoach.a.nom || 'ton athlète';
+    _seanceEnvoyee = true; _validationEnCours = false;
+    coachQuitterSaisie(true);
+    showToast('Pas de réseau : la séance de ' + nom + ' est gardée sur ton téléphone et partira dès que le réseau revient.', '#f59f00');
+    return true;
+  } catch (e) { return false; }
+}
+async function _flushCoachOffline() {
+  if (!coach || _saisieCoach || !_nvzTok()) return;
+  var moi = String(coach.coach_id), q = _lireQueueOffline();
+  if (!q.some(function (it) { return it.coach === moi; })) return;
+  _flushingOffline = true;
+  try {
+    var restantes = [], n = 0;
+    for (const item of q) {
+      if (item.coach !== moi) { restantes.push(item); continue; }
+      try {
+        const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSeance', data: item.lignes, saisi_par_coach: moi, envoi_id: item.envoi_id || null }) });
+        let j = null; try { j = await res.json(); } catch (_) { j = null; }
+        if (res.ok && j && !j.erreur && !j.error) n++; else restantes.push(item);
+      } catch (e) { restantes.push(item); }
+    }
+    _ecrireQueueOffline(restantes);
+    if (n) showToast(n + ' séance' + (n > 1 ? 's' : '') + ' saisie' + (n > 1 ? 's' : '') + ' en présentiel synchronisée' + (n > 1 ? 's' : '') + ' !');
+  } finally { _flushingOffline = false; }
+}
 async function flushSeancesOffline() {
   if (!navigator.onLine) return;
   if (_flushingOffline) return;      // un flush est déjà en cours → on ne renvoie pas en double
+  if (!athlete && typeof coach !== 'undefined' && coach) return _flushCoachOffline();   // 21/11 : session coach
   // H1 : seulement pour l'athlète CONNECTÉ (avec une session) et seulement SES séances.
   if (!athlete || !_nvzTok()) return;
   const moi = String(athlete.athlete_id);
@@ -14571,7 +14616,7 @@ async function flushSeancesOffline() {
   try {
     const restantes = []; let seancesEnvoyees = 0, bilansEnvoyes = 0;
     for (const item of q) {
-      if (_queueAthlete(item) !== moi || sessionRefusee) { restantes.push(item); continue; }
+      if (_queueAthlete(item) !== moi || sessionRefusee || item.coach) { restantes.push(item); continue; }   // file du coach : renvoyée par sa session
       // 16/11 : bilan resté seul en file (séance déjà enregistrée, bilan échoué) → renvoyé seul ; gardé s'il échoue encore.
       if (item.bilan_seul) { const rb = await _envoyerBilanFile(item.wellness); if (rb === 'session') sessionRefusee = true; if (rb !== 'ok') restantes.push(item); else bilansEnvoyes++; continue; }
       try {
@@ -15307,8 +15352,10 @@ function _maTrendData(dict, agg) {
   if (w.gran === 'S') {
     for (i = 0; i < 7; i++) { d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate() + i); buckets.push([d, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)]); }
   } else if (w.gran === 'M') {
+    // 21/11 : vraies semaines lundi → dimanche (coupées au début / à la fin du mois). Avant : tranches de 7 jours depuis le
+    // 1er, et celle du jour était appelée « cette semaine » (le 7 janvier : 1er-7 janv. ≠ semaine du lundi 4).
     cur = new Date(w.start);
-    while (cur < w.end) { e = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7); if (e > w.end) e = new Date(w.end); buckets.push([new Date(cur), e]); cur = e; }
+    while (cur < w.end) { e = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + (7 - (cur.getDay() + 6) % 7)); if (e > w.end) e = new Date(w.end); buckets.push([new Date(cur), e]); cur = e; }
   } else {
     for (m = 0; m < 12; m++) buckets.push([new Date(w.start.getFullYear(), m, 1), new Date(w.start.getFullYear(), m + 1, 1)]);
   }
@@ -15780,7 +15827,7 @@ function _maChartBlock(label, pts, unit, color, fill, axisFirst, note, datesOver
   return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
     + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
     + _maArea(pts, color, fill)
-    + '<div class="ma-axis"><span>' + axisFirst + '</span><span>cette sem.</span></div>'
+    + '<div class="ma-axis"><span>' + ((datesOverride && datesOverride[0]) ? _maE(_maShortDate(datesOverride[0])) : axisFirst + '</span><span>cette sem.') + '</span></div>'   // 21/11 : 1 point = sa vraie date (pas « cette sem. » en dur)
     + (note ? _maCap(note) : '') + '</div>';
 }
 // Courbe hebdo nue (sans en-tête) : RICHE avec dates en bureau (_maLineRich),
@@ -16269,8 +16316,13 @@ function _maForceChart(data) {
   // en vue Mois avec 3 séances faites (une seule semaine dans le mois → un seul point). On donne le chiffre du point.
   if (pts.length < 2) {
     var bPl = { 'séance': 'séances', 'semaine': 'semaines', 'mois': 'mois' }[bNoun];
+    // 21/11 : « cette semaine / ce mois » seulement si le point est bien la période en cours (sinon sa date).
+    var _p0 = dts[0] || '', _auj = _ymdLocal(new Date()), _lun = (function () { var t = new Date(); t.setDate(t.getDate() - (t.getDay() + 6) % 7); return _ymdLocal(t); })();
+    var _enCours = bNoun === 'semaine' ? _p0 >= _lun : bNoun === 'mois' ? _p0.slice(0, 7) === _auj.slice(0, 7) : true;   // tranches = semaines lun → dim (coupées au mois)
+    var _MOISL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    var _surP = bNoun === 'séance' ? 'Sur ta séance' : _enCours ? (bNoun === 'semaine' ? 'Sur cette semaine' : 'Sur ce mois') : (bNoun === 'semaine' ? 'Sur la semaine du ' + _p0.slice(8, 10) + '/' + _p0.slice(5, 7) : 'Sur ' + _MOISL[+_p0.slice(5, 7) - 1]);
     return _maSec('Exercices en progrès', null, 'progres') + _maEmpty(pts.length === 1
-      ? (bNoun === 'séance' ? 'Sur ta séance' : (bNoun === 'semaine' ? 'Sur cette semaine' : 'Sur ce mois')) + ' : ' + Math.round(nUp) + ' exercice' + (nUp >= 2 ? 's' : '') + ' en progrès sur ' + Math.round(nF) + ' exercice' + (nF >= 2 ? 's' : '') + ' réalisé' + (nF >= 2 ? 's' : '') + ' (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 ' + bPl + ' sur la période.'
+      ? _surP + ' : ' + Math.round(nUp) + ' exercice' + (nUp >= 2 ? 's' : '') + ' en progrès sur ' + Math.round(nF) + ' exercice' + (nF >= 2 ? 's' : '') + ' réalisé' + (nF >= 2 ? 's' : '') + ' (chacun comparé à sa fois précédente). La courbe apparaît à partir de 2 ' + bPl + ' sur la période.'
       : 'Aucune séance sur la période.');
   }
   return _maSec('Exercices en progrès', 'par ' + bNoun + ' · ' + w.plabel, 'progres')

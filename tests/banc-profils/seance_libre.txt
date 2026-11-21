@@ -389,8 +389,8 @@ Tonnage
 t
 10,8
 8,9 t
-1/11
-8/11
+2/11
+9/11
 Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
 EXERCICES EN PROGRÈS
 ?
@@ -405,8 +405,8 @@ En progrès
 exos
 0
 2 exos
-1/11
-8/11
+2/11
+9/11
 Sur la période : 2 progrès sur 14 exercices réalisés (un exercice compte à chaque séance où tu le fais). Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».
 CE QUI BOUGE
 Régularité (séances/sem.)

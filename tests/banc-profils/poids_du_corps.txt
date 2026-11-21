@@ -378,8 +378,8 @@ En progrès
 exos
 2
 1 exos
-1/11
-8/11
+2/11
+9/11
 Sur la période : 3 progrès sur 12 exercices réalisés (un exercice compte à chaque séance où tu le fais). Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».
 CE QUI BOUGE
 Régularité (séances/sem.)

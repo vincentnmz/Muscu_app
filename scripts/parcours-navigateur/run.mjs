@@ -12,7 +12,8 @@ const ok = [], ko = []; const eq = (c, n, g) => { if (c) ok.push(n); else { ko.p
 const store = { athletes: [], coachs: [], performances: [], programme: [], exercices: [], indicateurs: [], bien_etre: [], objectif: [], planning: [], seances: [] };
 const S = serveur(store);
 store.exercices.push({ exercice_id: '1', exercice: 'Développé couché barre', muscle: 'Pectoraux', muscle_secondaire: 'Triceps', increment_kg: '2.5', materiel: 'Barre', disciplines: 'muscu', mesure: 'charge_reps', statut: 'valide' });
-store.athletes.push({ id: 'T1', login: '4321', nom: 'Test Parcours', password_hash: await S.hashSalted('motdepasse1', '4321'), sport: 'muscu', annees: 2, sexe: 'H', ddn: '1995-01-01', prefs: { onboarding_vu: true } });
+store.athletes.push({ id: 'T1', login: '4321', nom: 'Test Parcours', password_hash: await S.hashSalted('motdepasse1', '4321'), sport: 'muscu', annees: 2, sexe: 'H', ddn: '1995-01-01', prefs: { onboarding_vu: true }, coach_id: 'C1' });
+store.coachs.push({ coach_id: 'C1', login: '7777', nom: 'Coach Test', password_hash: await S.hashSalted('coachpass1', '7777'), sport: 'muscu' });
 store.programme.push({ athlete_id: 'T1', athlete_nom: 'Test Parcours', seance_id: 'Haut A', exercice: 'Développé couché barre', series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 120, jour: null });
 store.exercices.push({ exercice_id: '2', exercice: 'Leg extension', muscle: 'Quadriceps', muscle_secondaire: null, increment_kg: '2.5', materiel: 'Machine', disciplines: 'muscu', mesure: 'charge_reps', statut: 'valide' });
 store.programme.push({ athlete_id: 'T1', athlete_nom: 'Test Parcours', seance_id: 'Jambes 2', exercice: 'Leg extension', series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, jour: null });
@@ -33,20 +34,22 @@ const page = await ctx.newPage();
 const erreursJS = [], refus = []; let panne = null;   // { action, type: 'reseau' | 'refus' }
 page.on('pageerror', (e) => erreursJS.push(e.message));
 // Tout appel au serveur Novalyz → le VRAI handler en mémoire. Le reste d'Internet est coupé (polices, CDN…).
-await page.route('**/*', async (route) => {
+const routeurPour = (ip) => async (route) => {
   const u = route.request().url();
   if (u.startsWith(BASE)) return route.continue();
   if (/\/functions\/v1\/smooth-service/.test(u)) {
-    const rq = route.request(), init = { method: rq.method(), headers: rq.headers() }; if (rq.method() !== 'GET') init.body = rq.postData() || '';
+    const rq = route.request(), init = { method: rq.method(), headers: { ...rq.headers(), 'x-forwarded-for': ip } }; if (rq.method() !== 'GET') init.body = rq.postData() || '';   // 21/11 : une adresse par appareil simulé (athlète / coach), le limiteur compte par adresse
     const act = init.body ? (JSON.parse(init.body || '{}').action || '') : (new URL(u).searchParams.get('action') || '');
-    if (panne && panne.action === act) { if (panne.type === 'reseau') return route.abort('internetdisconnected'); return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ success: false, error: 'base indisponible' }) }); }
+    if (panne && panne.action === act && panne.type === 'perdue') { await S.handler(new Request(u, init)); panne.vu = (panne.vu || 0) + 1; return route.abort('connectionreset'); }   // écrit côté serveur, réponse perdue
+    if (panne && panne.action === act) { panne.vu = (panne.vu || 0) + 1; if (panne.type === 'reseau') return route.abort('internetdisconnected'); return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ success: false, error: 'base indisponible' }) }); }
     const r = await S.handler(new Request(u, init)); const body = await r.text();
     if (r.status >= 400) refus.push(r.status + ' ' + (init.body ? (JSON.parse(init.body || '{}').action || '') : (new URL(u).searchParams.get('action') || '')) + ' ' + body.slice(0, 120));
     if (DEBUG) console.log('  → ' + (init.body ? JSON.parse(init.body).action : new URL(u).searchParams.get('action')) + ' ' + r.status);
     return route.fulfill({ status: r.status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body });
   }
   return route.abort();
-});
+};
+await page.route('**/*', routeurPour('10.9.0.1'));
 // Annonces « Nouveau » (une fois par compte) : un vrai utilisateur les ferme → « Compris ».
 const fermerAnnonces = async () => { for (let i = 0; i < 3; i++) { const b = page.locator('button:visible:text-is("Compris")'); if (await b.count()) { await b.first().click(); await page.waitForTimeout(300); } else break; } };
 const etape = async (nom, fn) => { try { await fermerAnnonces(); await fn(); } catch (e) { eq(false, nom + ' — ' + e.message.split('\n')[0]); } if (SHOT) await page.screenshot({ path: '/tmp/parcours-' + nom.replace(/\W+/g, '-').slice(0, 30) + '.png' }); };
@@ -276,6 +279,97 @@ await etape('9 file hors-ligne : bilan garde', async () => {
   const be = store.bien_etre.filter((x) => x.athlete_id === 'T1');
   eq(q2.length === 0 && be.some((x) => Number(x.note) === 7 && String(x.ressenti_global) === '4'), 'File : au renvoi suivant le bilan arrive, la file est vide', { q2, notes: be.map((x) => [x.note, x.ressenti_global]) });
   eq(store.performances.length === avant + 1, 'File : aucune séance renvoyée en double', store.performances.length - avant);
+});
+// ── 21/11 (fiabilité de l'enregistrement) : scénarios réels par l'écran, du clic « Valider » à la base. ──
+const choisirRpe = async (pg, v) => { await pg.click('#rpe-chips >> text="' + v + '"', { timeout: 1500 }).catch(async () => { await pg.evaluate((v) => { const b = [...document.querySelectorAll('[onclick*="pickChip(\'rpe\'"]')].find((x) => x.getAttribute('onclick').includes("'" + v + "'")); if (b) b.click(); }, String(v)); }); };
+const seanceUI = async (charges) => {   // séance « Jambes 2 » saisie à l'écran puis validée
+  await page.evaluate(() => { try { fermerSeancePage(); } catch (e) {} switchTab('seance'); _enStart('Jambes 2'); }); await page.waitForTimeout(1500); await fermerAnnonces();
+  if (await page.locator('#btn-wellness-valider:visible').count()) { await page.click('#wq-sommeil .wq-chip[data-val="4"]').catch(() => {}); await page.click('#btn-wellness-valider').catch(() => {}); await page.waitForTimeout(800); }
+  await page.locator('#liste-exercices-seance').getByText('Leg extension').first().click();
+  await page.waitForSelector('#inp-charge', { state: 'visible', timeout: 10000 });
+  for (const c of charges) { await page.fill('#inp-charge', String(c)); await page.fill('#inp-reps', '10'); await choisirRpe(page, 8); await page.click('button[onclick="ajouterSerie()"]'); await page.waitForTimeout(350); if (await page.locator('button[onclick="skipTimer()"]:visible').count()) await page.click('button[onclick="skipTimer()"]'); }
+};
+const valider = async (double) => {
+  await page.click('button[onclick="validerSeance()"]');
+  if (double) await page.evaluate(() => { try { _validerFinSeance(); } catch (e) {} });   // 2e appui immédiat (doigt qui glisse, écran lent)
+  await page.click('button[onclick="_validerFinSeance()"]', { timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  if (await page.locator('button[onclick="_bilanSkip()"]:visible').count()) await page.click('button[onclick="_bilanSkip()"]');
+  await page.waitForTimeout(600);
+};
+const nLeg = (c) => store.performances.filter((x) => x.athlete_id === 'T1' && x.exercice === 'Leg extension' && Number(x.charge) === c).length;
+await etape('10 coupure reseau a la validation', async () => {
+  await seanceUI([41, 41]);
+  panne = { action: 'saveSeance', type: 'reseau' };
+  await valider(false);
+  const q = await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length);
+  eq(nLeg(41) === 0 && q === 1, 'Coupure au moment de « Valider » : rien en base, la séance est dans la file du téléphone', { base: nLeg(41), file: q });
+  panne = null;
+  await page.evaluate(() => flushSeancesOffline()); await page.waitForTimeout(800);
+  eq(nLeg(41) === 2 && await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length) === 0, 'Réseau revenu : la séance arrive (2 séries), la file est vide', nLeg(41));
+});
+await etape('11 reponse perdue apres ecriture', async () => {
+  await seanceUI([42, 42, 42]);
+  panne = { action: 'saveSeance', type: 'perdue' };
+  await valider(false);
+  eq(nLeg(42) === 3 && await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length) === 1, 'Réponse perdue : le serveur a écrit, le téléphone ne le sait pas → séance gardée en file', nLeg(42));
+  panne = null;
+  await page.evaluate(() => flushSeancesOffline()); await page.waitForTimeout(800);
+  eq(nLeg(42) === 3, 'Renvoi après réponse perdue : PAS de doublon (3 séries, pas 6)', nLeg(42));
+  eq(await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length) === 0, 'Renvoi après réponse perdue : « déjà reçu » → file vidée');
+});
+await etape('12 double appui sur valider', async () => {
+  await seanceUI([43, 43]);
+  await valider(true);
+  for (let i = 0; i < 20 && nLeg(43) < 2; i++) await page.waitForTimeout(200);
+  await page.waitForTimeout(800);
+  eq(nLeg(43) === 2, 'Double appui sur « Valider » : séance enregistrée UNE fois (2 séries)', nLeg(43));
+});
+await etape('13 file qui survit a la fermeture', async () => {
+  await seanceUI([44]);
+  panne = { action: 'saveSeance', type: 'reseau' };
+  await valider(false);
+  panne = null;
+  await page.reload({ waitUntil: 'domcontentloaded' });   // app fermée puis rouverte (réseau revenu)
+  await page.waitForFunction(() => typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique, null, { timeout: 20000 });
+  for (let i = 0; i < 30 && nLeg(44) < 1; i++) await page.waitForTimeout(300);
+  eq(nLeg(44) === 1, 'App fermée avec une séance en file : envoyée toute seule à la réouverture', nLeg(44));
+  eq(await page.evaluate(() => _lireQueueOffline().filter((x) => !x.bilan_seul).length) === 0, 'À la réouverture : file vidée après l\'envoi');
+});
+// ── 21/11 : saisie par le COACH en présentiel — app fermée en pleine saisie, puis coupure réseau à la validation. ──
+await etape('14 coach present : brouillon et file', async () => {
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctx2.addInitScript(() => { try { localStorage.setItem('nv_annonce_retour_v1', '1'); } catch (e) {} });
+  const pc = await ctx2.newPage(); pc.on('pageerror', (e) => erreursJS.push('coach: ' + e.message)); await pc.route('**/*', routeurPour('10.9.0.2'));
+  const pret = async () => { await pc.waitForFunction(() => typeof coach !== 'undefined' && coach && typeof athletesCoach !== 'undefined' && (athletesCoach || []).length, null, { timeout: 20000 }); await pc.waitForTimeout(1500); };
+  const ouvrirSaisie = async () => { await pc.evaluate(async () => { document.querySelectorAll('#onb-overlay,#nvt-ov,#annonce-retour').forEach((e) => e.remove()); coachAthleteCourant = athletesCoach.find((a) => String(a.athlete_id) === 'T1'); coachAthleteData = null; await coachSaisirSeance(); }); await pc.waitForTimeout(1500); };
+  await pc.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+  await pc.evaluate(() => { document.getElementById('inp-login-coach').value = '7777'; document.getElementById('inp-password-coach').value = 'coachpass1'; seConnecterCoach(); });
+  await pret(); await ouvrirSaisie();
+  await pc.evaluate(() => _enStart('Haut A')); await pc.waitForTimeout(1500);
+  await pc.locator('#liste-exercices-seance').getByText('Développé couché barre').first().click();
+  await pc.waitForSelector('#inp-charge', { state: 'visible', timeout: 10000 });
+  for (let i = 0; i < 2; i++) { await pc.fill('#inp-charge', '33'); await pc.fill('#inp-reps', '10'); await choisirRpe(pc, 7); await pc.click('button[onclick="ajouterSerie()"]'); await pc.waitForTimeout(350); if (await pc.locator('button[onclick="skipTimer()"]:visible').count()) await pc.click('button[onclick="skipTimer()"]'); }
+  // App du coach fermée en pleine saisie → rouverte → saisie pour le même athlète : séance reprise.
+  await pc.reload({ waitUntil: 'domcontentloaded' }); await pret(); await ouvrirSaisie();
+  const rep = await pc.evaluate(() => ({ n: _nbSeriesSaisies(), coach: !!_saisieCoach, ath: athlete && athlete.athlete_id }));
+  eq(rep.n === 2 && rep.coach && rep.ath === 'T1', 'Coach : app fermée en pleine saisie présentielle → séance de l\'athlète reprise (2 séries)', rep);
+  eq(await pc.evaluate(() => localStorage.getItem('muscu_brouillon_T1')) === null, 'Coach : le brouillon est au nom du coach (pas celui de l\'athlète sur ce téléphone)');
+  // Coupure au moment de valider → file du coach ; rien perdu, rien en double.
+  const n33 = () => store.performances.filter((x) => x.athlete_id === 'T1' && Number(x.charge) === 33).length;
+  panne = { action: 'saveSeance', type: 'reseau' };
+  await pc.click('button[onclick="validerSeance()"]'); await pc.click('button[onclick="_validerFinSeance()"]', { timeout: 10000 }).catch(() => {}); await pc.waitForTimeout(1500);
+  const q = await pc.evaluate(() => _lireQueueOffline());
+  eq(n33() === 0 && q.length === 1 && q[0].coach === 'C1' && q[0].athlete_id === 'T1', 'Coach : coupure à la validation → séance gardée dans la file du téléphone du coach', { base: n33(), q: q.map((x) => [x.coach, x.athlete_id]) });
+  eq(await pc.evaluate(() => !_saisieCoach), 'Coach : la saisie se ferme normalement (message « gardée sur ton téléphone »)');
+  panne = null;
+  await pc.reload({ waitUntil: 'domcontentloaded' }); await pret();
+  for (let i = 0; i < 30 && n33() < 2; i++) await pc.waitForTimeout(300);
+  eq(n33() === 2, 'Coach : réseau revenu → séance envoyée à la réouverture (2 séries)', n33());
+  eq(await pc.evaluate(() => _lireQueueOffline().length) === 0, 'Coach : file vidée après l\'envoi');
+  await pc.evaluate(() => flushSeancesOffline()); await pc.waitForTimeout(600);
+  eq(n33() === 2, 'Coach : pas de doublon au renvoi', n33());
+  await ctx2.close();
 });
 console.log('-'.repeat(70));
 console.log('parcours-navigateur : ' + ok.length + ' OK / ' + ko.length + ' KO' + (erreursJS.length ? ' · erreurs JS : ' + erreursJS.slice(0, 3).join(' | ') : '') + (refus.length ? ' · refus serveur : ' + refus.slice(0, 3).join(' | ') : ''));
