@@ -16,17 +16,17 @@ Stress aucun (1/5)
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
 DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (12/11)
 ⏸
-Squat bloqué à 60 kg × 8 depuis 3 séances
+Squat bloqué à 60 kg × 8 depuis 3 séances (atteint le 06/11)
 Pourquoi : Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
 Voir le détail →
 ⏸
-Développé couché barre bloqué à 70 kg × 8 depuis 3 séances
+Développé couché barre bloqué à 70 kg × 8 depuis 3 séances (atteint le 06/11)
 Pourquoi : Volume pectoraux : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
 Voir le détail →
 ⏸
-Rowing barre bloqué à 80 kg × 8 depuis 3 séances
+Rowing barre bloqué à 80 kg × 8 depuis 3 séances (atteint le 06/11)
 Pourquoi : Volume dos : 8,3 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
 Voir le détail →
@@ -94,7 +94,7 @@ CE QUE NOVALYZ LIT
 Volume stable sur 4 semaines (+178%).
 Régularité au rendez-vous (3/2 séances cette semaine).
 ⏸
-Bloqué : Squat 60 × 8 depuis 3 séances · Développé couché barre 70 × 8 depuis 3 séances · +1 autre
+Bloqué : Squat 60 × 8 depuis 3 séances (atteint le 06/11) · Développé couché barre 70 × 8 depuis 3 séances (atteint le 06/11) · +1 autre
 Pourquoi (Squat) : Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8,4 (≈ 2 reps en réserve) sur les 3 dernières séances
 Levier : ta charge est en hausse et ton ressenti n'est pas assez renseigné pour savoir si tu l'encaisses : garde tes séries et ta charge prévues, sans aller à l'échec, et renseigne ton état du jour.
 Voir le détail →
@@ -338,7 +338,7 @@ Sur cette semaine, ta charge d'entraînement vient uniquement de la musculation 
 Récupération : Excellent · disponibilité Prêt.
 Fiabilité : faible · 1 sem. · bien-être 1 relevé.
 RECO
-Ajoute 1 à 2 séances de cardio par semaine pour ta base d'endurance, sans alourdir ta charge totale.
+Ta charge est en hausse : n'ajoute pas de séance pour l'instant (ni cardio ni muscu) ; garde ce qui est prévu et renseigne ton état du jour.
 Semaine
 Mois
 Année

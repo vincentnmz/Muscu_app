@@ -373,11 +373,17 @@ function verifierTexte(R, ad, txt, out) {
     if (rmin != null && (f.rmin !== rmin || f.rmax !== rmax)) return 'fourchette ' + f.rmin + '-' + f.rmax;
     return ser.filter((x) => num(x.reps) < f.rmin).length * 2 > ser.length ? null : 'la majorité des séries n\'est pas sous ' + f.rmin + ' reps';
   };
-  const bloque = (exo, c, r, n) => {
+  // ref (21/11) : « (atteint le jj/mm) » écrit à l'écran (undefined = phrase sans référence possible, ex. mail / IA) ;
+  // attendu = 1re fois où ce meilleur est atteint dans le plateau, citée seulement si plus ancienne que la dernière séance.
+  const bloque = (exo, c, r, n, ref) => {
     const P = R.sessions[exo] || []; if (P.length < n) return 'seulement ' + P.length + ' séances';
     const W = P.slice(0, n); if (W.some((p) => num(p.best.charge) !== c)) return 'les ' + n + ' dernières séances ne sont pas toutes à ' + c + ' kg';
     const M = Math.max(...W.map((p) => num(p.best.reps))); if (M !== r) return 'meilleur nombre de reps sur ces séances : ' + M;
-    return num(W[n - 1].best.reps) === r ? null : 'la plus ancienne des ' + n + ' séances n\'atteint pas ' + r + ' reps (le plateau est plus court)';
+    if (num(W[n - 1].best.reps) !== r) return 'la plus ancienne des ' + n + ' séances n\'atteint pas ' + r + ' reps (le plateau est plus court)';
+    if (ref !== undefined) { let iR = 0; for (let k = n - 1; k >= 0; k--) if (num(W[k].best.reps) === r) { iR = k; break; }
+      const att = iR > 0 ? W[iR].d.slice(8, 10) + '/' + W[iR].d.slice(5, 7) : '';
+      if ((ref || '') !== att) return att ? 'séance de référence : ' + r + ' reps atteintes le ' + att + ' (à citer)' : 'référence « ' + ref + ' » alors que la dernière séance est la référence'; }
+    return null;
   };
   const progres = (exo, txt) => {   // txt = « a → b reps » | « C0 × R0 → C1 × R1 » | « N séries à R reps au lieu de M » | « même niveau à RPE x au lieu de y »
     const P = R.sessions[exo] || []; if (P.length < 2) return 'moins de 2 séances';
@@ -395,14 +401,15 @@ function verifierTexte(R, ad, txt, out) {
       if (exoSec) {
         if ((m = l.match(/^Record : ([\d,]+) kg × (\d+) le (\d{2}\/\d{2}\/\d{4})$/))) ctrl('classement.record', nom, l, !record(exoSec, kgN(m[1]), +m[2], iso(m[3])), record(exoSec, kgN(m[1]), +m[2], iso(m[3])));
         if ((m = l.match(/^Sous ta fourchette (\d+)-(\d+) : ([\d,]+) kg × (\d+) à RPE ([\d,]+)$/))) { const x = sous(exoSec, kgN(m[3]), +m[4], num(m[5]), +m[1], +m[2]); ctrl('classement.sous', nom, l, !x, x); }
-        if ((m = l.match(/^Bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances$/))) { const x = bloque(exoSec, kgN(m[1]), +m[2], +m[3]); ctrl('classement.bloque', nom, l, !x, x); }
+        if ((m = l.match(/^Bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/))) { const x = bloque(exoSec, kgN(m[1]), +m[2], +m[3], m[4] || ''); ctrl('classement.bloque', nom, l, !x, x); }
         if ((m = l.match(/^En progrès : (.+)$/)) && !/,/.test(m[1].replace(/\d,\d/g, ''))) { const x = progres(exoSec, m[1]); ctrl('classement.progres', nom, l, !x, x); }
         return;
       }
       if ((m = l.match(/^Records? (?::|—) (.+?)(?: \([^)]*\))?$/))) m[1].split(/ · |, (?=[A-ZÉÈÀ])/).forEach((it) => { it = it.replace(/ \+\d+( autres?)?$/, ''); const e = exoDe(it.trim()); const k = e && it.trim().slice(e.length).match(/^ ([\d,]+)(?: kg)? × (\d+)$/); if (k) { const x = record(e, kgN(k[1]), +k[2]); ctrl('classement.record', nom, e + ' ' + it.trim().slice(e.length), !x, x); } });
       if ((m = l.match(/^Progresse (?::|—) (.+?)(?: \((?:charge|reps)[^)]*\))?$/))) m[1].split(/ · |, (?=[A-ZÉÈÀ])/).forEach((it) => { it = it.replace(/ \+\d+( autres?)?$/, '').replace(/(\d)→(\d)/g, '$1 → $2'); const e = exoDe(it.trim()); if (e) { const x = progres(e, it.trim().slice(e.length).trim()); ctrl('classement.progres', nom, it.trim(), !x, x); } });
       if ((m = l.match(/^Sous ta fourchette : (.+) \(RPE ([\d,]+)\)$/))) { const e = exoDe(m[1]); const k = e && m[1].slice(e.length).match(/^ ([\d,]+) × (\d+)$/); if (k) { const x = sous(e, kgN(k[1]), +k[2], num(m[2]), null, null); ctrl('classement.sous', nom, l, !x, x); } }
-      if ((m = l.match(/^Bloqué : (.+) ([\d,]+) × (\d+) depuis (\d+) séances$/))) { const e = exoDe(m[1]); if (e) { const x = bloque(e, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
+      // 21/11 : « Bloqué : A C × R depuis N séances (atteint le jj/mm) · B … · +1 autre » — chaque élément contrôlé (avant : une seule).
+      if (/^Bloqué : /.test(l)) l.slice(9).split(' · ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+) × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/); if (!k) return; const e = exoDe(k[1]); if (e) { const x = bloque(e, kgN(k[2]), +k[3], +k[4], k[5] || ''); ctrl('classement.bloque', nom, it, !x, x); } });
     });
   });
   // B8. Carte « Charge & fraîcheur » : %, forme de fond, fatigue récente, ACWR, unité annoncée.
@@ -502,7 +509,7 @@ function verifierTexte(R, ad, txt, out) {
     let cur = null;
     L.forEach((l0) => { const l = l0.trim(); let m;
       { const pq = l.match(/^Pourquoi \(([^)]+)\)/); if (pq && EXOS.includes(pq[1].trim())) cur = pq[1].trim(); else if (!/^(Pourquoi|Levier)/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; } }
-      if ((m = l.match(/^(.+) bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4]); ctrl('classement.bloque', nom, l, !x, x); } }
+      if ((m = l.match(/^(.+) bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4], m[5] || ''); ctrl('classement.bloque', nom, l, !x, x); } }
       if (!cur || !/^(Pourquoi|Levier)|Effort en hausse à/.test(l)) return;
       if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/))) { const b = R.rpeHausse[cur]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' · ' + cur + ' : « ' + m[0] + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
       if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/))) { const P = R.sessions[cur] || []; if (P.length) { const c0 = num(P[0].best.charge), tr = P[0].series.filter((x) => num(x.charge) === c0 && num(x.repos) > 0); if (tr.length) { const r15 = Math.round(tr.reduce((a, x) => a + num(x.repos), 0) / tr.length / 15) * 15, rtx = (n) => { const mm = Math.floor(n / 60), r = n % 60; return mm ? mm + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; }; if (m[1] !== rtx(r15) || m[2] !== rtx(r15 + 30)) E('levier.repos', nom + ' · ' + cur + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(r15)); } } }

@@ -1413,7 +1413,7 @@ Tendance charge / forme : pas assez de recul sur cette période — à regarder 
 Athlète : disponibilité Prêt · récup Excellent.
 Fiabilité de l'analyse : faible · 1 sem. de données · bien-être 1 relevé.
 RECO · POUR LE COACH
-Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d'endurance + meilleure récup globale) sans alourdir la charge totale.
+Charge en hausse sans ressenti assez renseigné pour savoir s'il l'encaisse : n'ajoute pas de séance pour l'instant (ni cardio ni muscu), garde ce qui est prévu.
 Semaine
 Mois
 Année
