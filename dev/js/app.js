@@ -16402,12 +16402,14 @@ var _LEVIERS_BLOCAGE = 'à titre indicatif : un repos un peu plus long (+30 s), 
 // 2-3 min, léger 1-2 min — Schoenfeld et al. 2016 (J Strength Cond Res 30(7):1805-1812 :
 // 3 min > 1 min pour force et hypertrophie chez des pratiquants entraînés). Non classé → pas
 // de cible, on part du repos réel (+30 s).
-function _fmtRepos(sec) { sec = Math.round(sec / 15) * 15; if (sec < 60) return sec + ' s'; var m = Math.floor(sec / 60), r = sec % 60; return m + ' min' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); }
+function _fmtRepos(sec) { sec = Math.round(sec / 5) * 5;   // 21/11 : arrondi 5 s, comme Évolution
+ if (sec < 60) return sec + ' s'; var m = Math.floor(sec / 60), r = sec % 60; return m + ' min' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); }
 function _reposExo(data, exo) {
   try {
     var pts = ((data && data.historique && data.historique.progression_par_exo) || {})[exo] || [];
     var ser = (pts[0] && Array.isArray(pts[0].series)) ? pts[0].series : [];
-    var v = ser.map(function (x) { return Number(x && x.repos); }).filter(function (n) { return !isNaN(n) && n > 0; });
+    var cMax = ser.reduce(function (m, x) { return Math.max(m, Number(x && x.charge) || 0); }, 0);   // 21/11 : séries de travail (charge max), comme Évolution
+    var v = ser.filter(function (x) { return (Number(x && x.charge) || 0) === cMax; }).map(function (x) { return Number(x && x.repos); }).filter(function (n) { return !isNaN(n) && n > 0; });
     return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null;
   } catch (e) { return null; }
 }
