@@ -131,6 +131,8 @@ try {
     await pg.evaluate(async () => { coach = { coach_id: 'C1', login: '0808', nom: 'Coach Banc', role: 'coach', sport: 'muscu' }; await ouvrirEspaceCoach(); });
     for (let i = 0; i < 20; i++) { await pg.clock.runFor(1000); if (await pg.evaluate(() => { const t = (document.getElementById('view-coach') || {}).innerText || ''; return /athlètes suivis/.test(t) && !/Analyse des athlètes…/.test(t); })) break; }
     let txt = '== Coach ▸ Accueil ==\n' + await lire('view-coach');
+    // 21/11 : onglet Analyses équipe.
+    txt += '\n\n== Coach ▸ Analyses équipe ==\n' + await pg.evaluate(() => { try { coachBandeauGo('analyses'); } catch (e) {} const el = document.getElementById('coach-sec-analyses'); if (!el) return '(absent)'; for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; } const t = el.innerText; try { coachBandeauGo('aujourdhui'); } catch (e) {} return t; });
     // Accueil coach (14/11) : la ligne « Entraînement à regarder » de chaque athlète est contrôlée contre SON moteur.
     for (const aid of E.athleteIds) {
       const ligne = await pg.evaluate((d) => { try { const L = _coachEntrLigne(d); return L ? L.txt.replace(/<[^>]+>/g, '') : ''; } catch (e) { return 'ERREUR ' + e.message; } }, D.fiches[aid]);
