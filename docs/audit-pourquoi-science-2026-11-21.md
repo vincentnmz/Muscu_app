@@ -43,3 +43,5 @@ quand il affirme un lien de cause, sinon être présenté comme une logique d'en
 - Schoenfeld, Grgic, Krieger 2019 / Schoenfeld 2016 — fréquence : https://pubmed.ncbi.nlm.nih.gov/27102172/
 - Baz-Valle et al. 2022 : https://pmc.ncbi.nlm.nih.gov/articles/PMC8884877
 - Pelland et al. 2024 (préprint) : https://sportrxiv.org/index.php/server/preprint/view/460
+
+## Décision porteur (21/11) : Q1 à Q5 acceptées et codées.

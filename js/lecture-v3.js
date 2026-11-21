@@ -270,13 +270,15 @@ function _lv3Diag(data, exo, kind, nowT) {
         cause = 'volume'; levier = (nom && V.freq > 0 && V.freq < 1.5 ? 'au choix — +' : '+') + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo + ' (' + _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem)' + (nom && V.freq > 0 && V.freq < 1.5 ? ', ou répartis ' + _maE(String(nom).toLowerCase()) + ' sur 2 séances dans la semaine (' + _lv3Fmt(V.freq) + '×/sem aujourd\'hui)' : '') + '.';
         action = { exo: exo, type: 'series', muscle: muscle, min: V.min, add: add, parSem: V.parSem, recul: V.recul, titre: (V.prio ? '★ ' : '') + (muscle || exo) + ' : +' + add + ' série' + (add > 1 ? 's' : '') + ' de ' + exo, raison: _lv3Fmt(V.parSem) + ' → ' + V.min + ' séries/sem, ' + (V.prio ? 'ta zone prioritaire.' : 'ton minimum.') };
       }
-    } else checks.push({ s: 'ok', t: 'Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem — pas en cause' });
+    } else checks.push({ s: 'ok', t: 'Volume ' + _maE(nom) + ' : ' + _lv3Fmt(V.parSem) + ' séries/sem — rien d\'anormal' });
   }
   // 4) Effort en hausse à charge égale.
-  var ra = rpeMoy(p0), rb = rpeMoy(p1);
+  var ra = rpeMoy(p0), rb = rpeMoy(p1), _rdMoy = false;
   // Même mesure que le moteur (RPE des 2 dernières séances vs les 2 d'avant, charge égale ou plus basse).
-  try { var _rd = ((data.moteur && data.moteur.charge_ressenti && data.moteur.charge_ressenti.rpe_details) || []).filter(function (x) { return String(x.exo).trim() === String(exo).trim(); })[0]; if (_rd) { ra = _lv3Num(_rd.rpeApres); rb = _lv3Num(_rd.rpeAvant); c0 = _lv3Num(_rd.charge) || c0; p1 = { charge: c0 }; } } catch (_) {}
-  if (_lv3Num(p1.charge) === c0 && ra != null && rb != null && ra >= rb + 0.5) {
+  try { var _rd = ((data.moteur && data.moteur.charge_ressenti && data.moteur.charge_ressenti.rpe_details) || []).filter(function (x) { return String(x.exo).trim() === String(exo).trim(); })[0]; if (_rd) { _rdMoy = true; ra = _lv3Num(_rd.rpeApres); rb = _lv3Num(_rd.rpeAvant); c0 = _lv3Num(_rd.charge) || c0; p1 = { charge: c0 }; } } catch (_) {}
+  // 21/11 (Q1, porteur) : l'estimation de la réserve se trompe d'≈ 1 rep (Halperin 2022) → +1 point exigé quand on compare
+  // une seule séance à la précédente ; +0,5 quand c'est la moyenne de 2 séances contre 2 (moteur : le bruit est moyenné).
+  if (_lv3Num(p1.charge) === c0 && ra != null && rb != null && ra >= rb + (_rdMoy ? 0.5 : 1)) {
     checks.push({ s: 'ko', t: 'Effort en hausse à ' + kg(c0) + ' kg : RPE ' + _lv3Fmt(rb) + ' → ' + _lv3Fmt(ra) });
     if (!cause) {
       cause = 'effort'; levier = 'au choix — garde ' + kg(c0) + ' kg et vise RPE 8' + (_optRepos ? ' ; ou ' + _optRepos : '') + ' ; si le RPE monte encore la prochaine fois, allège un peu la charge ou retire une série cette semaine.';
@@ -285,10 +287,13 @@ function _lv3Diag(data, exo, kind, nowT) {
   }
   // 5) Fréquence.
   if (V && V.freq > 0) {
-    if (V.freq <= 1) { checks.push({ s: 'ko', t: 'Travaillé ' + _lv3Fmt(V.freq) + '×/sem' }); if (!cause) { cause = 'frequence'; levier = 'ajoute 1 série de ' + exo + ' ; si ta séance est déjà longue, répartis ' + _maE(nom) + ' sur 2 séances dans la semaine pour placer ces séries.'; } }   // 21/11 : à volume égal, la fréquence seule ne change pas l'hypertrophie (Schoenfeld 2019) — c'est un moyen d'ajouter des séries
+    // 21/11 (Q2) : à volume égal, la fréquence seule ne change pas l'hypertrophie (Schoenfeld 2019) → « 1×/sem » n'est une cause
+    // que si le volume du muscle est AUSSI sous le minimum (répartir sert alors à placer des séries).
+    if (V.freq <= 1 && !(V.min && V.parSem < V.min)) checks.push({ s: 'ok', t: 'Fréquence ' + _maE(String(nom || '').toLowerCase()) + ' : ' + _lv3Fmt(V.freq) + '×/sem — ton volume est atteint, rien d\'anormal' });
+    else if (V.freq <= 1) { checks.push({ s: 'ko', t: 'Travaillé ' + _lv3Fmt(V.freq) + '×/sem' }); if (!cause) { cause = 'frequence'; levier = 'ajoute 1 série de ' + exo + ' ; si ta séance est déjà longue, répartis ' + _maE(nom) + ' sur 2 séances dans la semaine pour placer ces séries.'; } }   // 21/11 : à volume égal, la fréquence seule ne change pas l'hypertrophie (Schoenfeld 2019) — c'est un moyen d'ajouter des séries
     // 18/11 (audit Vincent) : on nomme le muscle et on dit que le secondaire compte (spm), sinon « Trapèze 2×/sem » ici
     // contredisait « 0,4×/sem » dans Tendances (qui ne compte que le muscle principal).
-    else checks.push({ s: 'ok', t: 'Fréquence ' + _maE(String(nom || '').toLowerCase()) + ' : ' + _lv3Fmt(V.freq) + '×/sem (y compris en muscle secondaire) — pas en cause' });
+    else checks.push({ s: 'ok', t: 'Fréquence ' + _maE(String(nom || '').toLowerCase()) + ' : ' + _lv3Fmt(V.freq) + '×/sem (y compris en muscle secondaire) — rien d\'anormal' });
   }
   // 6) Bas de fourchette (bloqué sur le minimum de reps) : levier reps avant la charge.
   // (06/11, validé) Plus de « +1 rep » sur un exercice BLOQUÉ : il bloque déjà, on cherche la cause (étapes 6-10).
@@ -303,10 +308,12 @@ function _lv3Diag(data, exo, kind, nowT) {
     var _rt = (typeof _reposTxt === 'function') ? _reposTxt : function (x) { return Math.round(x) + ' s'; };
     // 7) Repos raccourci à la dernière séance (≥ 30 s de moins que les précédentes).
     var rep0 = moyK(trav(p0), 'repos'), repAv = moyK([].concat.apply([], pts.slice(1, 4).map(trav)), 'repos');
-    if (rep0 != null && repAv != null && repAv - rep0 >= 30) {
+    // 21/11 (Q3) : « repos raccourci » seulement si le nouveau repos passe sous le seuil utile (même règle que l'option repos :
+    // 2 min poly-articulaire, 90 s isolation / non classé). 3 min 30 → 3 min n'a pas d'effet attendu.
+    if (rep0 != null && repAv != null && repAv - rep0 >= 30 && rep0 < _seuilR) {
       checks.push({ s: 'ko', t: '<b>Repos raccourci</b> : ' + _rt(_r5(repAv)) + ' → ' + _rt(_r5(rep0)) + ' à la dernière séance' });
       if (!cause) { cause = 'repos'; levier = 'reviens à ' + _rt(_r5(repAv)) + ' de repos entre tes séries (' + _rt(_r5(rep0)) + ' la dernière fois).'; }
-    } else if (rep0 != null) checks.push({ s: 'ok', t: 'Repos : ' + _rt(_r5(rep0)) + ', stable — pas en cause' });
+    } else if (rep0 != null) checks.push({ s: 'ok', t: 'Repos : ' + _rt(_r5(rep0)) + ', stable, rien d\'anormal' });
     // 8) Effort laissé en réserve : séries de travail arrêtées à RPE ≤ 8 (≈ 2 reps ou plus en réserve).
     rpeT = moyK([].concat.apply([], recentes.map(trav)), 'rpe');
     // 16/11 (retour porteur) : pas de « réserve d'effort » quand l'effort MONTE déjà (cause « effort », signe de fatigue)
@@ -314,10 +321,10 @@ function _lv3Diag(data, exo, kind, nowT) {
     var _rpe0 = moyK(trav(p0), 'rpe');
     if (rpeT != null && rpeT < 8.5 && cause !== 'effort' && !(_rpe0 != null && _rpe0 >= 9)) {
       var res = Math.round(10 - rpeT);
-      checks.push({ s: 'ko', t: '<b>Séries arrêtées à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '</b> (≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve) sur les ' + recentes.length + ' dernières séances' });
+      checks.push({ s: 'ko', t: '<b>Séries arrêtées à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + '</b> (≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve, souvent plus : on sous-estime sa réserve) sur les ' + recentes.length + ' dernières séances' });
       if (!cause) { cause = 'reserve'; levier = 'le blocage peut venir de l\'arrêt de tes séries : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve. Au choix : sur ta dernière série, va jusqu\'à RPE 9 (≈ 1 rep en réserve)' + (c0 > 0 ? ' à ' + kg(c0) + ' kg, ou ajoute 1 série à ' + kg(c0) + ' kg.' : ', ou ajoute 1 série.') + (c0 <= 0 && rmax && r0 >= rmax ? ' Tu es au haut de ta fourchette (' + rmax + ' reps) au poids du corps : pour continuer à progresser, ajoute du lest ou passe à une variante plus difficile.' : ''); }
       else levier += ' Et sur ta dernière série, va jusqu\'à RPE 9 : tu t\'arrêtes avec ≈ ' + res + ' rep' + (res > 1 ? 's' : '') + ' en réserve.';
-    } else if (rpeT != null && cause !== 'effort') checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail — tu pousses déjà, pas en cause' });
+    } else if (rpeT != null && cause !== 'effort') checks.push({ s: 'ok', t: 'Effort : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ' sur tes séries de travail : tu indiques pousser tes séries, rien d\'anormal' });
     // 9) Marche de charge trop grosse pour cet exercice (ex. 7,5 → 10 kg = +33 %).
     // 8) (validé 06/11) Gêne ≥ 3/5 signalée sur la zone du muscle pendant le plateau → cause POSSIBLE.
     try {
@@ -405,7 +412,7 @@ function _lv3Diag(data, exo, kind, nowT) {
   var _volTxt = (V && V.parSem != null && V.parSem < 20 && nom) ? '+2 séries de ' + exo + ' par semaine (' + _maE(String(nom).toLowerCase()) + ' : ' + _lv3Fmt(V.parSem) + ' → ' + _lv3Fmt(Math.round((V.parSem + 2) * 10) / 10) + ' séries/sem)' : '';
   var _ordreTxt = 'si ce n\'est pas déjà le cas, fais ' + exo + ' en début de séance pendant 3-4 semaines';
   if (!cause) levier = niv === 'debutant' ? 'aucune cause visible dans tes données — à ton niveau, garde cet exercice et ta régularité avant de changer quoi que ce soit, en visant RPE 8-9.'
-    : 'aucune cause visible dans tes données' + (kind === 'bloque' && typeof rpeT !== 'undefined' && rpeT != null && rpeT >= 8.5 ? ' (repos stable, tu pousses déjà tes séries : RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ')' : '')
+    : 'aucune cause visible dans tes données' + (kind === 'bloque' && typeof rpeT !== 'undefined' && rpeT != null && rpeT >= 8.5 ? ' (repos stable, tu indiques pousser tes séries à RPE ' + _lv3Fmt(Math.round(rpeT * 10) / 10) + ')' : '')
       + '. Au choix : ' + (_volTxt ? _volTxt + ' ; ou ' : '') + _ordreTxt
       + ((niv === 'avance' || niv === 'expert') ? ' ; ou, à tester, descends la charge en 2-3 s et remonte vite ; ou passe 4 semaines sur une variante proche' : '') + '.';
   // 21/11 : « RPE 8-9 Option à tester » (point manquant) → « RPE 8-9. Option à tester ».

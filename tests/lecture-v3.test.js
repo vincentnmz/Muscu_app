@@ -55,7 +55,9 @@ eq(/en début de séance/.test(dNiv('intermediaire').levier) && !/descends la ch
     dd.historique.progression_par_exo['Rowing'] = [P('2026-10-29', reposDer), P('2026-10-22', 120), P('2026-10-15', 120), P('2026-10-08', 120)];
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' }); return sb._lv3Diag(dd, 'Rowing', 'bloque', now); };
   const dRes = mk(8, 120, 50); eq(dRes.cause === 'reserve' && /RPE 9 \(≈ 1 rep en réserve\)/.test(dRes.levier) && /RPE 8/.test(dRes.pourquoi), 'Bloqué : séries à RPE 8 → cause « effort en réserve »', dRes);
-  const dRep = mk(9, 90, 50); eq(dRep.cause === 'repos' && /(2 min|120 s)/.test(dRep.levier) && /(1 min 30|90 s)/.test(dRep.levier), 'Bloqué : repos 2 min → 1 min 30 → cause « repos raccourci »', dRep);
+  const dRep = mk(9, 60, 50); eq(dRep.cause === 'repos' && /(2 min|120 s)/.test(dRep.levier) && /(1 min|60 s)/.test(dRep.levier), 'Bloqué : repos 2 min → 1 min → cause « repos raccourci »', dRep);
+  // 21/11 (Q3) : 2 min → 1 min 30 sur un exercice non classé (seuil 90 s) → plus « raccourci ».
+  const dRep2 = mk(9, 90, 50); eq(dRep2.cause !== 'repos' && !dRep2.checks.some((c) => /Repos raccourci/.test(c.t)), 'Q3 : repos 2 min → 1 min 30 (non classé, seuil 90 s) → pas « raccourci »', dRep2.checks);
   const dMar = mk(9, 120, 7.5); eq(dMar.cause === 'marche' && /\+33 %/.test(dMar.levier), 'Bloqué : 7,5 kg, marche +2,5 kg = +33 % → cause « marche trop grosse »', dMar);
   eq(!/variante/.test(mk(9, 120, 50).levier), 'Bloqué sans cause (intermédiaire) : plus de « change de variante »', mk(9, 120, 50).levier);
   // Gêne sur la zone (seuil 3/5 validé 06/11) : 3/5 « pectoraux » pendant le plateau → cause possible ; 2/5 ignorée.
@@ -77,7 +79,7 @@ eq(/en début de séance/.test(dNiv('intermediaire').levier) && !/descends la ch
     dd.seances_detail[0].exercices.push({ nom: 'Rowing', muscle: 'Pectoraux' });
     const dE = sb._lv3Diag(dd, 'Rowing', 'bloque', now);
     eq(dE.cause === 'effort' && /vise RPE 8/.test(dE.levier) && !/RPE 9-10/.test(dE.levier), 'Effort en hausse : « vise RPE 8 », plus de « va jusqu\'à RPE 9-10 »', dE.levier);
-    eq(!/Séries arrêtées à RPE/.test(dE.checks.map((c) => c.t).join(' ')) && !/tu pousses déjà, pas en cause/.test(dE.checks.map((c) => c.t).join(' ')), 'Effort en hausse : ni « séries arrêtées en réserve » ni « effort pas en cause »', dE.checks);
+    eq(!/Séries arrêtées à RPE/.test(dE.checks.map((c) => c.t).join(' ')) && !/tu indiques pousser tes séries, rien d'anormal/.test(dE.checks.map((c) => c.t).join(' ')), 'Effort en hausse : ni « séries arrêtées en réserve » ni « effort pas en cause »', dE.checks);
     // 18/11 (validé porteur) : leviers « au choix » — +30 s de repos d'après le repos RÉEL (2 min → 2 min 30).
     eq(/au choix/.test(dE.levier) && !/de repos entre tes séries/.test(dE.levier) && /allège un peu la charge ou retire une série/.test(dE.levier), 'Effort en hausse : garder RPE 8 ou alléger ; pas d\'option repos à 2 min sur un exercice sans catégorie (seuil 90 s)', dE.levier);
     // 21/11 (porteur + Schoenfeld 2016 / Singer 2024) : option repos selon le type d'exercice.

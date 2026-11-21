@@ -501,7 +501,7 @@ function verifierTexte(R, ad, txt, out) {
     const repMoy = trav.length ? trav.reduce((a, x) => a + num(x.repos), 0) / trav.length : null;
     const rtx = (n) => { n = Math.round(n); const m = Math.floor(n / 60), r = n % 60; return m ? m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; };
     L.forEach((l0) => { const l = l0.trim(); let m;
-      if ((m = l.match(/^✓ Repos : (.+), stable — pas en cause$/)) && repMoy != null && m[1] !== rtx(Math.round(repMoy / 5) * 5)) E('levier.repos', nom + ' : « ' + l + ' », repos moyen des séries de travail ' + rtx(repMoy));
+      if ((m = l.match(/^✓ Repos : (.+), stable, rien d'anormal$/)) && repMoy != null && m[1] !== rtx(Math.round(repMoy / 5) * 5)) E('levier.repos', nom + ' : « ' + l + ' », repos moyen des séries de travail ' + rtx(repMoy));
       if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/)) && repMoy != null) { const r15 = Math.round(repMoy / 5) * 5; if (m[1] !== rtx(r15) || m[2] !== rtx(Math.min(180, r15 + 30))) E('levier.repos', nom + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(repMoy)); }
       if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/)))   // « ✗ … » (constats) et « Pourquoi : … »
          { const b = R.rpeHausse[exo]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' : « ' + l + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
@@ -1122,7 +1122,7 @@ function verifierPourquoi(R, S, out) {
       if ((m = l.match(/^✗ Charge : ([\d,]+) kg pour (\d+) reps?, ta fourchette est (\d+)-(\d+)$/))) { if (num(m[1]) !== c0 || +m[2] !== r0 || +m[3] !== rmin || +m[4] !== rmax) err('« ' + l.slice(2) + ' », recalculé ' + kgv(c0) + ' kg pour ' + r0 + ' reps, fourchette ' + rmin + '-' + rmax); }
       if ((m = l.match(/^✗ Saut de ([\d,]+) à ([\d,]+) kg \(\+(\d+) %\)$/))) { const pr = A.slice(1).find((x) => num(x.best.charge) !== c0), cp = pr ? num(pr.best.charge) : 0, pc = cp ? Math.round((c0 - cp) / cp * 100) : null;
         if (num(m[1]) !== cp || num(m[2]) !== c0 || +m[3] !== pc) err('« ' + l.slice(2) + ' », recalculé ' + kgv(cp) + ' → ' + kgv(c0) + ' kg (+' + pc + ' %)'); }
-      if ((m = l.match(/^✗ Séries arrêtées à RPE ([\d,]+) \(≈ (\d+) reps? en réserve\) sur les (\d+) dernières séances$/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10 || +m[2] !== Math.round(10 - rpeT) || +m[3] !== rec3.length) err('« ' + l.slice(2) + ' », recalculé RPE ' + (rpeT == null ? '—' : f1v(rpeT)) + ' sur les ' + rec3.length + ' dernières séances (' + rec3.map((x) => fr(x.d).slice(0, 5)).join(', ') + ')'); }
+      if ((m = l.match(/^✗ Séries arrêtées à RPE ([\d,]+) \(≈ (\d+) reps? en réserve, souvent plus : on sous-estime sa réserve\) sur les (\d+) dernières séances$/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10 || +m[2] !== Math.round(10 - rpeT) || +m[3] !== rec3.length) err('« ' + l.slice(2) + ' », recalculé RPE ' + (rpeT == null ? '—' : f1v(rpeT)) + ' sur les ' + rec3.length + ' dernières séances (' + rec3.map((x) => fr(x.d).slice(0, 5)).join(', ') + ')'); }
       if ((m = l.match(/^✓ Effort : RPE ([\d,]+) sur tes séries de travail/))) { if (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10) err('« Effort : RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT))); }
       if ((m = l.match(/^✗ Repos raccourci : (.+) → (.+) à la dernière séance$/))) { const r0s = moy(trav(p0), 'repos'), rav = moy([].concat(...A.slice(1, 4).map(trav)), 'repos');
         if (r0s == null || rav == null || secs(m[1]) !== Math.round(rav / 5) * 5 || secs(m[2]) !== Math.round(r0s / 5) * 5) err('« ' + l.slice(2) + ' », recalculé ' + Math.round(rav || 0) + ' s → ' + Math.round(r0s || 0) + ' s'); }
@@ -1135,7 +1135,7 @@ function verifierPourquoi(R, S, out) {
       if (sn * 2 <= tv.length) err('« charge trop lourde » alors que ' + sn + ' série(s) de travail sur ' + tv.length + ' sont sous ' + rmin + ' reps (règle : la majorité)'); }
     let m;
     if ((m = lev.match(/tu t'arrêtes avec ≈ (\d+) reps? en réserve/)) && (rpeT == null || +m[1] !== Math.round(10 - rpeT))) err('levier « ≈ ' + m[1] + ' reps en réserve », recalculé ' + (rpeT == null ? '—' : Math.round(10 - rpeT)));
-    if ((m = lev.match(/tu pousses déjà tes séries \(RPE ([\d,]+)\)/)) && (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10)) err('levier « RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT)));
+    if ((m = lev.match(/tu indiques pousser tes séries à RPE ([\d,]+)\)/)) && (rpeT == null || num(m[1]) !== Math.round(rpeT * 10) / 10)) err('levier « RPE ' + m[1] + ' », recalculé ' + (rpeT == null ? '—' : f1v(rpeT)));
     if ((m = lev.match(/\+1 rep par séance jusqu'à (\d+)/)) && +m[1] !== rmax) err('levier « jusqu\'à ' + m[1] + ' », haut de fourchette ' + rmax);
     const mb = L.slice(i0).join('\n').match(/Basé sur (\d+) séances? en (\d+) semaines?/);
     if (mb) { const ok = [3, 4].some((k) => { const n = Math.min(A.length, k), sem = Math.max(1, Math.round((new Date(A[0].d + 'T12:00:00Z') - new Date(A[n - 1].d + 'T12:00:00Z')) / 864e5 / 7)); return +mb[1] === n && +mb[2] === sem; });
