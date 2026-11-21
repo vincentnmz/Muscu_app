@@ -2,7 +2,35 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **14 nov. 2026 soir** (prod A–E + douleur, puis gel du code — blocs juste en dessous).
+> Dernière mise à jour : **21 nov. 2026** (campagne « fiabilité muscu à 100 % » — bloc juste en dessous ; l'historique plus ancien suit).
+
+## ▶ 20-21/11 — FIABILITÉ MUSCU « À 100 % » : terminée, EN PROD (multisport reporté)
+
+**Méthode** (à garder) : chaque chiffre / phrase affiché est recalculé indépendamment depuis les séries brutes par le
+**vérificateur** `scripts/verif-coherence/verif.cjs` (règles B0 → B29, détail et historique des bugs : `docs/verif-coherence.md`),
+sur 3 terrains : **banc de 25 profils** (`scripts/banc-profils/`, attendus relus dans `tests/banc-profils/`), **9 athlètes réels**
+(capture `.work/v15/audit3.mjs AID` — hors git, données réelles), **parcours navigateur** (vraie app + vrai serveur, 53 vérifications).
+Processus inchangé : diagnostic → code → tests (npm test : 124 suites) → préprod (push dev) → « mise en prod » → main ; `index.ts` prod
+redéployé à la main puis vérifié caractère pour caractère (dernière version prod vérifiée : **v279**).
+
+**Couvert et vérifié (0 écart sur les 9 athlètes et les 25 profils)** : Aujourd'hui · écran de saisie (fourchette, catégorie,
+dernière fois, cibles) · Analyses Résumé (tuiles, volume + statuts Sous-MEV…, balance, force 6 sem., Tes saisies) · Évolution
+(toutes vues, Par groupe, Par séance) · Tendances · Historique · autres périodes (Semaine / Année / mois précédent) · Entraînement ·
+Forme (poids, normale bien-être) · Cardio · Croisé · points · notifications / alertes · Pourquoi ça bloque + leviers (B28) ·
+coach (Équipe, fiche, Analyses équipe, onglet Programme) · mail · contexte IA + test des réponses IA (`scripts/eval-ia/run.cjs`, préprod).
+
+**Décisions porteur prises pendant la campagne** : séance = date + nom (2 le même jour = 2) · « sous la fourchette » = la MAJORITÉ des
+séries de travail (cible ET pourquoi) · échauffement = séries < 60 % de la plus lourde, hors décisions · même exercice 2 fois le même
+jour → la DERNIÈRE séance fait référence (serveur) · fréquence par muscle = muscle principal seulement (partout) · Par séance :
+« sous ton meilleur » au lieu de « progression » si l'exercice est Bloqué · bloqué cite sa séance de référence « (atteint le jj/mm) » ·
+pic de charge non encaissé → aucun ajout conseillé, cardio compris (Croisé).
+
+**Enregistrement des séances** : coupure à la validation, réponse perdue (pas de doublon), double appui, file après fermeture — testés.
+Coach en présentiel corrigé (date vide, brouillon, file d'attente). Boutique : double achat simultané impossible (serveur).
+
+**Reste (hors code ou plus tard)** : multisport (reporté par le porteur) · observation des vrais comptes / tests utilisateurs (décision
+du 14/11) · pertinence sportive des règles (expertise porteur) · IA en prod après pilote + `privacy.html` · AAB Play Store ·
+récompenses adaptées à chaque athlète · chantiers de fond (`docs/chantiers-futurs/`).
 
 ## ▶ 15/11 — IA morpho + chat en Opus 5.5 : EN PRÉPROD pour le pilote (gel levé pour cette seule fonctionnalité)
 
@@ -29,12 +57,12 @@ Le moteur a été rendu cohérent (A–E, douleur, R1-R8 au banc). La question s
 constatée en réel (corrigée par le même processus banc → test → préprod → validation).
 
 **À traiter APRÈS la période d'observation (noté le 15/11, décision porteur)** :
-- **« Bloqué depuis N séances » vs graphique** (constaté en réel, compte Vincent, élévation latérale uni à la poulie) : meilleure série
+- ✅ *(fait le 21/11 : « (atteint le jj/mm) » cité partout)* **« Bloqué depuis N séances » vs graphique** (constaté en réel, compte Vincent, élévation latérale uni à la poulie) : meilleure série
   7,5 × 11 le 29/10, puis 10, 10, 11 → la règle (pas de nouveau record depuis 4 séances) est **vraie**, mais le graphique commence au
   02/11 et cache la séance de référence → le texte et le graphique ne montrent pas la même période (l'athlète voit 10 → 10 → 11 et lit
   une progression). Correction envisagée : citer la séance de référence (« 7,5 × 11 déjà atteint le 29/10, pas dépassé depuis
   3 séances ») et/ou inclure cette séance dans le graphique. Processus habituel : banc → test → préprod → validation.
-- Cardio proposé par Croisé pendant un pic de charge (chantier séparé, noté le 14/11).
+- ✅ *(fait le 21/11)* Cardio proposé par Croisé pendant un pic de charge (chantier séparé, noté le 14/11).
 
 ## ▶ 14/11 soir — Cohérence charge ↔ récupération (A-D) en PRÉPROD · trajectoire force validée
 

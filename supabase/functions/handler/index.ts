@@ -2483,7 +2483,10 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse — allège ta charge globale (muscu + cardio) le temps qu'elle remonte.` })
 
   let reco: any
+  // 21/11 (noté le 14/11) : pic de charge pas (encore) encaissé → on n'ajoute RIEN, cardio compris (même règle E que la muscu).
+  const _picC = _chHaute && !(_crC.evaluable === true && _crC.degrade !== true)
   if (etatVigilance) reco = { texte: `Ta charge globale pèse sur ta récupération : prévois une semaine un peu plus légère ou une journée de repos.`, priorite: 'moyenne' }
+  else if (_picC) reco = { texte: `Ta charge est en hausse : n'ajoute pas de séance pour l'instant (ni cardio ni muscu) ; garde ce qui est prévu et ${_crC.degrade === true ? 'priorise la récupération' : 'renseigne ton état du jour'}.`, priorite: 'moyenne' }
   else if (mPct >= 85) reco = { texte: `Ajoute 1 séance de cardio facile par semaine pour équilibrer et soutenir ta récupération.`, priorite: 'info' }
   else if (mPct <= 15) reco = { texte: `Ajoute 1 à 2 séances de musculation par semaine pour préserver force et masse.`, priorite: 'info' }
   else reco = { texte: `Bon équilibre : conserve ce ratio muscu / cardio et veille à ce que la récupération suive la charge.`, priorite: 'info' }

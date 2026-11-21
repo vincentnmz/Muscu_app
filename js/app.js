@@ -6729,7 +6729,11 @@ function _lectureExos(data, nowT) {
       var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
       // 18/11 (vérificateur) : « bloqué à C × R » = meilleur nombre de reps du plateau (même règle que le serveur / le mail).
       var _rMax = Math.max.apply(null, pts.slice(0, n).map(function (p) { return num(p.reps); }));
-      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: _rMax, rDer: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+      // 21/11 (noté le 15/11) : séance de RÉFÉRENCE = 1re fois où ce meilleur a été atteint dans le plateau. Citée quand elle est
+      // plus ancienne que la dernière séance (sinon l'athlète voyait 10 → 10 → 11 sur le graphique et lisait une progression).
+      var _iRef = 0; for (var _q = n - 1; _q >= 0; _q--) { if (num(pts[_q].reps) === _rMax) { _iRef = _q; break; } }
+      var _dRef = _iRef > 0 ? String(pts[_iRef].date || '').slice(0, 5) : '';
+      if (_ctxA) R.attendu.push({ exo: exo, c0: c0, c1: c0, r0: r0, r1: r1 }); else R.bloque.push({ exo: exo, c: c0, r: _rMax, rDer: r0, n: n, dRef: _dRef, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
     }
   });
   return R;
@@ -16388,6 +16392,7 @@ function _blocageCtx(data, exo) {
   var dg = null; try { dg = (typeof _lv3Diag === 'function') ? _lv3Diag(data || dernierAppData, exo, 'bloque', Date.now()) : null; } catch (e) {}
   return { n: b.n, avant: (dg && dg.avant) || null };
 }
+function _bqRefTxt(x) { return (x && x.dRef) ? ' (atteint le ' + x.dRef + ')' : ''; }   // 21/11 : séance de référence d'un blocage
 function _blocageInfo(data, exo) {
   try { var L = _lectureExos(data || dernierAppData, Date.now()); return (L.bloque || []).filter(function (x) { return x.exo === exo; })[0] || null; } catch (e) { return null; }
 }
@@ -16494,7 +16499,7 @@ function _maLectureNovalyzBloc(data) {
   if (L.records.length) cls.push({ ic: '★', col: '#00A854', html: '<b>Records</b> : ' + L.records.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r; }).join(' · ') + plus(L.records, 3), src: 'charge (ou reps à charge égale) battue · 10 derniers jours' });
   if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.why ? _maE(x.why) : x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
   L.sous.slice(0, 3).forEach(function (x) { cls.push({ ic: '!', col: '#DC3545', html: '<b>Sous ta fourchette</b> : ' + _maE(x.exo) + ' ' + x.hist.map(function (h) { return kg(h.c) + ' × ' + h.r; }).join(' → ') + ' (RPE ' + x.rpe + ')', src: 'cible ' + x.rmin + '-' + x.rmax + ' reps · majorité des séries en dessous' }); });
-  if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>Bloqué</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + (Number(x.c) > 0 ? kg(x.c) + ' × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances'; }).join(' · ') + plus(L.bloque, 2), src: 'même charge, reps qui ne montent plus' });
+  if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>Bloqué</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + (Number(x.c) > 0 ? kg(x.c) + ' × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x); }).join(' · ') + plus(L.bloque, 2), src: 'même charge, reps qui ne montent plus' });
   if (L.recule.length) cls.push({ ic: '▼', col: '#E07800', html: '<b>Recule</b> : ' + L.recule.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c1) + ' × ' + x.r1 + ' → ' + kg(x.c0) + ' × ' + x.r0; }).join(' · '), src: 'charge et reps en baisse' });
   if ((L.attendu || []).length) cls.push({ ic: '•', col: '#8B96B0', html: '<b>Baisse attendue (' + _maE(L.ctx) + ')</b> : ' + L.attendu.slice(0, 3).map(function (x) { return _maE(x.exo); }).join(' · ') + plus(L.attendu, 3), src: 'contexte de performance déclaré : pas compté comme une régression' });
   // Lecture v3 (02/11) : « Pourquoi » + levier sous chaque exercice qui coince (rappel de la carte d'Évolution).
@@ -16951,7 +16956,7 @@ function _maProgExo(data) {
     [['records', '#00A854', '★', function (x) { return '<b>Record</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' le ' + _maE(x.date); }],
      ['progresse', '#00A854', '▲', function (x) { return '<b>En progrès</b> : ' + (x.why ? _maE(x.why) : _cdFmtKg(x.c1) + ' × ' + x.r1 + ' → ' + _cdFmtKg(x.c0) + ' × ' + x.r0); }],
      ['sous', '#DC3545', '!', function (x) { return '<b>Sous ta fourchette ' + x.rmin + '-' + x.rmax + '</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ','); }],
-     ['bloque', '#E07800', '⏸', function (x) { return '<b>Bloqué</b> à ' + (Number(x.c) > 0 ? _cdFmtKg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances'; }],
+     ['bloque', '#E07800', '⏸', function (x) { return '<b>Bloqué</b> à ' + (Number(x.c) > 0 ? _cdFmtKg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x); }],
      ['recule', '#DC3545', '▼', function (x) { return '<b>En recul</b> par rapport à la fois d\'avant'; }]].some(function (k) {
       var it = (_L[k[0]] || []).filter(function (x) { return x.exo === sel; })[0];
       if (it) _st = { col: k[1], ic: k[2], html: k[3](it) };
@@ -17751,7 +17756,9 @@ function _maCroise(data) {
       // Reco PROPRE AU CROISÉ : équilibre entre filières + charge TOTALE vs récup
       // (pas une reco muscu « surcharge/volume » ni cardio « endurance » isolée). La
       // reco « deload sur tendance » n'est donnée que si la tendance est fiable.
-      var reco = (trendOk && chUp && foDown) ? 'Charge totale (muscu + cardio) trop lourde pour la récup du moment → allège une des deux filières cette semaine pour rééquilibrer charge / récupération.'
+      var _picXc = null; try { _picXc = (typeof _lv3PicCharge === 'function') ? _lv3PicCharge(data) : null; } catch (e) {}   // 21/11 : règle E côté coach aussi
+      var reco = _picXc ? ('Charge en hausse ' + (_picXc.degrade ? 'et ressenti en baisse' : 'sans ressenti assez renseigné pour savoir s\'il l\'encaisse') + ' : n\'ajoute pas de séance pour l\'instant (ni cardio ni muscu), garde ce qui est prévu.')
+        : (trendOk && chUp && foDown) ? 'Charge totale (muscu + cardio) trop lourde pour la récup du moment → allège une des deux filières cette semaine pour rééquilibrer charge / récupération.'
         : (mPct > 75 ? 'Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d\'endurance + meilleure récup globale) sans alourdir la charge totale.'
           : (cPct > 75 ? 'Profil déséquilibré, presque tout en cardio : ajoute du renforcement pour l\'équilibre force / endurance, en gardant la charge totale sous contrôle.'
             : 'Bon équilibre muscu / cardio et charge globale soutenable — maintiens le mix ; ajuste seulement si la forme décroche quand la charge monte.'));
@@ -17782,7 +17789,10 @@ function _maCroise(data) {
       }
       if (mot.recup) L2 += rc2(mot.recup === 'Faible' ? 'var(--bad)' : (mot.recup === 'Moyen' ? 'var(--warn)' : 'var(--good)'), 'Récupération : <b>' + _maE(mot.recup) + '</b>' + ((mot.disponibilite && mot.disponibilite.niveau) ? (' · disponibilité ' + _maE(mot.disponibilite.niveau)) : '') + '.');
       if (trendOk && chUp && foDown) L2 += rc2('var(--warn)', 'Ta <b>charge globale monte</b> alors que ta <b>forme baisse</b> → surveille la fatigue.');
-      var reco2 = (cardioUA === 0) ? 'Ajoute 1 à 2 séances de cardio par semaine pour ta base d\'endurance, sans alourdir ta charge totale.'
+      // 21/11 : pic de charge pas encore encaissé → aucun ajout conseillé (règle E), cardio compris.
+      var _picX = null; try { _picX = (typeof _lv3PicCharge === 'function') ? _lv3PicCharge(data) : null; } catch (e) {}
+      var reco2 = _picX ? ('Ta charge est en hausse : n\'ajoute pas de séance pour l\'instant (ni cardio ni muscu) ; garde ce qui est prévu et ' + (_picX.degrade ? 'priorise la récupération.' : 'renseigne ton état du jour.'))
+        : (cardioUA === 0) ? 'Ajoute 1 à 2 séances de cardio par semaine pour ta base d\'endurance, sans alourdir ta charge totale.'
         : (trendOk && chUp && foDown) ? 'Allège une des deux filières cette semaine pour rééquilibrer charge et récupération.'
           : (mPct > 75) ? 'Intègre 1 à 2 créneaux cardio pour ta base d\'endurance, sans alourdir la charge totale.'
             : (cPct > 75) ? 'Ajoute du renforcement musculaire pour l\'équilibre force / endurance.'
@@ -19304,7 +19314,7 @@ function _tjDepuisDerniere(data, L) {
   var _dgA = {}; try { (typeof _lv3Diags === 'function' ? _lv3Diags(data) : []).forEach(function (d) { _dgA[d.exo] = d; }); } catch (e) {}
   var _pqA = function (exo) { var d = _dgA[exo]; return d ? (_lv3PourquoiHtml(d) + '<div onclick="maVoirPourquoi(\'' + _maOnc(exo) + '\')" style="font-size:11px;color:var(--accent);font-weight:700;cursor:pointer;margin-top:3px">Voir le détail →</div>') : ''; };
   sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ',') + _pqA(x.exo))); });
-  blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + (Number(x.c) > 0 ? kg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _pqA(x.exo))); });
+  blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + (Number(x.c) > 0 ? kg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x) + _pqA(x.exo))); });
   if (!rows.length) return '';
   // 20/11 (banc « deux séances le même jour ») : les records peuvent venir des 2 séances du jour → on les nomme toutes.
   var _noms = []; Object.keys(prog).forEach(function (k) { var p0 = prog[k] && prog[k][0]; if (p0 && p0.date === lastD && p0.seance && _noms.indexOf(p0.seance) < 0) _noms.push(p0.seance); });
