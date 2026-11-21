@@ -17126,6 +17126,7 @@ function _maProgSea(data) {
   var occ = {};
   sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (!b) return; (occ[e.nom] = occ[e.nom] || []).push({ date: s.date, charge: b.charge, reps: b.reps, e1: b.charge * (1 + b.reps / 30), series: e.series || [] }); }); });
   Object.keys(occ).forEach(function (k) { occ[k].sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); });
+  var _bqSea = {}; try { (_lectureExos(data, Date.now()).bloque || []).forEach(function (b) { if (b && b.exo) _bqSea[b.exo] = b; }); } catch (e) {}   // 21/11 : statut « Bloqué » (même classement que partout)
   function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
   function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
   var esc = _maE;
@@ -17170,10 +17171,15 @@ function _maProgSea(data) {
         }
         col = up ? 'var(--good)' : dn ? 'var(--danger)' : 'var(--text-muted)';
         deltaSub = up ? 'progression' : dn ? 'régression' : 'maintien';
+        // 21/11 (cohérence) : mieux que la fois d'avant mais encore sous le meilleur du plateau → l'exercice est « Bloqué »
+        // partout ailleurs ; on ne l'affiche plus « progression » ici (dernière séance de l'exercice seulement).
+        var _bq = up && _bqSea[e.nom] && (occ[e.nom] || []).length && occ[e.nom][occ[e.nom].length - 1].date === s.date ? _bqSea[e.nom] : null;
+        if (_bq) { col = 'var(--text-muted)'; deltaSub = 'sous ton meilleur'; _whyE = (_whyE ? _whyE + ' · ' : '') + 'meilleur récent ' + _cdFmtKg(_bq.c) + ' kg × ' + _bq.r + ' : toujours bloqué depuis ' + _bq.n + ' séances'; }
         if (dn && attendu) { col = 'var(--text-muted)'; deltaSub = 'baisse attendue'; nAtt++; }
+        else if (_bq) nEq++;
         else if (up) nUp++; else if (dn) nDn++; else nEq++;
       }
-      var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' + (_whyE ? '<br><span style="color:var(--good)">' + esc(_whyE) + '</span>' : '') : '';
+      var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' + (_whyE ? '<br><span style="color:' + (_bq ? 'var(--text-subtle)' : 'var(--good)') + '">' + esc(_whyE) + '</span>' : '') : '';
       return '<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--border)">'
         + '<span style="width:30px;height:30px;border-radius:9px;background:var(--accent-a14,rgba(26,95,255,.14));color:var(--accent);display:grid;place-items:center;flex:none;font-size:12px;font-weight:800">' + ini + '</span>'
         + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">' + esc(e.nom) + '</div>'
