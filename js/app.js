@@ -16866,7 +16866,8 @@ function _maProgExo(data) {
   var sdByDate = {};
   (data.seances_detail || []).forEach(function (s) {
     var ex = (s.exercices || []).filter(function (e) { return e.nom === sel; })[0];
-    if (ex && ex.series && ex.series.length) sdByDate[s.date_fr || s.date] = ex.series;
+    // 21/11 : même exercice dans 2 séances le même jour → toutes les séries du jour (le point de la courbe = la journée).
+    if (ex && ex.series && ex.series.length) { var _kd = s.date_fr || s.date; sdByDate[_kd] = (sdByDate[_kd] || []).concat(ex.series); }
   });
   var recentHead = '<div class="ma-sess ma-sess-h"><span class="dt">Date</span><span class="s">Séries (charge × reps)</span><span class="r">Force est.</span></div>';
   var recent = pts.slice().reverse().slice(0, 6).map(function (p) {
@@ -24971,6 +24972,8 @@ function dessinerGraphPoids(pesees, periode, ids) {
   });
 
   const maintenant = new Date();
+  // 21/11 : une seule pesée par jour — une double saisie le même jour faisait 2 points « 18/11 · 18/11 ».
+  { const _vu = {}; pesees = (pesees || []).filter(p => { const k = String(p && p.date || ''); if (!k || _vu[k]) return false; _vu[k] = 1; return true; }); }
   let filtered = pesees.filter(p => {
     const parts = p.date.split('/');
     const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
