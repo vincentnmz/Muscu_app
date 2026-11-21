@@ -168,6 +168,14 @@ const store = {
     eq(!T(ok).includes('tendances.intensite'), 'tendances : 6 séries, 100 % en 6-12 accepté');
     eq(T(ok.replace('6 séries', '7 séries')).includes('tendances.intensite'), 'attrape : nombre de séries faux dans la répartition d\'intensité');
     eq(T('FRÉQUENCE PAR MUSCLE\n?\ncette année\nQuadriceps\n9 séances').includes('tendances.frequence'), 'attrape : fréquence par muscle fausse'); }
+  // Forme ▸ poids (B14, 21/11) : dernière pesée, évolution, une pesée par jour.
+  { const stP = JSON.parse(JSON.stringify(store)); stP.poids_historique = [{ athlete_id: '5', date: J(40), poids: 80 }, { athlete_id: '5', date: J(2), poids: 78.5 }, { athlete_id: '5', date: J(2), poids: 78.5 }];
+    const vP = (t) => verifier({ store: stP, appdata: ad, ecrans: '######## ÉTAT\n' + t, now: TODAY }).map((e) => e.code);
+    const d1 = J(40).slice(8, 10) + '/' + J(40).slice(5, 7), d2 = J(2).slice(8, 10) + '/' + J(2).slice(5, 7);
+    eq(vP('78,5\nkg\n▼ −1,5 kg\n1M\n3M\nTout\n' + d1 + '\n' + d2).length === 0, 'poids : 78,5 kg, ▼ −1,5 kg accepté');
+    eq(vP('80\nkg\n▼ −1,5 kg\n1M\n3M\nTout').includes('poids.actuel'), 'attrape : poids affiché ≠ dernière pesée');
+    eq(vP('78,5\nkg\n= stable\n1M\n3M\nTout').includes('poids.evolution'), 'attrape : évolution du poids fausse');
+    eq(vP('78,5\nkg\n▼ −1,5 kg\n1M\n3M\nTout\n' + d1 + '\n' + d2 + '\n' + d2).includes('poids.doublon'), 'attrape : 2 pesées le même jour = 2 points'); }
   console.log('-'.repeat(70));
   console.log('vérificateur de cohérence : ' + ok + ' OK / ' + ko + ' KO');
   process.exit(ko ? 1 : 0);

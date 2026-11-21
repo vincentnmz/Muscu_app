@@ -42,7 +42,7 @@ try {
     await pg.route((u) => !u.href.startsWith(URL0.replace('/index.html', '')), (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
     await pg.goto(URL0);
     await pg.clock.runFor(1500);
-    const txt = await pg.evaluate(({ data, a, ECRANS }) => {
+    const txt = await pg.evaluate(({ data, a, ECRANS, EVO }) => {
       athlete = { athlete_id: String(a.id), nom: a.nom, annees_pratique: a.annees, sport: 'muscu', login: a.login };
       _appliquerAppData(data);
       try { maResetNav(); } catch (e) {}
@@ -61,8 +61,10 @@ try {
           var el = document.getElementById('tab-historique'); if (!el) return '';
           document.querySelectorAll('[id^="tab-"]').forEach((t) => { t.style.display = 'none'; });
           for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
-          return '\n\n== Analyses ▸ Tendances ==\n' + el.innerText; })();
-    }, { data, a, ECRANS });
+          return '\n\n== Analyses ▸ Tendances ==\n' + el.innerText; })()
+        + (EVO || []).map(function (x) { try { maSetTab('detail'); maSetExo(x); } catch (e) { return ''; }   // 21/11 : Évolution ▸ exercice (profils qui le demandent)
+          var el = document.getElementById('tab-historique'); return el ? '\n\n== ÉVOLUTION ▸ ' + x + ' ==\n' + el.innerText : ''; }).join('');
+    }, { data, a, ECRANS, EVO: st._evolution || [] });
     await pg.clock.runFor(2500);
     // R8b (H, 14/11) — même décision : un exercice dont la cible athlète dit « pas de progression aujourd'hui » (mode vigilance)
     // n'a aucune action active du plan ni levier qui l'augmente (séries, charge, RPE 9-10). Calcul sur les VRAIES fonctions de l'app.

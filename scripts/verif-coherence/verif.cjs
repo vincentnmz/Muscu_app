@@ -783,12 +783,74 @@ function verifierTendances(R, S, out) {
       if (+mI[1] !== tot || +mI[2] !== pL || +mI[3] !== pM || +mI[4] !== 100 - pL - pM) E('tendances.intensite', nom + ' : ' + mI[1] + ' séries ' + mI[2] + '/' + mI[3] + '/' + mI[4] + ' %, recalculé ' + tot + ' séries ' + pL + '/' + pM + '/' + (100 - pL - pM) + ' % (' + lo + '/' + mi + '/' + hi + ')'); }
   });
 }
+// ── B13 (21/11, point 3). Évolution ▸ Par exercice (vue Charge + reps) : chiffres autour de la courbe, recalculés sur les séries brutes.
+// « N séances suivies » (à vie), étiquettes charge × reps des points de la période (meilleure série du jour), meilleure série,
+// écart 1er → dernier point (« = identique », « +2,5 kg · −1 rep »), record charge (à vie), tableau « Dernières séances » (toutes les séries).
+function periodeEcran(L) {
+  const lp = L.find((l) => new RegExp('^(' + MOIS.join('|') + ') \\d{4}$').test(l)) || L.find((l) => /^\d{4}$/.test(l) && +l > 2000);
+  if (!lp) return null;
+  if (/^\d{4}$/.test(lp)) return [lp + '-01-01', (+lp + 1) + '-01-01'];
+  const [mo, an] = lp.split(' '), m = MOIS.indexOf(mo) + 1;
+  return [an + '-' + String(m).padStart(2, '0') + '-01', m === 12 ? (+an + 1) + '-01-01' : an + '-' + String(m + 1).padStart(2, '0') + '-01'];
+}
+function verifierEvolution(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const kg = (v) => String(Math.round(num(v) * 100) / 100).replace('.', ','), cr = (x) => kg(x.charge) + '×' + num(x.reps);
+  Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
+    const exo = nom.replace('ÉVOLUTION ▸ ', '').trim(), A = R.sessions[exo]; if (!A || !A.length) return;
+    const iE = L.findIndex((l) => l.trim() === exo); if (iE < 0) return;
+    const mN = (L[iE + 1] || '').match(/(\d+) séances? suivies?$/);
+    if (mN && +mN[1] !== A.length) E('evolution.suivies', nom + ' : ' + mN[1] + ' séances suivies, recalculé ' + A.length);
+    const per = periodeEcran(L); if (!per) return;
+    const pts = A.filter((x) => x.d >= per[0] && x.d < per[1]).slice().reverse(), n = pts.length; if (!n) return;
+    const J = L.join('\n');
+    if (!/\nCharge \+ Reps\n/.test(J)) return;   // autre vue (force, volume, par série) : pas contrôlée ici
+    // Étiquettes de la courbe (≤ 7 points : toutes affichées).
+    const iK = L.findIndex((l, k) => k > iE && l === 'kg'), iD = L.findIndex((l, k) => k > iK && /^\d{2}\/\d{2}\/\d{4}$/.test(l));
+    if (n <= 7 && iK > 0 && iD > iK) { const aff = L.slice(iK + 1, iD), att = pts.map((x) => cr(x.best));
+      if (aff.join(' ') !== att.join(' ')) E('evolution.courbe', nom + ' : étiquettes ' + aff.join(' · ') + ', recalculé ' + att.join(' · ')); }
+    const best = pts.reduce((a, b) => (num(b.best.charge) > num(a.best.charge) || (num(b.best.charge) === num(a.best.charge) && num(b.best.reps) > num(a.best.reps))) ? b : a, pts[0]).best;
+    const mB = J.match(/\n(\S+)\nMEILLEURE SÉRIE/); if (mB && mB[1] !== cr(best)) E('evolution.meilleure', nom + ' : meilleure série ' + mB[1] + ', recalculé ' + cr(best));
+    const mP = J.match(/\n([^\n]+)\nSUR LA PÉRIODE/);
+    if (mP) { let att = '—'; if (n >= 2) { const dc = Math.round((num(pts[n - 1].best.charge) - num(pts[0].best.charge)) * 10) / 10, dr = num(pts[n - 1].best.reps) - num(pts[0].best.reps), p = [];
+        if (dc) p.push((dc > 0 ? '+' : '−') + String(Math.abs(dc)).replace('.', ',') + ' kg'); if (dr) p.push((dr > 0 ? '+' : '−') + Math.abs(dr) + ' rep' + (Math.abs(dr) > 1 ? 's' : '')); att = p.length ? p.join(' · ') : '= identique'; }
+      if (mP[1].trim() !== att) E('evolution.periode', nom + ' : « ' + mP[1].trim() + ' » sur la période, recalculé « ' + att + ' »'); }
+    const mR = J.match(/\n([\d,]+) kg\nRECORD CHARGE/), rec = R.records[exo]; if (mR && rec && num(mR[1]) !== rec.charge) E('evolution.record', nom + ' : record charge ' + mR[1] + ' kg, recalculé ' + kg(rec.charge) + ' kg');
+    // Tableau : 6 dernières séances de la période, toutes les séries (reps > 0) dans l'ordre.
+    const iT = L.findIndex((l) => l.trim() === 'FORCE EST.');
+    if (iT > 0) { const rows = []; for (let k = iT + 1; k + 1 < L.length; k += 3) { if (!/^\d{2}\/\d{2}\/\d{4}$/.test(L[k])) break; rows.push({ d: iso(L[k]), s: L[k + 1] }); }
+      const att = pts.slice().reverse().slice(0, 6);
+      if (rows.length !== att.length) E('evolution.tableau', nom + ' : ' + rows.length + ' lignes dans « Dernières séances », ' + att.length + ' séances sur la période');
+      rows.forEach((r, k) => { const x = att[k]; if (!x) return; const ser = x.series.filter((y) => num(y.reps) > 0).map(cr).join(' · ');
+        const tri = (t) => t.split(' · ').sort().join(' · ');   // 2 séances le même jour : ordre des séries libre, contenu identique
+        if (r.d !== x.d || tri(r.s) !== tri(ser)) E('evolution.tableau', nom + ' : ligne ' + fr(r.d) + ' « ' + r.s + ' », recalculé ' + fr(x.d) + ' « ' + ser + ' »'); }); }
+  });
+}
+// ── B14 (21/11, point 3). Forme ▸ courbe du poids (vue « Tout », 30 dernières pesées, une par jour) : poids affiché = dernière pesée,
+// évolution = dernière − première (« = stable », « ▲ +2 kg », « ▼ −1 kg »).
+function verifierPoids(store, aid, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  const vu = {}, pz = (store.poids_historique || []).filter((r) => !aid || String(r.athlete_id) === String(aid)).map((r) => ({ d: iso(r.date), v: num(r.poids != null ? r.poids : r.valeur) }))
+    .filter((r) => r.d && r.v > 0).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 30).filter((r) => (vu[r.d] ? false : (vu[r.d] = 1)));
+  Object.entries(S).filter(([n]) => /^(ÉTAT|Forme)$/.test(n)).forEach(([nom, L]) => {
+    const i = L.findIndex((l, k) => l === '1M' && L[k + 1] === '3M' && L[k + 2] === 'Tout'); if (i < 2 || !pz.length) return;
+    const iKg = L.lastIndexOf('kg', i); if (iKg < 1) return;
+    const act = L[iKg - 1], evo = iKg + 1 < i ? L[iKg + 1] : '';
+    if (act !== '—' && num(act) !== pz[0].v) E('poids.actuel', nom + ' : poids affiché ' + act + ' kg, dernière pesée ' + String(pz[0].v).replace('.', ',') + ' kg le ' + fr(pz[0].d));
+    if (pz.length >= 2) { const df = Math.round((pz[0].v - pz[pz.length - 1].v) * 10) / 10, att = df === 0 ? '= stable' : (df > 0 ? '▲ +' : '▼ −') + String(Math.abs(df)).replace('.', ',') + ' kg';
+      if (!evo.startsWith(att)) E('poids.evolution', nom + ' : « ' + evo + ' », recalculé « ' + att + ' » (' + fr(pz[pz.length - 1].d) + ' → ' + fr(pz[0].d) + ')'); }
+    const pts = L.slice(i + 3).filter((l) => /^\d{2}\/\d{2}$/.test(l)); const dbl = pts.find((d, k) => pts.indexOf(d) !== k);
+    if (dbl) E('poids.doublon', nom + ' : la date ' + dbl + ' apparaît 2 fois sous la courbe (une pesée par jour attendue)');
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
   if (appdata) verifierDonnees(R, appdata, out);
   if (appdata) verifierTexte(R, appdata, ecrans, out);
   if (ecrans) verifierTendances(R, sections(ecrans), out);
+  if (ecrans) verifierEvolution(R, sections(ecrans), out);
+  if (ecrans) verifierPoids(store, R.aid, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
