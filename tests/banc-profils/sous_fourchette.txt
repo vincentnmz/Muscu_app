@@ -18,37 +18,29 @@ DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (09/11)
 !
 Développé couché barre sous ta fourchette : 80 kg × 4 à RPE 10
 Pourquoi : Charge : 80 kg pour 4 reps, ta fourchette est 6-10 · Saut de 70 à 80 kg (+14 %)
-Levier : au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10 ; ou garde 80 kg avec +30 s de repos entre tes séries (tu prends 2 min, essaie 2 min 30). C'est toi qui choisis.
-Voir le détail →
-⏸
-Squat bloqué à 90 kg × 8 depuis 4 séances (atteint le 19/10)
-Pourquoi : Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem
-Levier : au choix — +4 séries de Squat (3 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui).
-Voir le détail →
-⏸
-Rowing barre bloqué à 60 kg × 10 depuis 4 séances (atteint le 19/10)
-Pourquoi : Volume dos : 6 séries/sem (minimum 10)
-Levier : +4 séries de Rowing barre (6 → 10 séries/sem).
+Levier : au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10. C'est toi qui choisis.
 Voir le détail →
 TON PLAN DE LA SEMAINE
 0 / 3
 Développé couché barre : proposé 75 kg · tenté lundi (80 kg × 4, RPE 9,5)
 Quadriceps : 10 séries cette semaine · 3 / 10
 Dos : 10 séries cette semaine · 3 / 10
+RECO DU JOUR
+Séance du jour (Full body B) : 3 exercices à pousser (charge ou +1 rep).
 SÉANCE DU JOUR
 Full body B
 3 exercices · 2 séances au programme
 CE QUE NOVALYZ VISE
 dernière fois → aujourd'hui
 RDL barre
-bloqué depuis 3 séances : au choix — +4 séries de RDL barre (3 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (1×/sem aujourd'hui).
-50 × 10 50 × 10
++1 rep sur les séries sous 12 reps (haut de ta fourchette) · 2 séries à RPE 8,5-10 gardées telles
+50 × 10 50 × 11
 Développé militaire aux haltères
-bloqué depuis 3 séances : au choix — +4 séries de Développé militaire aux haltères (3 → 8 séries/sem), ou répartis épaules sur 2 séances dans la semaine (1×/sem aujourd'hui).
-55 × 10 55 × 10
++1 rep sur les séries sous 12 reps (haut de ta fourchette) · 2 séries à RPE 8,5-10 gardées telles
+55 × 10 55 × 11
 Tirage vertical prise large
-bloqué depuis 3 séances : +4 séries de Tirage vertical prise large (6 → 10 séries/sem).
-60 × 10 60 × 10
++1 rep sur les séries sous 12 reps (haut de ta fourchette) · 2 séries à RPE 8,5-10 gardées telles
+60 × 10 60 × 11
 Sur ta série la plus lourde (même calcul que l'écran de saisie). Propositions indicatives : c'est toi qui décides.
 ⓘ Comment Novalyz te fait progresser ›
 Commencer ma séance
@@ -86,21 +78,15 @@ LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
 Ajuste le tir
-5 bloqués · 1 sous la fourchette
+1 sous la fourchette
 CE QUE NOVALYZ LIT
 Régularité : 1/2 séances cette semaine.
 !
 Sous ta fourchette : Développé couché barre 70 × 8 → 70 × 8 → 80 × 4 → 80 × 4 (RPE 10)
 Pourquoi : Charge : 80 kg pour 4 reps, ta fourchette est 6-10 · Saut de 70 à 80 kg (+14 %)
-Levier : au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10 ; ou garde 80 kg avec +30 s de repos entre tes séries (tu prends 2 min, essaie 2 min 30). C'est toi qui choisis.
+Levier : au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10. C'est toi qui choisis.
 Voir le détail →
 cible 6-10 reps · majorité des séries en dessous
-⏸
-Bloqué : Squat 90 × 8 depuis 4 séances (atteint le 19/10) · Rowing barre 60 × 10 depuis 4 séances (atteint le 19/10) · +3 autres
-Pourquoi (Squat) : Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem
-Levier : au choix — +4 séries de Squat (3 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui).
-Voir le détail →
-même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 0 / 3 fait
 1
@@ -158,10 +144,10 @@ Abdominaux
 Cibles min-optimum du moteur. En cours de semaine, un muscle n'est signalé (orange) que s'il est sous le minimum au prorata des séances déjà faites.
 TA FORCE ESTIMÉE · 6 SEMAINES
 Squat
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Rowing barre
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Développé couché barre (+2,3 % sans le RPE)
 sur 4 séances

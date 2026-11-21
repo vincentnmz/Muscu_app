@@ -100,8 +100,8 @@ const store = {
   eq(t5('######## ÉVOLUTION ▸ Presse\nCe que Novalyz vise la prochaine fois\n100 × 10 →\n100 kg × 10\nRPE 8 sur toutes tes séries la dernière fois').includes('cible.depart'), 'attrape : point de départ ≠ dernière séance');
   // Leviers (18/11) : effort à charge égale (moteur ↔ recalcul) et repos cité.
   eq(mut((x) => { x.moteur.charge_ressenti = { ...(x.moteur.charge_ressenti || {}), raisons: (x.moteur.charge_ressenti || {}).raisons || [], rpe_details: [{ exo: 'Presse', charge: 95, rpeAvant: 8, rpeApres: 9 }] }; }).includes('rpe.hausse'), 'attrape : « effort en hausse » signalé sans hausse réelle');
-  eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 2 min, stable — pas en cause').includes('levier.repos'), 'attrape : repos cité ≠ repos réel (1 min 30)');
-  eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 1 min 30, stable — pas en cause').length === 0, 'repos cité = repos réel (1 min 30) accepté');
+  eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 2 min, stable, rien d\'anormal').includes('levier.repos'), 'attrape : repos cité ≠ repos réel (1 min 30)');
+  eq(t5('######## ÉVOLUTION ▸ Curl\n✓ Repos : 1 min 30, stable, rien d\'anormal').length === 0, 'repos cité = repos réel (1 min 30) accepté');
   // Vue coach ▸ Équipe (18/11).
   const tonA = Math.round(store.performances.filter((r) => r.date >= J(6)).reduce((x, r) => x + r.charge * r.reps, 0) / 100) / 10;
   const co = (t) => verifier({ store, appdata: null, ecrans: '######## COACH equipe\nA\nPrêt\n9,5\nRPE 7 J\n' + t + '\nTONNAGE\n1/1\nASSIDUITÉ\nPLAN', now: TODAY }).map((e) => e.code);

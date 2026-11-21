@@ -40,22 +40,22 @@ ENTRAÎNEMENT À REGARDER
 PLAN DE LA SEMAINE
 AD
 Athlète douleur_forte_recup_ok
-RDL barre : bloqué
+Quadriceps : 10 séries cette semaine
 Plan en pause
 ›
 AD
 Athlète douleur_vigilance
-RDL barre : bloqué
+Quadriceps : 10 séries cette semaine
 Plan en pause
 ›
 AG
 Athlète gene_poignet
-RDL barre : bloqué
+Quadriceps : 10 séries cette semaine
 Plan en pause
 ›
 AD
 Athlète douleur_moderee
-RDL barre : bloqué · +4 séries de RDL barre
+Quadriceps : 10 séries cette semaine
 Plan 0/1 fait
 ›
 AC
@@ -185,22 +185,6 @@ Athlète douleur_moderee
 Blessures déclarées : aucune en cours.
 PROGRESSION
 même classement que la fiche
-AD
-Athlète douleur_forte_recup_ok
-■ 6 bloqués ▼ 0 recule
-Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
-AD
-Athlète douleur_vigilance
-■ 6 bloqués ▼ 0 recule
-Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
-AG
-Athlète gene_poignet
-■ 6 bloqués ▼ 0 recule
-Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
-AD
-Athlète douleur_moderee
-■ 6 bloqués ▼ 0 recule
-Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
 AC
 Athlète coach_sans_propositions
 ■ 0 bloqué ▼ 0 recule ★ 6 records
@@ -210,10 +194,6 @@ Athlète intermediaire_plateau
 ■ 5 bloqués ▼ 0 recule ★ 1 record
 Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +1 autre
 Record : Développé couché barre
-AS
-Athlète sous_fourchette
-■ 5 bloqués ▼ 0 recule
-Bloqués : Squat, Rowing barre, RDL barre, Développé militaire aux haltères · +1 autre
 AR
 Athlète reprise_apres_pause
 ■ 6 bloqués ▼ 0 recule
@@ -489,35 +469,35 @@ Planifier la semaine
 À DÉCIDER
 VOLUME
 RDL barre : bloqué
-11/11 : 50 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+11/11 : 50 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +4 séries de RDL barre
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Développé militaire aux haltères : bloqué
-11/11 : 55 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+11/11 : 55 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +4 séries de Développé militaire aux haltères
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Tirage vertical prise large : bloqué
-11/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+11/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +1 série de Tirage vertical prise large
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Squat : bloqué
-09/11 : 105 kg × 10 à RPE 8,5 (fourchette 6-10) · Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+09/11 : 105 kg × 10 à RPE 8,5 (fourchette 6-10) · Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +4 séries de Squat
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Rowing barre : bloqué
-09/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+09/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +1 série de Rowing barre
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
@@ -651,48 +631,6 @@ Contexte : saison normale · changer ›
 Modifier le programme
 Planifier la semaine
 À DÉCIDER
-VOLUME
-RDL barre : bloqué
-09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé militaire aux haltères : bloqué
-09/11 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Tirage vertical prise large : bloqué
-09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Squat : bloqué
-06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé couché barre : bloqué
-06/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume pectoraux : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Rowing barre : bloqué
-06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
 PRIORITAIRE
 DOULEUR
 Douleur forte signalée (épaule)
@@ -717,7 +655,7 @@ Marquer traité
 Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
 ➜
-Plan de la semaine suggéré par Novalyz (en pause) — Ischios : 10 séries cette semaine (en pause : douleur forte) · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+Plan de la semaine suggéré par Novalyz (en pause) — Quadriceps : 10 séries cette semaine (en pause : douleur forte) · Pectoraux : 10 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
 🔥
 Effort — RPE moyen des séries 8,5 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
@@ -737,7 +675,12 @@ Epaule
 PROCHAINE SÉANCE À FAIRE
 Programme →
 Full body A · 3 exercices
-Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
+Squat
+3 × 6–10 Novalyz : +4 séries
+Développé couché barre
+3 × 6–10 Novalyz : +4 séries
+Rowing barre
+3 × 8–12 Novalyz : +4 séries
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
@@ -840,42 +783,7 @@ Planifier la semaine
 CHARGE
 Développé couché barre : sous la fourchette
 09/11 : 80 kg × 4 à RPE 10 (fourchette 6-10) · Saut de 70 à 80 kg (+14 %) · Volume pectoraux : 3 séries/sem (minimum 10) · Travaillé 1×/sem (3 séances en 2 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10 ; ou garde 80 kg avec +30 s de repos entre tes séries (tu prends 2 min, essaie 2 min 30). C'est toi qui choisis. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Squat : bloqué
-09/11 : 90 kg × 8 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Squat (3 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Rowing barre : bloqué
-09/11 : 60 kg × 10 à RPE 9 (fourchette 8-12) · Volume dos : 6 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Rowing barre (6 → 10 séries/sem). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-RDL barre : bloqué
-05/11 : 50 kg × 10 à RPE 9 (fourchette 8-12) · Volume ischios : 3 séries/sem (minimum 10) · Travaillé 1×/sem (3 séances en 2 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de RDL barre (3 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (1×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Développé militaire aux haltères : bloqué
-05/11 : 55 kg × 10 à RPE 9 (fourchette 8-12) · Volume épaules : 3 séries/sem (minimum 8) · Travaillé 1×/sem (3 séances en 2 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Développé militaire aux haltères (3 → 8 séries/sem), ou répartis épaules sur 2 séances dans la semaine (1×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Tirage vertical prise large : bloqué
-05/11 : 60 kg × 10 à RPE 9 (fourchette 8-12) · Volume dos : 6 séries/sem (minimum 10) (3 séances en 2 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Tirage vertical prise large (6 → 10 séries/sem). »
+Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — 75 kg (petit pas), puis +1 rep par séance jusqu'à 10. C'est toi qui choisis. »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -1136,48 +1044,6 @@ Contexte : saison normale · changer ›
 Modifier le programme
 Planifier la semaine
 À DÉCIDER
-VOLUME
-RDL barre : bloqué
-09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé militaire aux haltères : bloqué
-09/11 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Gêne poignet 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne poignet signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Tirage vertical prise large : bloqué
-09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Squat : bloqué
-06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé couché barre : bloqué
-06/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Gêne poignet 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume pectoraux : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne poignet signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Rowing barre : bloqué
-06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
 PRIORITAIRE
 DOULEUR
 Douleur forte signalée (poignet)
@@ -1192,7 +1058,7 @@ Marquer traité
 Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
 ➜
-Plan de la semaine suggéré par Novalyz (en pause) — Ischios : 10 séries cette semaine (en pause : douleur forte) · Épaules : 8 séries cette semaine (en pause : gêne poignet) · Dos : 10 séries cette semaine (en pause : douleur forte) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+Plan de la semaine suggéré par Novalyz (en pause) — Quadriceps : 10 séries cette semaine (en pause : douleur forte) · Pectoraux : 10 séries cette semaine (en pause : gêne poignet) · Dos : 10 séries cette semaine (en pause : douleur forte) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
 🔥
 Effort — RPE moyen des séries 8,5 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
@@ -1212,7 +1078,12 @@ Epaule
 PROCHAINE SÉANCE À FAIRE
 Programme →
 Full body A · 3 exercices
-Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
+Squat
+3 × 6–10 Novalyz : +4 séries
+Développé couché barre
+3 × 6–10 Novalyz : +4 séries
+Rowing barre
+3 × 8–12 Novalyz : +4 séries
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
@@ -1607,48 +1478,6 @@ Contexte : saison normale · changer ›
 Modifier le programme
 Planifier la semaine
 À DÉCIDER
-VOLUME
-RDL barre : bloqué
-09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé militaire aux haltères : bloqué
-09/11 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Tirage vertical prise large : bloqué
-09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Squat : bloqué
-06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec. »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé couché barre : bloqué
-06/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume pectoraux : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Rowing barre : bloqué
-06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
 PRIORITAIRE
 DOULEUR
 Douleur forte signalée (épaule)
@@ -1663,7 +1492,7 @@ Marquer traité
 Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
 ➜
-Plan de la semaine suggéré par Novalyz (en pause) — Ischios : 10 séries cette semaine (en pause : douleur forte) · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+Plan de la semaine suggéré par Novalyz (en pause) — Quadriceps : 10 séries cette semaine (en pause : douleur forte) · Pectoraux : 10 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
 🔥
 Effort — RPE moyen des séries 8,5 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
@@ -1683,7 +1512,12 @@ Epaule
 PROCHAINE SÉANCE À FAIRE
 Programme →
 Full body A · 3 exercices
-Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
+Squat
+3 × 6–10 Novalyz : +4 séries
+Développé couché barre
+3 × 6–10 Novalyz : +4 séries
+Rowing barre
+3 × 8–12 Novalyz : +4 séries
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J
@@ -1783,48 +1617,6 @@ Contexte : saison normale · changer ›
 Modifier le programme
 Planifier la semaine
 À DÉCIDER
-VOLUME
-RDL barre : bloqué
-09/11 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de RDL barre (2,6 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (0,9×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé militaire aux haltères : bloqué
-09/11 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 3/5 signalée le 12/11 · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Tirage vertical prise large : bloqué
-09/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 3/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Squat : bloqué
-06/11 : 60 kg × 9 à RPE 9 (fourchette 6-10) · Volume quadriceps : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Squat (3,5 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1,2×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Développé couché barre : bloqué
-06/11 : 70 kg × 9 à RPE 9 (fourchette 6-10) · Gêne épaule 3/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume pectoraux : 3,5 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-CHARGE
-Rowing barre : bloqué
-06/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Gêne épaule 3/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10) (4 séances en 3 sem.)
-Gêne signalée sur la zone : rien n'est proposé à l'athlète sur cet exercice. Piste : « gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
 À SURVEILLER
 DOULEUR
 Douleur modérée signalée (épaule)
@@ -1838,7 +1630,7 @@ Marquer traité
 Basé sur 8 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
 ➜
-Plan de la semaine suggéré par Novalyz (0/1 fait) — Ischios : 10 séries cette semaine · Épaules : 8 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
+Plan de la semaine suggéré par Novalyz (0/1 fait) — Quadriceps : 10 séries cette semaine · Pectoraux : 10 séries cette semaine (en pause : gêne épaule) · Dos : 10 séries cette semaine (en pause : gêne épaule) (calculé par Novalyz pour toi — non montré à l'athlète (tu as la main sur ses propositions))
 🔥
 Effort — RPE moyen des séries 8,5 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
@@ -1858,7 +1650,12 @@ Epaule
 PROCHAINE SÉANCE À FAIRE
 Programme →
 Full body A · 3 exercices
-Rien de nouveau proposé par Novalyz sur cette séance · voir le programme
+Squat
+3 × 6–10 Novalyz : +4 séries
+Développé couché barre
+3 × 6–10 Novalyz : +4 séries
+Rowing barre
+3 × 8–12 Novalyz : +4 séries
 CHARGE & ASSIDUITÉ
 8,5
 RPE 7 J

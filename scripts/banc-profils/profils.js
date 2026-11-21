@@ -38,7 +38,7 @@ const PROFILS = {
     const jours = [40, 38, 35, 33, 31, 28, 26, 24, 21, 19, 17, 14, 12, 10, 7, 5, 3, 1];
     jours.forEach((d, k) => {
       const g = k % 2 ? 'B' : 'A';
-      if (g === 'A') seance(st, d, 'Full body A', [['Squat', 'Quadriceps', trois(k < 6 ? 100 : 105, k < 6 ? 8 : (k % 4 === 0 ? 10 : 9), 7.5)], ['Développé couché barre', 'Pectoraux', trois(70 + Math.floor(k / 4) * 2.5, 8, 7.5)], ['Rowing barre', 'Dos', trois(60, 10, 7.5)]]);
+      if (g === 'A') seance(st, d, 'Full body A', [['Squat', 'Quadriceps', trois(k < 2 ? 100 : 105, k < 2 ? 8 : (k % 4 === 0 ? 10 : 9), 7.5)], ['Développé couché barre', 'Pectoraux', trois(70 + Math.floor(k / 4) * 2.5, 8, 7.5)], ['Rowing barre', 'Dos', trois(60, 10, 7.5)]]);
       else seance(st, d, 'Full body B', A.B.map(([e, m], i) => [e, m, trois(50 + i * 5, 10, 7.5)]));
     });
     for (let d = 0; d < 28; d += 2) bienEtre(st, d, {});

@@ -18,28 +18,12 @@ Stress faible (2/5)
 POINT DE VIGILANCE
 Douleur forte signalée (épaule)
 → Évite de charger la zone et fais-la évaluer (médecin / kiné) avant de reprendre fort.
-DEPUIS TA DERNIÈRE SÉANCE · FULL BODY B (09/11)
-⏸
-RDL barre bloqué à 60 kg × 9 depuis 4 séances (atteint le 19/10)
-Pourquoi : Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem
-Levier : hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.
-Voir le détail →
-⏸
-Développé militaire aux haltères bloqué à 70 kg × 9 depuis 4 séances (atteint le 19/10)
-Pourquoi : Gêne épaule 4/5 signalée le 12/11 · Volume épaules : 2,6 séries/sem (minimum 8) · Travaillé 0,9×/sem
-Levier : gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).
-Voir le détail →
-⏸
-Tirage vertical prise large bloqué à 80 kg × 9 depuis 4 séances (atteint le 19/10)
-Pourquoi : Gêne épaule 4/5 signalée le 12/11 (zone sollicitée par cet exercice) · Volume dos : 6,1 séries/sem (minimum 10)
-Levier : gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).
-Voir le détail →
 TON PLAN DE LA SEMAINE
 en pause
 ⏸
-Ischios : 10 séries cette semaine · en pause (douleur forte)
+Quadriceps : 10 séries cette semaine · en pause (douleur forte)
 ⏸
-Épaules : 8 séries cette semaine · en pause (gêne épaule)
+Pectoraux : 10 séries cette semaine · en pause (gêne épaule)
 ⏸
 Dos : 10 séries cette semaine · en pause (gêne épaule)
 RECO DU JOUR
@@ -50,13 +34,13 @@ Full body A
 CE QUE NOVALYZ VISE
 dernière fois → aujourd'hui
 Squat
-bloqué depuis 4 séances : hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.
+jour de vigilance (douleur forte — épaule (12/11)) : pas de progression aujourd'hui, mêmes charges que la dernière fois
 60 × 9 60 × 9
 Développé couché barre
-bloqué depuis 4 séances : gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).
+jour de vigilance (douleur forte — épaule (12/11)) : pas de progression aujourd'hui, mêmes charges que la dernière fois
 70 × 9 70 × 9
 Rowing barre
-bloqué depuis 4 séances : gêne épaule signalée le 12/11 : n'ajoute ni charge ni séries sur cet exercice tant qu'elle revient ; garde ta charge ou allège (avis kiné si ça persiste).
+jour de vigilance (douleur forte — épaule (12/11)) : pas de progression aujourd'hui, mêmes charges que la dernière fois
 80 × 9 80 × 9
 Sur ta série la plus lourde (même calcul que l'écran de saisie). Propositions indicatives : c'est toi qui décides.
 ⓘ Comment Novalyz te fait progresser ›
@@ -94,23 +78,16 @@ Historique
 LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
-Ajuste le tir
-6 bloqués
+Ta lecture d'entraînement
 CE QUE NOVALYZ LIT
 Régularité : 1/2 séances cette semaine.
-⏸
-Bloqué : RDL barre 60 × 9 depuis 4 séances (atteint le 19/10) · Développé militaire aux haltères 70 × 9 depuis 4 séances (atteint le 19/10) · +4 autres
-Pourquoi (RDL barre) : Volume ischios : 2,6 séries/sem (minimum 10) · Travaillé 0,9×/sem
-Levier : hors zone douloureuse : garde tes charges prévues. Pas besoin de forcer ni d'aller à l'échec.
-Voir le détail →
-même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 en pause
 ⏸
-Ischios : 10 séries cette semaine · en pause
+Quadriceps : 10 séries cette semaine · en pause
 Douleur forte signalée (épaule) : hors zone, garde tes charges et tes séries prévues. Pas besoin de forcer ni d'aller à l'échec. L'action revient d'elle-même quand la douleur est levée.
 ⏸
-Épaules : 8 séries cette semaine · en pause
+Pectoraux : 10 séries cette semaine · en pause
 Gêne épaule 4/5 signalée le 12/11 : n'ajoute ni charge ni séries sur cette zone tant qu'elle revient (avis kiné si ça persiste). L'action revient d'elle-même quand ton questionnaire ne signale plus la gêne.
 ⏸
 Dos : 10 séries cette semaine · en pause
@@ -160,22 +137,22 @@ Abdominaux
 Cibles min-optimum du moteur. En cours de semaine, un muscle n'est signalé (orange) que s'il est sous le minimum au prorata des séances déjà faites.
 TA FORCE ESTIMÉE · 6 SEMAINES
 RDL barre
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Développé militaire aux haltères
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Tirage vertical prise large
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Squat
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Développé couché barre
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Rowing barre
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Force estimée = charge × reps + les reps qu'il te restait (10 − RPE). Un même 80 kg × 8 compte plus à RPE 7 qu'à RPE 9. Repère, pas un test de 1RM.
 Voir l'analyse détaillée (fréquence, intensité, force) →
