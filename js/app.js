@@ -6645,6 +6645,7 @@ function _ctxAttendu(data) {
 // 20/11 (banc « poids du corps ») : charge 0 = exercice au poids du corps → « 6 reps au poids du corps », jamais « 0 kg × 6 ».
 function _cxr(c, r) { c = Number(c) || 0; return c > 0 ? _cdFmtKg(c) + ' kg × ' + r : r + ' reps au poids du corps'; }
 function _lectureExos(data, nowT) {
+  var BLOQUE_JOURS_MIN = 14;   // 21/11 : durée minimale d'un plateau avant « bloqué » (même valeur côté serveur)
   // L1 (audit 14/11) — partagé avec le serveur (_rcDepasse / _rcPlateau dans index.ts, même algorithme).
   // pts = séances de l'exercice, la plus récente en [0]. Dépasse les k précédentes : hausse de charge au-dessus de la plus
   // haute récente (ou égale avec plus de reps), ou à charge égale plus de reps qu'aux séances récentes à cette charge.
@@ -6724,6 +6725,9 @@ function _lectureExos(data, nowT) {
     // L1 (14/11) : bloqué = même charge et AUCUNE séance au-dessus du meilleur nombre de reps depuis au moins _NB séances
     // (couvre les oscillations 9-10-9-10), sans progrès secondaire (plus de séries au top / RPE plus bas).
     var n = (pts.length >= Math.max(_NB, 3)) ? _lxPlateau(pts, _progSecondaire) : 0;
+    // 21/11 (porteur : « bloqué arrive très vite ») : le plateau doit couvrir au moins 14 jours (1re → dernière séance du plateau) ;
+    // 3 séances dans la même semaine ne suffisent plus à parler de blocage.
+    if (n >= _NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < BLOQUE_JOURS_MIN) n = 0;
     if (n >= _NB) {
       for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
       var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
