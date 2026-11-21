@@ -17662,6 +17662,9 @@ function _maCroise(data) {
   var muscuT = r.tonnage_kg || 0;
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
   var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
+  // 21/11 : micro-sorties (< 5 min et < 0,3 km) hors charge et hors compte, comme partout ailleurs.
+  var _micro = function (s) { return (Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3; };
+  hist = hist.filter(function (s) { return !_micro(s); });
   hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO) return; var ua = _chargeInterneCardio(s); if (ua <= 0) return; if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
   var _muJ = _muscuUAJours(data), muscuUA = 0;
   Object.keys(_muJ).forEach(function (k) { if (k >= _w.startISO && k < _w.endISO) muscuUA += _muJ[k]; });
