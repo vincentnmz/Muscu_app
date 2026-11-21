@@ -307,6 +307,8 @@ function verifierTexte(R, ad, txt, out) {
   // B0. Texte cassé : valeur absente ou date brute affichée (« undefined », « NaN », « Invalid Date », « Sun Nov … »).
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.match(/\b(undefined|NaN|Invalid Date|null kg)\b|\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|N\b)/); if (m) E('texte.casse', nom + ' : « ' + l.trim().slice(0, 90) + ' »'); }));
   // B2. Force estimée : la tuile et la 1re ligne du tableau (même séance) donnent le même chiffre.
+  // 21/11 : « +N s de repos entre tes séries (tu prends A, essaie B) » → N doit valoir B − A (plafond 3 min)
+  Object.entries(S).forEach(([nom, L]) => L.forEach((l) => { const m = l.match(/\+(\d+) s de repos entre tes séries \(tu prends ([^,]+), essaie ([^)]+)\)/); if (!m) return; const sec = (t) => { const a = t.match(/(?:(\d+) min)?\s*(?:(\d+)(?: s)?)?/); return (+(a[1] || 0)) * 60 + (+(a[2] || 0)); }; if (+m[1] !== sec(m[3]) - sec(m[2])) E('levier.repos', nom + ' : « +' + m[1] + ' s » mais ' + m[2] + ' → ' + m[3]); }));
   Object.entries(S).filter(([n]) => /^ÉVOLUTION ▸ /.test(n)).forEach(([nom, L]) => {
     const iT = L.findIndex((l) => l.trim() === 'FORCE ESTIMÉE'), iH = L.findIndex((l) => l.trim() === 'FORCE EST.');
     if (iT > 0 && iH > 0 && L[iH + 3] != null) {
