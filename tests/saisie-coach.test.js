@@ -71,7 +71,8 @@ function loadBackend(store) {
   const SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
   eq(/saisi_par_coach: String\(coach && coach.coach_id/.test(SRC), 'front : le coach envoie saisi_par_coach');
   eq(/if \(_saisieCoach\) \{ _validationEnCours = true; _bloquerBoutonsValidation\(\); _envoyerSeance\(\); return; \}/.test(SRC), 'front : en saisie coach, pas de bilan (ressenti) rempli à la place de l\'athlète');
-  eq(/if \(_saisieCoach\) return null;/.test(SRC), 'front : pas de brouillon de l\'athlète sur le téléphone du coach');
+  // 21/11 : brouillon PROPRE au coach (muscu_brouillon_coach_<coach>_<athlète>), jamais la clé de l'athlète sur le téléphone du coach.
+  eq(/if \(_saisieCoach\) return \(typeof coach !== 'undefined' && coach && athlete\) \? 'muscu_brouillon_coach_'/.test(SRC), 'front : en saisie coach, brouillon au nom du coach (pas celui de l\'athlète)');
   eq(!/_appliquerAppData\(/.test(SRC.slice(SRC.indexOf('async function coachSaisirSeance'), SRC.indexOf('function coachQuitterSaisie'))), 'front : la saisie coach n\'appelle pas _appliquerAppData (pas d\'import montre au nom de l\'athlète)');
   const TS = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8');
   eq(/action === 'saveSeance' && body && Array.isArray\(body.data\)/.test(TS), 'backend : saveSeance vérifie que chaque ligne appartient à un athlète autorisé');
