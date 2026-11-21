@@ -63,7 +63,7 @@ const DATA = {
   exo_categories: {},
   historique: { progression_par_exo: {
     'Développé incliné à la Smith': [pt('22/10/2026', [[80, 2], [70, 5], [60, 8]], [10, 10, 9]), pt('15/10/2026', [[80, 3], [70, 6], [60, 8]], [10, 9, 9]), pt('05/10/2026', [[70, 5]], 9), pt('14/09/2026', [[60, 8]], 8)],
-    'Leg curl allongé': [pt('27/10/2026', [[35, 8], [35, 8]], 8), pt('16/10/2026', [[35, 8], [35, 8]], 8), pt('13/10/2026', [[35, 8], [35, 8]], 8), pt('06/10/2026', [[35, 8], [35, 8]], 8)],
+    'Leg curl allongé': [pt('27/10/2026', [[35, 8], [35, 8]], 8), pt('16/10/2026', [[35, 8], [35, 8]], 8), pt('13/10/2026', [[35, 8], [35, 8]], 8), pt('29/09/2026', [[35, 8], [35, 8]], 8)],
     // Retour porteur 30/10 : tractions 7·6·6·6 → 7·7·7·6 → 7·7·7 à RPE 8 = progrès (pas « bloqué »).
     'Traction': [pt('28/10/2026', [[0, 7], [0, 7], [0, 7]], 8), pt('25/10/2026', [[0, 7], [0, 7], [0, 7], [0, 6]], 9), pt('21/10/2026', [[0, 7], [0, 6], [0, 6], [0, 6]], 9)],
     'Tirage trapèze': [pt('28/10/2026', [[50, 7], [50, 7], [50, 7]], 8), pt('25/10/2026', [[50, 7], [50, 6]], 8)],
@@ -125,7 +125,7 @@ check('Bloqué : leviers indicatifs (repos +30 s, plus tôt dans la séance, per
 { const mk = (rep, cat) => ({ historique: { progression_par_exo: { Dev: [{ series: [{ repos: rep }, { repos: rep }] }] } }, exo_categories: cat ? { Dev: cat } : {} });
   check('Repos réel 90 s sur un exo moyen → « tu prends 1 min 30 ; 2 à 3 min »', /tu prends 1 min 30 ; sur ce type d'exercice, 2 à 3 min/.test(S._levierRepos(mk(90, 'moyen'), 'Dev')));
   check('Repos déjà 3 min sur un exo moyen → pas de levier repos', S._levierRepos(mk(180, 'moyen'), 'Dev') === '' && !/repos/.test(S._leviersBlocage(mk(180, 'moyen'), 'Dev')));
-  check('Exo léger à 45 s → cible 1 à 2 min', /tu prends 45 s ; sur ce type d'exercice, 1 à 2 min/.test(S._levierRepos(mk(45, 'petit'), 'Dev')));
+  check('Exo léger à 45 s → cible 1 min 30 à 2 min', /tu prends 45 s ; sur ce type d'exercice, 1 min 30 à 2 min/.test(S._levierRepos(mk(45, 'petit'), 'Dev')));
   check('Exo non classé → repos réel + 30 s', /tu prends 1 min 30, essaie 2 min/.test(S._levierRepos(mk(90, ''), 'Dev')));
   check('Non classé à 3 min → plus de « essaie 3 min 30 »', S._levierRepos(mk(180, ''), 'Dev') === '');
   check('Pas de repos saisi → +30 s générique', S._levierRepos({ historique: { progression_par_exo: {} } }, 'Dev') === 'un repos un peu plus long (+30 s)'); }

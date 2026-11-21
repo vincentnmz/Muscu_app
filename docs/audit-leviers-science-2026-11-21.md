@@ -53,3 +53,9 @@ marqué comme « logique d'entraînement » quand aucune étude ne le teste — 
 - **P4 — Effort en hausse** : garder, mais retirer le « −10 % » chiffré → « allège la charge ou une série cette semaine ».
 - **P5 — Fréquence** : présenter « 2 séances/sem » comme un moyen d'ajouter des séries, pas comme un effet en soi.
 - **P6 — Bouton « D'où vient ce conseil ? »** sous le levier : la référence (auteur, année) — à décider (lisibilité).
+
+## Décisions du porteur (21/11) — codées
+- Bloqué : **4 semaines** minimum de plateau (≈ 1 séance/sem par exercice → 3 séances ne suffisent pas).
+- Repos : « +30 s » gardé, **selon le type d'exercice** — gros/moyen (poly-articulaires) sous 2 min (Schoenfeld 2016 : 3 min > 1 min en force et en muscle), isolation / non classé sous 90 s (Singer 2024), plafond 3 min.
+- « Aucune cause visible » **par niveau** : débutant = régularité ; intermédiaire = +2 séries/sem (si < 20) ou exercice en début de séance ; avancé/expert = idem + **tempo à tester** (descente 2-3 s, montée rapide ; Wilk 2021 ; 0,5-8 s/rep = même hypertrophie, Schoenfeld 2015) ou variante proche 4 semaines.
+- P3 (RPE 9), P4 (sans −10 %), P5 (fréquence = moyen d'ajouter des séries) : codées. P6 (référence affichée) : non retenue pour l'instant.

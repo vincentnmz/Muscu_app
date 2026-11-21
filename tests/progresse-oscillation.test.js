@@ -33,7 +33,7 @@ const nowT = Date.UTC(2026, 10, 13, 20);
 const perfs = [];
 const add = (exo, sessions) => sessions.forEach(([d, sets]) => sets.forEach(([c, r, rpe], i) => perfs.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe, serie: i + 1 })));
 // Oscillation à la même charge (cas John) : 9-10-9-9-10 reps → plateau, pas « progresse ».
-add('Oscille', [[30, [[105, 9, 8]]], [23, [[105, 10, 8]]], [16, [[105, 9, 8]]], [9, [[105, 9, 8]]], [2, [[105, 10, 8]]]]);
+add('Oscille', [[40, [[105, 9, 8]]], [30, [[105, 10, 8]]], [16, [[105, 9, 8]]], [9, [[105, 9, 8]]], [2, [[105, 10, 8]]]]);
 // Baisse de charge puis +1 rep à la nouvelle charge → vrai progrès (comparé aux séances à 20 kg).
 add('Baisse', [[19, [[25, 10, 8]]], [12, [[20, 10, 8]]], [5, [[20, 11, 8]]]]);
 // Remontée de charge au niveau d'avant (60 → 55 → 60 × 8) → pas un progrès.

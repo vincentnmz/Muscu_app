@@ -14,22 +14,6 @@ ta normale arrive dans 7 questionnaires (il en faut 10 sur 5 semaines, tu en as 
 Stress faible (2/5)
 ta normale arrive dans 7 questionnaires (il en faut 10 sur 5 semaines, tu en as 3)
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
-DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (10/11)
-⏸
-Squat bloqué à 82,5 kg × 8 depuis 4 séances (atteint le 20/10)
-Pourquoi : Volume quadriceps : 2,3 séries/sem (minimum 12) · Travaillé 0,8×/sem
-Levier : au choix — +4 séries de Squat (2,3 → 12 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (0,8×/sem aujourd'hui).
-Voir le détail →
-⏸
-Développé couché barre bloqué à 102,5 kg × 8 depuis 4 séances (atteint le 20/10)
-Pourquoi : Volume pectoraux : 2,3 séries/sem (minimum 12) · Travaillé 0,8×/sem
-Levier : au choix — +4 séries de Développé couché barre (2,3 → 12 séries/sem), ou répartis pectoraux sur 2 séances dans la semaine (0,8×/sem aujourd'hui).
-Voir le détail →
-⏸
-Rowing barre bloqué à 122,5 kg × 8 depuis 4 séances (atteint le 20/10)
-Pourquoi : Volume dos : 5,3 séries/sem (minimum 12)
-Levier : +4 séries de Rowing barre (5,3 → 12 séries/sem).
-Voir le détail →
 TON PLAN DE LA SEMAINE
 0 / 3
 Quadriceps : 12 séries cette semaine · 3 / 12
@@ -87,17 +71,10 @@ Historique
 LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
-Ajuste le tir
-3 bloqués
+Ta lecture d'entraînement
 CE QUE NOVALYZ LIT
 Ta période de comparaison (les 4 semaines précédentes) contient une pause de 11 jours : l'évolution de ton volume n'est pas comparable pour l'instant.
 Régularité : 1/2 séances cette semaine.
-⏸
-Bloqué : Squat 82,5 × 8 depuis 4 séances (atteint le 20/10) · Développé couché barre 102,5 × 8 depuis 4 séances (atteint le 20/10) · +1 autre
-Pourquoi (Squat) : Volume quadriceps : 2,3 séries/sem (minimum 12) · Travaillé 0,8×/sem
-Levier : au choix — +4 séries de Squat (2,3 → 12 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (0,8×/sem aujourd'hui).
-Voir le détail →
-même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 0 / 3 fait
 1
@@ -163,13 +140,13 @@ Tirage vertical prise large
 sur 5 séances
 +2,1 %
 Squat
-sur 5 séances · bloqué depuis 4 séances
+sur 5 séances
 +1,5 %
 Développé couché barre
-sur 5 séances · bloqué depuis 4 séances
+sur 5 séances
 +1,2 %
 Rowing barre
-sur 5 séances · bloqué depuis 4 séances
+sur 5 séances
 +1 %
 Force estimée = charge × reps + les reps qu'il te restait (10 − RPE). Un même 80 kg × 8 compte plus à RPE 7 qu'à RPE 9. Repère, pas un test de 1RM. À ton niveau, la progression est lente : quelques % sur plusieurs semaines, c'est déjà bien.
 Voir l'analyse détaillée (fréquence, intensité, force) →

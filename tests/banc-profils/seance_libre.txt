@@ -19,9 +19,9 @@ DEPUIS TA DERNIÈRE SÉANCE · LIBRE (11/11)
 Records : RDL barre 60 kg × 10, Curl barre 25 kg × 12
 TON PLAN DE LA SEMAINE
 0 / 3
-Ischios : 6 séries cette semaine · 3 / 6
 Quadriceps : 6 séries cette semaine · 3 / 6
 Pectoraux : 6 séries cette semaine · 3 / 6
+Ischios : 6 séries cette semaine · 3 / 6
 CETTE SEMAINE
 Semaine complète ✓
 2 séances faites : repos, ou une séance en plus si tu veux
@@ -60,30 +60,24 @@ Historique
 LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
-Ajuste le tir
-2 exos en progrès (dont 2 records) · 4 bloqués
+Sur la bonne voie
+2 exos en progrès (dont 2 records)
 CE QUE NOVALYZ LIT
 Régularité au rendez-vous (2/2 séances cette semaine).
 ★
 Records : RDL barre 60 × 10 · Curl barre 25 × 12
 charge (ou reps à charge égale) battue · 10 derniers jours
-⏸
-Bloqué : Squat 50 × 9 depuis 4 séances (atteint le 19/10) · Développé couché barre 60 × 9 depuis 4 séances (atteint le 19/10) · +2 autres
-Pourquoi (Squat) : Volume quadriceps : 3 séries/sem (minimum 6) · Travaillé 1×/sem · Séries arrêtées à RPE 8 (≈ 2 reps en réserve) sur les 3 dernières séances
-Levier : au choix — +3 séries de Squat (3 → 6 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui). Et sur ta dernière série, va jusqu'à RPE 9-10 : tu t'arrêtes avec ≈ 2 reps en réserve.
-Voir le détail →
-même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 0 / 3 fait
 1
-Ischios : 6 séries cette semaine · 3 / 6
-Moyenne 3 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischios comptent (ex. +3 séries de RDL barre, idéalement sur 2 séances).
-2
 Quadriceps : 6 séries cette semaine · 3 / 6
 Moyenne 3 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices de quadriceps comptent (ex. +3 séries de Squat, idéalement sur 2 séances).
-3
+2
 Pectoraux : 6 séries cette semaine · 3 / 6
 Moyenne 3 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices de pectoraux comptent (ex. +3 séries de Développé couché barre, idéalement sur 2 séances).
+3
+Ischios : 6 séries cette semaine · 3 / 6
+Moyenne 3 séries/sem sur 3 semaines, ton minimum 6. Tous tes exercices d'ischios comptent (ex. +3 séries de RDL barre, idéalement sur 2 séances).
 Rien à changer : dos 6 séries/sem, dans ta zone. Ce sont des propositions : c'est toi qui choisis. Calculées sur tes séances jusqu'à dimanche ; chacune se coche toute seule quand ta séance la réalise.
 TES SAISIES · 68/100
 68
@@ -132,13 +126,13 @@ RDL barre
 sur 4 séances
 +11 %
 Squat
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Développé couché barre
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Rowing barre
-sur 4 séances · bloqué depuis 4 séances
+sur 4 séances
 0 %
 Tirage vertical prise large
 sur 4 séances

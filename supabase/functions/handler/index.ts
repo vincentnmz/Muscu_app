@@ -5896,8 +5896,8 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
     // L1 (14/11) : bloqué = même charge, aucune séance au-dessus du meilleur nombre de reps depuis ≥ NB séances (app : _lxPlateau).
     let n = (pts.length >= Math.max(NB, 3)) ? _rcPlateau(pts) : 0
-    // 21/11 (porteur) : plateau d'au moins 14 jours entre sa 1re et sa dernière séance (app : BLOQUE_JOURS_MIN).
-    if (n >= NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < 14) n = 0
+    // 21/11 (porteur) : plateau d'au moins 4 semaines (28 j) entre sa 1re et sa dernière séance (app : BLOQUE_JOURS_MIN).
+    if (n >= NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < 28) n = 0
     if (n >= NB) {
       let secondaire = false
       for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }

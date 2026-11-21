@@ -46,10 +46,10 @@ eq(sb._cdFmtKg(1.25) === '1,25' && sb._cdFmtKg(7.5) === '7,5' && sb._cdFmtKg(80)
   const L2 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('02/11/2026', 60, 8)] } } }, now6);
   eq(L2.bloque.length === 0, '6 : 2 séances identiques (compte neuf) → pas « bloqué »', L2);
   const L3 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('02/11/2026', 60, 8), P('29/10/2026', 60, 8)] } } }, now6);
-  // 21/11 (porteur) : ces 3 séances tiennent en 7 jours → plus « bloqué » (plateau d'au moins 14 jours exigé).
-  eq(L3.bloque.length === 0, '6 : 3 séances identiques en 7 jours → pas encore « bloqué » (< 14 j)', L3);
-  const L4 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('29/10/2026', 60, 8), P('22/10/2026', 60, 8)] } } }, now6);
-  eq(L4.bloque.length === 1, '6 : 3 séances identiques sur 14 jours (débutant) → bloqué', L4);
+  // 21/11 (porteur) : ces 3 séances tiennent en 7 jours → plus « bloqué » (plateau d'au moins 28 jours exigé).
+  eq(L3.bloque.length === 0, '6 : 3 séances identiques en 7 jours → pas encore « bloqué » (< 28 j)', L3);
+  const L4 = sb2._lectureExos({ historique: { progression_par_exo: { X: [P('05/11/2026', 60, 8), P('22/10/2026', 60, 8), P('08/10/2026', 60, 8)] } } }, now6);
+  eq(L4.bloque.length === 1, '6 : 3 séances identiques sur 28 jours (débutant) → bloqué', L4);
 }
 
 // 7 — Séances libres rattachées (Ma semaine) : choix explicite, automatique ≥ 50 %, sinon « en plus ».
