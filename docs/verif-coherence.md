@@ -50,6 +50,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 21/11 (POINTS et récompenses — règle B26) : points gagnés, points de la semaine ligne par ligne et « N pts · +M cette semaine » recalculés sur les séries brutes : justes sur les 9 athlètes et les 25 profils. Défaut corrigé côté serveur (boutique) : deux achats simultanés lisaient le même solde et passaient tous les deux (solde −120 dans le test) → contrôle après écriture, l'achat en trop est annulé (`tests/boutique-solde.test.js`).
 - 21/11 (AUTRES PÉRIODES — Semaine, Année, mois précédent capturés pour Résumé, Tendances, Évolution, Par groupe) : en vue ANNÉE, Vincent voyait 751 séries dans la répartition d'intensité au lieu de 1 017, Par groupe et le tableau Évolution faux sur les mois anciens, l'Historique bloqué à 40 séances : le serveur n'envoyait que les 40 dernières séances détaillées → toutes celles des 400 derniers jours (au moins 40), même fenêtre que les courbes. Recontrôlé : 0 écart sur les 9 athlètes, toutes périodes.
 - 21/11 (NOTIFICATIONS — elles reprennent le titre et le texte des alertes ; règle B27) : « Aucune séance (muscu ou cardio) depuis 7 jours » écrit en dur, alors que 2 athlètes n'avaient rien fait depuis 9 jours (et le rappel part aussi à J10, J14, J21, J28 avec le même « 7 ») → vrai nombre de jours ; zone de douleur brute « (epaule) » dans l'alerte et la notification coach → « (épaule) ».
+- 21/11 (POURQUOI ÇA BLOQUE et LEVIERS — demande porteur ; règle B28) : chaque phrase recalculée sur les séries brutes (charge vs fourchette, saut, RPE et réserve des séries de travail, repos raccourci, marche, échec, chiffres du levier). Défauts corrigés : « Basé sur 1 séance en 1 semaine » sous « sur les 3 dernières séances » (comptait seulement les 42 derniers jours) → séances réellement lues et écart réel, « fiable » seulement si ≤ 6 semaines ; « charge trop lourde, 27,5 kg » à côté de la cible « garde 30 × 5 » (1 série sur 3 sous la fourchette) → même règle que la cible (la majorité) ; « RPE 8-9 Option à tester » (point manquant) ; « à RPE 8.5 » (fiche coach, leviers, statut) → « 8,5 ».
 
 ## Ce qu'il vérifie aujourd'hui
 | Règle | Ce qui est recalculé |
@@ -93,6 +94,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | Tes saisies (B25) | les 5 critères et le total sur 100 |
 | points (B26) | gagnés, semaine (total et lignes), « N pts · +M cette semaine » |
 | alertes / notifications (B27) | nombre de jours d'absence, zone de douleur lisible |
+| pourquoi ça bloque / leviers (B28) | chaque ligne ✗ / ✓ et les chiffres du levier, « Basé sur N séances en S semaines », contradiction cible ↔ pourquoi |
 | plan : séance et tentative | « Séance « X » » jamais une séance déjà faite cette semaine ; « Tenté <jour> : C kg × R à RPE x » = meilleure série de l'exercice cette semaine |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 

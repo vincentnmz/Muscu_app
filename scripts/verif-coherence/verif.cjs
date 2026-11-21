@@ -301,7 +301,7 @@ function verifierTexte(R, ad, txt, out) {
   const S = sections(txt);
   // B1. Nombres décimaux au format français (virgule) : « 12.5 kg », « 4.5 / 9 » interdits.
   Object.entries(S).forEach(([nom, L]) => L.forEach((l) => {
-    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|km\/h|km\b|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/);
+    const m = l.match(/(^|[\s(])(\d+\.\d+)(?=\s?(kg|km\/h|km\b|t\b|×|\/|%|séries|bpm|h\b|min\b)|\s*$)/) || l.match(/RPE (\d+\.\d+)/);   // 21/11 : « RPE 8.5 (… » aussi
     if (m && !/^\d{1,2}\.\d{2}$/.test(m[2]) && !/v\d|version/i.test(l)) E('format.decimal', nom + ' : « ' + l.trim().slice(0, 80) + ' » (point au lieu de virgule)');
   }));
   // B0. Texte cassé : valeur absente ou date brute affichée (« undefined », « NaN », « Invalid Date », « Sun Nov … »).
