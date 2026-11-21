@@ -1237,7 +1237,7 @@ function buildVolumeSemaineParMuscle(perfs: any[], now: Date, secByExo?: Record<
 
 // Détail des séances (Analyses · Historique) : 20 dernières séances, regroupées
 // par (date, seance_id), avec chaque exercice et ses séries (charge/reps/rpe/repos).
-function buildSeancesDetail(perfs: any[]): any[] {
+function buildSeancesDetail(perfs: any[], nowMs?: number): any[] {
   const map: Record<string, any> = {}
   for (const r of perfs) {
     const dIso = normDate(r.date); if (!dIso) continue
@@ -1251,7 +1251,10 @@ function buildSeancesDetail(perfs: any[]): any[] {
   }
   return Object.values(map)
     .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
-    .slice(0, 40)   // 40 séances : assez pour naviguer plusieurs mois en arrière (Par groupe / Par séance / Historique)
+    // 21/11 (point 5, vue Année) : toutes les séances des 400 derniers jours, et au moins les 40 dernières — même fenêtre que
+    // progression_par_exo. Avant : 40 séances seulement → Année / mois anciens faux sans le dire (intensité, Par groupe,
+    // tableau Évolution, Historique bloqué à 40).
+    .filter((s: any, i: number) => i < 40 || String(s.date) >= new Date((nowMs != null ? nowMs : Date.now()) - 400 * 864e5).toISOString().slice(0, 10))
     .map((s: any) => ({ date: s.date, date_fr: s.date_fr, seance_id: s.seance_id, tonnage: Math.round(s.tonnage), nb_series: s.series, exercices: Object.values(s.exos) }))
 }
 
@@ -3013,7 +3016,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   }
 
   // Calculés une fois : détail des séances + respect du programme (exécution vs cible).
-  const seancesDetailArr = buildSeancesDetail(perfs)
+  const seancesDetailArr = buildSeancesDetail(perfs, now.getTime())
   // « Saisie par ton coach » (présentiel) : marqueur posé par saveSeance (indicateurs cle 'saisi_par').
   try {
     const { data: spRows } = await sb().from('indicateurs').select('date,seance_id').eq('athlete_id', athleteId).eq('cle', 'saisi_par')
@@ -7456,8 +7459,19 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   try { const d: any = await (await handleGetAppData(new URLSearchParams({ athlete_id }))).json(); solde = Number(d?.recompenses?.solde) || 0 } catch (_) {}
   if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })
 
-  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: item.repetable ? reward_id + '_' + Date.now() : reward_id, valeur: String(item.cout), unite: 'pts', source: 'app' })
+  const cleClaim = item.repetable ? reward_id + '_' + Date.now() + String(Math.floor(Math.random() * 1000)).padStart(3, '0') : reward_id
+  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: cleClaim, valeur: String(item.cout), unite: 'pts', source: 'app' })
   if (error) return jsonResp({ success: false, error: error.message })
+  // 21/11 : deux achats simultanés (double appui, renvoi réseau) lisaient le même solde et passaient tous les deux → solde
+  // négatif. Contrôle APRÈS écriture : si le solde réel est passé sous zéro, cet achat est annulé (l'athlète réessaie).
+  try {
+    const d2: any = await (await handleGetAppData(new URLSearchParams({ athlete_id }))).json()
+    const s2 = Number(d2?.recompenses?.solde)
+    if (isFinite(s2) && s2 < 0) {
+      await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'recompense').eq('cle', cleClaim)
+      return jsonResp({ success: false, error: 'Achat déjà en cours : réessaie dans un instant.', solde })
+    }
+  } catch (_) {}
   return jsonResp({ success: true, reward_id, cout: item.cout, type: item.type, solde: solde - item.cout })
 }
 
