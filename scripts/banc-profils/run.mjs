@@ -116,7 +116,8 @@ try {
     await pg.addInitScript(() => { let s = 20261114; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; });
     await pg.route((u) => !u.href.startsWith(URL0.replace('/index.html', '')), (r) => {
       const u = new URL(r.request().url()), act = u.searchParams.get('action');
-      const body = act === 'getCoachAthletes' ? D.liste : act === 'getAppData' ? (D.fiches[u.searchParams.get('athlete_id')] || {}) : {};
+      const fi = D.fiches[u.searchParams.get('athlete_id')] || {}, lg = (fi.programme || []).map((l, k) => Object.assign({ row_index: k + 2 }, l));   // 21/11 : onglet Programme du coach
+      const body = act === 'getCoachAthletes' ? D.liste : act === 'getAppData' ? fi : act === 'getCoachProgramme' ? { ok: true, lignes: lg, programme: lg } : {};
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
     await pg.goto(URL0);
@@ -150,6 +151,13 @@ try {
         const el = document.getElementById('tab-historique'); if (!el) return '';
         for (let n = el; n && n !== document.documentElement; n = n.parentElement) { if (getComputedStyle(n).display === 'none') n.style.display = 'block'; }
         const t = el.innerText; try { maSetDisc('muscu'); } catch (e) {} return t; }, D.fiches[aid]);
+      if (aid === E.athleteIds[0]) {   // 21/11 : onglet Programme de la fiche (un athlète suffit : même rendu pour tous)
+        await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a, 'programme'); }, aid);
+        await pg.clock.runFor(2500);
+        txt += '\n\n== Coach ▸ Programme ' + aid + ' ==\n' + await lire('view-coach-detail');
+        await pg.evaluate(async (aid) => { const a = athletesCoach.find((x) => String(x.athlete_id) === aid); if (a) await ouvrirDetailAthleteCoach(a); }, aid);
+        await pg.clock.runFor(2500);
+      }
       txt += '\n\n== Coach ▸ Fiche athlète ' + aid + ' ==\n' + fiche + '\n-- Indicateurs (bloc masqué à l\'écran, contrôlé quand même) --\n' + indic + '\n-- Analyses ▸ Croisé (coach) --\n' + croise;
       const inc = verifier(normaliser(fiche + '\n' + indic + '\n' + croise), D.fiches[aid]);
       if (inc.length) { ko++; console.error('  ✗ coach ▸ fiche ' + aid + ' : écrans incohérents avec le moteur'); inc.forEach((e) => console.error('      ⚠ ' + e)); }
