@@ -54,6 +54,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 - 21/11 (cohérence, décision « le plus cohérent et fiable ») : (1) « sous la fourchette » = la majorité des séries de travail, partout (cible et Pourquoi) ; (2) Évolution ▸ Par séance : un exercice meilleur que la fois d'avant mais encore sous le meilleur de son plateau n'est plus « progression » (il est « Bloqué » partout ailleurs) → « sous ton meilleur · meilleur récent 27,5 kg × 10 : toujours bloqué depuis 3 séances », compté « = ».
 - 21/11 (COACH ▸ Analyses équipe, désormais capturé par le banc) : chiffres cohérents avec l'accueil et les fiches (même classement de progression, mêmes alertes). Corrigé : séances par semaine de l'équipe (régularité 4 sem., « faites cette semaine ») comptées en JOURS → séances (2 le même jour = 2, règle du 20/11) ; zone de douleur brute (« poignet », « epaule ») → libellé (« Poignet », « Épaule »). Le bloc « Progression & stagnations » (règle maison différente du classement) n'était plus affiché : code mort, sans effet.
 - 21/11 (COACH ▸ onglet Programme, désormais capturé par le banc) : l'agenda « Cette semaine » écrivait « — repos » un jour où l'athlète s'était entraîné sans séance planifiée (les ✓ ne s'affichaient que sur les séances planifiées) → « ✓ Full body A faite ».
+- 21/11 (CROISÉ — règle B29, capturé sur les données réelles) : répartition muscu / cardio = 100 %, lecture et barre identiques, « N séances » de la tuile = séances muscu + sorties cardio. Corrigé : les micro-sorties (< 5 min et < 0,3 km) comptaient dans la charge cardio et le nombre de séances du Croisé → exclues, comme partout ailleurs.
 
 ## Ce qu'il vérifie aujourd'hui
 | Règle | Ce qui est recalculé |
@@ -98,6 +99,7 @@ Quand une erreur passe le filet, on corrige le code **et** on ajoute la règle i
 | points (B26) | gagnés, semaine (total et lignes), « N pts · +M cette semaine » |
 | alertes / notifications (B27) | nombre de jours d'absence, zone de douleur lisible |
 | pourquoi ça bloque / leviers (B28) | chaque ligne ✗ / ✓ et les chiffres du levier, « Basé sur N séances en S semaines », contradiction cible ↔ pourquoi |
+| Croisé (B29) | répartition = 100 %, lecture = barre, « uniquement de la musculation » ⇔ cardio 0 %, séances de la tuile |
 | plan : séance et tentative | « Séance « X » » jamais une séance déjà faite cette semaine ; « Tenté <jour> : C kg × R à RPE x » = meilleure série de l'exercice cette semaine |
 | phrases du classement | « Record : C kg × R le … », « Records : … », « a → b reps », « C × R → C × R », « N séries à R reps au lieu de M », « même niveau à RPE x au lieu de y », « Sous ta fourchette … », « Bloqué … depuis N séances » : chaque chiffre est vérifié dans les séries brutes |
 

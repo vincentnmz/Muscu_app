@@ -1132,6 +1132,22 @@ function verifierPourquoi(R, S, out) {
       if (!ok) err('« Basé sur ' + mb[1] + ' séances en ' + mb[2] + ' semaines », séances lues : ' + A.slice(0, 4).map((x) => fr(x.d).slice(0, 5)).join(', ')); }
   });
 }
+// ── B29 (21/11). Croisé : la tuile « Charge d'entraînement N séances » (sans tendance) = séances muscu (date + nom) + sorties
+// cardio (micro-sorties exclues) de la période ; la répartition Muscu + Cardio (+ Hyrox) fait 100 % ; « vient uniquement de la
+// musculation » seulement avec Cardio 0 %, et la lecture cite les mêmes % que la barre.
+function verifierCroise(R, S, out) {
+  const E = (code, message) => out.push({ code, gravite: 'erreur', message });
+  Object.entries(S).filter(([n]) => /^(CROISE|Analyses ▸ Croisé)$/i.test(n)).forEach(([nom, L]) => {
+    const J = L.join('\n'), per = periodeEcran(L, R.now);
+    const mM = J.match(/■ Muscu (\d+)%/), mC = J.match(/■ Cardio (\d+)%/), mH = J.match(/■ Hyrox (\d+)%/);
+    if (mM && mC && (+mM[1] + +mC[1] + (mH ? +mH[1] : 0)) !== 100) E('croise.repartition', nom + ' : Muscu ' + mM[1] + ' % + Cardio ' + mC[1] + ' %' + (mH ? ' + Hyrox ' + mH[1] + ' %' : '') + ' ≠ 100 %');
+    if (/vient uniquement de la musculation/.test(J) && mC && +mC[1] !== 0) E('croise.repartition', nom + ' : « uniquement de la musculation » avec Cardio ' + mC[1] + ' %');
+    const mL = J.match(/(\d+)% muscu · (\d+)% cardio/); if (mL && mM && mC && (+mL[1] !== +mM[1] || +mL[2] !== +mC[1])) E('croise.repartition', nom + ' : lecture ' + mL[1] + ' % / ' + mL[2] + ' %, barre ' + mM[1] + ' % / ' + mC[1] + ' %');
+    const mS = J.match(/Charge d'entraînement\n(\d+) séances?\nsur /);
+    if (mS && per) { const nM = new Set(R.P.filter((r) => r.d >= per[0] && r.d < per[1]).map((r) => r.d + '|' + (r.seance_id || ''))).size, nC = (R.cardio || []).filter((o) => o.d >= per[0] && o.d < per[1] && !R.cxMicro(o)).length;
+      if (+mS[1] !== nM + nC) E('croise.seances', nom + ' : ' + mS[1] + ' séances, recalculé ' + (nM + nC) + ' (' + nM + ' muscu + ' + nC + ' cardio, micro-sorties exclues)'); }
+  });
+}
 function verifier({ store, appdata, ecrans, now, aid }) {
   const jour = now || ymd(new Date());
   const R = recalculer(store, appdata, jour, aid), out = [];
@@ -1150,6 +1166,7 @@ function verifier({ store, appdata, ecrans, now, aid }) {
   if (appdata) verifierPoints(R, store, appdata, sections(ecrans || ''), out);
   if (appdata) verifierAlertes(R, appdata, out);
   if (ecrans) verifierPourquoi(R, sections(ecrans), out);
+  if (ecrans) verifierCroise(R, sections(ecrans), out);
   verifierCoach(store, ecrans, jour, out);
   return out;
 }
