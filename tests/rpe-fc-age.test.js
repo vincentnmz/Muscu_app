@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const { stripTypeScriptTypes } = require('node:module');
 let js = stripTypeScriptTypes(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
-js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _fcMaxEstimee, _rpeDepuisFc, chargeInterneCardio };';
+js = js.split('\n').filter((l) => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { _fcMaxEstimee, _rpeDepuisFc, chargeInterneCardio, _estMarcheCardio };';
 const S = { createClient: () => ({ from: () => ({}) }), webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => undefined }, serve: () => {} },
   Response, Request, URLSearchParams, TextEncoder, TextDecoder, console, atob, btoa, setTimeout, clearTimeout, crypto: require('crypto').webcrypto, fetch: async () => ({}) };
 vm.createContext(S); vm.runInContext(js, S); const A = S.__api;
@@ -19,4 +19,8 @@ eq(A.chargeInterneCardio({ type_cardio: 'course', duree: 30, fc_moy: 165, rpe_es
 eq(A.chargeInterneCardio({ type_cardio: 'course', duree: 30, fc_moy: 165, rpe: 5, rpe_estime: 7 }) === 150, 'un RPE saisi passe toujours avant l\'estimation');
 const APP = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 eq(/rpe_estime/.test(APP.slice(APP.indexOf('function _chargeInterneCardio'), APP.indexOf('function _chargeInterneCardio') + 900)), 'l\'app reprend rpe_estime (même charge que le serveur)');
+// 22/11 : « autre » sous 3 km/h = activité quotidienne importée → comme la marche (hors charge) ; vraie séance « autre » comptée.
+eq(A.chargeInterneCardio({ type_cardio: 'autre', duree: 62, fc_moy: 114, vitesse_moy: 0.9 }) === 0, '« autre » à 0,9 km/h (import montre) → hors charge, comme la marche');
+eq(A.chargeInterneCardio({ type_cardio: 'autre', duree: 40, rpe: 7 }) === 280 && A.chargeInterneCardio({ type_cardio: 'autre', duree: 40, rpe: 7, vitesse_moy: 9 }) === 280, '« autre » sans vitesse ou rapide → comptée');
+eq(A._estMarcheCardio('marche_normale', 5) && !A._estMarcheCardio('course', 2), 'marche déclarée toujours exclue ; seule « autre » est concernée par la vitesse');
 console.log(`rpe-fc-age : ${ok} OK / ${ko} KO`); process.exit(ko ? 1 : 0);

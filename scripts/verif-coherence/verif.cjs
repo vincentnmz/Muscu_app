@@ -206,7 +206,8 @@ function recalculer(store, appdata, now, aidForce) {
   const _dV = _mV ? (_mV[1].length === 4 ? new Date(+_mV[1], +_mV[2] - 1, +_mV[3]) : new Date(+_mV[3], +_mV[2] - 1, +_mV[1])) : null;
   const _ageV = _dV && !isNaN(_dV.getTime()) ? (Date.now() - _dV.getTime()) / (365.25 * 864e5) : null;
   R.fcMax = (_ageV != null && _ageV >= 10 && _ageV <= 90) ? 208 - 0.7 * _ageV : null;
-  R.cxCharge = (o) => { if (/^marche/i.test(o.type)) return 0; const du = num(o.duree); if (du <= 0) return 0; let rp = num(o.rpe); if (rp <= 0) { const fc = num(o.fc_moy != null ? o.fc_moy : o.fc); if (R.fcMax && fc > 0) { const p = fc / R.fcMax; rp = p >= 0.88 ? 9 : p >= 0.80 ? 8 : p >= 0.74 ? 7 : p >= 0.67 ? 6 : p >= 0.59 ? 5 : 4; } else rp = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5; } return rp * du; };
+  R.estMarche = (o) => /^marche/i.test(o.type) || (/^autre$/i.test(o.type) && num(o.vitesse_moy) > 0 && num(o.vitesse_moy) < 3);   // 22/11 (même règle que le serveur)
+  R.cxCharge = (o) => { if (R.estMarche(o)) return 0; const du = num(o.duree); if (du <= 0) return 0; let rp = num(o.rpe); if (rp <= 0) { const fc = num(o.fc_moy != null ? o.fc_moy : o.fc); if (R.fcMax && fc > 0) { const p = fc / R.fcMax; rp = p >= 0.88 ? 9 : p >= 0.80 ? 8 : p >= 0.74 ? 7 : p >= 0.67 ? 6 : p >= 0.59 ? 5 : 4; } else rp = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5; } return rp * du; };
   R.cxMicro = (o) => num(o.duree) < 5 && num(o.distance) < 0.3;
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
@@ -1103,7 +1104,7 @@ function verifierPoints(R, store, ad, S, out) {
 // jours depuis la dernière séance muscu ou cardio hors marche ; zone de douleur lisible (pas une clé brute « epaule »).
 function verifierAlertes(R, ad, out) {
   const E = (code, message) => out.push({ code, gravite: 'erreur', message });
-  const jA = [...new Set(R.P.map((r) => r.d).concat((R.cardio || []).filter((o) => !/^marche/i.test(o.type)).map((o) => o.d)))].sort().pop();
+  const jA = [...new Set(R.P.map((r) => r.d).concat((R.cardio || []).filter((o) => !R.estMarche(o)).map((o) => o.d)))].sort().pop();
   ((ad && ad.alertes_centre) || []).forEach((a) => {
     const txt = [a.title, a.evidence, a.action].filter(Boolean).join(' · ');
     const m = txt.match(/depuis (\d+) jours/);
