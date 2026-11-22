@@ -13319,7 +13319,15 @@ function stepValue(id, delta) {
 // ── Molette de repos (30 s → 10 min, pas de 30 s) ──────────────────────────
 // Remplace les anciens chips (choix limité) par un sélecteur défilable vertical.
 var _REPOS_VALS = (function () { var a = []; for (var v = 30; v <= 600; v += 30) a.push(v); return a; })();
-var _REPOS_IH = 36, _reposWheelBuilt = false, _reposScrollT = null;
+var _REPOS_IH = 36, _reposWheelBuilt = false, _reposScrollT = null, _reposWheelActif = false, _reposWheelT = null;
+function _reposWheelActiver(on) {
+  var w = document.getElementById('repos-wheel'), aide = document.getElementById('repos-wheel-aide'); if (!w) return;
+  _reposWheelActif = !!on;
+  w.style.overflowY = on ? 'scroll' : 'hidden';
+  if (aide) { aide.textContent = on ? '— fais défiler ou touche une valeur' : '— touche pour modifier'; aide.style.color = on ? 'var(--accent)' : 'var(--text-subtle)'; }
+  if (on) _reposWheelArmer(); else if (_reposWheelT) { clearTimeout(_reposWheelT); _reposWheelT = null; }
+}
+function _reposWheelArmer() { if (_reposWheelT) clearTimeout(_reposWheelT); _reposWheelT = setTimeout(function () { _reposWheelActiver(false); }, 3000); }
 function _reposFmt(s) { var m = Math.floor(s / 60), r = s % 60; return m > 0 ? (m + ' min' + (r ? ' 30' : '')) : (s + ' s'); }
 function _reposIdxNear(val) { var t = Number(val) || 120, idx = 0, best = Infinity; for (var i = 0; i < _REPOS_VALS.length; i++) { var d = Math.abs(_REPOS_VALS[i] - t); if (d < best) { best = d; idx = i; } } return idx; }
 function _reposWheelInit() {
@@ -13327,7 +13335,16 @@ function _reposWheelInit() {
   if (!_reposWheelBuilt) {
     var sp = '<div style="height:' + _REPOS_IH + 'px"></div>';
     w.innerHTML = sp + _REPOS_VALS.map(function (v) { return '<div class="repos-item" data-v="' + v + '" style="height:' + _REPOS_IH + 'px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--text-muted);transition:color .12s,font-size .12s">' + _reposFmt(v) + '</div>'; }).join('') + sp;
-    w.addEventListener('scroll', function () { if (_reposScrollT) clearTimeout(_reposScrollT); _reposWheelHighlight(); _reposScrollT = setTimeout(_reposWheelHighlight, 90); });
+    w.addEventListener('scroll', function () { if (_reposScrollT) clearTimeout(_reposScrollT); _reposWheelHighlight(); _reposScrollT = setTimeout(_reposWheelHighlight, 90); if (_reposWheelActif) _reposWheelArmer(); });
+    // 22/11 (porteur : « en voulant remonter la page, on fait défiler le chrono → 30 s sans faire exprès ») : la molette ne capte
+    // plus le défilement de la page. Elle est inerte (overflow hidden) tant qu'on ne l'a pas TOUCHÉE ; un toucher l'active
+    // ~3 s (relancé à chaque défilement), toucher une valeur la choisit directement.
+    w.addEventListener('click', function (ev) {
+      if (!_reposWheelActif) { _reposWheelActiver(true); return; }
+      var it = ev.target && ev.target.closest ? ev.target.closest('.repos-item') : null;
+      if (it && it.getAttribute('data-v')) _reposWheelSet(Number(it.getAttribute('data-v')));
+      _reposWheelArmer();
+    });
     _reposWheelBuilt = true;
   }
   _reposWheelSet(parseInt((document.getElementById('sel-repos') || {}).value) || 120);
@@ -15744,7 +15761,8 @@ function _maMoteurTiles(data) {
 // La MARCHE (quotidienne, souvent importée de la montre) est une activité, pas un
 // entraînement : elle ne compte pas dans la charge (décision 30/10 — elle faisait 82 %
 // de la charge cardio annuelle). Elle reste visible dans les sorties et les pas.
-function _estMarche(s) { return /^marche/i.test(String((s && s.type_cardio) || '')); }
+// 22/11 : « autre » sous 3 km/h de moyenne = activité quotidienne (import montre) → comme la marche (même règle que le serveur _estMarcheCardio).
+function _estMarche(s) { var t = String((s && s.type_cardio) || ''), v = Number(s && s.vitesse_moy); return /^marche/i.test(t) || (/^autre$/i.test(t) && v > 0 && v < 3); }
 function _chargeInterneCardio(s) {
   if (_estMarche(s)) return 0;
   var duree = Number(s && s.duree) || 0; if (duree <= 0) return 0;
