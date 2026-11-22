@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Novalyz Foot — maquette 4 rôles</title>
+<!-- Maquette (22/11/2026) — vision multisport foot, ordinateur / tablette. Données FICTIVES. Aucun code de l'app n'en dépend.
+     Source : Claude Doc « Novalyz multisport — rôles, objets communs et droits (foot) ». -->
+<style>
+:root{--bg:#F9FBFF;--surface:#fff;--surface2:#EEF3FF;--border:#D8E2FF;--text:#070B14;--muted:#4A5980;--subtle:#8595B8;--accent:#1A5FFF;--a08:rgba(26,95,255,.09);--good:#00A854;--good-a:rgba(0,168,84,.12);--warn:#E07800;--warn-a:rgba(224,120,0,.12);--bad:#DC3545;--bad-a:rgba(220,53,69,.10);--violet:#7B5CF5;--pitch:#E6F3EA;--pitch-line:#B9D8C4}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+.side{background:linear-gradient(180deg,#fff 0%,#fff 40%,#EDE7FF 75%,#B7A5FF 100%);border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:6px}
+.logo{font-weight:800;letter-spacing:.18em;font-size:18px;color:#0B1E4D;margin:0 8px 2px}.logo small{display:block;font-size:10px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.team{margin:14px 6px 10px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;font-size:12.5px}.team b{display:block;font-size:13.5px}
+.role-lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);font-weight:700;margin:8px 10px 2px}
+.role{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;color:var(--muted);font-weight:600;cursor:pointer;border:1px solid transparent}
+.role.on{background:var(--accent);color:#fff}.role:not(.on):hover{background:var(--a08)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.main{padding:22px 26px 40px;min-width:0}
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.hdr h1{font-size:22px;margin:0}.hdr p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:var(--surface2);color:var(--muted)}
+.grid{display:grid;gap:14px;align-items:start}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;min-width:0}
+.card h3{margin:0 0 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle)}
+.kpi b{font-size:26px;display:block}.kpi span{color:var(--muted);font-size:12.5px}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;font-size:11px;color:var(--subtle);font-weight:700;padding:6px 6px;border-bottom:1px solid var(--border)}td{padding:7px 6px;border-bottom:1px solid #EEF2FB}
+.st{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.ok{background:var(--good-a);color:var(--good)}.inc{background:var(--warn-a);color:var(--warn)}.ko{background:var(--bad-a);color:var(--bad)}.rep{background:rgba(123,92,245,.12);color:var(--violet)}
+.row{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #EEF2FB}.row:last-child{border-bottom:0}
+.muted{color:var(--muted)}.sub{color:var(--subtle);font-size:12px}
+.btn{display:inline-block;background:var(--accent);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px}.btn.sec{background:var(--surface2);color:var(--accent)}
+.recoit{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.chip{border:1px dashed var(--accent);color:var(--accent);background:var(--a08);border-radius:999px;padding:4px 10px;font-weight:600}
+.msg{background:var(--surface2);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:12.5px}.msg b{font-size:11.5px;color:var(--muted)}
+.bar{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}.bar i{display:block;height:100%;border-radius:999px}
+.screen{display:none}.screen.on{display:block}
+.fic{text-align:right;padding:0 26px 16px;font-size:11px;color:var(--subtle)}
+@media (max-width:1100px){.app{grid-template-columns:76px 1fr}.side .logo small,.side .team,.role-lbl,.role .nm{display:none}.logo{font-size:12px;margin:0}.role{justify-content:center}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}}
+</style></head><body>
+<div class="app">
+<aside class="side">
+  <div class="logo">NOVALYZ<small>FOOT · STAFF</small></div>
+  <div class="team"><b>FC Exemple U17</b>R1 · 22 joueurs · saison 2026-27</div>
+  <div class="role-lbl">Voir en tant que</div>
+  <div class="role on" data-r="coach"><span class="dot" style="background:#fff"></span><span class="nm">Entraîneur</span></div>
+  <div class="role" data-r="prepa"><span class="dot" style="background:var(--good)"></span><span class="nm">Prépa physique</span></div>
+  <div class="role" data-r="video"><span class="dot" style="background:var(--violet)"></span><span class="nm">Analyste vidéo</span></div>
+  <div class="role" data-r="joueur"><span class="dot" style="background:var(--warn)"></span><span class="nm">Joueur</span></div>
+</aside>
+<main class="main">
+
+<!-- ═══════════ ENTRAÎNEUR ═══════════ -->
+<section class="screen on" id="s-coach">
+  <div class="hdr"><div><h1>Avant le match de samedi</h1><p>vs AS Voisins · samedi 28/11 · 15:00 · domicile</p></div><span class="tag">Entraîneur</span></div>
+  <div class="grid g4">
+    <div class="card kpi"><h3>Disponibles</h3><b style="color:var(--good)">17</b><span>sur 22 joueurs</span></div>
+    <div class="card kpi"><h3>Incertains</h3><b style="color:var(--warn)">2</b><span>décision jeudi</span></div>
+    <div class="card kpi"><h3>Indisponibles</h3><b style="color:var(--bad)">2</b><span>blessure · suspension</span></div>
+    <div class="card kpi"><h3>Reprise</h3><b style="color:var(--violet)">1</b><span>45 min max (prépa)</span></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Effectif — disponibilité et charge</h3>
+      <table><tr><th>Joueur</th><th>Poste</th><th>Statut</th><th>Min. (4 derniers matchs)</th><th>Charge 7 j</th><th>Note du staff</th></tr>
+      <tr><td><b>Léo M.</b></td><td>MC</td><td><span class="st ok">Disponible</span></td><td>356 / 360</td><td>normale</td><td class="sub">—</td></tr>
+      <tr><td><b>Yanis B.</b></td><td>AG</td><td><span class="st inc">Incertain</span></td><td>290 / 360</td><td style="color:var(--warn)">haute</td><td class="sub">fatigue élevée 2 j</td></tr>
+      <tr><td><b>Noah T.</b></td><td>DC</td><td><span class="st rep">Reprise</span></td><td>0 / 360</td><td>basse</td><td class="sub">45 min max</td></tr>
+      <tr><td><b>Sami K.</b></td><td>BU</td><td><span class="st ko">Indisponible</span></td><td>180 / 360</td><td class="sub">—</td><td class="sub">ischios, retour ~3 sem.</td></tr>
+      <tr><td><b>Adam R.</b></td><td>LD</td><td><span class="st inc">Incertain</span></td><td>340 / 360</td><td>normale</td><td class="sub">gêne cheville 3/5</td></tr>
+      <tr><td><b>Ilyes D.</b></td><td>G</td><td><span class="st ok">Disponible</span></td><td>360 / 360</td><td>normale</td><td class="sub">—</td></tr></table>
+      <div class="sub" style="margin-top:8px">Statut posé par le prépa / staff médical · le détail médical n'est pas affiché.</div>
+    </div>
+    <div class="grid" style="gap:14px">
+      <div class="card"><h3>Dernier match — constats de l'analyste</h3>
+        <div class="row"><span class="st ko">↓</span><div><b>9 pertes de balle</b> sur nos relances courtes côté gauche (moy. 5) <div class="sub">▶ 9 clips</div></div></div>
+        <div class="row"><span class="st ok">↑</span><div><b>6 récupérations hautes</b>, record sur 5 matchs <div class="sub">▶ 6 clips</div></div></div>
+        <div class="row"><span class="st inc">=</span><div><b>12 entrées dans la surface</b>, 2 tirs cadrés seulement <div class="sub">▶ 12 clips</div></div></div>
+      </div>
+      <div class="card"><h3>Convocation</h3><div class="muted" style="font-size:13px">16 convoqués proposés · 2 incertains à trancher jeudi</div><div style="margin-top:10px"><span class="btn">Préparer la convocation</span> <span class="btn sec">Schéma 4-3-3</span></div></div>
+      <div class="card"><h3>Fil staff</h3><div class="msg"><b>Prépa · hier</b><br>Noah : 45 min max samedi, pas de sprint répété.</div><div class="msg"><b>Analyste · hier</b><br>Clips relances gauche prêts pour la séance vidéo de jeudi.</div></div>
+    </div>
+  </div>
+  <div class="recoit">Reçoit de : <span class="chip">Statuts et charge · prépa</span><span class="chip">Constats et clips · analyste</span><span class="chip">Présences et ressenti · joueurs</span></div>
+</section>
+
+<!-- ═══════════ PRÉPA PHYSIQUE ═══════════ -->
+<section class="screen" id="s-prepa">
+  <div class="hdr"><div><h1>Charge de la semaine</h1><p>Semaine du 23 au 29/11 · match samedi</p></div><span class="tag">Prépa physique</span></div>
+  <div class="grid g2">
+    <div class="card"><h3>Charge collective par jour (RPE × minutes)</h3>
+      <svg viewBox="0 0 560 190" width="100%" role="img" aria-label="Charge par jour">
+        <g font-size="11" fill="#8595B8"><text x="40" y="180">Lun</text><text x="115" y="180">Mar</text><text x="190" y="180">Mer</text><text x="265" y="180">Jeu</text><text x="340" y="180">Ven</text><text x="415" y="180">Sam</text><text x="490" y="180">Dim</text></g>
+        <line x1="20" y1="162" x2="545" y2="162" stroke="#D8E2FF"/>
+        <rect x="32" y="82" width="38" height="80" rx="6" fill="#1A5FFF" opacity=".85"/><rect x="107" y="52" width="38" height="110" rx="6" fill="#1A5FFF" opacity=".85"/><rect x="182" y="152" width="38" height="10" rx="4" fill="#D8E2FF"/><rect x="257" y="72" width="38" height="90" rx="6" fill="#1A5FFF" opacity=".85"/><rect x="332" y="122" width="38" height="40" rx="6" fill="#1A5FFF" opacity=".55"/><rect x="407" y="32" width="38" height="130" rx="6" fill="#E07800" opacity=".85"/><rect x="482" y="152" width="38" height="10" rx="4" fill="#D8E2FF"/>
+        <text x="407" y="24" font-size="11" fill="#E07800" font-weight="700">match</text><text x="332" y="114" font-size="11" fill="#8595B8">veille</text>
+      </svg>
+      <div class="sub">Prévu (vendredi, samedi) en clair · entraînements + match · source : RPE joueurs + minutes</div>
+    </div>
+    <div class="card"><h3>Bien-être de l'effectif (ce matin)</h3>
+      <div class="row"><b style="width:120px">Répondu</b><div style="flex:1"><div class="bar"><i style="width:82%;background:var(--accent)"></i></div><div class="sub">18 / 22</div></div></div>
+      <div class="row"><b style="width:120px">Fatigue élevée</b><div style="flex:1"><div class="sub">Yanis B., Théo L.</div></div></div>
+      <div class="row"><b style="width:120px">Douleur</b><div style="flex:1"><div class="sub">Adam R. — cheville 3/5</div></div></div>
+      <div class="row"><b style="width:120px">Signaux d'alerte</b><div style="flex:1"><div class="sub">Yanis B. : charge haute + fatigue élevée</div></div></div>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Dernière séance — données GPS / cardio</h3>
+      <table><tr><th>Joueur</th><th>Distance</th><th>Haute intensité</th><th>Sprints</th><th>FC moy.</th><th>Charge 7 j vs habituelle</th></tr>
+      <tr><td><b>Léo M.</b></td><td>6,8 km</td><td>720 m</td><td>14</td><td>152</td><td>normale</td></tr>
+      <tr><td><b>Yanis B.</b></td><td>7,4 km</td><td>910 m</td><td>19</td><td>161</td><td style="color:var(--warn)">haute (+28 %)</td></tr>
+      <tr><td><b>Adam R.</b></td><td>6,1 km</td><td>540 m</td><td>9</td><td>148</td><td>normale</td></tr>
+      <tr><td><b>Noah T.</b></td><td>3,2 km</td><td>120 m</td><td>2</td><td>131</td><td>basse (reprise)</td></tr></table>
+      <div class="sub" style="margin-top:8px">Import fichiers GPS / montre · repère de charge, pas une prédiction de blessure.</div>
+    </div>
+    <div class="grid" style="gap:14px">
+      <div class="card"><h3>Retour de blessure</h3><div class="row"><span class="st rep">Reprise</span><div><b>Noah T.</b> — étape 3/4 · course + contacts légers<div class="sub">Samedi : 45 min max (envoyé à l'entraîneur)</div></div></div></div>
+      <div class="card"><h3>Séances à programmer</h3><div class="row"><span class="st ok">Mar</span><div>Force bas du corps · 12 joueurs<div class="sub">individualisé selon tests</div></div></div><div class="row"><span class="st inc">Jeu</span><div>Prévention ischios · groupe arrières</div></div><div style="margin-top:8px"><span class="btn">Programmer une séance</span> <span class="btn sec">Saisir des tests</span></div></div>
+    </div>
+  </div>
+  <div class="recoit">Reçoit de : <span class="chip">Minutes jouées · entraîneur</span><span class="chip">RPE et questionnaires · joueurs</span><span class="chip">Fichiers GPS / montre</span></div>
+</section>
+
+<!-- ═══════════ ANALYSTE VIDÉO ═══════════ -->
+<section class="screen" id="s-video">
+  <div class="hdr"><div><h1>Match du 21/11 — vs FC Rivière (2-1)</h1><p>Marqueurs codés · comparés aux 5 derniers matchs</p></div><div><span class="btn sec">Importer (logiciel de codage)</span> <span class="btn">Saisir des marqueurs</span></div></div>
+  <div class="grid g2">
+    <div class="card"><h3>Marqueurs collectifs</h3>
+      <table><tr><th>Marqueur</th><th>Ce match</th><th>Moy. 5 matchs</th><th>Écart</th><th>Clips</th></tr>
+      <tr><td><b>Pertes relance courte (côté G)</b></td><td>9</td><td>5,2</td><td style="color:var(--bad)">+73 %</td><td>▶ 9</td></tr>
+      <tr><td><b>Récupérations hautes</b></td><td>6</td><td>3,4</td><td style="color:var(--good)">+76 %</td><td>▶ 6</td></tr>
+      <tr><td><b>Entrées dans la surface</b></td><td>12</td><td>10,6</td><td class="muted">+13 %</td><td>▶ 12</td></tr>
+      <tr><td><b>Tirs cadrés</b></td><td>2</td><td>4,8</td><td style="color:var(--bad)">−58 %</td><td>▶ 2</td></tr>
+      <tr><td><b>Duels aériens gagnés</b></td><td>14 / 22</td><td>12 / 21</td><td class="muted">≈</td><td>▶ 22</td></tr></table>
+      <div class="sub" style="margin-top:8px">Chaque chiffre ouvre ses clips : donnée → constat → question → vidéo.</div>
+    </div>
+    <div class="card"><h3>Schéma — sortie de balle côté gauche</h3>
+      <svg viewBox="0 0 300 200" width="100%" role="img" aria-label="Terrain">
+        <rect x="4" y="4" width="292" height="192" rx="8" fill="var(--pitch)" stroke="var(--pitch-line)"/><line x1="150" y1="4" x2="150" y2="196" stroke="var(--pitch-line)"/><circle cx="150" cy="100" r="26" fill="none" stroke="var(--pitch-line)"/><rect x="4" y="55" width="40" height="90" fill="none" stroke="var(--pitch-line)"/><rect x="256" y="55" width="40" height="90" fill="none" stroke="var(--pitch-line)"/>
+        <g fill="#1A5FFF"><circle cx="22" cy="100" r="6"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="140" r="6"/><circle cx="80" cy="30" r="6"/><circle cx="80" cy="170" r="6"/><circle cx="115" cy="100" r="6"/><circle cx="130" cy="55" r="6"/><circle cx="130" cy="145" r="6"/><circle cx="200" cy="40" r="6"/><circle cx="210" cy="100" r="6"/><circle cx="200" cy="160" r="6"/></g>
+        <path d="M60 60 L80 30" stroke="#DC3545" stroke-width="2.5" stroke-dasharray="4 3"/><circle cx="92" cy="38" r="12" fill="rgba(220,53,69,.18)" stroke="#DC3545"/><text x="108" y="22" font-size="10" fill="#DC3545" font-weight="700">zone de perte (7/9)</text>
+      </svg>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Stats individuelles</h3>
+      <table><tr><th>Joueur</th><th>Min.</th><th>Passes réussies</th><th>Pertes</th><th>Récup.</th><th>Clips</th></tr>
+      <tr><td><b>Léo M.</b></td><td>90</td><td>41 / 47</td><td>3</td><td>5</td><td>▶ 11</td></tr>
+      <tr><td><b>Adam R.</b></td><td>90</td><td>28 / 36</td><td>4</td><td>2</td><td>▶ 8</td></tr>
+      <tr><td><b>Yanis B.</b></td><td>72</td><td>19 / 25</td><td>2</td><td>3</td><td>▶ 6</td></tr></table>
+    </div>
+    <div class="grid" style="gap:14px">
+      <div class="card"><h3>Disponibilité (info)</h3><div class="sub">Noah T. en reprise · Sami K. indisponible — pour contextualiser, sans le détail du bien-être.</div></div>
+      <div class="card"><h3>Rapports</h3><div class="row"><span class="st ok">Staff</span><div>Rapport complet du match · envoyé</div></div><div class="row"><span class="st inc">Joueur</span><div>Extraits individuels · rendez-vous de jeudi</div></div></div>
+    </div>
+  </div>
+  <div class="recoit">Reçoit de : <span class="chip">Thèmes à observer · entraîneur</span><span class="chip">Minutes jouées · entraîneur</span><span class="chip">Disponibilité · prépa</span></div>
+</section>
+
+<!-- ═══════════ JOUEUR ═══════════ -->
+<section class="screen" id="s-joueur">
+  <div class="hdr"><div><h1>Salut Léo</h1><p>Milieu central · FC Exemple U17 · aussi : sélection régionale U17</p></div><span class="tag">Joueur</span></div>
+  <div class="grid g3">
+    <div class="card"><h3>Mon état du jour</h3><div style="font-size:20px;font-weight:800;color:var(--good)">Prêt</div><div class="sub">sommeil bon · fatigue modérée · aucun signal d'alerte</div><div style="margin-top:10px"><span class="btn sec">Questionnaire fait ✓</span></div></div>
+    <div class="card"><h3>Mon agenda</h3><div class="row"><span class="st ok">Mar</span><div>Entraînement 18:30 · présent</div></div><div class="row"><span class="st inc">Jeu</span><div>RDV vidéo individuel · 17:45</div></div><div class="row"><span class="st ko">Sam</span><div><b>Convoqué</b> · vs AS Voisins 15:00</div></div></div>
+    <div class="card"><h3>Ma prépa</h3><div class="row"><span class="st ok">Mar</span><div>Force bas du corps · 4 exos</div></div><div class="sub">Progression : squat 80 → 85 kg sur 4 semaines</div><div style="margin-top:10px"><span class="btn">Ouvrir ma séance</span></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Mon dernier match — vs FC Rivière</h3>
+      <div class="grid g4" style="gap:8px"><div class="kpi"><b>90'</b><span>joués</span></div><div class="kpi"><b>41/47</b><span>passes</span></div><div class="kpi"><b>5</b><span>récupérations</span></div><div class="kpi"><b>3</b><span>pertes</span></div></div>
+      <div style="margin-top:12px"><b>Mes clips</b> <span class="sub">(11 · pour le RDV de jeudi)</span></div>
+      <div class="row"><span class="st ok">▶</span><div>Récupération haute 23' → contre-attaque</div></div><div class="row"><span class="st ko">▶</span><div>Perte relance côté gauche 58'</div></div>
+    </div>
+    <div class="card"><h3>Messages</h3><div class="msg"><b>Prépa · aujourd'hui</b><br>Séance de mardi adaptée : moins de volume avant samedi.</div><div class="msg"><b>Analyste · hier</b><br>Tes clips sont prêts, on regarde ensemble jeudi.</div><div class="msg"><b>Entraîneur · hier</b><br>Objectif du mois : orienter ta prise de balle vers l'avant.</div></div>
+  </div>
+  <div class="recoit">Reçoit de : <span class="chip">Convocation et objectifs · entraîneur</span><span class="chip">Séances de prépa · prépa</span><span class="chip">Stats et clips · analyste</span></div>
+</section>
+</main></div>
+<div class="fic">Maquette · données fictives</div>
+<script>
+document.querySelectorAll('.role').forEach(function(r){r.addEventListener('click',function(){document.querySelectorAll('.role').forEach(function(x){x.classList.remove('on');x.querySelector('.dot').style.outline='';});r.classList.add('on');document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on')});document.getElementById('s-'+r.dataset.r).classList.add('on');});});
+function goHash(){var q=location.hash.slice(1); if(q){var el=document.querySelector('.role[data-r="'+q+'"]'); if(el) el.click();}} goHash(); window.addEventListener('hashchange', goHash);
+</script>
+</body></html>
