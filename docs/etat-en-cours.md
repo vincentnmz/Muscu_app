@@ -4,6 +4,22 @@
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
 > Dernière mise à jour : **21 nov. 2026** (campagne « fiabilité muscu à 100 % » — bloc juste en dessous ; l'historique plus ancien suit).
 
+## ▶ 22/11 — CIBLE EN SÉANCE, RECOMMANDATIONS, ÉTAT DU JOUR confrontés aux études : EN PROD (index.ts v284 vérifié)
+
+- Audits : `docs/audit-cible-seance-science-2026-11-22.md`, `docs/audit-recos-science-2026-11-22.md`,
+  `docs/audit-etat-du-jour-science-2026-11-22.md` (même méthode que les leviers : règle exacte → études → verdict → décision porteur).
+- **Cible en séance (C1-C3)** : plus d'option « Réduire le repos » (allonger reste) · règle « 2 séances de suite » présentée comme
+  pratique courante (référence ACSM non retrouvée) · **« bloqué » selon le niveau : 4 sem débutant, 6 intermédiaire, 8 avancé/expert**
+  (app + serveur), étiquette **« Stable »** pour avancé/expert sur les écrans athlète (coach et mail gardent « bloqué »).
+- **Recommandations (R1-R4)** : régularité = moyen d'atteindre le volume · sommeil sans « 1er facteur » · exercices principaux gardés
+  4-6 semaines pour mesurer · plus d'effet promis du tempo.
+- **État du jour (E1-E3)** : « Risque blessure » → **« Signaux d'alerte »** (liste : charge haute, douleur, fatigue, courbatures,
+  retour de blessure ; champ serveur `signaux_alerte`) · alerte « Risque accru de blessure » → « Charge, douleur et fatigue élevées en
+  même temps » · charge / ACWR = « repère, pas une prédiction de blessure » · « Risque surcharge » → « Charge récente ».
+  Signaux d'alerte affichés aussi sur **Aujourd'hui pour tous les athlètes** (avec ou sans coach).
+- Vérifié à chaque lot : npm test 124 · banc 25 · parcours 53 · 9 athlètes réels 0 écart. Prod `main` 1264d74, Supabase v284 = repo.
+- **AAB** : le n° 33 ne contient PAS les lots du 22/11 → à reconstruire quand le porteur le demande (`build-aab.yml` sur `main`).
+
 ## ▶ 21-22/11 — LEVIERS et « POURQUOI » confrontés aux études : EN PROD (index.ts v281 vérifié) · AAB n° 33 livré
 
 - Audits : `docs/audit-leviers-science-2026-11-21.md` (12 leviers) et `docs/audit-pourquoi-science-2026-11-21.md` (12 constats),
