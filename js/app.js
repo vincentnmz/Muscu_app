@@ -19689,6 +19689,17 @@ function renderChargeFatigueJour(data) {
     // Règle 6bis : la CAUSE réelle du verdict (moteur.causes) en premier, en gras.
     var _causes = (niv0 !== 'Prêt' && Array.isArray(m.causes)) ? m.causes : [];
     var causeHtml = _causes.length ? '<div style="font-size:12.5px;font-weight:700;color:var(--tj-text);margin-top:2px">Pourquoi : ' + _escS(_causes.join(' · ')) + '</div>' : '';
+    // 22/11 (porteur : « si l'athlète n'a pas de coach il lui faut » → pour tout le monde) : signaux d'alerte du moteur, même
+    // calcul que la fiche coach. On n'affiche que ceux que « Pourquoi » ne cite pas déjà ; « Aucun signal d'alerte » si la liste est vide.
+    try {
+      var _sigL = Array.isArray(m.signaux_alerte) ? m.signaux_alerte : null;
+      if (_sigL && niv0 !== 'Non renseigné') {
+        var _cTxt = _causes.join(' ').toLowerCase();
+        var _sigR = _sigL.filter(function (sg) { var k = String(sg).split(' ')[0]; if (k === 'retour') return !/blessure|retour/.test(_cTxt); return _cTxt.indexOf(k) < 0; });
+        if (!_sigL.length) causeHtml += '<div style="font-size:11.5px;color:var(--tj-muted);margin-top:1px">Aucun signal d\'alerte (charge, douleur, fatigue, courbatures)</div>';
+        else if (_sigR.length) causeHtml += '<div style="font-size:11.5px;color:var(--tj-text);margin-top:1px"><b>Signaux d\'alerte</b> : ' + _escS(_sigR.join(', ')) + '</div>';
+      }
+    } catch (e) {}
     verdictHtml = '<div style="display:flex;gap:10px;align-items:center;background:' + vb[1] + ';border:1px solid ' + vb[2] + ';border-radius:12px;padding:10px 13px;margin:0 0 12px">'
       + '<span style="width:9px;height:9px;border-radius:999px;background:' + vb[0] + ';flex:none"></span>'
       + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:' + vb[0] + '">' + vb[3] + '</div>'
