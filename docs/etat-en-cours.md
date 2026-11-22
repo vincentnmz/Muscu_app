@@ -25,7 +25,17 @@
   molette de repos qui partait à 30 s en remontant la page (reproduit sur téléphone simulé) → inerte tant qu'on ne la touche pas ;
   2 séries du porteur corrigées en base (30 → 120 s, accord porteur) · activité « autre » importée < 3 km/h = marche (hors charge).
   Fonctions non utilisées sur 28 j : nutrition, pas, mensurations. Prod `main` bf084b4, Supabase **v286** = repo.
-- **AAB** : le n° 33 ne contient PAS les lots du 22/11 → à reconstruire quand le porteur le demande (`build-aab.yml` sur `main`).
+- **AAB n° 34** (prod `bf084b4`, 22/11) construit et envoyé au porteur (`livrables/aab-34/`, hors git) : contient TOUS les lots du 21-22/11
+  (leviers, Pourquoi, bloqué par niveau / Stable, recos, signaux d'alerte, cardio selon l'âge, molette de repos). À déposer en test interne.
+  Note : GitHub change de serveur de stockage d'un build à l'autre → l'hôte `productionresultssaN.blob.core.windows.net` peut devoir
+  être ajouté à l'environnement (sa19 et sa7 autorisés).
+- **Démo préprod (pour la FFH)** : comptes démo rafraîchis chaque nuit (pg_cron `demo-rafraichir-dates`, `supabase/preprod-demo-rafraichir.sql`) ;
+  accès `https://app.novalyz.fr/dev/`, coach 0202 / demo2026. Mail au contact FFH préparé (`livrables/mail-ffh-2026-11-22.md`) ; recontact
+  février-mars pour le stage de juin (projets 6 et 7 du document de la Cellule Performance).
+- **Vision multisport (foot, 4 rôles : joueur, entraîneur, prépa physique, analyste vidéo)** : premier jet dans le Claude Doc
+  « Novalyz multisport — rôles, objets communs et droits (foot) » (https://claude.ai/artifact/GBv58u3MyQ8qp4qGmyU9kc) — objet pivot
+  séance/match, tableau par rôle (existe / partiel / à faire), matrice des droits, messagerie commune par fils, points à trancher.
+  **Règle porteur : tableau validé AVANT tout code**, puis maquette des 4 écrans, puis code rôle par rôle.
 
 ## ▶ 21-22/11 — LEVIERS et « POURQUOI » confrontés aux études : EN PROD (index.ts v281 vérifié) · AAB n° 33 livré
 
