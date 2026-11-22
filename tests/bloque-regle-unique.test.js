@@ -65,5 +65,17 @@ const b = A._bilanRecapV2({ perfs, appData, secByExo: {}, musByExo: {} }, 'semai
 eq(b.lecture && b.lecture.bloque.map((x) => x.exo).sort().join(',') === 'Deux,Quatre,Second,Trois', 'mail récap d\'un débutant : même « bloqué » que son app', b.lecture && b.lecture.bloque);
 eq(/_rcLectureExos\([^\n]*d\.niveau_experience\)/.test(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8')), 'contexte IA : niveau transmis');
 
+// 22/11 (C3) : libellé « Stable » pour avancé / expert, « bloqué » sinon (écrans athlète) ; seuil 4 / 6 / 8 semaines.
+{
+  const G = {}; vm.createContext(G);
+  vm.runInContext(extract(APP, '_bqMot') + '\n' + extract(APP, '_bqMotC') + '\nfunction _lv3Niveau(d) { return (d && d.niveau_experience) || "intermediaire"; }\nthis.m = _bqMot; this.mc = _bqMotC;', G);
+  eq(G.m({ niveau_experience: 'avance' }) === 'stable' && G.m({ niveau_experience: 'expert' }) === 'stable' && G.mc({ niveau_experience: 'expert' }) === 'Stable', 'avancé / expert → « stable »');
+  eq(G.m({ niveau_experience: 'debutant' }) === 'bloqué' && G.m({ niveau_experience: 'intermediaire' }) === 'bloqué' && G.mc({}) === 'Bloqué', 'débutant / intermédiaire → « bloqué »');
+  const pf = []; const ad = (exo, ss) => ss.forEach(([d, c, r]) => [1, 2].forEach((s) => pf.push({ date: new Date(Date.UTC(2026, 10, 12) - d * 864e5).toISOString().slice(0, 10), exercice: exo, charge: c, reps: r, rpe: 8, serie: s })));
+  ad('Plat', [[80, 50, 10], [49, 60, 8], [42, 60, 8], [35, 60, 8], [28, 60, 8], [21, 60, 8], [14, 60, 8], [7, 60, 8]]);   // plateau de 42 jours (49 → 7)
+  const pg = A.buildProgressionParExo(pf);
+  const res = ['debutant', 'intermediaire', 'avance'].map((niv) => F.lecture({ historique: { progression_par_exo: pg }, programme: [], exo_categories: {}, niveau_experience: niv }, nowT).bloque.length + '/' + A._rcLectureExos(pg, [], {}, nowT, null, niv).bloque.length);
+  eq(res.join(' ') === '1/1 1/1 0/0', 'plateau de 42 jours : bloqué débutant et intermédiaire, pas avancé (8 sem) — app = serveur', res);
+}
 console.log(`bloque-regle-unique : ${ok} OK / ${ko} KO`);
 process.exit(ko ? 1 : 0);
