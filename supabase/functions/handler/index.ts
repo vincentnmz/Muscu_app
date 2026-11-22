@@ -2345,7 +2345,7 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     if (rpeMoy28 != null && rpeMoy28 > 0 && rpeMoy28 < 8) pushReco(`Mets de l'intensité : tes séries finissent en moyenne à RPE ${String(Math.round(rpeMoy28 * 10) / 10).replace('.', ',')}. Les dernières doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
     pushReco(`Progresse une variable à la fois et garde tes exercices principaux assez longtemps pour mesurer tes progrès (au moins 4-6 semaines) : d'abord les reps jusqu'au haut de ta fourchette, puis la charge.`, 'info')
     pushReco(`Soigne ta récupération : vise 7-9 h de sommeil et un repos suffisant entre séries (2-3 min sur les gros exercices) pour pousser fort la séance d'après.`, 'info')
-    pushReco(`Assure l'apport : assez de protéines (~1,6 à 2 g/kg/jour) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.`, 'info')
+    pushReco(`Assure l'apport : assez de protéines (~1,6 à 2,2 g/kg/jour selon ton objectif, haut de fourchette en sèche) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.`, 'info')
     pushReco(`Soigne l'exécution avant la charge : amplitude complète et mouvement maîtrisé.`, 'info')
     pushReco(`Enregistre ton RPE à chaque série : plus tes données sont complètes, plus les analyses et les cibles de charge sont justes.`, 'info')
   }
@@ -2369,6 +2369,22 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
 // on l'ESTIME à partir de la FC moyenne (repères larges, sans FCmax individuelle →
 // prudent) ; sinon RPE modéré (5). => une activité importée pèse dans la charge au
 // lieu de compter 0 (correctif #5 : elle entre bien dans le croisé muscu/cardio).
+// 22/11 (N2, docs/audit-cardio-nutrition-science-2026-11-22.md) : effort estimé d'une sortie importée SANS RPE, en % de la FC max
+// estimée selon l'âge (208 − 0,7 × âge, Tanaka 2001) — 165 bpm ≈ 85 % de la FC max à 25 ans mais ≈ 97 % à 55 ans. Paliers = les
+// anciens seuils en bpm ramenés à un athlète de 30 ans (FC max ≈ 187). Âge inconnu → anciens seuils en bpm.
+function _fcMaxEstimee(ddn: any): number | null {
+  const s = String(ddn || '').trim(); if (!s) return null
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/) || null, f = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/) || null
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : f ? new Date(+f[3], +f[2] - 1, +f[1]) : null
+  if (!d || isNaN(d.getTime())) return null
+  const age = (Date.now() - d.getTime()) / (365.25 * 864e5)
+  return (age >= 10 && age <= 90) ? 208 - 0.7 * age : null
+}
+function _rpeDepuisFc(fc: number, fcMax: number | null): number {
+  if (!(fc > 0)) return 5
+  if (fcMax && fcMax > 0) { const p = fc / fcMax; return p >= 0.88 ? 9 : p >= 0.80 ? 8 : p >= 0.74 ? 7 : p >= 0.67 ? 6 : p >= 0.59 ? 5 : 4 }
+  return fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : 4
+}
 function chargeInterneCardio(s: any): number {
   // La MARCHE (quotidienne, importée de la montre) est une activité, pas un entraînement :
   // hors charge (décision 30/10 ; elle faisait 82 % de la charge cardio annuelle). Même règle que le front.
@@ -2378,7 +2394,7 @@ function chargeInterneCardio(s: any): number {
   let rpe = Number(s && s.rpe) || 0
   if (rpe <= 0) {
     const fc = Number(s && (s.fc_moy != null ? s.fc_moy : s.fc)) || 0
-    rpe = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5
+    rpe = Number(s && s.rpe_estime) > 0 ? Number(s.rpe_estime) : _rpeDepuisFc(fc, null)   // rpe_estime : posé par getAppData (âge connu)
   }
   return rpe * duree
 }
@@ -2823,6 +2839,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const sessions = Object.values(seanceMap).sort((a: any, b: any) => normDate(b.date).localeCompare(normDate(a.date)))
     // history: dates ISO (comparaison JS côté navigateur), valeurs numériques, sid pour édit/suppr
     const history = sessions.map((s: any) => ({ sid: s.seance_id, seance_id: s.seance_id, date: normDate(s.date), ..._cardioNumify(s.indicateurs) }))
+    // 22/11 (N2) : sortie sans RPE avec FC → effort estimé selon l'âge (une seule source : l'app et le vérificateur reprennent rpe_estime).
+    { const fcMax = _fcMaxEstimee(athData && athData.ddn); if (fcMax) history.forEach((h: any) => { if (!(Number(h.rpe) > 0) && Number(h.fc_moy) > 0) h.rpe_estime = _rpeDepuisFc(Number(h.fc_moy), fcMax) }) }
     cardio = {
       windows: { 7: _aggCardioWindow(sessions, now, 7), 30: _aggCardioWindow(sessions, now, 30), 90: _aggCardioWindow(sessions, now, 90), 180: _aggCardioWindow(sessions, now, 180) },
       history,

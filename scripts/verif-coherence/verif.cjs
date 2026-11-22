@@ -200,7 +200,13 @@ function recalculer(store, appdata, now, aidForce) {
   const CX = {};
   IND.filter((r) => /^cardio_/.test(String(r.seance_id || ''))).forEach((r) => { const k = r.seance_id, d = iso(r.date); const o = CX[k] || (CX[k] = { d, type: 'autre' }); if (d && d < o.d) o.d = d; if (r.cle === 'type_cardio') o.type = String(r.valeur || 'autre'); else { const v = Number(r.valeur); if (!isNaN(v)) o[r.cle] = v; } });
   R.cardio = Object.values(CX).filter((o) => o.d && o.d <= now);
-  R.cxCharge = (o) => { if (/^marche/i.test(o.type)) return 0; const du = num(o.duree); if (du <= 0) return 0; let rp = num(o.rpe); if (rp <= 0) { const fc = num(o.fc_moy != null ? o.fc_moy : o.fc); rp = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5; } return rp * du; };
+  // 22/11 (N2) : recalcul INDÉPENDANT de l'effort estimé d'une sortie sans RPE : % de la FC max estimée (208 − 0,7 × âge) si la date
+  // de naissance est connue, sinon anciens seuils en bpm.
+  const _ddnV = String((store.athletes && store.athletes[0] && store.athletes[0].ddn) || ''), _mV = _ddnV.match(/^(\d{4})-(\d{2})-(\d{2})/) || _ddnV.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  const _dV = _mV ? (_mV[1].length === 4 ? new Date(+_mV[1], +_mV[2] - 1, +_mV[3]) : new Date(+_mV[3], +_mV[2] - 1, +_mV[1])) : null;
+  const _ageV = _dV && !isNaN(_dV.getTime()) ? (Date.now() - _dV.getTime()) / (365.25 * 864e5) : null;
+  R.fcMax = (_ageV != null && _ageV >= 10 && _ageV <= 90) ? 208 - 0.7 * _ageV : null;
+  R.cxCharge = (o) => { if (/^marche/i.test(o.type)) return 0; const du = num(o.duree); if (du <= 0) return 0; let rp = num(o.rpe); if (rp <= 0) { const fc = num(o.fc_moy != null ? o.fc_moy : o.fc); if (R.fcMax && fc > 0) { const p = fc / R.fcMax; rp = p >= 0.88 ? 9 : p >= 0.80 ? 8 : p >= 0.74 ? 7 : p >= 0.67 ? 6 : p >= 0.59 ? 5 : 4; } else rp = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5; } return rp * du; };
   R.cxMicro = (o) => num(o.duree) < 5 && num(o.distance) < 0.3;
   // Séances par exercice (récent → ancien) : séries brutes du jour, meilleure série (charge, puis reps).
   R.sessions = {};
