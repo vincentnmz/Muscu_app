@@ -21,6 +21,10 @@
 - **Cardio / nutrition (N1-N2, `docs/audit-cardio-nutrition-science-2026-11-22.md`)** : conseil protéines aligné sur la cible (1,6-2,2 g/kg) ·
   sortie importée sans RPE → effort estimé en % de la FC max estimée selon l'âge (208 − 0,7 × âge), calculé par le serveur (`rpe_estime`),
   repris par l'app, recalculé par le vérificateur. 3 athlètes réels concernés (104/127, 79/80, 39/39 sorties). Supabase **v285** = repo.
+- **Observation des vrais comptes (22/11, `livrables/observation-comptes-2026-11-22.md`, hors git)** : 12 actifs / 28 j, 8 sans coach ·
+  molette de repos qui partait à 30 s en remontant la page (reproduit sur téléphone simulé) → inerte tant qu'on ne la touche pas ;
+  2 séries du porteur corrigées en base (30 → 120 s, accord porteur) · activité « autre » importée < 3 km/h = marche (hors charge).
+  Fonctions non utilisées sur 28 j : nutrition, pas, mensurations. Prod `main` bf084b4, Supabase **v286** = repo.
 - **AAB** : le n° 33 ne contient PAS les lots du 22/11 → à reconstruire quand le porteur le demande (`build-aab.yml` sur `main`).
 
 ## ▶ 21-22/11 — LEVIERS et « POURQUOI » confrontés aux études : EN PROD (index.ts v281 vérifié) · AAB n° 33 livré
