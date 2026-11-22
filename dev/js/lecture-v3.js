@@ -622,7 +622,7 @@ function _lv3ForcesHtml(data) {
     var diff = Math.abs(x.pctSansRpe - x.pct) >= 2 ? ' <span style="font-size:10px;color:var(--text-subtle)">(' + (x.pctSansRpe >= 0 ? '+' : '−') + _lv3Fmt(Math.abs(x.pctSansRpe)) + ' % sans le RPE)</span>' : '';
     return '<div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 54px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px">'
       + '<span style="min-width:0">' + _maE(x.exo) + diff + '<br><span style="font-size:10px;color:var(--text-subtle)">sur ' + x.n + ' séances</span>'
-      + (_bq[String(x.exo).trim()] != null ? ' <span style="font-size:10px;font-weight:800;color:#B45F00">· bloqué depuis ' + _bq[String(x.exo).trim()] + ' séance' + (_bq[String(x.exo).trim()] > 1 ? 's' : '') + '</span>' : '') + '</span>'
+      + (_bq[String(x.exo).trim()] != null ? ' <span style="font-size:10px;font-weight:800;color:#B45F00">· ' + (typeof _bqMot === 'function' ? _bqMot(data) : 'bloqué') + ' depuis ' + _bq[String(x.exo).trim()] + ' séance' + (_bq[String(x.exo).trim()] > 1 ? 's' : '') + '</span>' : '') + '</span>'
       + _lv3Spark(x.vals, col) + '<span style="text-align:right;font-weight:800;color:' + col + '">' + pctTxt(x.pct) + '</span></div>';
   }).join('');
   return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
@@ -718,11 +718,11 @@ function ouvrirInfoProgression() {
     + li('<b>RPE 9 ou 10</b> (1 rep en réserve ou moins) → on <b>garde</b> la charge et les reps : on consolide jusqu\'à ce que ça devienne plus facile.')
     + li('<b>RPE 8 ou moins</b> → <b>+1 rep</b> la prochaine fois, jusqu\'au haut de ta fourchette.')
     + li('Charge en plus : ' + charge + '. Jamais juste après une séance à l\'échec (RPE 10).')
-    + (niv === 'avance' || niv === 'expert' ? li('À ton niveau, quand la charge peut monter, tu choisis le levier du jour : charge, charge + 30 s de repos, +1 rep avec +30 s de repos, ou repos −30 s.') : '')
+    + (niv === 'avance' || niv === 'expert' ? li('À ton niveau, quand la charge peut monter, tu choisis le levier du jour : charge, charge + 30 s de repos, ou +1 rep avec +30 s de repos.') : '')
     + li('<b>Sous ta fourchette</b> à l\'effort maximal → au choix : un <b>petit pas</b> en dessous (≈ −5 %) ou une charge <b>sûre</b> calculée sur ta force estimée (jamais plus de −12,5 %).')
     + '</ul><div style="font-weight:800;color:var(--text);margin:12px 0 6px">Garde-fous</div><ul style="padding-left:18px;margin:0">'
     + li('2 séances de suite à l\'échec, jour de vigilance, déload ou reprise après 3 semaines sans séance → <b>pas de progression</b> ce jour-là.')
-    + li('Exercice dit « bloqué » après <b>' + N + ' séances</b> identiques (à ton niveau) : Novalyz cherche la cause dans tes données (charge, volume du muscle, effort qui monte, fréquence) et te propose <b>un</b> levier.')
+    + li('Exercice dit « ' + ((typeof _bqMot === 'function') ? _bqMot(d) : 'bloqué') + ' » après <b>' + N + ' séances</b> sans progrès couvrant au moins <b>' + (({ debutant: 4, intermediaire: 6, avance: 8, expert: 8 })[niv] || 6) + ' semaines</b> (à ton niveau) : Novalyz cherche la cause dans tes données (charge, volume du muscle, effort qui monte, fréquence) et te propose <b>un</b> levier.')
     + '</ul><div style="font-weight:800;color:var(--text);margin:12px 0 6px">Ta fourchette</div>'
     + '<div>Celle de ton programme, sinon celle du type d\'exercice : lourd / moyen <b>6-12</b>, léger <b>8-20</b>.</div>'
     + '<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:11px;font-size:12px">Ce sont des <b>propositions</b> : c\'est toi qui choisis à chaque séance.</div>';
