@@ -6,6 +6,7 @@ LECTURE NOVALYZ · AUJOURD'HUI · INDICATIF
 ?
 Ton état du jour : récup · charge · fatigue
 Prêt à performer
+Aucun signal d'alerte (charge, douleur, fatigue, courbatures)
 Sommeil bon · fatigue faible · récupération excellente
 Sommeil bon (4/5)
 ta normale arrive dans 4 questionnaires (il en faut 10 sur 5 semaines, tu en as 6)
