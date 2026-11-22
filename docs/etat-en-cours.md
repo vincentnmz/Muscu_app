@@ -36,7 +36,7 @@
   « Novalyz multisport — rôles, objets communs et droits (foot) » (https://claude.ai/artifact/GBv58u3MyQ8qp4qGmyU9kc) — objet pivot
   séance/match, tableau par rôle (existe / partiel / à faire), matrice des droits, messagerie commune par fils, points à trancher.
   **Règle porteur : tableau validé AVANT tout code**, puis maquette des 4 écrans, puis code rôle par rôle.
-  **Maquettes (22/11)** : `mockups/multisport-foot-4-roles.html` (espaces métier, tout modifiable, effectif avec photos, partage) et
+  **⏸ En pause (22/11, « on verra plus tard »).** **Maquettes (22/11)** : `mockups/multisport-foot-4-roles.html` (espaces métier, tout modifiable, effectif avec photos, partage) et
   `mockups/novalyz-pro-connexion.html` (connexion Novalyz Pro, pistes A/B/C). **Notes à ne pas oublier** (créateur de graphiques,
   couleurs d'événement, contenu des ⚙ Configurer, droits de modification…) : `docs/chantiers-futurs/novalyz-pro-foot-maquette-notes-2026-11-22.md`.
 

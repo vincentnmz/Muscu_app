@@ -3,6 +3,7 @@
 > **But : ne rien oublier** entre la maquette et le code. Maquettes : `mockups/multisport-foot-4-roles.html` (espaces métier)
 > et `mockups/novalyz-pro-connexion.html` (connexion, 3 pistes) ; captures `mockups/multisport-foot-ecrans/`.
 > Contexte, rôles, droits : Claude Doc « Novalyz multisport — rôles, objets communs et droits (foot) » ; architecture : `novalyz-pro-performance-data-2026-11.md`.
+> **⏸ EN PAUSE (décision porteur 22/11) : on reprendra plus tard**, rien à coder d'ici là.
 > Ordre fixé par le porteur : tableau validé → maquettes → **code rôle par rôle**, rien codé avant validation.
 
 ## Décidé
