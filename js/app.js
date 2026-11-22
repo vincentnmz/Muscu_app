@@ -445,7 +445,7 @@ try {
         if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5');
         if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
-          titre: 'Risque accru de blessure',
+          titre: 'Charge, douleur et fatigue élevées en même temps',   // 22/11 (E2) : plus de « risque de blessure » non validé
           description: 'Charge aiguë élevée (ACWR), douleur et fatigue combinées.',
           evidence: ev.join(' · '),
           recommandation: 'Réduis fortement la charge sur les prochaines séances ; si la douleur persiste, consulte.' });
@@ -1017,17 +1017,21 @@ function couleurStatut(niveauLabel) {
  * ========================================================================== */
 // Libellé → couleur (présentation ; mêmes teintes que l'app, aucune décision).
 function _ckColRecup(v){ return (v==='Excellent'||v==='Bon') ? '#22c55e' : v==='Moyen' ? '#f5a623' : v==='Faible' ? '#e5484d' : 'var(--text-muted)'; }
+// 22/11 (E1) : « Risque blessure » → « Signaux d'alerte » (aucun calcul de ce type n'est validé pour prédire une blessure).
+function _sigAlerteTxt(m){ var l = m && Array.isArray(m.signaux_alerte) ? m.signaux_alerte : null; if (l) return l.length ? (l.length === 1 ? '1 signal' : l.length + ' signaux') : 'Aucun'; var v = m && m.risque_blessure; return v === 'Faible' ? 'Aucun' : v === 'Modéré' ? 'Quelques-uns' : v === 'Élevé' ? 'Plusieurs' : '—'; }
+function _sigAlerteDetail(m){ var l = m && Array.isArray(m.signaux_alerte) ? m.signaux_alerte : []; return l.length ? l.join(', ') : ''; }
 function _ckColNiv3(v){ return v==='Faible' ? '#22c55e' : v==='Modéré' ? '#f5a623' : v==='Élevé' ? '#e5484d' : 'var(--text-muted)'; }
 function _ckConf(c){
   var map = { haute:{l:'Confiance haute',c:'#2563eb'}, moyenne:{l:'Confiance moyenne',c:'#f5a623'}, faible:{l:'Confiance faible',c:'#8595b8'}, non_interpretable:{l:'Données insuffisantes',c:'#8595b8'} };
   return map[c] || null;
 }
 var _CK_CTX = { deload:'Déload', retour_vacances:'Retour vacances', retour_blessure:'Retour blessure', intensification:'Intensification', saison_normale:'' };
-function _ckMini(k, val, col){
+function _ckMini(k, val, col, sub){   // 22/11 : sub = détail en petit sous la valeur (ex. liste des signaux d'alerte)
   return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:9px 10px;">'
     +'<div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">'+k+'</div>'
     +'<div style="font-size:15px;font-weight:800;margin-top:2px;display:flex;align-items:center;gap:6px;">'
-    +'<span style="width:8px;height:8px;border-radius:50%;background:'+col+';display:inline-block;"></span>'+escapeHtml(String(val))+'</div></div>';
+    +'<span style="width:8px;height:8px;border-radius:50%;background:'+col+';display:inline-block;flex:none;"></span>'+escapeHtml(String(val))+'</div>'
+    +(sub ? '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.35;">'+escapeHtml(String(sub))+'</div>' : '')+'</div>';
 }
 // Bloc A — État. m = data.moteur (déjà produit par evaluerEtatAthlete côté backend).
 function renderCockpitEtat(m){
@@ -1047,7 +1051,7 @@ function renderCockpitEtat(m){
     +'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">'
       + _ckMini('Récupération', m.recup || '—', _ckColRecup(m.recup))
-      + _ckMini('Risque blessure', m.risque_blessure || '—', _ckColNiv3(m.risque_blessure))
+      + _ckMini('Signaux d\'alerte', _sigAlerteTxt(m), _ckColNiv3(m.risque_blessure), _sigAlerteDetail(m))
       // Audit #3 : « Charge » (pas « Surcharge ») et jamais orange sur la charge seule —
       // orange uniquement si le ressenti confirme (moteur.charge_ressenti.degrade).
       + (function () { var _c = _chargeMoteur(m); return _ckMini('Charge', _c.v, _c.c); })()   // B (14/11) : logique partagée
@@ -1367,7 +1371,7 @@ function renderCockpitEvolution(data){
       + '<div style="font-size:12px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div>'
       + (pos == null ? '' : '<div style="position:relative;height:6px;border-radius:5px;background:var(--surface2);margin-top:9px;"><span style="position:absolute;top:-2px;left:' + (Math.round(pos * 10) / 10) + '%;width:3px;height:10px;border-radius:2px;background:' + cat.c + ';transform:translateX(-50%);"></span></div>')
       + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">Dernière valeur du moteur · ' + (m.confiance === 'haute' ? 'fiabilité élevée' : m.confiance === 'faible' ? 'fiabilité faible' : 'fiabilité moyenne') + '</div>'
-      + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">Repère de <b>charge</b>, pas un verdict : il ne pèse sur ta disponibilité du jour que s\'il est <b>confirmé par tes sensations</b> (douleur, fatigue, sommeil).</div>';
+      + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">Repère de <b>charge</b>, pas un verdict ni une prédiction de blessure : il ne pèse sur ta disponibilité du jour que s\'il est <b>confirmé par tes sensations</b> (douleur, fatigue, sommeil).</div>';
   }
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
@@ -3956,13 +3960,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const mot = d.moteur;
   const colRisque = v => v==='Élevé'?'#e5484d':v==='Modéré'?'#f5a623':'#22c55e';
   const colRecup = v => (v==='Excellent'||v==='Bon')?'#22c55e':v==='Moyen'?'#f5a623':v==='Faible'?'#e5484d':'var(--text-muted)';
-  const motCell = (l,v,c)=>`<div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px;">${l}</div><div style="font-size:14px;font-weight:800;color:${c||'var(--text)'};">${escapeHtml(v)}</div></div>`;
+  const motCell = (l,v,c,sub)=>`<div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px;">${l}</div><div style="font-size:14px;font-weight:800;color:${c||'var(--text)'};">${escapeHtml(v)}</div>${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.35;">${escapeHtml(String(sub))}</div>` : ''}</div>`;
   const analyseCard = mot ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         ${motCell('Disponibilité', mot.disponibilite.niveau, couleurStatut(mot.disponibilite.niveau))}
-        ${motCell('Risque surcharge', mot.surcharge, colRisque(mot.surcharge))}
+        ${motCell('Charge récente', mot.surcharge, colRisque(mot.surcharge))}
         ${motCell('État récup', mot.recup, colRecup(mot.recup))}
-        ${motCell('Risque blessure', mot.risque_blessure, colRisque(mot.risque_blessure))}
+        ${motCell('Signaux d\'alerte', _sigAlerteTxt(mot), colRisque(mot.risque_blessure), _sigAlerteDetail(mot))}
       </div>
       ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">${mot.contexte_tag ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:var(--accent);color:var(--on-accent);border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:middle;">${escapeHtml(mot.contexte_tag)}</span>` : ''}<b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
     </div>` : '';
@@ -15795,7 +15799,7 @@ var _MA_INFO = {
   volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
   ressenti: { t: 'Effort des séances (RPE)', d: 'Barres = la note que tu donnes à TOUTE la séance dans le bilan (échelle CR-10 de Foster : 0 = repos, 10 = effort maximal). Point bleu = la moyenne des RPE que tu notes à chaque série ce jour-là. Les deux sont normaux mais différents : une série proche de l\'échec est notée 8-9, la séance entière (avec les repos) souvent moins. Le bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
-  acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: 'Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
+  acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3 — un repère de charge, pas une prédiction de blessure (son lien avec les blessures est très discuté).', fiab: 'Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
   fraicheur: { t: 'Fraîcheur : es-tu reposé ?', d: 'En clair : à quel point ton corps est <b>reposé</b> aujourd\'hui. Novalyz compare ce que tu encaisses <b>d\'habitude</b> (sur plusieurs semaines) à ce que tu as fait <b>ces derniers jours</b>. Si tu as fait <b>plus que d\'habitude</b> récemment → tu es plus fatigué (fraîcheur négative) ; si tu as fait <b>moins</b> → tu es reposé (fraîcheur positive). « Charge récente » = ta charge des 7 derniers jours vs ton habitude.<br><br><span style="color:var(--text-subtle)">Détail technique : forme de fond (CTL, 42 j) − fatigue récente (ATL, 7 j) = fraîcheur (TSB %).</span>', fiab: 'Méthode reconnue et largement utilisée (modèle fitness-fatigue de Banister, base du TSB/CTL/ATL de TrainingPeaks ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
   execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
@@ -21925,7 +21929,7 @@ var _LEXIQUE = [
   ['ACWR', 'Rapport entre ta charge récente (7 j) et ta charge habituelle (28 j). Zone de repère ≈ 0,8–1,3. À interpréter avec prudence, pas comme un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.'],
   ['Charge aiguë / chronique', 'Aiguë = ce que tu as fait récemment (7 j). Chronique = ta moyenne habituelle (28 j). L\'ACWR compare les deux.'],
   ['Surcharge progressive', 'Augmenter petit à petit la charge ou les répétitions pour continuer à progresser sans stagner.'],
-  ['Balance musculaire', 'L\'équilibre entre groupes opposés (pectoraux vs dos, quadriceps vs ischios…). Proche de 50/50 = moins de déséquilibres et de risque de blessure.'],
+  ['Balance musculaire', 'L\'équilibre entre groupes opposés (pectoraux vs dos, quadriceps vs ischios…). Proche de 50/50 = développement équilibré entre groupes opposés.'],
   ['Efficience (cardio)', 'À effort comparable, ta fréquence cardiaque baisse quand ton endurance s\'améliore.'],
   ['Récupération', 'Un score bien-être (sommeil, fatigue…) qui estime à quel point ton corps est prêt à s\'entraîner.'],
   ['Fiabilité / confiance', 'À quel point Novalyz a assez de données pour se prononcer. Elle monte avec le nombre de séances et de questionnaires enregistrés.'],
@@ -25263,7 +25267,7 @@ function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.e
 var _CTX_EFFET = {
   deload: 'Novalyz met en veille les alertes « absence » et « volume trop bas », signale moins vite la surcharge, et compte une baisse de charge ou de volume comme « attendue » (pas une régression). Tes cibles : même charge, 1 série de moins, RPE ≤ 7.',
   retour_vacances: 'Reprise : les alertes « absence » et « volume trop bas » sont en veille et une baisse est « attendue » pendant cet état ; le ratio de charge (ACWR) n\'est pas interprété tant que l\'état dure. Novalyz surveille la surcharge plus tôt : une remontée trop rapide est signalée.',
-  retour_blessure: 'Prudence renforcée : Novalyz relève ton niveau de risque et te garde au moins en « Vigilance » tant que tu reprends — pas de progression proposée (mêmes charges que la dernière fois) ; une baisse est « attendue ».',
+  retour_blessure: 'Prudence renforcée : Novalyz relève ta vigilance et te garde au moins en « Vigilance » tant que tu reprends — pas de progression proposée (mêmes charges que la dernière fois) ; une baisse est « attendue ».',
   intensification: 'Phase de charge assumée : une hausse de l\'effort perçu (RPE) n\'est pas traitée comme un signe de mauvaise récupération, et la fatigue ne déclenche « Vigilance » qu\'à 5/5. Sommeil, douleur et récupération faible restent surveillés.'
 };
 function carteContexteHTML(contexte, athlete_id, source) {
