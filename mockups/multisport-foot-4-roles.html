@@ -38,11 +38,23 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--a08)}
 .pitch{background:var(--pitch);border:1px solid var(--pitch-line);border-radius:10px}
 .modal{position:fixed;inset:0;background:rgba(7,11,20,.45);display:none;align-items:center;justify-content:center;z-index:20}.modal.on{display:flex}
 .mbox{background:#fff;border-radius:16px;padding:18px 20px;width:min(520px,92vw)}.mbox h2{margin:0 0 4px;font-size:17px}.pick{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.pick span{padding:7px 11px;border-radius:999px;border:1px solid var(--border);font-weight:600;font-size:12.5px;cursor:pointer}.pick span.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+body{--rc:#1A5FFF}body[data-r=prepa]{--rc:#00A854}body[data-r=video]{--rc:#7B5CF5}body[data-r=joueur]{--rc:#E07800}
+.nav.on{background:var(--rc)}.who{border-left:4px solid var(--rc)}
+.edit{cursor:pointer;color:var(--subtle);font-size:13px;padding:0 4px;text-transform:none}.edit:hover{color:var(--accent)}
+.cfg{background:#fff;border:1px solid var(--border);color:var(--muted)}
+.ev{cursor:pointer;border-left:3px solid currentColor}.day{cursor:copy}.day .add{color:var(--subtle);font-size:11px;margin-top:4px}
+.c-coach{background:rgba(26,95,255,.10);color:#1A5FFF}.c-prepa{background:rgba(0,168,84,.12);color:#00874A}.c-video{background:rgba(123,92,245,.12);color:#6A4BE0}.c-joueur{background:rgba(224,120,0,.12);color:#C26800}.c-club{background:rgba(220,53,69,.10);color:#DC3545}.c-neu{background:var(--surface2);color:var(--muted);border-left-color:transparent}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 10px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.fld{display:block;margin:10px 0 0;font-size:12.5px;font-weight:700;color:var(--muted)}.fld input,.fld select,.fld textarea{display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font:inherit;font-weight:500;color:var(--text);background:#fff}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pl{cursor:grab}.pl:active{cursor:grabbing}.bench span{display:inline-block;margin:4px 6px 0 0;padding:5px 10px;border-radius:999px;border:1px solid var(--border);font-weight:600;font-size:12.5px;cursor:pointer;background:#fff}.bench span.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+.later{border:1px dashed var(--subtle);border-radius:10px;padding:8px 10px;color:var(--muted);font-size:12.5px;margin-top:10px}
+.hdr>div:first-child{flex:1}.card h3>.share,.card h3>.btn{margin-left:auto}
 .fic{text-align:right;padding:0 24px 14px;font-size:11px;color:var(--subtle)}
 @media (max-width:1100px){.app{grid-template-columns:168px 1fr}.who{display:none}.nav{padding:9px 10px;font-size:13px}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2,.g3,.g11{grid-template-columns:1fr}.cal{grid-template-columns:repeat(4,minmax(0,1fr))}.note{display:none}}
 </style></head><body>
 <div class="top"><span class="logo">NOVALYZ<small>FOOT</small></span><span class="note">Maquette · FC Exemple U17 · données fictives</span>
-  <div class="rtabs"><span class="rtab on" data-role="coach">Entraîneur</span><span class="rtab" data-role="prepa">Prépa physique</span><span class="rtab" data-role="video">Analyste vidéo</span><span class="rtab" data-role="joueur">Joueur</span></div></div>
+  <div class="rtabs"><span class="note" style="align-self:center">Aperçu maquette (dans l'app : chacun arrive dans son espace avec ses identifiants) →</span><span class="rtab on" data-role="coach">Entraîneur</span><span class="rtab" data-role="prepa">Prépa physique</span><span class="rtab" data-role="video">Analyste vidéo</span><span class="rtab" data-role="joueur">Joueur</span></div></div>
 <div class="app"><aside class="side" id="side"></aside><main class="main" id="main">
 
 <!-- ════════ ENTRAÎNEUR ════════ -->
@@ -81,36 +93,33 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--a08)}
   <div class="sub" style="margin-top:10px">Chaque rôle ouvre la même fiche et voit sa partie (matrice des droits) : le détail médical et le bien-être brut n'apparaissent pas ici.</div>
 </section>
 
-<section class="scr" data-role="coach" data-s="calendrier">
-  <div class="hdr"><div><h1>Calendrier</h1><p>Semaine du 23 au 29/11</p></div><span class="btn">+ Séance ou match</span></div>
+<section class="scr" data-role="staff" data-s="calendrier">
+  <div class="hdr"><div><h1>Calendrier</h1><p>Semaine du 23 au 29/11 · calendrier commun du staff · cliquer un jour pour créer, un événement pour le modifier</p></div><span class="btn" data-new="ev">+ Événement</span></div>
+  <div class="legend"><span><i style="background:#1A5FFF"></i>Entraîneur</span><span><i style="background:#00A854"></i>Prépa physique</span><span><i style="background:#7B5CF5"></i>Analyste vidéo</span><span><i style="background:#DC3545"></i>Match</span><span><i style="background:#E07800"></i>Convocation / joueur</span></div>
   <div class="cal">
-    <div class="day"><b>Lun 23</b><div class="ev" style="background:var(--surface2)">Repos</div></div>
-    <div class="day"><b>Mar 24</b><div class="ev" style="background:var(--a08);color:var(--accent)">Entraînement 18:30<div class="sub">20 présents / 22</div></div><div class="ev" style="background:var(--good-a);color:var(--good)">Prépa force</div></div>
-    <div class="day"><b>Mer 25</b><div class="ev" style="background:var(--surface2)">Repos</div></div>
-    <div class="day"><b>Jeu 26</b><div class="ev" style="background:var(--a08);color:var(--accent)">Entraînement 18:30</div><div class="ev" style="background:var(--violet-a);color:var(--violet)">Séance vidéo 17:45</div></div>
-    <div class="day"><b>Ven 27</b><div class="ev" style="background:var(--a08);color:var(--accent)">Mise en place 18:00</div><div class="ev" style="background:var(--warn-a);color:var(--warn)">Convocation</div></div>
-    <div class="day"><b>Sam 28</b><div class="ev" style="background:var(--bad-a);color:var(--bad)">Match vs AS Voisins 15:00</div></div>
-    <div class="day"><b>Dim 29</b><div class="ev" style="background:var(--surface2)">Récupération</div></div>
+    <div class="day"><b>Lun 23</b><div class="ev c-neu">Repos</div></div>
+    <div class="day"><b>Mar 24</b><div class="ev c-coach">Entraînement 18:30<div class="sub">20 présents / 22</div></div><div class="ev c-prepa">Prépa force 17:00</div></div>
+    <div class="day"><b>Mer 25</b><div class="ev c-neu">Repos</div></div>
+    <div class="day"><b>Jeu 26</b><div class="ev c-coach">Entraînement 18:30</div><div class="ev c-video">Séance vidéo 17:45</div><div class="ev c-video">RDV vidéo Léo M. 17:15</div></div>
+    <div class="day"><b>Ven 27</b><div class="ev c-coach">Mise en place 18:00</div><div class="ev c-joueur">Convocation</div></div>
+    <div class="day"><b>Sam 28</b><div class="ev c-club">Match vs AS Voisins 15:00</div></div>
+    <div class="day"><b>Dim 29</b><div class="ev c-prepa">Récupération</div></div>
   </div>
 </section>
 
 <section class="scr" data-role="coach" data-s="match">
   <div class="hdr"><div><h1>Match — vs AS Voisins</h1><p>Avant le match · composition et consignes</p></div><div class="tabs2"><span class="on">Avant</span><span>Après</span></div></div>
   <div class="grid g2">
-    <div class="card"><h3>Composition 4-3-3 <span class="share" data-share="Composition 4-3-3 vs AS Voisins">⤴ Partager</span></h3>
-      <svg viewBox="0 0 420 270" width="100%" class="pitch" role="img" aria-label="Composition"><rect x="6" y="6" width="408" height="258" rx="8" fill="none" stroke="#B9D8C4"/><line x1="6" y1="135" x2="414" y2="135" stroke="#B9D8C4"/><circle cx="210" cy="135" r="32" fill="none" stroke="#B9D8C4"/>
-      <g font-size="11" font-weight="700" text-anchor="middle" fill="#070B14"><circle cx="210" cy="248" r="13" fill="#fff" stroke="#1A5FFF"/><text x="210" y="252">G</text>
-      <circle cx="70" cy="200" r="13" fill="#fff" stroke="#1A5FFF"/><text x="70" y="204">LG</text><circle cx="160" cy="210" r="13" fill="#fff" stroke="#1A5FFF"/><text x="160" y="214">DC</text><circle cx="260" cy="210" r="13" fill="#fff" stroke="#1A5FFF"/><text x="260" y="214">DC</text><circle cx="350" cy="200" r="13" fill="#fff" stroke="#E07800"/><text x="350" y="204">LD</text>
-      <circle cx="130" cy="140" r="13" fill="#fff" stroke="#1A5FFF"/><text x="130" y="144">MC</text><circle cx="210" cy="155" r="13" fill="#1A5FFF"/><text x="210" y="159" fill="#fff">Léo</text><circle cx="290" cy="140" r="13" fill="#fff" stroke="#1A5FFF"/><text x="290" y="144">MC</text>
-      <circle cx="90" cy="70" r="13" fill="#fff" stroke="#E07800"/><text x="90" y="74">AG</text><circle cx="210" cy="50" r="13" fill="#fff" stroke="#1A5FFF"/><text x="210" y="54">BU</text><circle cx="330" cy="70" r="13" fill="#fff" stroke="#1A5FFF"/><text x="330" y="74">AD</text></g></svg>
-      <div class="sub">Contour orange = joueur incertain (statut du prépa)</div></div>
-    <div class="grid" style="gap:14px"><div class="card"><h3>Consignes</h3><div class="row">Relance : éviter le couloir gauche court, sortir par le 6</div><div class="row">Pressing haut sur leurs relances (6 récupérations la semaine dernière)</div></div>
+    <div class="card"><h3><span>Composition <select id="schema" style="font:inherit;font-size:11px;border:1px solid var(--border);border-radius:6px;padding:2px 4px"><option>4-3-3</option><option>4-4-2</option><option>3-5-2</option></select></span> <span class="share" data-share="Composition vs AS Voisins">⤴ Partager</span></h3>
+      <svg id="compo" viewBox="0 0 420 270" width="100%" class="pitch" role="img" aria-label="Composition"><rect x="6" y="6" width="408" height="258" rx="8" fill="none" stroke="#B9D8C4"/><line x1="6" y1="135" x2="414" y2="135" stroke="#B9D8C4"/><circle cx="210" cy="135" r="32" fill="none" stroke="#B9D8C4"/><g id="pls"></g></svg>
+      <div class="sub">Glisser un joueur pour le déplacer · cliquer un remplaçant puis un titulaire pour les échanger · contour orange = incertain (statut du prépa)</div><div class="bench" id="bench"><b style="font-size:12px;color:var(--muted)">Remplaçants :</b> </div></div>
+    <div class="grid" style="gap:14px"><div class="card"><h3>Consignes <span class="btn sec" data-new="consigne" style="padding:3px 9px;font-size:11px;text-transform:none;letter-spacing:0">+ Consigne</span></h3><div class="row">Relance : éviter le couloir gauche court, sortir par le 6</div><div class="row">Pressing haut sur leurs relances (6 récupérations la semaine dernière)</div></div>
     <div class="card"><h3>Document <span class="share" data-share="Plan de jeu vs AS Voisins (PDF)">⤴ Partager</span></h3><div class="att"><span class="ic" style="background:#DC3545">PDF</span><div><b>Plan de jeu vs AS Voisins</b><div class="sub">4 pages · coups de pied arrêtés inclus</div></div></div></div></div>
   </div>
 </section>
 
 <section class="scr" data-role="coach" data-s="seances">
-  <div class="hdr"><div><h1>Séances</h1><p>Contenu des entraînements · thème de la semaine : sortie de balle</p></div><span class="btn">+ Nouvelle séance</span></div>
+  <div class="hdr"><div><h1>Séances</h1><p>Contenu des entraînements · thème de la semaine : sortie de balle</p></div><div><span class="btn sec" data-new="exoterrain">+ Nouvel exercice</span> <span class="btn" data-new="seance">+ Nouvelle séance</span></div></div>
   <div class="grid g2"><div class="card"><h3>Jeudi 26/11 — 90 min <span class="share" data-share="Séance du jeudi 26/11">⤴ Partager</span></h3><div class="row"><span class="st neu">15'</span><div>Échauffement + rondo 5 contre 2</div></div><div class="row"><span class="st neu">25'</span><div>Sortie de balle à 3 sous pression (côté gauche)</div></div><div class="row"><span class="st neu">30'</span><div>Jeu réduit 7 contre 7, transition après récupération</div></div><div class="row"><span class="st neu">20'</span><div>Coups de pied arrêtés défensifs</div></div></div>
   <div class="card"><h3>Vidéo d'exercice <span class="share" data-share="Vidéo : sortie de balle à 3">⤴ Partager</span></h3><div class="att"><span class="ic" style="background:#7B5CF5">▶</span><div><b>Sortie de balle à 3 — démonstration</b><div class="sub">1 min 40 · pour les joueurs</div></div></div><div class="sub" style="margin-top:8px">Charge prévue : intensité moyenne (RPE cible 6), transmise au prépa</div></div></div>
 </section>
@@ -142,13 +151,13 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--a08)}
 </section>
 
 <section class="scr" data-role="prepa" data-s="programmation">
-  <div class="hdr"><div><h1>Programmation</h1><p>Séances individuelles et collectives</p></div><span class="btn">+ Programmer</span></div>
+  <div class="hdr"><div><h1>Programmation</h1><p>Séances individuelles et collectives</p></div><div><span class="btn sec" data-new="exomuscu">+ Nouvel exercice</span> <span class="btn" data-new="prog">+ Programmer</span></div></div>
   <div class="grid g2"><div class="card"><h3>Mardi 24/11 — Force bas du corps (12 joueurs) <span class="share" data-share="Séance force bas du corps (PDF)">⤴ Partager</span></h3><table><tr><th>Exercice</th><th>Séries × reps</th><th>Charge</th></tr><tr><td>Squat</td><td>4 × 5</td><td>selon tests</td></tr><tr><td>Fentes bulgares</td><td>3 × 8</td><td>haltères</td></tr><tr><td>Nordic hamstring</td><td>3 × 5</td><td>poids du corps</td></tr></table><div class="sub" style="margin-top:8px">10 / 12 faites · 2 en attente (Yanis B. allégée)</div></div>
   <div class="card"><h3>Vidéo technique <span class="share" data-share="Vidéo : nordic hamstring">⤴ Partager</span></h3><div class="att"><span class="ic" style="background:#7B5CF5">▶</span><div><b>Nordic hamstring — exécution</b><div class="sub">0 min 55</div></div></div><div class="att"><span class="ic" style="background:#00A854">IMG</span><div><b>Fiche échauffement prévention</b><div class="sub">photo · groupe arrières</div></div></div></div></div>
 </section>
 
 <section class="scr" data-role="prepa" data-s="tests">
-  <div class="hdr"><div><h1>Tests physiques</h1><p>Batterie de novembre · 18 / 22 joueurs testés</p></div><span class="btn">Saisir des résultats</span></div>
+  <div class="hdr"><div><h1>Tests physiques</h1><p>Batterie de novembre · 18 / 22 joueurs testés</p></div><div><span class="btn sec" data-new="test">+ Nouveau test</span> <span class="btn" data-new="saisietest">Saisir des résultats</span></div></div>
   <div class="card"><table><tr><th>Joueur</th><th>Poste</th><th>Sprint 30 m</th><th>CMJ</th><th>Intermittent</th><th>vs septembre</th></tr><tr><td><b>Léo M.</b></td><td>MC</td><td>4,21 s</td><td>43 cm</td><td>19,0</td><td><span class="st ok">en progrès</span></td></tr><tr><td><b>Yanis B.</b></td><td>AG</td><td>4,12 s</td><td>38 cm</td><td>18,0</td><td><span class="st neu">stable</span></td></tr><tr><td><b>Adam R.</b></td><td>LD</td><td>4,30 s</td><td>40 cm</td><td>18,5</td><td><span class="st inc">sprint en baisse</span></td></tr></table></div>
 </section>
 
@@ -170,8 +179,8 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--a08)}
 </section>
 
 <section class="scr" data-role="video" data-s="codage">
-  <div class="hdr"><div><h1>Codage — vs FC Rivière (21/11)</h1><p>Grille « Possession / transitions » · 142 événements</p></div><div><span class="btn sec">Importer (logiciel de codage)</span> <span class="btn">Saisir en direct</span></div></div>
-  <div class="grid g2"><div class="card"><h3>Marqueurs de la grille</h3><div class="grid g3" style="gap:8px"><span class="btn sec">Perte relance</span><span class="btn sec">Récupération haute</span><span class="btn sec">Entrée surface</span><span class="btn sec">Tir cadré</span><span class="btn sec">Duel aérien</span><span class="btn sec">CPA offensif</span></div><div class="sub" style="margin-top:10px">Chaque marqueur = un moment de la vidéo + un joueur + une zone</div></div>
+  <div class="hdr"><div><h1>Codage — vs FC Rivière (21/11)</h1><p>Grille « Possession / transitions » · 142 événements importés depuis le logiciel de codage</p></div><span class="btn" data-new="import">Importer un fichier de codage</span></div>
+  <div class="grid g2"><div class="card"><h3>Marqueurs de la grille <span class="btn sec" data-new="marqueur" style="padding:3px 9px;font-size:11px;text-transform:none;letter-spacing:0">+ Marqueur</span></h3><div class="grid g3" style="gap:8px"><span class="btn sec">Perte relance</span><span class="btn sec">Récupération haute</span><span class="btn sec">Entrée surface</span><span class="btn sec">Tir cadré</span><span class="btn sec">Duel aérien</span><span class="btn sec">CPA offensif</span></div><div class="sub" style="margin-top:10px">Chaque marqueur = un moment de la vidéo + un joueur + une zone. La grille relie les noms du fichier importé aux marqueurs Novalyz (modifiable).</div><div class="later">Plus tard (à étudier) : coder directement dans Novalyz pendant le match, caméra connectée.</div></div>
   <div class="card"><h3>Derniers événements</h3><div class="row"><span class="st ko">58'</span><div>Perte relance · Léo M. · zone G</div></div><div class="row"><span class="st ok">23'</span><div>Récupération haute · Léo M. · zone centre</div></div><div class="row"><span class="st neu">17'</span><div>Entrée surface · Yanis B. · couloir G</div></div></div></div>
 </section>
 
@@ -253,18 +262,22 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--a08)}
 <div class="sub">Le partage arrive dans le fil concerné et reste rangé dans « Partages ». Un joueur ne reçoit que ce qui le concerne.</div>
 <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><span class="btn sec" id="mclose">Annuler</span><span class="btn" id="msend">Partager</span></div></div></div>
 
+<div class="modal" id="fmodal"><div class="mbox"><h2 id="ftitle"></h2><div class="sub" id="fsub"></div><div id="fbody"></div>
+<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><span class="btn sec" id="fdel" style="margin-right:auto;color:var(--bad)">Supprimer</span><span class="btn sec" id="fclose">Annuler</span><span class="btn" id="fsave">Enregistrer</span></div></div></div>
 <script>
 var NAV={coach:[['accueil','Accueil'],['effectif','Effectif'],['calendrier','Calendrier'],['match','Match'],['seances','Séances'],['messages','Messages',3]],
 prepa:[['accueil','Accueil'],['joueurs','Joueurs'],['programmation','Programmation'],['tests','Tests physiques'],['blessures','Retours de blessure'],['import','Import de données'],['messages','Messages',1]],
 video:[['matchs','Matchs'],['codage','Codage'],['collectif','Stats collectives'],['fiche','Stats individuelles'],['clips','Clips et rapports'],['tactique','Tactique'],['messages','Messages']],
 joueur:[['aujourdhui',"Aujourd'hui"],['agenda','Agenda'],['matchs','Mes matchs'],['prepa','Ma prépa'],['progression','Ma progression'],['messages','Messages',2],['profil','Profil']]};
 var WHO={coach:['Coach Martin','Entraîneur · FC Exemple U17'],prepa:['Julie R.','Préparatrice physique'],video:['Vincent','Analyste vidéo'],joueur:['Léo M.','Joueur · MC']};
+NAV.prepa.splice(1,0,['calendrier','Calendrier']);NAV.video.splice(1,0,['calendrier','Calendrier']);
 var role='coach',scr='accueil';
-function render(){document.querySelectorAll('.rtab').forEach(function(t){t.classList.toggle('on',t.dataset.role===role)});
+var RNOM={coach:'Entraîneur',prepa:'Prépa physique',video:'Analyste vidéo',joueur:'Joueur'};
+function render(){document.body.dataset.r=role;document.querySelectorAll('.rtab').forEach(function(t){t.classList.toggle('on',t.dataset.role===role)});decorer();
  var s='<div class="who"><b>'+WHO[role][0]+'</b>'+WHO[role][1]+'</div>';
  NAV[role].forEach(function(n){s+='<div class="nav'+(n[0]===scr?' on':'')+'" data-s="'+n[0]+'"><span class="lbl">'+n[1]+'</span>'+(n[2]?'<span class="n">'+n[2]+'</span>':'')+'</div>'});
  document.getElementById('side').innerHTML=s;
- document.querySelectorAll('.scr').forEach(function(x){x.classList.toggle('on',(x.dataset.role===role||x.dataset.role==='all')&&x.dataset.s===scr)});
+ document.querySelectorAll('.scr').forEach(function(x){x.classList.toggle('on',(x.dataset.role===role||x.dataset.role==='all'||(x.dataset.role==='staff'&&role!=='joueur'))&&x.dataset.s===scr)});
  document.querySelectorAll('#side .nav').forEach(function(n){n.onclick=function(){scr=n.dataset.s;render()}});}
 document.querySelectorAll('.rtab').forEach(function(t){t.onclick=function(){role=t.dataset.role;scr=NAV[role][0][0];render()}});
 document.querySelectorAll('[data-go]').forEach(function(r){r.onclick=function(){scr=r.dataset.go;render()}});
@@ -272,6 +285,49 @@ document.querySelectorAll('.share').forEach(function(b){b.onclick=function(){doc
 document.querySelectorAll('.pick span').forEach(function(p){p.onclick=function(){p.classList.toggle('on')}});
 document.getElementById('mclose').onclick=document.getElementById('msend').onclick=function(){document.getElementById('modal').classList.remove('on')};
 window.goto=function(r,s){role=r;scr=s;render()};
+// ── formulaires (création / modification) ──
+function F(l,t,v){return '<label class="fld">'+l+(t==='area'?'<textarea rows="3">'+(v||'')+'</textarea>':t&&t.push?'<select>'+t.map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>':'<input type="'+(t||'text')+'" value="'+(v||'')+'">')+'</label>'}
+function W(a,b){return '<div class="f2">'+a+b+'</div>'}
+var POUR=F('Pour qui',['Toute l\'équipe','Convoqués','Groupe défenseurs','Groupe attaquants','Un joueur…','Staff seulement']);
+var FORMS={
+ ev:function(d){return ['Nouvel événement','Couleur automatique selon ton rôle ('+RNOM[role]+')',F('Titre','',d&&d.t)+W(F('Type',['Entraînement','Match','Séance de prépa','Séance vidéo','RDV individuel','Récupération','Autre']),F('Lieu','','Stade municipal'))+W(F('Date','date','2026-11-26'),F('Heure','time','18:30'))+POUR+F('Note','area')]},
+ consigne:function(){return ['Nouvelle consigne','Match vs AS Voisins',F('Consigne','area')+F('Concerne',['Toute l\'équipe','Défenseurs','Milieux','Attaquants','Un joueur…'])]},
+ exoterrain:function(){return ['Nouvel exercice (terrain)','Ajouté à ta bibliothèque d\'exercices',F('Nom')+W(F('Durée (min)','number','20'),F('Thème',['Sortie de balle','Pressing','Finition','Transition','Coups de pied arrêtés','Physique intégré']))+F('Organisation / consignes','area')+F('Schéma, photo ou vidéo (facultatif)','file')]},
+ seance:function(){return ['Nouvelle séance','Composée à partir de ta bibliothèque',W(F('Date','date','2026-11-26'),F('Durée (min)','number','90'))+F('Exercices',['Rondo 5 contre 2','Sortie de balle à 3','Jeu réduit 7 contre 7','CPA défensifs','+ Nouvel exercice…'])+F('Intensité prévue (RPE cible)',['4','5','6','7','8'],'6')]},
+ exomuscu:function(){return ['Nouvel exercice (prépa)','Ajouté à ta bibliothèque, réutilisable dans tes programmes',F('Nom')+W(F('Catégorie',['Force','Puissance','Prévention','Mobilité','Vitesse','Endurance']),F('Muscles / zone',['Bas du corps','Haut du corps','Tronc','Corps entier']))+F('Consignes d\'exécution','area')+F('Vidéo ou photo (facultatif)','file')]},
+ prog:function(){return ['Programmer une séance','Arrive dans « Ma prépa » des joueurs choisis',W(F('Date','date','2026-11-24'),F('Heure','time','17:00'))+POUR+F('Exercices',['Squat 4×5','Fentes bulgares 3×8','Nordic hamstring 3×5','+ Nouvel exercice…'])]},
+ test:function(){return ['Nouveau test physique','Ajouté à ta batterie de tests',F('Nom','','Ex. : sprint 10 m')+W(F('Unité',['s','cm','m','km/h','palier','kg','reps']),F('Meilleur résultat =',['plus bas','plus haut']))+F('Protocole','area')]},
+ saisietest:function(){return ['Saisir des résultats','Batterie de novembre',W(F('Test',['Sprint 30 m','CMJ','Test intermittent']),F('Date','date','2026-11-24'))+W(F('Joueur',['Léo M.','Yanis B.','Adam R.']),F('Résultat','text'))]},
+ import:function(){return ['Importer un fichier de codage','Export de ton logiciel de codage (fichier XML ou CSV)',F('Match',['21/11 vs FC Rivière','14/11 vs US Collines','07/11 vs AC Vallée'])+F('Fichier','file')+F('Grille à utiliser',['Possession / transitions','Coups de pied arrêtés','+ Nouvelle grille…'])]},
+ marqueur:function(){return ['Nouveau marqueur','Ajouté à la grille « Possession / transitions »',F('Nom','','Ex. : centre réussi')+W(F('Nom dans le fichier importé'),F('Couleur',['Vert (positif)','Rouge (à corriger)','Gris (neutre)']))]}
+};
+function ouvrir(k,d,edit){var r=FORMS[k](d);document.getElementById('ftitle').textContent=edit?'Modifier'+(d&&d.t?' — '+d.t:''):r[0];document.getElementById('fsub').textContent=r[1];document.getElementById('fbody').innerHTML=r[2];document.getElementById('fdel').style.display=edit?'':'none';document.getElementById('fmodal').classList.add('on')}
+function ouvrirBloc(t){document.getElementById('ftitle').textContent='Modifier : '+t;document.getElementById('fsub').textContent='Chaque bloc est modifiable par le rôle qui en est responsable';document.getElementById('fbody').innerHTML=F('Titre du bloc','',t)+F('Contenu','area')+F('Visible par',['Tout le staff','Moi seulement','Staff + joueurs concernés']);document.getElementById('fdel').style.display='';document.getElementById('fmodal').classList.add('on')}
+function configurer(){var sc=document.querySelector('.scr.on');var h='';sc.querySelectorAll('.card > h3').forEach(function(h3,i){var t=h3.firstChild&&h3.firstChild.textContent||h3.textContent;h+='<label class="fld" style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" data-i="'+i+'" style="width:auto;margin:0"'+(h3.parentNode.style.display==='none'?'':' checked')+'> '+t.trim()+' <span class="sub" style="margin-left:auto">↑ ↓</span></label>'});
+ document.getElementById('ftitle').textContent='Configurer l\'écran';document.getElementById('fsub').textContent='Afficher / masquer et ordonner les blocs · ajouter un bloc';document.getElementById('fbody').innerHTML=h+F('Ajouter un bloc',['—','Note libre','Indicateur (chiffre clé)','Liste de joueurs','Document','Vidéo / clips','Graphique']);document.getElementById('fdel').style.display='none';document.getElementById('fmodal').classList.add('on');
+ document.querySelectorAll('#fbody input[type=checkbox]').forEach(function(c){c.onchange=function(){sc.querySelectorAll('.card > h3')[c.dataset.i].parentNode.style.display=c.checked?'':'none'}})}
+document.getElementById('fclose').onclick=document.getElementById('fsave').onclick=document.getElementById('fdel').onclick=function(){document.getElementById('fmodal').classList.remove('on')};
+document.querySelectorAll('[data-new]').forEach(function(b){b.onclick=function(e){e.stopPropagation();ouvrir(b.dataset.new)}});
+document.querySelectorAll('.day').forEach(function(d){d.insertAdjacentHTML('beforeend','<div class="add">+ ajouter</div>');d.onclick=function(){ouvrir('ev')}});
+document.querySelectorAll('.ev').forEach(function(e){e.onclick=function(x){x.stopPropagation();ouvrir('ev',{t:e.firstChild.textContent},true)}});
+function decorer(){var staff=role!=='joueur';document.querySelectorAll('.scr').forEach(function(sc){
+ sc.querySelectorAll('.card > h3').forEach(function(h3){var e=h3.querySelector('.edit');if(!e){var t=(h3.firstChild&&h3.firstChild.textContent||'').trim();h3.insertAdjacentHTML('beforeend','<span class="edit" title="Modifier ce bloc">✎</span>');h3.querySelector('.edit').onclick=function(){ouvrirBloc(t)};e=h3.querySelector('.edit')}e.style.display=staff?'':'none'});
+ var hd=sc.querySelector('.hdr');if(hd&&!hd.querySelector('.cfg')){hd.insertAdjacentHTML('beforeend','<span class="btn cfg">⚙ Configurer</span>');hd.querySelector('.cfg').onclick=configurer}
+ hd&&(hd.querySelector('.cfg').style.display=staff?'':'none')})}
+// ── composition déplaçable ──
+var JOU=[['Ilyes',0],['Enzo',0],['Malik',0],['Hugo',0],['Adam',1],['Rayan',0],['Léo',0],['Nathan',0],['Yanis',1],['Mehdi',0],['Théo',0]],BANC=['Noah (reprise 45\')','Lucas','Ethan','Bilal','Jules'];
+var SCH={'4-3-3':[['G',210,248],['LG',70,200],['DC',160,212],['DC',260,212],['LD',350,200],['MC',130,145],['MC',210,165],['MC',290,145],['AG',90,70],['BU',210,50],['AD',330,70]],
+'4-4-2':[['G',210,248],['LG',70,200],['DC',160,212],['DC',260,212],['LD',350,200],['MG',70,130],['MC',165,150],['MC',255,150],['MD',350,130],['BU',170,55],['BU',250,55]],
+'3-5-2':[['G',210,250],['DC',110,196],['DC',210,196],['DC',310,196],['PG',45,115],['MC',130,128],['MDC',210,145],['MC',290,128],['PD',375,115],['BU',170,50],['BU',250,50]]};
+var selB=-1;
+function compo(){var sc=SCH[document.getElementById('schema').value],g=document.getElementById('pls'),h='';
+ JOU.forEach(function(j,i){var p=sc[i];h+='<g class="pl" data-i="'+i+'" transform="translate('+p[1]+','+p[2]+')"><circle r="17" fill="'+(j[0]==='Léo'?'#1A5FFF':'#fff')+'" stroke="'+(j[1]?'#E07800':'#1A5FFF')+'" stroke-width="2"/><text y="3" font-size="9.5" font-weight="700" text-anchor="middle" fill="'+(j[0]==='Léo'?'#fff':'#070B14')+'">'+j[0]+'</text><text y="29" font-size="8.5" text-anchor="middle" fill="#4A5980">'+p[0]+'</text></g>'});
+ g.innerHTML=h;var b=document.getElementById('bench');b.innerHTML='<b style="font-size:12px;color:var(--muted)">Remplaçants :</b> '+BANC.map(function(n,i){return '<span data-b="'+i+'"'+(i===selB?' class="sel"':'')+'>'+n+'</span>'}).join('');
+ b.querySelectorAll('span').forEach(function(x){x.onclick=function(){selB=selB==+x.dataset.b?-1:+x.dataset.b;compo()}});
+ var svg=document.getElementById('compo');g.querySelectorAll('.pl').forEach(function(pl){pl.onpointerdown=function(ev){var moved=false;pl.setPointerCapture(ev.pointerId);
+  pl.onpointermove=function(m){moved=true;var pt=svg.createSVGPoint();pt.x=m.clientX;pt.y=m.clientY;var q=pt.matrixTransform(svg.getScreenCTM().inverse());pl.setAttribute('transform','translate('+Math.max(18,Math.min(402,q.x))+','+Math.max(18,Math.min(252,q.y))+')')};
+  pl.onpointerup=function(){pl.onpointermove=null;if(!moved&&selB>=0){var i=+pl.dataset.i,t=JOU[i][0];JOU[i]=[BANC[selB].split(' ')[0],0];BANC[selB]=t;selB=-1;compo()}}}})}
+document.getElementById('schema').onchange=compo;compo();
 render();
 </script>
 </body></html>
