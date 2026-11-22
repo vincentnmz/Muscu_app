@@ -2385,10 +2385,18 @@ function _rpeDepuisFc(fc: number, fcMax: number | null): number {
   if (fcMax && fcMax > 0) { const p = fc / fcMax; return p >= 0.88 ? 9 : p >= 0.80 ? 8 : p >= 0.74 ? 7 : p >= 0.67 ? 6 : p >= 0.59 ? 5 : 4 }
   return fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : 4
 }
+// 22/11 (observation porteur, compte importé par montre) : activité « autre » à moins de 3 km/h de moyenne = activité quotidienne
+// (≈ 1 km/h, 60-70 min, FC ~110), pas un entraînement → traitée comme de la MARCHE (hors charge), comme la marche déclarée.
+function _estMarcheCardio(type: any, vitesse: any): boolean {
+  const t = String(type || '')
+  if (/^marche/i.test(t)) return true
+  const v = Number(vitesse)
+  return /^autre$/i.test(t) && v > 0 && v < 3
+}
 function chargeInterneCardio(s: any): number {
   // La MARCHE (quotidienne, importée de la montre) est une activité, pas un entraînement :
   // hors charge (décision 30/10 ; elle faisait 82 % de la charge cardio annuelle). Même règle que le front.
-  if (/^marche/i.test(String((s && s.type_cardio) || ''))) return 0
+  if (_estMarcheCardio(s && s.type_cardio, s && s.vitesse_moy)) return 0
   const duree = Number(s && s.duree) || 0
   if (duree <= 0) return 0
   let rpe = Number(s && s.rpe) || 0
@@ -2971,9 +2979,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Audit Notifications N4 (01/11) : l'ACTIVITÉ compte la muscu ET le cardio (hors marche) —
     // une semaine de vélo / course / Hyrox n'est plus une « absence prolongée ».
     const _cardioActif: Record<string, string> = {}   // seance_id → date, cardio hors marche
-    { const typ: Record<string, string> = {}, dt: Record<string, string> = {}
-      for (const r of (cardioRows || [])) { if (r.cle === 'type_cardio') typ[r.seance_id] = String(r.valeur || ''); if (!dt[r.seance_id]) dt[r.seance_id] = normDate(r.date) }
-      for (const sid of Object.keys(dt)) if (!/^marche/i.test(typ[sid] || '')) _cardioActif[sid] = dt[sid] }
+    { const typ: Record<string, string> = {}, dt: Record<string, string> = {}, vit: Record<string, string> = {}
+      for (const r of (cardioRows || [])) { if (r.cle === 'type_cardio') typ[r.seance_id] = String(r.valeur || ''); if (r.cle === 'vitesse_moy') vit[r.seance_id] = String(r.valeur || ''); if (!dt[r.seance_id]) dt[r.seance_id] = normDate(r.date) }
+      for (const sid of Object.keys(dt)) if (!_estMarcheCardio(typ[sid], vit[sid])) _cardioActif[sid] = dt[sid] }
     const _joursActifs = new Set<string>([...perfs.map(r => normDate(r.date)), ...Object.values(_cardioActif)].filter(Boolean) as string[])
     const seances7M = [..._joursActifs].filter(d => d >= c7).length
     // Retour de vacances : l'absence se compte à partir de la FIN de la pause (R1, 01/11).
