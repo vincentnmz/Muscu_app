@@ -40,3 +40,5 @@ Sources : `supabase/functions/handler/index.ts` (`buildSyntheseCardio`, `chargeI
 - Schumann et al. 2022, Sports Med — https://pubmed.ncbi.nlm.nih.gov/34757594/
 - Bull et al. 2020 (OMS), Br J Sports Med — https://pmc.ncbi.nlm.nih.gov/articles/PMC7719906/
 - Tanaka, Monahan, Seals 2001, JACC — https://pubmed.ncbi.nlm.nih.gov/11153730/
+
+## Décision porteur (22/11) : N1 et N2 acceptées et codées.

@@ -15751,7 +15751,8 @@ function _chargeInterneCardio(s) {
   var rpe = Number(s && s.rpe) || 0;
   if (rpe <= 0) {
     var fc = Number(s && (s.fc_moy != null ? s.fc_moy : s.fc)) || 0;
-    rpe = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5;
+    // 22/11 (N2) : rpe_estime posé par le serveur d'après l'âge (% de la FC max estimée) ; sinon anciens seuils en bpm.
+    rpe = Number(s && s.rpe_estime) > 0 ? Number(s.rpe_estime) : (fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5);
   }
   return rpe * duree;
 }
