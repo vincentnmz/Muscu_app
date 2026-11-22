@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Novalyz Pro — connexion (maquette)</title>
+<!-- Maquette 22/11/2026 — écran de connexion Novalyz Pro (clubs, staff, joueurs). 3 pistes de style : ?v=a|b|c ; écran : &e=login|invit.
+     Aucun code de l'app n'en dépend. Logo : assets/logo (officiel Novalyz). -->
+<style>
+:root{--accent:#1A5FFF;--violet:#7B5CF5;--text:#070B14;--muted:#4A5980;--subtle:#8595B8;--border:#D8E2FF}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);font-size:14px}
+.v{display:none;min-height:100vh}.v.on{display:flex}
+.switch{position:fixed;top:10px;right:10px;z-index:9;display:flex;gap:4px;background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:999px;padding:4px;font-size:11.5px;font-weight:700}
+.switch span{padding:5px 10px;border-radius:999px;cursor:pointer;color:var(--muted)}.switch span.on{background:var(--accent);color:#fff}
+.form{width:100%;max-width:380px}
+.form h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}.form p.lead{margin:0 0 22px;font-size:14px}
+.lbl{display:block;font-size:12.5px;font-weight:700;margin:14px 0 6px}
+.inp{width:100%;padding:12px 14px;border-radius:12px;font:inherit;font-size:15px;outline:none}
+.go{width:100%;margin-top:20px;padding:13px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;font-weight:800;font-size:15px;cursor:pointer}
+.links{display:flex;justify-content:space-between;margin-top:14px;font-size:12.5px;font-weight:600}.links a{cursor:pointer;text-decoration:none}
+.sep{display:flex;align-items:center;gap:10px;margin:22px 0 14px;font-size:12px}.sep:before,.sep:after{content:"";flex:1;height:1px;background:currentColor;opacity:.25}
+.alt{display:block;width:100%;text-align:center;padding:11px;border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:8px}
+.pro{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.14em;padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:8px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2em;font-size:17px}.brand img{height:34px}
+.hint{font-size:12px;margin-top:16px;line-height:1.45}
+.e-invit{display:none}.invit .e-login{display:none}.invit .e-invit{display:block}
+
+/* ── A : nuit de match ── */
+#va{background:radial-gradient(ellipse at 50% 120%,#1A5FFF55 0%,transparent 55%),linear-gradient(180deg,#0B1E4D 0%,#06102B 100%);color:#fff;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:24px 16px}
+#va .lines{position:absolute;inset:0;width:100%;height:100%;opacity:.13}
+#va .card{position:relative;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);border-radius:22px;padding:34px 34px 28px;width:100%;max-width:440px}
+#va .brand{margin-bottom:26px}#va .pro{background:var(--accent);color:#fff}
+#va p.lead,#va .hint,#va .sep{color:#AFC2EE}#va .lbl{color:#DCE5FF}
+#va .inp{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff}#va .inp::placeholder{color:#7F93C4}
+#va .links a{color:#9FB8FF}#va .alt{border:1px solid rgba(255,255,255,.22);color:#fff}
+#va .roles{display:flex;gap:6px;flex-wrap:wrap;margin-top:18px}#va .roles span{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);color:#C9D6FF}
+
+/* ── B : clair, écran partagé ── */
+#vb{background:#fff}
+#vb .left{flex:1 1 50%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 24px;position:relative}
+#vb .left .brand{position:absolute;top:28px;left:32px;color:var(--text)}#vb .pro{background:#EEF3FF;color:var(--accent)}
+#vb p.lead,#vb .hint,#vb .sep{color:var(--muted)}#vb .inp{border:1px solid var(--border);background:#F9FBFF}#vb .inp:focus{border-color:var(--accent);background:#fff}
+#vb .links a{color:var(--accent)}#vb .alt{background:#EEF3FF;color:var(--accent)}
+#vb .right{flex:1 1 50%;background:linear-gradient(160deg,#1A5FFF 0%,#3D5BF0 45%,#7B5CF5 100%);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:48px 56px;position:relative;overflow:hidden}
+#vb .right h2{font-size:30px;line-height:1.15;margin:0 0 12px;max-width:440px}#vb .right p{color:#DCE5FF;margin:0 0 26px;max-width:420px;line-height:1.5}
+#vb .mini{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:440px}
+#vb .tile{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:14px}#vb .tile b{display:block;font-size:13px;margin-bottom:4px}#vb .tile span{font-size:12px;color:#DCE5FF}
+#vb .tile i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+/* ── C : data ── */
+#vc{background:#070B14;color:#fff;align-items:stretch;position:relative;overflow:hidden}
+#vc .viz{position:absolute;inset:0;width:100%;height:100%}
+#vc .panel{position:relative;margin-left:auto;width:min(520px,100%);background:#0D1322;border-left:1px solid #1C2540;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 24px}
+#vc .pro{background:linear-gradient(90deg,#1A5FFF,#7B5CF5);color:#fff}
+#vc .brand{margin-bottom:30px}#vc p.lead,#vc .hint,#vc .sep{color:#8C9AC0}#vc .lbl{color:#C9D3EE}
+#vc .inp{background:#121A2E;border:1px solid #243052;color:#fff}#vc .inp::placeholder{color:#5D6B92}#vc .inp:focus{border-color:var(--violet)}
+#vc .go{background:linear-gradient(90deg,#1A5FFF,#7B5CF5)}#vc .links a{color:#A99BFF}#vc .alt{border:1px solid #243052;color:#fff}
+#vc .claim{position:absolute;left:48px;bottom:48px;max-width:460px}#vc .claim h2{font-size:34px;line-height:1.1;margin:0 0 10px}#vc .claim p{color:#8C9AC0;margin:0;line-height:1.5}
+#vc .claim .k{display:flex;gap:26px;margin-top:22px}#vc .claim .k b{display:block;font-size:22px}#vc .claim .k span{font-size:12px;color:#8C9AC0}
+
+@media (max-width:900px){#vb .right{display:none}#vc .claim{display:none}#vc .panel{width:100%;border-left:0;background:rgba(13,19,34,.86)}}
+@media (max-width:480px){.switch{top:auto;bottom:10px;left:10px;right:10px;justify-content:center}#va .card{padding:26px 20px 22px;border-radius:18px}.form h1{font-size:23px}#vb .left .brand{left:20px;top:22px}}
+</style></head><body>
+<div class="switch" id="sw"><span data-v="a">A · Nuit de match</span><span data-v="b">B · Clair</span><span data-v="c">C · Data</span><span data-e="invit">Invitation</span></div>
+
+<!-- formulaire commun (cloné dans chaque piste) -->
+<template id="tpl">
+ <div class="form">
+  <div class="e-login">
+   <h1>Connexion</h1><p class="lead">Accède à l'espace de ton club.</p>
+   <label class="lbl">Identifiant</label><input class="inp" placeholder="ex. j.martin">
+   <label class="lbl">Mot de passe</label><input class="inp" type="password" placeholder="••••••••">
+   <button class="go">Se connecter</button>
+   <div class="links"><a>Mot de passe oublié ?</a><a>Rester connecté</a></div>
+   <div class="sep">ou</div>
+   <a class="alt" data-e="invit">J'ai reçu une invitation de mon club</a>
+   <a class="alt">Créer l'espace de mon club</a>
+   <div class="hint">Tu arrives directement dans ton espace : entraîneur, préparateur physique, analyste vidéo ou joueur, selon le rôle donné par ton club.</div>
+  </div>
+  <div class="e-invit">
+   <h1>Activer mon compte</h1><p class="lead">Ton club t'a invité. Entre le code reçu par e-mail ou SMS.</p>
+   <label class="lbl">Code d'invitation</label><input class="inp" value="FCX-U17-4K9P">
+   <div class="hint" style="margin-top:8px">✓ FC Exemple U17 · rôle : <b>Préparateur physique</b></div>
+   <label class="lbl">Choisis ton identifiant</label><input class="inp" placeholder="ex. j.roux">
+   <label class="lbl">Choisis ton mot de passe</label><input class="inp" type="password" placeholder="8 caractères minimum">
+   <button class="go">Activer et entrer</button>
+   <div class="links"><a data-e="login">← Retour à la connexion</a><span></span></div>
+   <div class="hint">Joueur mineur : une autorisation parentale est demandée à l'étape suivante.</div>
+  </div>
+ </div>
+</template>
+
+<section class="v" id="va">
+ <svg class="lines" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-width="2"><rect x="60" y="60" width="1320" height="780" rx="6"/><line x1="720" y1="60" x2="720" y2="840"/><circle cx="720" cy="450" r="110"/><rect x="60" y="250" width="200" height="400"/><rect x="1180" y="250" width="200" height="400"/><rect x="60" y="360" width="70" height="180"/><rect x="1310" y="360" width="70" height="180"/></g></svg>
+ <div class="card"><div class="brand"><img src="../assets/logo/logo-blanc-bleu.svg" alt="">NOVALYZ<span class="pro">PRO</span></div><div class="slot"></div>
+  <div class="roles"><span>Entraîneur</span><span>Prépa physique</span><span>Analyste vidéo</span><span>Joueur</span></div></div>
+</section>
+
+<section class="v" id="vb">
+ <div class="left"><div class="brand"><img src="../assets/logo/logo-bleu-noir.svg" alt="">NOVALYZ<span class="pro">PRO</span></div><div class="slot"></div></div>
+ <div class="right"><h2>Tout le staff, la même donnée, les bonnes décisions.</h2><p>Disponibilités, charge, stats de match, clips : chacun travaille dans son espace, tout le monde parle des mêmes chiffres.</p>
+  <div class="mini"><div class="tile"><b><i style="background:#9FB8FF"></i>Entraîneur</b><span>Compo, séances, convocations</span></div><div class="tile"><b><i style="background:#7CE0A8"></i>Prépa physique</b><span>Charge, tests, retours de blessure</span></div><div class="tile"><b><i style="background:#C9B8FF"></i>Analyste vidéo</b><span>Codage, stats, clips, rapports</span></div><div class="tile"><b><i style="background:#FFC68A"></i>Joueur</b><span>Agenda, prépa, ses clips, sa progression</span></div></div></div>
+</section>
+
+<section class="v" id="vc">
+ <svg class="viz" viewBox="0 0 1440 900" preserveAspectRatio="xMinYMid slice"><defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#1A5FFF"/><stop offset="1" stop-color="#7B5CF5"/></linearGradient></defs>
+  <g stroke="#1C2540" stroke-width="1">
+   <line x1="0" y1="180" x2="960" y2="180"/><line x1="0" y1="300" x2="960" y2="300"/><line x1="0" y1="420" x2="960" y2="420"/><line x1="0" y1="540" x2="960" y2="540"/></g>
+  <polyline fill="none" stroke="url(#g1)" stroke-width="3" points="0,470 80,440 160,455 240,400 320,410 400,350 480,370 560,310 640,330 720,270 800,290 880,230 960,250"/>
+  <polyline fill="none" stroke="#2A3A66" stroke-width="2" points="0,520 80,510 160,530 240,490 320,505 400,470 480,480 560,450 640,470 720,430 800,445 880,410 960,420"/>
+  <g fill="#7B5CF5"><circle cx="400" cy="350" r="5"/><circle cx="720" cy="270" r="5"/><circle cx="880" cy="230" r="6"/></g>
+  <g fill="#1A5FFF" opacity=".55" transform="translate(600,40)"><rect x="60" y="610" width="26" height="60" rx="4"/><rect x="100" y="590" width="26" height="80" rx="4"/><rect x="140" y="620" width="26" height="50" rx="4"/><rect x="180" y="570" width="26" height="100" rx="4"/><rect x="220" y="600" width="26" height="70" rx="4"/></g></svg>
+ <div class="claim"><h2>La cellule performance de ton club.</h2><p>Entraînement, ressenti, match et vidéo réunis pour décider plus vite et mieux.</p><div class="k"><div><b>4</b><span>espaces métier</span></div><div><b>1</b><span>donnée partagée</span></div><div><b>0</b><span>tableur à recopier</span></div></div></div>
+ <div class="panel"><div class="brand"><img src="../assets/logo/logo-blanc-bleu.svg" alt="">NOVALYZ<span class="pro">PRO</span></div><div class="slot"></div></div>
+</section>
+
+<script>
+var t=document.getElementById('tpl');document.querySelectorAll('.slot').forEach(function(s){s.appendChild(t.content.cloneNode(true))});
+var q=new URLSearchParams(location.search),v=q.get('v')||'a',e=q.get('e')||'login';
+function r(){document.querySelectorAll('.v').forEach(function(x){x.classList.toggle('on',x.id==='v'+v);x.classList.toggle('invit',e==='invit')});
+ document.querySelectorAll('#sw span').forEach(function(s){s.classList.toggle('on',s.dataset.v===v||(s.dataset.e==='invit'&&e==='invit'))})}
+document.querySelectorAll('[data-v]').forEach(function(s){s.onclick=function(){v=s.dataset.v;r()}});
+document.querySelectorAll('[data-e]').forEach(function(s){s.onclick=function(){e=(s.dataset.e==='invit'&&e==='invit')?'login':s.dataset.e;r()}});
+window.set=function(a,b){v=a;e=b;r()};r();
+</script>
+</body></html>

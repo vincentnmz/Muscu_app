@@ -50,6 +50,13 @@ body{--rc:#1A5FFF}body[data-r=prepa]{--rc:#00A854}body[data-r=video]{--rc:#7B5CF
 .pl{cursor:grab}.pl:active{cursor:grabbing}.bench span{display:inline-block;margin:4px 6px 0 0;padding:5px 10px;border-radius:999px;border:1px solid var(--border);font-weight:600;font-size:12.5px;cursor:pointer;background:#fff}.bench span.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
 .later{border:1px dashed var(--subtle);border-radius:10px;padding:8px 10px;color:var(--muted);font-size:12.5px;margin-top:10px}
 .hdr>div:first-child{flex:1}.card h3>.share,.card h3>.btn{margin-left:auto}
+.eff{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.pc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 12px 12px;text-align:center;cursor:pointer;position:relative}.pc:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(26,95,255,.10)}
+.av{width:72px;height:72px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;position:relative;border:3px solid #fff;box-shadow:0 0 0 2px var(--ring,#D8E2FF)}
+.av svg{position:absolute;inset:0;width:100%;height:100%;border-radius:50%}
+.av.s{width:30px;height:30px;font-size:11px;margin:0;border-width:2px;display:inline-grid;vertical-align:middle;margin-right:8px}
+.num{position:absolute;top:10px;left:12px;font-weight:800;color:var(--subtle);font-size:13px}.pc .nm{font-weight:800}.pc .ps{font-size:12px;color:var(--muted);margin:2px 0 8px}
+.pc .mn{font-size:11.5px;color:var(--subtle);margin-top:8px}
 .fic{text-align:right;padding:0 24px 14px;font-size:11px;color:var(--subtle)}
 @media (max-width:1100px){.app{grid-template-columns:168px 1fr}.who{display:none}.nav{padding:9px 10px;font-size:13px}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2,.g3,.g11{grid-template-columns:1fr}.cal{grid-template-columns:repeat(4,minmax(0,1fr))}.note{display:none}}
 </style></head><body>
@@ -69,14 +76,10 @@ body{--rc:#1A5FFF}body[data-r=prepa]{--rc:#00A854}body[data-r=video]{--rc:#7B5CF
 </section>
 
 <section class="scr" data-role="coach" data-s="effectif">
-  <div class="hdr"><div><h1>Effectif</h1><p>22 joueurs · cliquer un joueur pour ouvrir sa fiche</p></div><span class="btn sec">Inviter un joueur</span></div>
-  <div class="card"><table><tr><th>Joueur</th><th>Poste</th><th>Équipes</th><th>Statut</th><th>Min. (4 matchs)</th><th>Charge 7 j</th><th>Objectif du mois</th></tr>
-  <tr class="click" data-go="fiche"><td><b>Léo M.</b></td><td>MC</td><td>Club · Sélection</td><td><span class="st ok">Disponible</span></td><td>356 / 360</td><td>normale</td><td class="sub">Prise de balle vers l'avant</td></tr>
-  <tr class="click" data-go="fiche"><td><b>Yanis B.</b></td><td>AG</td><td>Club</td><td><span class="st inc">Incertain</span></td><td>290 / 360</td><td style="color:var(--warn)">haute</td><td class="sub">Repli défensif</td></tr>
-  <tr class="click" data-go="fiche"><td><b>Noah T.</b></td><td>DC</td><td>Club</td><td><span class="st rep">Reprise</span></td><td>0 / 360</td><td>basse</td><td class="sub">Retour progressif</td></tr>
-  <tr class="click" data-go="fiche"><td><b>Sami K.</b></td><td>BU</td><td>Club · Sélection</td><td><span class="st ko">Indisponible</span></td><td>180 / 360</td><td class="sub">—</td><td class="sub">—</td></tr>
-  <tr class="click" data-go="fiche"><td><b>Adam R.</b></td><td>LD</td><td>Club</td><td><span class="st inc">Incertain</span></td><td>340 / 360</td><td>normale</td><td class="sub">Centres en première intention</td></tr>
-  <tr class="click" data-go="fiche"><td><b>Ilyes D.</b></td><td>G</td><td>Club</td><td><span class="st ok">Disponible</span></td><td>360 / 360</td><td>normale</td><td class="sub">Relance au pied</td></tr></table></div>
+  <div class="hdr"><div><h1>Effectif</h1><p>22 joueurs · cliquer un joueur pour ouvrir sa fiche</p></div><div class="tabs2" id="effvue"><span class="on" data-vue="cartes">Cartes</span><span data-vue="liste">Liste</span></div><span class="btn sec">Inviter un joueur</span></div>
+  <div class="tabs2" style="margin-top:-4px"><span class="on">Tous</span><span>Gardiens</span><span>Défenseurs</span><span>Milieux</span><span>Attaquants</span><span>Indisponibles</span></div>
+  <div id="effcartes" class="eff"></div>
+  <div id="effliste" class="card" style="display:none"><table id="efftab"></table></div>
 </section>
 
 <section class="scr" data-role="coach" data-s="fiche">
@@ -290,7 +293,7 @@ function F(l,t,v){return '<label class="fld">'+l+(t==='area'?'<textarea rows="3"
 function W(a,b){return '<div class="f2">'+a+b+'</div>'}
 var POUR=F('Pour qui',['Toute l\'équipe','Convoqués','Groupe défenseurs','Groupe attaquants','Un joueur…','Staff seulement']);
 var FORMS={
- ev:function(d){return ['Nouvel événement','Couleur automatique selon ton rôle ('+RNOM[role]+')',F('Titre','',d&&d.t)+W(F('Type',['Entraînement','Match','Séance de prépa','Séance vidéo','RDV individuel','Récupération','Autre']),F('Lieu','','Stade municipal'))+W(F('Date','date','2026-11-26'),F('Heure','time','18:30'))+POUR+F('Note','area')]},
+ ev:function(d){return ['Nouvel événement','Par défaut la couleur de ton rôle ('+RNOM[role]+'), modifiable en bas',F('Titre','',d&&d.t)+W(F('Type',['Entraînement','Match','Séance de prépa','Séance vidéo','RDV individuel','Récupération','Autre']),F('Lieu','','Stade municipal'))+W(F('Date','date','2026-11-26'),F('Heure','time','18:30'))+POUR+F('Note','area')+'<label class="fld">Couleur</label><div class="pick" id="coul">'+[['Auto (mon rôle)',''],['Bleu','#1A5FFF'],['Vert','#00A854'],['Violet','#7B5CF5'],['Rouge','#DC3545'],['Orange','#E07800'],['Gris','#8595B8']].map(function(c,i){return '<span'+(i===0?' class="on"':'')+'>'+(c[1]?'<i style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:'+c[1]+'"></i>':'')+c[0]+'</span>'}).join('')+'</div>']},
  consigne:function(){return ['Nouvelle consigne','Match vs AS Voisins',F('Consigne','area')+F('Concerne',['Toute l\'équipe','Défenseurs','Milieux','Attaquants','Un joueur…'])]},
  exoterrain:function(){return ['Nouvel exercice (terrain)','Ajouté à ta bibliothèque d\'exercices',F('Nom')+W(F('Durée (min)','number','20'),F('Thème',['Sortie de balle','Pressing','Finition','Transition','Coups de pied arrêtés','Physique intégré']))+F('Organisation / consignes','area')+F('Schéma, photo ou vidéo (facultatif)','file')]},
  seance:function(){return ['Nouvelle séance','Composée à partir de ta bibliothèque',W(F('Date','date','2026-11-26'),F('Durée (min)','number','90'))+F('Exercices',['Rondo 5 contre 2','Sortie de balle à 3','Jeu réduit 7 contre 7','CPA défensifs','+ Nouvel exercice…'])+F('Intensité prévue (RPE cible)',['4','5','6','7','8'],'6')]},
@@ -301,7 +304,7 @@ var FORMS={
  import:function(){return ['Importer un fichier de codage','Export de ton logiciel de codage (fichier XML ou CSV)',F('Match',['21/11 vs FC Rivière','14/11 vs US Collines','07/11 vs AC Vallée'])+F('Fichier','file')+F('Grille à utiliser',['Possession / transitions','Coups de pied arrêtés','+ Nouvelle grille…'])]},
  marqueur:function(){return ['Nouveau marqueur','Ajouté à la grille « Possession / transitions »',F('Nom','','Ex. : centre réussi')+W(F('Nom dans le fichier importé'),F('Couleur',['Vert (positif)','Rouge (à corriger)','Gris (neutre)']))]}
 };
-function ouvrir(k,d,edit){var r=FORMS[k](d);document.getElementById('ftitle').textContent=edit?'Modifier'+(d&&d.t?' — '+d.t:''):r[0];document.getElementById('fsub').textContent=r[1];document.getElementById('fbody').innerHTML=r[2];document.getElementById('fdel').style.display=edit?'':'none';document.getElementById('fmodal').classList.add('on')}
+function ouvrir(k,d,edit){var r=FORMS[k](d);document.getElementById('ftitle').textContent=edit?'Modifier'+(d&&d.t?' — '+d.t:''):r[0];document.getElementById('fsub').textContent=r[1];document.getElementById('fbody').innerHTML=r[2];document.getElementById('fdel').style.display=edit?'':'none';document.getElementById('fmodal').classList.add('on');document.querySelectorAll('#coul span').forEach(function(c){c.onclick=function(){document.querySelectorAll('#coul span').forEach(function(x){x.classList.toggle('on',x===c)})}})}
 function ouvrirBloc(t){document.getElementById('ftitle').textContent='Modifier : '+t;document.getElementById('fsub').textContent='Chaque bloc est modifiable par le rôle qui en est responsable';document.getElementById('fbody').innerHTML=F('Titre du bloc','',t)+F('Contenu','area')+F('Visible par',['Tout le staff','Moi seulement','Staff + joueurs concernés']);document.getElementById('fdel').style.display='';document.getElementById('fmodal').classList.add('on')}
 function configurer(){var sc=document.querySelector('.scr.on');var h='';sc.querySelectorAll('.card > h3').forEach(function(h3,i){var t=h3.firstChild&&h3.firstChild.textContent||h3.textContent;h+='<label class="fld" style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" data-i="'+i+'" style="width:auto;margin:0"'+(h3.parentNode.style.display==='none'?'':' checked')+'> '+t.trim()+' <span class="sub" style="margin-left:auto">↑ ↓</span></label>'});
  document.getElementById('ftitle').textContent='Configurer l\'écran';document.getElementById('fsub').textContent='Afficher / masquer et ordonner les blocs · ajouter un bloc';document.getElementById('fbody').innerHTML=h+F('Ajouter un bloc',['—','Note libre','Indicateur (chiffre clé)','Liste de joueurs','Document','Vidéo / clips','Graphique']);document.getElementById('fdel').style.display='none';document.getElementById('fmodal').classList.add('on');
@@ -328,6 +331,15 @@ function compo(){var sc=SCH[document.getElementById('schema').value],g=document.
   pl.onpointermove=function(m){moved=true;var pt=svg.createSVGPoint();pt.x=m.clientX;pt.y=m.clientY;var q=pt.matrixTransform(svg.getScreenCTM().inverse());pl.setAttribute('transform','translate('+Math.max(18,Math.min(402,q.x))+','+Math.max(18,Math.min(252,q.y))+')')};
   pl.onpointerup=function(){pl.onpointermove=null;if(!moved&&selB>=0){var i=+pl.dataset.i,t=JOU[i][0];JOU[i]=[BANC[selB].split(' ')[0],0];BANC[selB]=t;selB=-1;compo()}}}})}
 document.getElementById('schema').onchange=compo;compo();
+// ── effectif avec photos (photos = emplacements : silhouette + initiales en attendant les vraies) ──
+var EFF=[[1,'Ilyes D.','G','Gardiens','ok',360],[2,'Enzo P.','LG','Défenseurs','ok',350],[4,'Malik S.','DC','Défenseurs','ok',360],[5,'Hugo V.','DC','Défenseurs','ok',340],[3,'Adam R.','LD','Défenseurs','inc',340],[15,'Noah T.','DC','Défenseurs','rep',0],[6,'Rayan F.','MC','Milieux','ok',300],[8,'Léo M.','MC','Milieux','ok',356],[10,'Nathan C.','MC','Milieux','ok',320],[11,'Yanis B.','AG','Attaquants','inc',290],[9,'Sami K.','BU','Attaquants','ko',180],[7,'Théo L.','AD','Attaquants','ok',310],[19,'Mehdi A.','BU','Attaquants','ok',120],[12,'Lucas G.','MC','Milieux','ok',90]];
+var STL={ok:'Disponible',inc:'Incertain',ko:'Indisponible',rep:'Reprise'},RING={ok:'#00A854',inc:'#E07800',ko:'#DC3545',rep:'#7B5CF5'},GR=['#1A5FFF','#3D5BF0','#5B6CF0','#7B5CF5','#2E7BF5','#4B4FD8'];
+function av(p,cls){var ini=p[1].split(' ').map(function(x){return x[0]}).join('');return '<div class="av'+(cls||'')+'" style="--ring:'+RING[p[4]]+';background:linear-gradient(160deg,'+GR[p[0]%6]+',#0B1E4D)"><svg viewBox="0 0 72 72"><circle cx="36" cy="28" r="13" fill="rgba(255,255,255,.18)"/><path d="M12 70c2-14 12-21 24-21s22 7 24 21z" fill="rgba(255,255,255,.18)"/></svg><span style="position:relative">'+ini+'</span></div>'}
+document.getElementById('effcartes').innerHTML=EFF.map(function(p){return '<div class="pc" data-go="fiche"><span class="num">'+p[0]+'</span>'+av(p)+'<div class="nm">'+p[1]+'</div><div class="ps">'+p[2]+'</div><span class="st '+p[4]+'">'+STL[p[4]]+'</span><div class="mn">'+p[5]+' / 360 min</div></div>'}).join('');
+document.getElementById('efftab').innerHTML='<tr><th>Joueur</th><th>N°</th><th>Poste</th><th>Statut</th><th>Min. (4 matchs)</th></tr>'+EFF.map(function(p){return '<tr class="click" data-go="fiche"><td>'+av(p,' s')+'<b>'+p[1]+'</b></td><td>'+p[0]+'</td><td>'+p[2]+'</td><td><span class="st '+p[4]+'">'+STL[p[4]]+'</span></td><td>'+p[5]+' / 360</td></tr>'}).join('');
+document.querySelectorAll('#effcartes [data-go],#efftab [data-go]').forEach(function(r){r.onclick=function(){scr='fiche';render()}});
+document.querySelectorAll('#effvue span').forEach(function(t){t.onclick=function(){document.querySelectorAll('#effvue span').forEach(function(x){x.classList.toggle('on',x===t)});document.getElementById('effcartes').style.display=t.dataset.vue==='cartes'?'':'none';document.getElementById('effliste').style.display=t.dataset.vue==='liste'?'':'none'}});
+document.querySelectorAll('.scr[data-s="fiche"] .hdr h1').forEach(function(h){h.insertAdjacentHTML('beforebegin',av(EFF[7],'" style="float:left;margin:0 14px 0 0;width:56px;height:56px;font-size:18px;--ring:#00A854;background:linear-gradient(160deg,#3D5BF0,#0B1E4D)'))});
 render();
 </script>
 </body></html>
