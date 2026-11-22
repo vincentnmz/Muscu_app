@@ -17,7 +17,10 @@
   retour de blessure ; champ serveur `signaux_alerte`) · alerte « Risque accru de blessure » → « Charge, douleur et fatigue élevées en
   même temps » · charge / ACWR = « repère, pas une prédiction de blessure » · « Risque surcharge » → « Charge récente ».
   Signaux d'alerte affichés aussi sur **Aujourd'hui pour tous les athlètes** (avec ou sans coach).
-- Vérifié à chaque lot : npm test 124 · banc 25 · parcours 53 · 9 athlètes réels 0 écart. Prod `main` 1264d74, Supabase v284 = repo.
+- Vérifié à chaque lot : npm test 124 · banc 25 · parcours 53 · 9 athlètes réels 0 écart. Prod `main` 15d0841, Supabase v285 = repo.
+- **Cardio / nutrition (N1-N2, `docs/audit-cardio-nutrition-science-2026-11-22.md`)** : conseil protéines aligné sur la cible (1,6-2,2 g/kg) ·
+  sortie importée sans RPE → effort estimé en % de la FC max estimée selon l'âge (208 − 0,7 × âge), calculé par le serveur (`rpe_estime`),
+  repris par l'app, recalculé par le vérificateur. 3 athlètes réels concernés (104/127, 79/80, 39/39 sorties). Supabase **v285** = repo.
 - **AAB** : le n° 33 ne contient PAS les lots du 22/11 → à reconstruire quand le porteur le demande (`build-aab.yml` sur `main`).
 
 ## ▶ 21-22/11 — LEVIERS et « POURQUOI » confrontés aux études : EN PROD (index.ts v281 vérifié) · AAB n° 33 livré
