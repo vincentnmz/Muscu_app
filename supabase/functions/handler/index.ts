@@ -3007,7 +3007,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       enPause: enPause || (!!_pauseFin && _pauseFin <= fmtYMD(now) && _pauseFin >= fmtYMD(minus(now, 6))),   // + 7 j de reprise après la pause
     })
     moteur = {
-      disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
+      disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure, signaux_alerte: etatM.signaux_alerte,
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
       causes: etatM.causes,   // ce qui produit Vigilance/rouge (affiché sous le verdict)
       // Règle « charge + ressenti » exposée à l'app : la carte Fraîcheur ne dit plus « Fatigue » sur la charge seule.
@@ -3773,6 +3773,14 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const rbPts = surchargeRisque + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= CORE_SEUILS.courbatures.haut ? 1 : 0)
   let risqueBlessureN = rbPts >= 3 ? 2 : rbPts >= 1 ? 1 : 0
   if (eff.risqueDelta) risqueBlessureN = clampNiv(risqueBlessureN + eff.risqueDelta)
+  // 22/11 (E1, docs/audit-etat-du-jour-science-2026-11-22.md) : ce cumul n'est PAS une prédiction de blessure validée (l'ACWR
+  // qui en fait partie est très contesté, Impellizzeri 2020-21). Affiché comme « Signaux d'alerte » avec la liste de ce qui a compté.
+  const signauxAlerte: string[] = []
+  if (surchargeRisque >= 1) signauxAlerte.push('charge haute')
+  if (douleurForte) signauxAlerte.push('douleur forte'); else if (douleurGene) signauxAlerte.push('douleur modérée')
+  if (fatigueHaute) signauxAlerte.push('fatigue élevée')
+  if (courb >= CORE_SEUILS.courbatures.haut) signauxAlerte.push('courbatures marquées')
+  if (eff.risqueDelta) signauxAlerte.push('retour de blessure')
 
   // --- Récupération (score bien-être) ---
   // Readiness = indice de Hooper : sommeil + fatigue + stress + courbatures (DOMS).
@@ -3870,7 +3878,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     statut: STA[niveau],
     disponibilite: { niveau: NIV[niveau] },   // couleur retirée (Phase 3B) → mapping front
     surchargeN, surcharge: ['Faible', 'Modéré', 'Élevé'][surchargeN],
-    risqueBlessureN, risque_blessure: ['Faible', 'Modéré', 'Élevé'][risqueBlessureN],
+    risqueBlessureN, risque_blessure: ['Faible', 'Modéré', 'Élevé'][risqueBlessureN], signaux_alerte: signauxAlerte,
     recScore, recup,
     alertes, confiance, reco,
     acwr_fiable: acwrOk,
@@ -4028,7 +4036,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
         sommeil_moy: sig.sommeil != null ? Math.round(sig.sommeil * 10) / 10 : null,
         statut, progression: prog, blesse: inj ? inj.statut : null, alertes,
         // Enrichissements du moteur central (mêmes valeurs que la fiche) :
-        disponibilite: etat.disponibilite, risque_blessure: etat.risque_blessure,
+        disponibilite: etat.disponibilite, risque_blessure: etat.risque_blessure, signaux_alerte: etat.signaux_alerte,
         recup: etat.recup, confiance: etat.confiance, reco: etat.reco, contexte_tag: etat.contexte_tag,
         acwr_fiable: etat.acwr_fiable, acwr_categorie: etat.acwr_categorie,
       })
@@ -4232,7 +4240,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const _ctxLabels: Record<string, string> = { deload: 'Déload', retour_vacances: 'Retour vacances', retour_blessure: 'Retour blessure', intensification: 'Intensification' }
     const moteur: any = {
       disponibilite: etat.disponibilite,
-      surcharge: etat.surcharge, risque_blessure: etat.risque_blessure, recup: etat.recup,
+      surcharge: etat.surcharge, risque_blessure: etat.risque_blessure, signaux_alerte: etat.signaux_alerte, recup: etat.recup,
       reco: etat.reco, confiance: etat.confiance, alertes: etat.alertes, causes: etat.causes,
       acwr_fiable: etat.acwr_fiable, acwr_categorie: etat.acwr_categorie,
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine

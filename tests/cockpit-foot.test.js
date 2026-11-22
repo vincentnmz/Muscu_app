@@ -25,7 +25,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_chargeMoteur', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
+const fnNames = ['_ckColRecup', '_sigAlerteTxt', '_sigAlerteDetail', '_ckColNiv3', '_chargeMoteur', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -72,7 +72,7 @@ const html = run(true, dataFoot);
 check('ON → non vide', html.length > 0);
 check('A → disponibilité (Vigilance)', /Vigilance/.test(html));
 check('A → récup (Moyen)', /Moyen/.test(html));
-check('A → risque (Modéré)', /Modéré/.test(html));
+check('A → signaux d\'alerte (22/11, plus « risque blessure ») : Modéré sans liste → « Quelques-uns »', /Signaux d.alerte/.test(html) && /Quelques-uns/.test(html) && !/Risque blessure/.test(html));
 check('A → reco (moteur.reco)', /surveiller les sensations/.test(html));
 // Bloc B — Charge foot (UA)
 check('B → carte Charge', /Charge/.test(html));

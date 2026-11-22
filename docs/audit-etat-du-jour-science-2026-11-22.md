@@ -32,3 +32,5 @@ Source : `supabase/functions/handler/index.ts` (`CORE_SEUILS`, `evaluerEtatAthle
 - Impellizzeri et al. 2021, Sports Med « Time to dismiss ACWR » — https://pmc.ncbi.nlm.nih.gov/articles/PMC7534938
 - Éditorial Frontiers 2021 (débat ACWR) — https://pmc.ncbi.nlm.nih.gov/articles/PMC8138569/
 - Limites du modèle fitness-fatigue — https://www.pubmed.gov/35320776/
+
+## Décision porteur (22/11) : E1, E2, E3 acceptées et codées (+ « Risque surcharge » → « Charge récente », balance musculaire et puce IA coach reformulées).
