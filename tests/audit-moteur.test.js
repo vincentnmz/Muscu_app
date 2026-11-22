@@ -35,9 +35,11 @@ function eq(cond, label, got) { if (cond) ok++; else { ko++; fails.push(label); 
 // #3 : charge haute + ressenti bon → risque blessure Faible (plus « Modéré »)
 const base = { acwr: null, acwrFiable: false, ffTsbPct: -23, ffRatio: 1.23, ffFiable: true, seances7: 3, douleur: 1, fatigue: 1, sommeil: 4, stress: 1, courbatures: 1, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 120, wellnessN: 10, hasCharge: true }, sousChargeSoutenue: false };
 { const o = evaluerEtatAthlete(Object.assign({}, base, { chargeSoutenue: true, ressentiDegrade: false, ressentiEvaluable: true }));
-  eq(o.risque_blessure === 'Faible', '#3 charge seule (ressenti bon) → risque Faible', o.risque_blessure); }
+  eq(o.risque_blessure === 'Faible', '#3 charge seule (ressenti bon) → risque Faible', o.risque_blessure);
+  eq(Array.isArray(o.signaux_alerte) && o.signaux_alerte.length === 0, 'E1 : aucun signal quand la charge seule ne compte pas', o.signaux_alerte); }
 { const o = evaluerEtatAthlete(Object.assign({}, base, { chargeSoutenue: true, ressentiDegrade: true, ressentiEvaluable: true }));
-  eq(o.risque_blessure === 'Modéré', '#3 charge + ressenti dégradé → risque Modéré', o.risque_blessure); }
+  eq(o.risque_blessure === 'Modéré', '#3 charge + ressenti dégradé → risque Modéré', o.risque_blessure);
+  eq(Array.isArray(o.signaux_alerte) && o.signaux_alerte.join(',') === 'charge haute', 'E1 (22/11) : signaux d\'alerte listés (charge haute)', o.signaux_alerte); }
 
 // #4 : courbatures 4 il y a 3 jours puis 1 → dernière saisie = 1
 { const NOW = new Date('2026-10-28T12:00:00Z');
