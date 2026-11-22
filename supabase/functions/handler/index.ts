@@ -5858,6 +5858,8 @@ function _rcPlateau(pts: any[]): number {
   while (L < run && !_rcProgSecondaire(pts[L - 1], pts[L])) L++
   return Math.min(j + 1, L)
 }
+// 22/11 (C3, porteur) : jours minimum de plateau avant « bloqué », selon le niveau (même table que l'app). Défaut : intermédiaire.
+const BLOQUE_JOURS_NIVEAU: Record<string, number> = { debutant: 28, intermediaire: 42, avance: 56, expert: 56 }
 function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, nowT: number, ctxEtat?: string | null, niveau?: string | null): any {
   // Audit Contexte X1 (01/11) — même règle que l'app : en déload / reprise, « recule » et « bloqué » sont attendus.
   const ctxA = ctxEtat === 'deload' ? 'déload' : (ctxEtat === 'retour_vacances' || ctxEtat === 'retour_blessure') ? 'reprise' : null
@@ -5896,8 +5898,8 @@ function _rcLectureExos(prog: Record<string, any[]>, lignes: any[], cats: any, n
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { (ctxA ? R.attendu : R.recule).push({ exo, c0, c1, r0, r1 }); continue }
     // L1 (14/11) : bloqué = même charge, aucune séance au-dessus du meilleur nombre de reps depuis ≥ NB séances (app : _lxPlateau).
     let n = (pts.length >= Math.max(NB, 3)) ? _rcPlateau(pts) : 0
-    // 21/11 (porteur) : plateau d'au moins 4 semaines (28 j) entre sa 1re et sa dernière séance (app : BLOQUE_JOURS_MIN).
-    if (n >= NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < 28) n = 0
+    // 22/11 (C3) : durée minimale du plateau selon le niveau (app : BLOQUE_JOURS_MIN dans _lectureExos).
+    if (n >= NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < (BLOQUE_JOURS_NIVEAU[String(niveau || '')] || 42)) n = 0
     if (n >= NB) {
       let secondaire = false
       for (let q2 = 2; q2 < NB; q2++) { if (_rcProgSecondaire(pts[q2 - 1], pts[q2])) { secondaire = true; break } }

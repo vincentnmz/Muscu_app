@@ -48,3 +48,5 @@ Source : `js/app.js` `_progDecision` (cible affichée pendant la saisie et dans 
 - Singer et al. 2024 — https://pubmed.ncbi.nlm.nih.gov/39205815/
 - Morán-Navarro 2017 — https://pubmed.ncbi.nlm.nih.gov/28965198/ · Refalo 2023 — https://pubmed.ncbi.nlm.nih.gov/36334240/
 - Schoenfeld 2017 (charges) — https://pubmed.ncbi.nlm.nih.gov/28834797/ · Hickmott 2022 — https://pubmed.ncbi.nlm.nih.gov/35038063/
+
+## Décision porteur (22/11) : C1, C2, C3 acceptées et codées (allonger le repos reste une option ; seuls « réduire le repos » disparaît).

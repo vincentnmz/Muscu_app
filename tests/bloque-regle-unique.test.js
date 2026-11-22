@@ -31,8 +31,8 @@ const eq = (c, n, g) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n +
 
 eq(JSON.stringify(F.N) === JSON.stringify(A.BLOQUE_N_NIVEAU), 'même table « séances identiques avant bloqué » app = serveur', [F.N, A.BLOQUE_N_NIVEAU]);
 
-// 21/11 : « bloqué » exige un plateau d'au moins 28 jours → séances espacées de 2 × n jours.
-const D = (n) => new Date(Date.UTC(2026, 10, 12) - 2 * n * 864e5).toISOString().slice(0, 10);
+// 21-22/11 : « bloqué » exige un plateau de 28 / 42 / 56 jours selon le niveau → séances espacées de 3 × n jours.
+const D = (n) => new Date(Date.UTC(2026, 10, 12) - 3 * n * 864e5).toISOString().slice(0, 10);
 const nowT = Date.UTC(2026, 10, 13, 20);
 const perfs = [];
 const add = (exo, sessions) => sessions.forEach(([d, sets]) => sets.forEach(([c, r, rpe], i) => perfs.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe, serie: i + 1 })));
@@ -51,12 +51,12 @@ for (const niv of ['debutant', 'intermediaire', 'avance', 'expert']) {
 // 21/11 (porteur : « bloqué arrive très vite ») : plateau d'au moins 14 jours, app ET serveur.
 {
   const pf = []; const ad = (exo, ss) => ss.forEach(([d, c, r]) => [1, 2].forEach((s) => pf.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe: 8, serie: s })));
-  ad('Semaine', [[20, 50, 10], [6, 60, 8], [4, 60, 8], [2, 60, 8]]);          // 3 identiques en 8 jours
-  ad('DeuxSem', [[30, 50, 10], [16, 60, 8], [9, 60, 8], [2, 60, 8]]);         // 3 identiques sur 28 jours
+  ad('Semaine', [[20, 50, 10], [6, 60, 8], [4, 60, 8], [2, 60, 8]]);          // 3 identiques en 12 jours
+  ad('DeuxSem', [[30, 50, 10], [16, 60, 8], [9, 60, 8], [2, 60, 8]]);         // 3 identiques sur 42 jours
   const pg = A.buildProgressionParExo(pf);
   const bk = A._rcLectureExos(pg, [], {}, nowT, null, 'intermediaire').bloque.map((x) => x.exo).sort().join(',');
   const fr = F.lecture({ historique: { progression_par_exo: pg }, programme: [], exo_categories: {}, niveau_experience: 'intermediaire' }, nowT).bloque.map((x) => x.exo).sort().join(',');
-  eq(fr === 'DeuxSem' && bk === fr, '3 séances identiques en 8 jours → pas « bloqué » ; sur 28 jours → bloqué (app = serveur)', { fr, bk });
+  eq(fr === 'DeuxSem' && bk === fr, '3 séances identiques en 12 jours → pas « bloqué » ; sur 42 jours (intermédiaire) → bloqué (app = serveur)', { fr, bk });
 }
 eq(A._rcLectureExos(prog, [], {}, nowT).bloque.map((x) => x.exo).sort().join(',') === 'Quatre,Trois', 'niveau inconnu → 3 séances (comme l\'app)');
 // Mail récap : le niveau de l'athlète (getAppData.niveau_experience) est bien transmis.

@@ -78,15 +78,13 @@ d = D({ niveau: 'intermediaire', last: ser([[80, 4], [80, 4], [80, 4]], 10, 120)
 check('« sous la fourchette » reste prioritaire même en Vigilance (proposition de baisse)', d.mode === 'sous');
 // --- Avancé / expert : choix ---
 d = D({ niveau: 'avance', last: top, prev: top });
-check('avancé : charge possible → choix du jour (4 options)', d.mode === 'choix' && d.options.length === 4);
+check('avancé : charge possible → choix du jour (3 options, plus de « réduire le repos » — 22/11)', d.mode === 'choix' && d.options.length === 3 && !d.options.some((o) => o.id === 'repos'));
 check('choix charge : +2,5 kg, bas de fourchette, repos inchangé', JSON.stringify(d.cible(1, 'charge')) === JSON.stringify({ charge: 37.5, reps: 8, repos: 120, up: 'charge' }));
 check('choix charge +30 s', d.cible(1, 'charge30').charge === 37.5 && d.cible(1, 'charge30').repos === 150);
 check('choix +1 rep +30 s', d.cible(1, 'rep30').charge === 35 && d.cible(1, 'rep30').reps === 13 && d.cible(1, 'rep30').repos === 150);
-check('choix repos −30 s : même perf', d.cible(1, 'repos').reps === 12 && d.cible(1, 'repos').repos === 90);
 d = D({ niveau: 'expert', last: top, prev: top, reposRef: 60 });
-check('repos au minimum → option « réduire » grisée', d.options[3].ok === false && /minimum/.test(d.options[3].raison));
 d = D({ niveau: 'expert', last: top, prev: top, reposRef: 180 });
-check('repos au maximum → options +30 s grisées', !d.options[1].ok && !d.options[2].ok && d.options[3].ok);
+check('repos au maximum → options +30 s grisées', !d.options[1].ok && !d.options[2].ok && d.options[0].ok);
 d = D({ niveau: 'expert', last: top, prev: ser([[35, 12], [35, 11], [35, 12]], 8) });
 check('expert : 1 seule fois au haut → +1 rep, pas de choix', d.mode === 'reps');
 // --- Poids du corps / hors programme ---

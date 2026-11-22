@@ -49,6 +49,9 @@ function recalculer(store, appdata, now, aidForce) {
   R.tonJ7prec = Math.round(ton(plusJ(now, -13), plusJ(now, -7)) / 100) / 10;
   { const a = ton(plusJ(now, -6), now), b = ton(plusJ(now, -13), plusJ(now, -7)); R.tonEvol = b > 0 ? Math.round((a - b) / b * 100) : null; }
   // Volume par muscle (séries ; muscle secondaire = 0,5) sur la fenêtre du réglage « semaine ».
+  // 22/11 (C3) : jours minimum de plateau avant « bloqué » selon le niveau (app _lectureExos / serveur BLOQUE_JOURS_NIVEAU).
+  R.bloqueJours = ({ debutant: 28, intermediaire: 42, avance: 56, expert: 56 })[String((appdata && appdata.niveau_experience) || '')] || 42;
+  R.motBloque = /^(avance|expert)$/.test(String((appdata && appdata.niveau_experience) || '')) ? 'Stable' : 'Bloqué';
   R.semaineType = ((appdata && appdata.semaine_type) || (ath.prefs && ath.prefs.semaine_type)) === 'glissant' ? 'glissant' : 'calendaire';
   // RPE moyen des séries sur 7 jours ; tonnage brut (kg) pour l'évolution.
   const p7 = P.filter((r) => r.d >= plusJ(now, -6) && num(r.rpe) > 0);
@@ -382,7 +385,7 @@ function verifierTexte(R, ad, txt, out) {
     const W = P.slice(0, n); if (W.some((p) => num(p.best.charge) !== c)) return 'les ' + n + ' dernières séances ne sont pas toutes à ' + c + ' kg';
     const M = Math.max(...W.map((p) => num(p.best.reps))); if (M !== r) return 'meilleur nombre de reps sur ces séances : ' + M;
     if (num(W[n - 1].best.reps) !== r) return 'la plus ancienne des ' + n + ' séances n\'atteint pas ' + r + ' reps (le plateau est plus court)';
-    { const j = Math.round((new Date(W[0].d + 'T12:00:00Z') - new Date(W[n - 1].d + 'T12:00:00Z')) / 864e5); if (j < 28) return 'plateau sur ' + j + ' jours seulement (< 28 : pas « bloqué »)'; }   // 21/11
+    { const j = Math.round((new Date(W[0].d + 'T12:00:00Z') - new Date(W[n - 1].d + 'T12:00:00Z')) / 864e5); if (j < R.bloqueJours) return 'plateau sur ' + j + ' jours seulement (< ' + R.bloqueJours + ' : pas « bloqué »)'; }   // 21/11
     if (ref !== undefined) { let iR = 0; for (let k = n - 1; k >= 0; k--) if (num(W[k].best.reps) === r) { iR = k; break; }
       const att = iR > 0 ? W[iR].d.slice(8, 10) + '/' + W[iR].d.slice(5, 7) : '';
       if ((ref || '') !== att) return att ? 'séance de référence : ' + r + ' reps atteintes le ' + att + ' (à citer)' : 'référence « ' + ref + ' » alors que la dernière séance est la référence'; }
@@ -404,7 +407,7 @@ function verifierTexte(R, ad, txt, out) {
       if (exoSec) {
         if ((m = l.match(/^Record : ([\d,]+) kg × (\d+) le (\d{2}\/\d{2}\/\d{4})$/))) ctrl('classement.record', nom, l, !record(exoSec, kgN(m[1]), +m[2], iso(m[3])), record(exoSec, kgN(m[1]), +m[2], iso(m[3])));
         if ((m = l.match(/^Sous ta fourchette (\d+)-(\d+) : ([\d,]+) kg × (\d+) à RPE ([\d,]+)$/))) { const x = sous(exoSec, kgN(m[3]), +m[4], num(m[5]), +m[1], +m[2]); ctrl('classement.sous', nom, l, !x, x); }
-        if ((m = l.match(/^Bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/))) { const x = bloque(exoSec, kgN(m[1]), +m[2], +m[3], m[4] || ''); ctrl('classement.bloque', nom, l, !x, x); }
+        if ((m = l.match(/^(?:Bloqué|Stable) à ([\d,]+) kg × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/))) { const x = bloque(exoSec, kgN(m[1]), +m[2], +m[3], m[4] || ''); ctrl('classement.bloque', nom, l, !x, x); }
         if ((m = l.match(/^En progrès : (.+)$/)) && !/,/.test(m[1].replace(/\d,\d/g, ''))) { const x = progres(exoSec, m[1]); ctrl('classement.progres', nom, l, !x, x); }
         return;
       }
@@ -412,7 +415,7 @@ function verifierTexte(R, ad, txt, out) {
       if ((m = l.match(/^Progresse (?::|—) (.+?)(?: \((?:charge|reps)[^)]*\))?$/))) m[1].split(/ · |, (?=[A-ZÉÈÀ])/).forEach((it) => { it = it.replace(/ \+\d+( autres?)?$/, '').replace(/(\d)→(\d)/g, '$1 → $2'); const e = exoDe(it.trim()); if (e) { const x = progres(e, it.trim().slice(e.length).trim()); ctrl('classement.progres', nom, it.trim(), !x, x); } });
       if ((m = l.match(/^Sous ta fourchette : (.+) \(RPE ([\d,]+)\)$/))) { const e = exoDe(m[1]); const k = e && m[1].slice(e.length).match(/^ ([\d,]+) × (\d+)$/); if (k) { const x = sous(e, kgN(k[1]), +k[2], num(m[2]), null, null); ctrl('classement.sous', nom, l, !x, x); } }
       // 21/11 : « Bloqué : A C × R depuis N séances (atteint le jj/mm) · B … · +1 autre » — chaque élément contrôlé (avant : une seule).
-      if (/^Bloqué : /.test(l)) l.slice(9).split(' · ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+) × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/); if (!k) return; const e = exoDe(k[1]); if (e) { const x = bloque(e, kgN(k[2]), +k[3], +k[4], k[5] || ''); ctrl('classement.bloque', nom, it, !x, x); } });
+      if (/^(Bloqué|Stable) : /.test(l)) l.slice(l.indexOf(' : ') + 3).split(' · ').forEach((it) => { const k = it.match(/^(.+) ([\d,]+) × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/); if (!k) return; const e = exoDe(k[1]); if (e) { const x = bloque(e, kgN(k[2]), +k[3], +k[4], k[5] || ''); ctrl('classement.bloque', nom, it, !x, x); } });
     });
   });
   // B8. Carte « Charge & fraîcheur » : %, forme de fond, fatigue récente, ACWR, unité annoncée.
@@ -512,7 +515,7 @@ function verifierTexte(R, ad, txt, out) {
     let cur = null;
     L.forEach((l0) => { const l = l0.trim(); let m;
       { const pq = l.match(/^Pourquoi \(([^)]+)\)/); if (pq && EXOS.includes(pq[1].trim())) cur = pq[1].trim(); else if (!/^(Pourquoi|Levier)/.test(l)) { let best = null, pos = 1e9; EXOS.forEach((x) => { const i = l.indexOf(x); if (i >= 0 && (i < pos || (i === pos && x.length > best.length))) { pos = i; best = x; } }); if (best) cur = best; } }
-      if ((m = l.match(/^(.+) bloqué à ([\d,]+) kg × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4], m[5] || ''); ctrl('classement.bloque', nom, l, !x, x); } }
+      if ((m = l.match(/^(.+) (?:bloqué|stable) à ([\d,]+) kg × (\d+) depuis (\d+) séances(?: \(atteint le (\d\d\/\d\d)\))?$/))) { const ex = exoDe(m[1]); if (ex) { const x = bloque(ex, kgN(m[2]), +m[3], +m[4], m[5] || ''); ctrl('classement.bloque', nom, l, !x, x); } }
       if (!cur || !/^(Pourquoi|Levier)|Effort en hausse à/.test(l)) return;
       if ((m = l.match(/Effort en hausse à ([\d,]+) kg : RPE ([\d,]+) → ([\d,]+)(?![\d,])/))) { const b = R.rpeHausse[cur]; if (!b || f1(b.avant) !== m[2] || f1(b.apres) !== m[3] || Math.abs(b.charge - kgN(m[1])) > 0.05) E('levier.effort', nom + ' · ' + cur + ' : « ' + m[0] + ' », recalcul ' + (b ? 'RPE ' + f1(b.avant) + ' → ' + f1(b.apres) + ' à ' + b.charge + ' kg' : 'pas de hausse à charge égale')); }
       if ((m = l.match(/tu prends ([^,]+), essaie ([^)]+)\)/))) { const P = R.sessions[cur] || []; if (P.length) { const c0 = num(P[0].best.charge), tr = P[0].series.filter((x) => num(x.charge) === c0 && num(x.repos) > 0); if (tr.length) { const r15 = Math.round(tr.reduce((a, x) => a + num(x.repos), 0) / tr.length / 5) * 5, rtx = (n) => { const mm = Math.floor(n / 60), r = n % 60; return mm ? mm + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '') : r + ' s'; }; if (m[1] !== rtx(r15) || m[2] !== rtx(Math.min(180, r15 + 30))) E('levier.repos', nom + ' · ' + cur + ' : « tu prends ' + m[1] + ', essaie ' + m[2] + ' », repos réel ' + rtx(r15)); } } }
@@ -707,7 +710,7 @@ function verifierBilan(store, b, aid, out) {
     if (!ok || !(S0.length > i + 1) || !(num(x.c) > bc || (num(x.c) === bc && num(x.r) > br))) E('mail.record', x.exo + ' ' + x.c + ' × ' + x.r + ' le ' + fr(iso(x.date)) + ' : ' + (!ok ? 'série absente ce jour-là' : 'ne bat pas le meilleur d\'avant (' + bc + ' × ' + br + ')')); });
   // Classement à la fin de la période (bloqué / sous la fourchette) = séries brutes jusqu'à cette date.
   const L = b.lecture || {};
-  (L.bloque || []).forEach((x) => { const P2 = R.sessions[x.exo] || [], n = num(x.n); const W = P2.slice(0, n); const bad = P2.length < n ? 'seulement ' + P2.length + ' séances' : (W.some((p) => num(p.best.charge) !== num(x.c)) ? 'les ' + n + ' dernières séances ne sont pas toutes à ' + x.c + ' kg' : (Math.max(...W.map((p) => num(p.best.reps))) !== num(x.r) ? 'meilleur nombre de reps ' + Math.max(...W.map((p) => num(p.best.reps))) : (num(W[n - 1].best.reps) !== num(x.r) ? 'plateau plus court' : (Math.round((new Date(W[0].d + 'T12:00:00Z') - new Date(W[n - 1].d + 'T12:00:00Z')) / 864e5) < 28 ? 'plateau de moins de 28 jours' : null)))); if (bad) E('mail.bloque', x.exo + ' ' + x.c + ' × ' + x.r + ' depuis ' + n + ' séances (au ' + fr(fin1).slice(0, 5) + ') : ' + bad); });
+  (L.bloque || []).forEach((x) => { const P2 = R.sessions[x.exo] || [], n = num(x.n); const W = P2.slice(0, n); const bad = P2.length < n ? 'seulement ' + P2.length + ' séances' : (W.some((p) => num(p.best.charge) !== num(x.c)) ? 'les ' + n + ' dernières séances ne sont pas toutes à ' + x.c + ' kg' : (Math.max(...W.map((p) => num(p.best.reps))) !== num(x.r) ? 'meilleur nombre de reps ' + Math.max(...W.map((p) => num(p.best.reps))) : (num(W[n - 1].best.reps) !== num(x.r) ? 'plateau plus court' : (Math.round((new Date(W[0].d + 'T12:00:00Z') - new Date(W[n - 1].d + 'T12:00:00Z')) / 864e5) < R.bloqueJours ? 'plateau de moins de ' + R.bloqueJours + ' jours' : null)))); if (bad) E('mail.bloque', x.exo + ' ' + x.c + ' × ' + x.r + ' depuis ' + n + ' séances (au ' + fr(fin1).slice(0, 5) + ') : ' + bad); });
   (L.sous || []).forEach((x) => { const P2 = R.sessions[x.exo] || []; if (!P2.length) return; const S0 = P2[0], ser = S0.series.filter((sr) => num(sr.reps) > 0), rp = Math.max(...ser.map((sr) => num(sr.rpe))); if (num(S0.best.charge) !== num(x.c) || num(S0.best.reps) !== num(x.r) || rp !== num(x.rpe) || !(ser.filter((sr) => num(sr.reps) < num(x.rmin)).length * 2 > ser.length)) E('mail.sous', x.exo + ' ' + x.c + ' × ' + x.r + ' (RPE ' + x.rpe + ') : dernière séance ' + num(S0.best.charge) + ' × ' + num(S0.best.reps) + ' (RPE ' + rp + ')'); });
 }
 
