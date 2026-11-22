@@ -14,27 +14,22 @@ Fatigue faible (2/5)
 Stress faible (2/5)
 3 dernières saisies 2 · dans ta normale (2)
 « Ta normale » = moyenne des 5 semaines précédentes (montre : 4 semaines). Orange seulement à ±1 point (FC : +5 bpm ; sommeil : 1 h de moins).
-DEPUIS TA DERNIÈRE SÉANCE · FULL BODY B (11/11)
+DEPUIS TA DERNIÈRE SÉANCE · FULL BODY A (11/11)
 ⏸
-RDL barre bloqué à 50 kg × 10 depuis 9 séances (atteint le 05/10)
-Pourquoi : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances
-Levier : +4 séries de RDL barre (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Squat bloqué à 105 kg × 10 depuis 12 séances (atteint le 21/09)
+Pourquoi : Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances
+Levier : +4 séries de Squat (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 ⏸
-Développé militaire aux haltères bloqué à 55 kg × 10 depuis 9 séances (atteint le 05/10)
-Pourquoi : Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances
-Levier : +4 séries de Développé militaire aux haltères (4,5 → 8 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
-Voir le détail →
-⏸
-Tirage vertical prise large bloqué à 60 kg × 10 depuis 9 séances (atteint le 05/10)
+Rowing barre bloqué à 60 kg × 10 depuis 14 séances (atteint le 12/09)
 Pourquoi : Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances
-Levier : +1 série de Tirage vertical prise large (9 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Levier : +1 série de Rowing barre (9 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 TON PLAN DE LA SEMAINE
 0 / 3
-Ischios : 10 séries cette semaine · 3 / 10
-Épaules : 8 séries cette semaine · 3 / 8
+Quadriceps : 10 séries cette semaine · 3 / 10
 Dos : 10 séries cette semaine · 6 / 10
+Ischios : 10 séries cette semaine · 3 / 10
 CETTE SEMAINE
 Semaine complète ✓
 2 séances faites : repos, ou une séance en plus si tu veux
@@ -44,7 +39,7 @@ Voir mon entraînement
 LE DÉTAIL
 RÉCOMPENSES ET OBJECTIF
 Objectif semaine 2/2 ✓
-682 pts · +96 cette semaine
+992 pts · +76 cette semaine
 Voir ›
 Ton point du jour
 Mettre à jour ›
@@ -74,36 +69,33 @@ LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
 Ajuste le tir
-1 exo en progrès (dont 1 record) · 5 bloqués
+5 bloqués
 CE QUE NOVALYZ LIT
-Ta période de comparaison (les 4 semaines précédentes) contient une pause de 14 jours : l'évolution de ton volume n'est pas comparable pour l'instant.
+Volume stable sur 4 semaines (+2%).
 Régularité au rendez-vous (2/2 séances cette semaine).
-★
-Records : Développé couché barre 80 × 8
-charge (ou reps à charge égale) battue · 10 derniers jours
 ⏸
-Bloqué : RDL barre 50 × 10 depuis 9 séances (atteint le 05/10) · Développé militaire aux haltères 55 × 10 depuis 9 séances (atteint le 05/10) · +3 autres
-Pourquoi (RDL barre) : Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances
-Levier : +4 séries de RDL barre (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
+Bloqué : Squat 105 × 10 depuis 12 séances (atteint le 21/09) · Rowing barre 60 × 10 depuis 14 séances (atteint le 12/09) · +3 autres
+Pourquoi (Squat) : Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances
+Levier : +4 séries de Squat (4,5 → 10 séries/sem). Et sur ta dernière série, va jusqu'à RPE 9 : tu t'arrêtes avec ≈ 2 reps en réserve.
 Voir le détail →
 même charge, reps qui ne montent plus
 TON PLAN DE LA SEMAINE
 0 / 3 fait
 1
+Quadriceps : 10 séries cette semaine · 3 / 10
+Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices de quadriceps comptent (ex. +4 séries de Squat, idéalement sur 2 séances).
+2
+Dos : 10 séries cette semaine · 6 / 10
+Moyenne 9 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices de dos comptent (ex. +1 série de Rowing barre).
+3
 Ischios : 10 séries cette semaine · 3 / 10
 Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices d'ischios comptent (ex. +4 séries de RDL barre, idéalement sur 2 séances).
-2
-Épaules : 8 séries cette semaine · 3 / 8
-Moyenne 4,5 séries/sem sur 4 semaines, ton minimum 8. Tous tes exercices d'épaules comptent (ex. +4 séries de Développé militaire aux haltères, idéalement sur 2 séances).
-3
-Dos : 10 séries cette semaine · 6 / 10
-Moyenne 9 séries/sem sur 4 semaines, ton minimum 10. Tous tes exercices de dos comptent (ex. +1 série de Tirage vertical prise large).
 Ce sont des propositions : c'est toi qui choisis. Calculées sur tes séances jusqu'à dimanche ; chacune se coche toute seule quand ta séance la réalise.
 TES SAISIES · 100/100
 100
 COMPLET
 ✓
-Base de comparaison (6 séances avant)
+Base de comparaison (12 séances avant)
 25/25
 ✓
 Profondeur (12 séances)
@@ -144,21 +136,21 @@ Cibles min-optimum du moteur. En cours de semaine, un muscle n'est signalé (ora
 TA FORCE ESTIMÉE · 6 SEMAINES
 Développé couché barre
 sur 9 séances
-+13 %
++12 %
 Squat
-sur 9 séances · bloqué depuis 7 séances
-+4,9 %
-RDL barre
-sur 9 séances · bloqué depuis 9 séances
-0 %
-Développé militaire aux haltères
-sur 9 séances · bloqué depuis 9 séances
-0 %
-Tirage vertical prise large
-sur 9 séances · bloqué depuis 9 séances
+sur 9 séances · bloqué depuis 12 séances
 0 %
 Rowing barre
-sur 9 séances · bloqué depuis 9 séances
+sur 9 séances · bloqué depuis 14 séances
+0 %
+RDL barre
+sur 9 séances · bloqué depuis 13 séances
+0 %
+Développé militaire aux haltères
+sur 9 séances · bloqué depuis 13 séances
+0 %
+Tirage vertical prise large
+sur 9 séances · bloqué depuis 13 séances
 0 %
 Force estimée = charge × reps + les reps qu'il te restait (10 − RPE). Un même 80 kg × 8 compte plus à RPE 7 qu'à RPE 9. Repère, pas un test de 1RM.
 Voir l'analyse détaillée (fréquence, intensité, force) →
@@ -172,17 +164,17 @@ Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). L
 CETTE SEMAINE
 ?
 TONNAGE MOYEN
-5,7t / séance
+5,6t / séance
 SÉANCES
 2
 SÉRIES TOTALES
 18
 RÉPÉTITIONS
-168
+165
 RPE MOYEN DES SÉRIES
 8/10
 RECORDS BATTUS
-1
+0
 EFFORT DES SÉANCES (RPE)
 ?
 sur cette semaine
@@ -192,13 +184,13 @@ VOLUME MUSCULAIRE
 cette semaine · séries
 Dos
 6 séries · Sous-MEV
-Ischio
-3 séries · Sous-MEV
-Epaule
-3 séries · Sous-MEV
 Quadriceps
 3 séries · Sous-MEV
 Pectoraux
+3 séries · Sous-MEV
+Ischio
+3 séries · Sous-MEV
+Epaule
 3 séries · Sous-MEV
 PAS ENCORE TRAVAILLÉS CETTE SEMAINE
 Fessier (hors programme)
@@ -233,16 +225,16 @@ Ratio de séries entre groupes opposés sur la période. Vise ~50/50.
 RECORDS PERSONNELS
 Squat
 105 kg
-12/10/2026
+21/09/2026
 Développé couché barre
-80 kg
-09/11/2026
-Tirage vertical prise large
-60 kg
-05/10/2026
+85 kg
+07/11/2026
 Rowing barre
 60 kg
-03/10/2026
+12/09/2026
+Tirage vertical prise large
+60 kg
+14/09/2026
 == Forme ==
 AUJOURD'HUI
 80
@@ -257,15 +249,15 @@ Charge & fraîcheur
 ?
 Frais
 Frais
-+22% de fraîcheur
++7% de fraîcheur
 Tu es reposé — bon moment pour pousser.
 fatigue
 équilibre
 frais
-Forme de fond 2 875
-Fatigue récente 2 253
+Forme de fond 2 633
+Fatigue récente 2 448
 En unités de charge (tonnage : charge × répétitions) : seul leur rapport compte, c'est la fraîcheur ci-dessus.
-ACWR 0,97 · indice secondaire (à interpréter avec prudence)
+ACWR 1,06 · indice secondaire (à interpréter avec prudence)
 Ressenti & bien-être
 7 derniers jours · questionnaire du jour
 TON RESSENTI · 7 DERNIERS JOURS
@@ -365,11 +357,8 @@ Tendances
 Historique
 RÉGULARITÉ
 ?
-objectif 2/sem · depuis ta 1re séance (7 sem.)
+objectif 2/sem · depuis ta 1re séance (10 sem.)
 obj. 2
-0
-0
-0
 0
 0
 1
@@ -378,12 +367,15 @@ obj. 2
 3
 3
 3
+3
+3
+3
 2
-🔥 6
+🔥 9
 SÉRIE À L'OBJECTIF
-6/7
+9/10
 SEM. À L'OBJECTIF
-2,6
+2,7
 SÉANCES/SEM. MOY.
 1 barre = séances de la semaine (2 le même jour = 2) · vert objectif atteint · orange en dessous · rouge semaine vide · gris = avant ta 1re séance.
 👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.
@@ -398,15 +390,15 @@ TONNAGE SOULEVÉ
 ?
 par semaine · ce mois-ci
 Tonnage
-11,4 t
-15,8
-14,7
-13,6
-12,5
-11,4
+11,2 t
+17,9
+16,2
+14,6
+12,9
+11,2
 t
-15,8
-11,4 t
+17,9
+11,2 t
 2/11
 9/11
 Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). Chaque point = le total d'une semaine. La courbe qui monte = plus de volume soulevé.
@@ -414,22 +406,21 @@ EXERCICES EN PROGRÈS
 ?
 par semaine · ce mois-ci
 En progrès
-2 exos
+0 exos
 2
 1,5
 1
 0,5
 0
 exos
-0
-2 exos
+2
+0 exos
 2/11
 9/11
 Sur la période : 2 progrès sur 15 exercices réalisés (un exercice compte à chaque séance où tu le fais). Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».
 CE QUI BOUGE
 Tonnage 28j vs 28j précédents
-non représentatif : pause de 14 jours dans la période précédente
-▲ +106%
+▲ +2%
 Régularité (séances/sem.)
 2
 RPE moyen (global)
@@ -439,13 +430,13 @@ FRÉQUENCE PAR MUSCLE
 ce mois-ci
 Dos
 2,9×/sem
-Epaule
-1,8×/sem
-Ischio
-1,8×/sem
 Pectoraux
-1,2×/sem
+1,8×/sem
 Quadriceps
+1,8×/sem
+Epaule
+1,2×/sem
+Ischio
 1,2×/sem
 Jours où le muscle est travaillé en principal, ramenés à la semaine (12 jours mesurés). Pour l'hypertrophie, viser ≥ 2×/semaine par muscle.
 RÉPARTITION D'INTENSITÉ

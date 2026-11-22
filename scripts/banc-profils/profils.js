@@ -35,7 +35,7 @@ const PROFILS = {
   // 2. Intermédiaire qui oscille (cas « John ») : squat 105 × 9-10 depuis 6 séances, couché qui monte vraiment.
   intermediaire_plateau() {
     const st = base('2'); athlete(st, { annees: 5 }); programme(st);
-    const jours = [40, 38, 35, 33, 31, 28, 26, 24, 21, 19, 17, 14, 12, 10, 7, 5, 3, 1];
+    const jours = [61, 59, 56, 54, 52, 49, 47, 45, 42, 40, 38, 35, 33, 31, 28, 26, 24, 21, 19, 17, 14, 12, 10, 7, 5, 3, 1];
     jours.forEach((d, k) => {
       const g = k % 2 ? 'B' : 'A';
       if (g === 'A') seance(st, d, 'Full body A', [['Squat', 'Quadriceps', trois(k < 2 ? 100 : 105, k < 2 ? 8 : (k % 4 === 0 ? 10 : 9), 7.5)], ['Développé couché barre', 'Pectoraux', trois(70 + Math.floor(k / 4) * 2.5, 8, 7.5)], ['Rowing barre', 'Dos', trois(60, 10, 7.5)]]);

@@ -52,7 +52,7 @@ const ymd = (d) => A.fmtYMD(d);
   add('Dev', 20, [[80, 3, 10]]); add('Dev', 13, [[80, 2, 10]]); add('Dev', 6, [[80, 1, 10], [70, 5, 10]]);           // sous la fourchette
   add('Tir', 14, [[70, 8, 8]]); add('Tir', 2, [[75, 8, 8]]);                                                        // record
   add('Curl', 19, [[25, 10, 8]]); add('Curl', 12, [[20, 10, 8]]); add('Curl', 5, [[20, 11, 8]]);                    // progresse (reps, sous le record de 25 kg)
-  add('Squat', 34, [[100, 8, 8]]); add('Squat', 20, [[100, 8, 8]]); add('Squat', 6, [[100, 8, 8]]);               // bloqué
+  add('Squat', 48, [[100, 8, 8]]); add('Squat', 27, [[100, 8, 8]]); add('Squat', 6, [[100, 8, 8]]);               // bloqué
   add('Rowing', 12, [[60, 10, 8]]); add('Rowing', 4, [[55, 8, 8]]);                                                  // recule
   const prog = A.buildProgressionParExo(perfs);
   const lignes = [{ exercice: 'Dev', reps_mini: 8, reps_max: 12 }];

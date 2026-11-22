@@ -65,7 +65,7 @@ Plan 0/3 fait · +2 autres actions
 ›
 AI
 Athlète intermediaire_plateau
-RDL barre : bloqué · +4 séries de RDL barre
+Squat : bloqué · +4 séries de Squat
 Plan 0/3 fait · +2 autres actions
 ›
 AR
@@ -191,13 +191,12 @@ Athlète coach_sans_propositions
 Records : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +2 autres
 AI
 Athlète intermediaire_plateau
-■ 5 bloqués ▼ 0 recule ★ 1 record
-Bloqués : RDL barre, Développé militaire aux haltères, Tirage vertical prise large, Squat · +1 autre
-Record : Développé couché barre
+■ 5 bloqués ▼ 0 recule
+Bloqués : Squat, Rowing barre, RDL barre, Développé militaire aux haltères · +1 autre
 AR
 Athlète reprise_apres_pause
-■ 6 bloqués ▼ 0 recule
-Bloqués : Squat, Développé couché barre, Rowing barre, RDL barre · +2 autres
+■ 3 bloqués ▼ 0 recule
+Bloqués : Squat, Développé couché barre, Rowing barre
 BIEN-ÊTRE
 dernier ressenti · comparé à sa normale
 AD
@@ -332,7 +331,7 @@ Athlète coach_sans_propositions
 +100 % vs 3 sem.
 AI
 Athlète intermediaire_plateau
-9 · 27 · 27 · 27 · 27 · 27
+27 · 27 · 27 · 27 · 27 · 27
 pas de hausse brutale
 AS
 Athlète sous_fourchette
@@ -394,13 +393,13 @@ Cette semaine
 Glisse une séance pour la déplacer cette semaine · ✕ pour revenir à la semaine type.
 L
 9
-✓ Full body A faite
+✓ Full body B faite
 M
 10
 — repos
 M
 11
-✓ Full body B faite
+✓ Full body A faite
 J
 12
 — repos
@@ -468,37 +467,37 @@ Modifier le programme
 Planifier la semaine
 À DÉCIDER
 VOLUME
-RDL barre : bloqué
-11/11 : 50 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
-Proposé à l'athlète : +4 séries de RDL barre
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Développé militaire aux haltères : bloqué
-11/11 : 55 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
-Proposé à l'athlète : +4 séries de Développé militaire aux haltères
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Tirage vertical prise large : bloqué
-11/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
-Proposé à l'athlète : +1 série de Tirage vertical prise large
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
 Squat : bloqué
-09/11 : 105 kg × 10 à RPE 8,5 (fourchette 6-10) · Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+11/11 : 105 kg × 9 à RPE 8,5 (fourchette 6-10) · Volume quadriceps : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +4 séries de Squat
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
 VOLUME
 Rowing barre : bloqué
-09/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+11/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
 Proposé à l'athlète : +1 série de Rowing barre
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+RDL barre : bloqué
+09/11 : 50 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume ischios : 4,5 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+Proposé à l'athlète : +4 séries de RDL barre
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Développé militaire aux haltères : bloqué
+09/11 : 55 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume épaules : 4,5 séries/sem (minimum 8) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+Proposé à l'athlète : +4 séries de Développé militaire aux haltères
+✎ Modifier dans le programme
+✉ Écrire à Athlète
+Marquer traité
+VOLUME
+Tirage vertical prise large : bloqué
+09/11 : 60 kg × 10 à RPE 8,5 (fourchette 8-12) · Volume dos : 9 séries/sem (minimum 10) · Séries arrêtées à RPE 8 (≈ 2 reps en réserve, souvent plus : on sous-estime sa réserve) sur les 3 dernières séances (4 séances en 2 sem.)
+Proposé à l'athlète : +1 série de Tirage vertical prise large
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité
@@ -507,55 +506,53 @@ CHARGE
 Volume sous le minimum (moyenne des 4 dernières semaines terminées) — Pectoraux 4,5/10 · Quadriceps 4,5/10 · Ischio 4,5/10 · +2 autres
 Répondre
 Marquer traité
-Basé sur 18 séances récentes · dernier ressenti 12/11/2026.
+Basé sur 27 séances récentes · dernier ressenti 12/11/2026.
 Entraînement
-★
-Records — Développé couché barre 80 kg × 8 (charge/reps battus)
 ➜
-Plan de la semaine proposé à l'athlète (0/3 fait) — Ischios : 10 séries cette semaine · Épaules : 8 séries cette semaine · Dos : 10 séries cette semaine (calculé par Novalyz, le même que voit l'athlète)
+Plan de la semaine proposé à l'athlète (0/3 fait) — Quadriceps : 10 séries cette semaine · Dos : 10 séries cette semaine · Ischios : 10 séries cette semaine (calculé par Novalyz, le même que voit l'athlète)
 🔥
 Effort — RPE moyen des séries 8 (7 j) · stable
 SÉRIES DES 7 DERNIERS JOURS
 · cible de l'athlète (min-opt)
 VOIR TOUT →
 Pectoraux
-3 · 10-16
+6 · 10-16
 Dos
 9 · 10-16
 Quadriceps
-3 · 10-16
-Ischio
 6 · 10-16
+Ischio
+3 · 10-16
 Epaule
-6 · 8-14
+3 · 8-14
 5 muscles sous le minimum sur 7 jours. Mêmes cibles que celles de l'athlète ; séries indirectes comptées 0,5.
 CHARGE & ASSIDUITÉ
 8
 RPE 7 J
-16,2 t ▼8% vs 7 j d'avant
+18 t ▲13% vs 7 j d'avant
 TONNAGE 7 J
 2/2
 ASSIDUITÉ
 Habituelle
 CHARGE
-0,97
+1,06
 ACWR (COMPLÉMENT)
 0/3
 PLAN
 11/11
 DERNIÈRE SÉANCE
 Semaines d'affilée avec au moins 1 séance
-7 sem.
+10 sem.
 -- Indicateurs (bloc masqué à l'écran, contrôlé quand même) --
 RÉGULARITÉ
 2/2
 séances / objectif
 CHARGE
 Habituelle
-ACWR 0,97 · indice complémentaire
+ACWR 1,06 · indice complémentaire
 DERNIÈRE SÉANCE
 11/11/2026
-Full body B · 9 séries
+Full body A · 9 séries
 PLAN
 0/3
 fait cette semaine
@@ -1328,27 +1325,6 @@ VOLUME
 Rowing barre : bloqué
 02/11 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 5,3 séries/sem (minimum 10) (4 séances en 3 sem.)
 Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Rowing barre (5,3 → 10 séries/sem). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-RDL barre : bloqué
-29/10 : 60 kg × 9 à RPE 9 (fourchette 8-12) · Volume ischios : 2,3 séries/sem (minimum 10) · Travaillé 0,8×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de RDL barre (2,3 → 10 séries/sem), ou répartis ischios sur 2 séances dans la semaine (0,8×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Développé militaire aux haltères : bloqué
-29/10 : 70 kg × 9 à RPE 9 (fourchette 8-12) · Volume épaules : 2,3 séries/sem (minimum 8) · Travaillé 0,8×/sem (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « au choix — +4 séries de Développé militaire aux haltères (2,3 → 8 séries/sem), ou répartis épaules sur 2 séances dans la semaine (0,8×/sem aujourd'hui). »
-✎ Modifier dans le programme
-✉ Écrire à Athlète
-Marquer traité
-VOLUME
-Tirage vertical prise large : bloqué
-29/10 : 80 kg × 9 à RPE 9 (fourchette 8-12) · Volume dos : 5,3 séries/sem (minimum 10) (4 séances en 3 sem.)
-Piste trouvée dans ses données (tu as la main, rien n'est montré à l'athlète) : « +4 séries de Tirage vertical prise large (5,3 → 10 séries/sem). »
 ✎ Modifier dans le programme
 ✉ Écrire à Athlète
 Marquer traité

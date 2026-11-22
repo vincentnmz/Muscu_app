@@ -94,12 +94,12 @@ LECTURE NOVALYZ · ANALYSES
 ?
 Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)
 Ajuste le tir
-6 bloqués
+3 bloqués
 CE QUE NOVALYZ LIT
 Ton volume a baissé (-37% sur 4 semaines).
 Régularité : 0/2 séances cette semaine.
 ⏸
-Bloqué : Squat 60 × 9 depuis 7 séances (atteint le 21/09) · Développé couché barre 70 × 9 depuis 7 séances (atteint le 21/09) · +4 autres
+Bloqué : Squat 60 × 9 depuis 7 séances (atteint le 21/09) · Développé couché barre 70 × 9 depuis 7 séances (atteint le 21/09) · +1 autre
 Pourquoi (Squat) : Volume quadriceps : 3 séries/sem (minimum 10) · Travaillé 1×/sem
 Levier : au choix — +4 séries de Squat (3 → 10 séries/sem), ou répartis quadriceps sur 2 séances dans la semaine (1×/sem aujourd'hui).
 Voir le détail →
@@ -169,13 +169,13 @@ Rowing barre
 sur 5 séances · bloqué depuis 7 séances
 0 %
 RDL barre
-sur 4 séances · bloqué depuis 6 séances
+sur 4 séances
 0 %
 Développé militaire aux haltères
-sur 4 séances · bloqué depuis 6 séances
+sur 4 séances
 0 %
 Tirage vertical prise large
-sur 4 séances · bloqué depuis 6 séances
+sur 4 séances
 0 %
 Force estimée = charge × reps + les reps qu'il te restait (10 − RPE). Un même 80 kg × 8 compte plus à RPE 7 qu'à RPE 9. Repère, pas un test de 1RM.
 Voir l'analyse détaillée (fréquence, intensité, force) →

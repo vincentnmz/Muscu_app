@@ -31,8 +31,8 @@ const eq = (c, n, g) => { if (c) ok++; else { ko++; console.error('  ✗ ' + n +
 
 eq(JSON.stringify(F.N) === JSON.stringify(A.BLOQUE_N_NIVEAU), 'même table « séances identiques avant bloqué » app = serveur', [F.N, A.BLOQUE_N_NIVEAU]);
 
-// 21/11 : « bloqué » exige un plateau d'au moins 28 jours → séances espacées de 2 × n jours.
-const D = (n) => new Date(Date.UTC(2026, 10, 12) - 2 * n * 864e5).toISOString().slice(0, 10);
+// 21-22/11 : « bloqué » exige un plateau de 28 / 42 / 56 jours selon le niveau → séances espacées de 3 × n jours.
+const D = (n) => new Date(Date.UTC(2026, 10, 12) - 3 * n * 864e5).toISOString().slice(0, 10);
 const nowT = Date.UTC(2026, 10, 13, 20);
 const perfs = [];
 const add = (exo, sessions) => sessions.forEach(([d, sets]) => sets.forEach(([c, r, rpe], i) => perfs.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe, serie: i + 1 })));
@@ -51,12 +51,12 @@ for (const niv of ['debutant', 'intermediaire', 'avance', 'expert']) {
 // 21/11 (porteur : « bloqué arrive très vite ») : plateau d'au moins 14 jours, app ET serveur.
 {
   const pf = []; const ad = (exo, ss) => ss.forEach(([d, c, r]) => [1, 2].forEach((s) => pf.push({ date: D(d), exercice: exo, charge: c, reps: r, rpe: 8, serie: s })));
-  ad('Semaine', [[20, 50, 10], [6, 60, 8], [4, 60, 8], [2, 60, 8]]);          // 3 identiques en 8 jours
-  ad('DeuxSem', [[30, 50, 10], [16, 60, 8], [9, 60, 8], [2, 60, 8]]);         // 3 identiques sur 28 jours
+  ad('Semaine', [[20, 50, 10], [6, 60, 8], [4, 60, 8], [2, 60, 8]]);          // 3 identiques en 12 jours
+  ad('DeuxSem', [[30, 50, 10], [16, 60, 8], [9, 60, 8], [2, 60, 8]]);         // 3 identiques sur 42 jours
   const pg = A.buildProgressionParExo(pf);
   const bk = A._rcLectureExos(pg, [], {}, nowT, null, 'intermediaire').bloque.map((x) => x.exo).sort().join(',');
   const fr = F.lecture({ historique: { progression_par_exo: pg }, programme: [], exo_categories: {}, niveau_experience: 'intermediaire' }, nowT).bloque.map((x) => x.exo).sort().join(',');
-  eq(fr === 'DeuxSem' && bk === fr, '3 séances identiques en 8 jours → pas « bloqué » ; sur 28 jours → bloqué (app = serveur)', { fr, bk });
+  eq(fr === 'DeuxSem' && bk === fr, '3 séances identiques en 12 jours → pas « bloqué » ; sur 42 jours (intermédiaire) → bloqué (app = serveur)', { fr, bk });
 }
 eq(A._rcLectureExos(prog, [], {}, nowT).bloque.map((x) => x.exo).sort().join(',') === 'Quatre,Trois', 'niveau inconnu → 3 séances (comme l\'app)');
 // Mail récap : le niveau de l'athlète (getAppData.niveau_experience) est bien transmis.
@@ -65,5 +65,17 @@ const b = A._bilanRecapV2({ perfs, appData, secByExo: {}, musByExo: {} }, 'semai
 eq(b.lecture && b.lecture.bloque.map((x) => x.exo).sort().join(',') === 'Deux,Quatre,Second,Trois', 'mail récap d\'un débutant : même « bloqué » que son app', b.lecture && b.lecture.bloque);
 eq(/_rcLectureExos\([^\n]*d\.niveau_experience\)/.test(fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8')), 'contexte IA : niveau transmis');
 
+// 22/11 (C3) : libellé « Stable » pour avancé / expert, « bloqué » sinon (écrans athlète) ; seuil 4 / 6 / 8 semaines.
+{
+  const G = {}; vm.createContext(G);
+  vm.runInContext(extract(APP, '_bqMot') + '\n' + extract(APP, '_bqMotC') + '\nfunction _lv3Niveau(d) { return (d && d.niveau_experience) || "intermediaire"; }\nthis.m = _bqMot; this.mc = _bqMotC;', G);
+  eq(G.m({ niveau_experience: 'avance' }) === 'stable' && G.m({ niveau_experience: 'expert' }) === 'stable' && G.mc({ niveau_experience: 'expert' }) === 'Stable', 'avancé / expert → « stable »');
+  eq(G.m({ niveau_experience: 'debutant' }) === 'bloqué' && G.m({ niveau_experience: 'intermediaire' }) === 'bloqué' && G.mc({}) === 'Bloqué', 'débutant / intermédiaire → « bloqué »');
+  const pf = []; const ad = (exo, ss) => ss.forEach(([d, c, r]) => [1, 2].forEach((s) => pf.push({ date: new Date(Date.UTC(2026, 10, 12) - d * 864e5).toISOString().slice(0, 10), exercice: exo, charge: c, reps: r, rpe: 8, serie: s })));
+  ad('Plat', [[80, 50, 10], [49, 60, 8], [42, 60, 8], [35, 60, 8], [28, 60, 8], [21, 60, 8], [14, 60, 8], [7, 60, 8]]);   // plateau de 42 jours (49 → 7)
+  const pg = A.buildProgressionParExo(pf);
+  const res = ['debutant', 'intermediaire', 'avance'].map((niv) => F.lecture({ historique: { progression_par_exo: pg }, programme: [], exo_categories: {}, niveau_experience: niv }, nowT).bloque.length + '/' + A._rcLectureExos(pg, [], {}, nowT, null, niv).bloque.length);
+  eq(res.join(' ') === '1/1 1/1 0/0', 'plateau de 42 jours : bloqué débutant et intermédiaire, pas avancé (8 sem) — app = serveur', res);
+}
 console.log(`bloque-regle-unique : ${ok} OK / ${ko} KO`);
 process.exit(ko ? 1 : 0);

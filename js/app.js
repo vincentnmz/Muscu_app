@@ -6645,7 +6645,10 @@ function _ctxAttendu(data) {
 // 20/11 (banc « poids du corps ») : charge 0 = exercice au poids du corps → « 6 reps au poids du corps », jamais « 0 kg × 6 ».
 function _cxr(c, r) { c = Number(c) || 0; return c > 0 ? _cdFmtKg(c) + ' kg × ' + r : r + ' reps au poids du corps'; }
 function _lectureExos(data, nowT) {
-  var BLOQUE_JOURS_MIN = 28;   // 21/11 (porteur) : plateau d'au moins 4 semaines avant « bloqué » (≈ 1 fois/sem par exercice) ; même valeur côté serveur
+  // 22/11 (C3, porteur) : durée minimale du plateau selon le niveau (aucune étude ne fixe ce seuil ; plus on est entraîné, plus la
+  // progression est lente, Rhea 2003) : débutant 4 sem · intermédiaire 6 · avancé / expert 8. Même table côté serveur (BLOQUE_JOURS_NIVEAU).
+  var _nivB = ''; try { _nivB = (typeof _lv3Niveau === 'function') ? _lv3Niveau(data) : ''; } catch (_) {}
+  var BLOQUE_JOURS_MIN = ({ debutant: 28, intermediaire: 42, avance: 56, expert: 56 })[_nivB] || 42;
   // L1 (audit 14/11) — partagé avec le serveur (_rcDepasse / _rcPlateau dans index.ts, même algorithme).
   // pts = séances de l'exercice, la plus récente en [0]. Dépasse les k précédentes : hausse de charge au-dessus de la plus
   // haute récente (ou égale avec plus de reps), ou à charge égale plus de reps qu'aux séances récentes à cette charge.
@@ -6725,8 +6728,8 @@ function _lectureExos(data, nowT) {
     // L1 (14/11) : bloqué = même charge et AUCUNE séance au-dessus du meilleur nombre de reps depuis au moins _NB séances
     // (couvre les oscillations 9-10-9-10), sans progrès secondaire (plus de séries au top / RPE plus bas).
     var n = (pts.length >= Math.max(_NB, 3)) ? _lxPlateau(pts, _progSecondaire) : 0;
-    // 21/11 (porteur : « bloqué arrive très vite ») : le plateau doit couvrir au moins 4 semaines (1re → dernière séance du plateau) ;
-    // 3 séances en 2 ou 3 semaines ne suffisent plus à parler de blocage.
+    // 21-22/11 (porteur : « bloqué arrive très vite ») : le plateau doit couvrir BLOQUE_JOURS_MIN (selon le niveau) entre sa 1re et sa
+    // dernière séance.
     if (n >= _NB && Math.round((pd(pts[0].date) - pd(pts[n - 1].date)) / 864e5) < BLOQUE_JOURS_MIN) n = 0;
     if (n >= _NB) {
       for (var q2 = 2; q2 < _NB; q2++) { if (_progSecondaire(pts[q2 - 1], pts[q2])) return; }
@@ -13530,7 +13533,7 @@ function _refSerie(series, k) {
 //  • Sinon +1 rep sur les séries encore sous le haut de la fourchette.
 //  • RPE ≥ 9 la dernière fois → « consolide » (même charge, mêmes reps).
 //  • Avancé / expert, quand la charge peut monter : choix du jour (charge · charge +30 s
-//    de repos · +1 rep avec +30 s de repos · repos −30 s), bornes de repos par exercice.
+//    de repos · +1 rep avec +30 s de repos ; « repos −30 s » retiré le 22/11), bornes de repos par exercice.
 // RPE non saisi = on ne bloque pas dessus (pas de valeur inventée).
 var _POLY_KW = ['squat', 'pendulum', 'presse', 'soulev', 'rdl', 'hip thrust', 'fente', 'developpe', 'dips', 'traction', 'rowing', 't-bar', 'tirage'];
 var _POLY_EXCL = ['mollet', ' uni', 'trapeze'];
@@ -13678,7 +13681,8 @@ function _progDecision(ctx) {
   //  • SÉRIE PAR SÉRIE : +1 rep si la série était à RPE ≤ seuil (débutant 8, sinon 9) ; au-dessus
   //    (RPE 10 = échec ; débutant dès 9) la série garde charge et reps.
   //  • Charge : toutes les séries au haut de la fourchette — débutant 1 séance à RPE ≤ 8 ;
-  //    intermédiaire et + : 2 séances de suite (ACSM 2009) ou 1 fois à RPE ≤ 7 ; jamais si la
+  //    intermédiaire et + : 2 séances de suite (pratique courante « double progression » ; 22/11 : la référence ACSM 2009
+  //    n'a pas été retrouvée pour ce critère précis) ou 1 fois à RPE ≤ 7 ; jamais si la
   //    dernière fois était à l'échec (RPE 10).
   //  • Garde-fous récupération (Morán-Navarro 2017 : l'échec rallonge la récupération) :
   //    échec 2 séances de suite sur l'exercice → on garde tout, viser RPE 9 ;
@@ -13719,7 +13723,6 @@ function _progDecision(ctx) {
       { id: 'charge', titre: 'Monter la charge', repos: R, ok: true },
       { id: 'charge30', titre: 'Charge + 30 s de repos', repos: plus, ok: plus != null, raison: R == null ? 'repos inconnu' : 'repos maximum atteint' },
       { id: 'rep30', titre: '+1 rep, +30 s de repos', repos: plus, ok: plus != null, raison: R == null ? 'repos inconnu' : 'repos maximum atteint' },
-      { id: 'repos', titre: 'Réduire le repos', repos: moins, ok: moins != null, raison: R == null ? 'repos inconnu' : 'repos minimum atteint' },
     ];
   }
   var cible = function (k, choix) {
@@ -13745,7 +13748,7 @@ function _progDecision(ctx) {
     if (mode === 'charge' || (mode === 'choix' && (c === 'charge' || c === 'charge30')))
       return { charge: _r025(ch + ctx.pas), reps: rmin || rp, repos: (mode === 'choix' && c === 'charge30') ? options[1].repos : R, up: 'charge' };
     if (mode === 'choix' && c === 'rep30') return { charge: ch, reps: rp + 1, repos: options[2].repos, up: 'reps' };
-    if (mode === 'choix' && c === 'repos') return { charge: ch, reps: rp, repos: options[3].repos, up: 'repos' };
+    // 22/11 (C1) : plus d'option « Réduire le repos » — moins de repos = moins de force et de muscle (Schoenfeld 2016, Singer 2024).
     // Série à RPE > seuil (échec ; débutant dès 9) : on la garde telle quelle (01/11).
     if (Number(r.rpe) > seuil) return { charge: ch, reps: rp, repos: R, tenue: true };
     // +1 rep tant qu'on est sous le haut de la fourchette (poids du corps / hors programme : +1 rep)
@@ -13796,7 +13799,7 @@ function _progWhy(d, f, pas) {
   if (d.mode === 'echec') return 'échec (RPE 10) 2 séances de suite : garde ta charge et vise RPE 9 (1 rep en réserve)';
   // 18/11 (vérificateur) : « RPE 10 sur toutes tes séries » alors que deux séries étaient à 9 → on écrit la vraie plage (9-10).
   if (d.mode === 'consolide') return 'RPE ' + String((d.rpeMin != null && d.rpeMin !== d.rpe) ? d.rpeMin + '-' + d.rpe : d.rpe).replace(/\./g, ',') + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
-  if (d.mode === 'bloque') { var av = d.bloque && d.bloque.avant; return 'bloqué depuis ' + d.bloque.n + ' séances : pas de +1 rep forcé, mêmes charges et mêmes reps' + (av ? ' ; ta série à ' + kg(av.charge) + ' kg revient à ≈ ' + av.reps + ' reps' : ''); }
+  if (d.mode === 'bloque') { var av = d.bloque && d.bloque.avant; return (typeof _bqMot === 'function' ? _bqMot() : 'bloqué') + ' depuis ' + d.bloque.n + ' séances : pas de +1 rep forcé, mêmes charges et mêmes reps' + (av ? ' ; ta série à ' + kg(av.charge) + ' kg revient à ≈ ' + av.reps + ' reps' : ''); }
   if (d.mode === 'charge') return 'haut de fourchette atteint → +' + kg(pas) + ' kg';
   if (d.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
   // 18/11 (audit Idris) : le +1 rep vaut pour les séries SOUS le haut de fourchette ; la série affichée (la plus lourde)
@@ -13994,7 +13997,7 @@ function majPlanSeries() {
       + '</div>';
   }
   if (_offNv) { choixHtml = ''; if (dec.mode !== 'vigilance' && dec.mode !== 'deload' && dec.mode !== 'reprise') msg = ''; }   // D2 : garde seulement vigilance / déload / reprise (sécurité, contexte)
-  if (!_offNv && dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
+  if (!_offNv && dec.mode !== 'sous' && dec.mode !== 'reprise' && dec.mode !== 'deload') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + _bqMotC(dernierAppData) + ' depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
   var sg = document.getElementById('exo-actuel-suggestion');
   if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + (!_offNv && typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
@@ -16396,6 +16399,9 @@ function _blocageCtx(data, exo) {
   var dg = null; try { dg = (typeof _lv3Diag === 'function') ? _lv3Diag(data || dernierAppData, exo, 'bloque', Date.now()) : null; } catch (e) {}
   return { n: b.n, avant: (dg && dg.avant) || null };
 }
+// 22/11 (C3, porteur) : avancé / expert → « stable » (un plateau long est fréquent à ce niveau, pas une alarme) ; sinon « bloqué ».
+function _bqMot(data) { var n = ''; try { n = (typeof _lv3Niveau === 'function') ? _lv3Niveau(data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null)) : ''; } catch (e) {} return (n === 'avance' || n === 'expert') ? 'stable' : 'bloqué'; }
+function _bqMotC(data) { var m = _bqMot(data); return m.charAt(0).toUpperCase() + m.slice(1); }
 function _bqRefTxt(x) { return (x && x.dRef) ? ' (atteint le ' + x.dRef + ')' : ''; }   // 21/11 : séance de référence d'un blocage
 function _blocageInfo(data, exo) {
   try { var L = _lectureExos(data || dernierAppData, Date.now()); return (L.bloque || []).filter(function (x) { return x.exo === exo; })[0] || null; } catch (e) { return null; }
@@ -16505,7 +16511,7 @@ function _maLectureNovalyzBloc(data) {
   if (L.records.length) cls.push({ ic: '★', col: '#00A854', html: '<b>Records</b> : ' + L.records.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r; }).join(' · ') + plus(L.records, 3), src: 'charge (ou reps à charge égale) battue · 10 derniers jours' });
   if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.why ? _maE(x.why) : x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
   L.sous.slice(0, 3).forEach(function (x) { cls.push({ ic: '!', col: '#DC3545', html: '<b>Sous ta fourchette</b> : ' + _maE(x.exo) + ' ' + x.hist.map(function (h) { return kg(h.c) + ' × ' + h.r; }).join(' → ') + ' (RPE ' + x.rpe + ')', src: 'cible ' + x.rmin + '-' + x.rmax + ' reps · majorité des séries en dessous' }); });
-  if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>Bloqué</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + (Number(x.c) > 0 ? kg(x.c) + ' × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x); }).join(' · ') + plus(L.bloque, 2), src: 'même charge, reps qui ne montent plus' });
+  if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>' + _bqMotC(data) + '</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + (Number(x.c) > 0 ? kg(x.c) + ' × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x); }).join(' · ') + plus(L.bloque, 2), src: 'même charge, reps qui ne montent plus' });
   if (L.recule.length) cls.push({ ic: '▼', col: '#E07800', html: '<b>Recule</b> : ' + L.recule.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c1) + ' × ' + x.r1 + ' → ' + kg(x.c0) + ' × ' + x.r0; }).join(' · '), src: 'charge et reps en baisse' });
   if ((L.attendu || []).length) cls.push({ ic: '•', col: '#8B96B0', html: '<b>Baisse attendue (' + _maE(L.ctx) + ')</b> : ' + L.attendu.slice(0, 3).map(function (x) { return _maE(x.exo); }).join(' · ') + plus(L.attendu, 3), src: 'contexte de performance déclaré : pas compté comme une régression' });
   // Lecture v3 (02/11) : « Pourquoi » + levier sous chaque exercice qui coince (rappel de la carte d'Évolution).
@@ -16515,7 +16521,7 @@ function _maLectureNovalyzBloc(data) {
     cls.forEach(function (c) {
       var t = c.html || '';
       if (/^<b>Sous ta fourchette<\/b>/.test(t)) { var ex1 = (L.sous.filter(function (x) { return t.indexOf(_maE(x.exo)) >= 0; })[0] || {}).exo; if (ex1) c.html += _pq(ex1); }
-      else if (/^<b>Bloqué<\/b>/.test(t) && L.bloque[0]) c.html += _pq(L.bloque[0].exo, L.bloque.length > 1);
+      else if (/^<b>(Bloqué|Stable)<\/b>/.test(t) && L.bloque[0]) c.html += _pq(L.bloque[0].exo, L.bloque.length > 1);
       else if (/^<b>Recule<\/b>/.test(t) && L.recule[0]) c.html += _pq(L.recule[0].exo, L.recule.length > 1);
     });
     _dgs.filter(function (d) { return d.kind === 'effort'; }).slice(0, 1).forEach(function (d) {
@@ -16962,7 +16968,7 @@ function _maProgExo(data) {
     [['records', '#00A854', '★', function (x) { return '<b>Record</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' le ' + _maE(x.date); }],
      ['progresse', '#00A854', '▲', function (x) { return '<b>En progrès</b> : ' + (x.why ? _maE(x.why) : _cdFmtKg(x.c1) + ' × ' + x.r1 + ' → ' + _cdFmtKg(x.c0) + ' × ' + x.r0); }],
      ['sous', '#DC3545', '!', function (x) { return '<b>Sous ta fourchette ' + x.rmin + '-' + x.rmax + '</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ','); }],
-     ['bloque', '#E07800', '⏸', function (x) { return '<b>Bloqué</b> à ' + (Number(x.c) > 0 ? _cdFmtKg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x); }],
+     ['bloque', '#E07800', '⏸', function (x) { return '<b>' + _bqMotC(data) + '</b> à ' + (Number(x.c) > 0 ? _cdFmtKg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x); }],
      ['recule', '#DC3545', '▼', function (x) { return '<b>En recul</b> par rapport à la fois d\'avant'; }]].some(function (k) {
       var it = (_L[k[0]] || []).filter(function (x) { return x.exo === sel; })[0];
       if (it) _st = { col: k[1], ic: k[2], html: k[3](it) };
@@ -16985,7 +16991,7 @@ function _maProgExo(data) {
           + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
           + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
           + '<div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.45">' + _maE(_why) + '</div>'
-          + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>' + (_tc.mode === 'bloque' ? 'Levier' : 'Bloqué depuis ' + b.n + ' séances') + '</b> — ' + _maE(_leviersBlocage(data, sel)) + '</div>' : ''; })()
+          + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>' + (_tc.mode === 'bloque' ? 'Levier' : _bqMotC(data) + ' depuis ' + b.n + ' séances') + '</b> — ' + _maE(_leviersBlocage(data, sel)) + '</div>' : ''; })()
           + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Sur ta série la plus lourde, même calcul que l\'écran de saisie. C\'est toi qui décides.</div>' + (typeof _lv3InfoBtn === 'function' ? _lv3InfoBtn() : '') + '</div>';
       }
     }
@@ -17189,7 +17195,7 @@ function _maProgSea(data) {
         // 21/11 (cohérence) : mieux que la fois d'avant mais encore sous le meilleur du plateau → l'exercice est « Bloqué »
         // partout ailleurs ; on ne l'affiche plus « progression » ici (dernière séance de l'exercice seulement).
         var _bq = up && _bqSea[e.nom] && (occ[e.nom] || []).length && occ[e.nom][occ[e.nom].length - 1].date === s.date ? _bqSea[e.nom] : null;
-        if (_bq) { col = 'var(--text-muted)'; deltaSub = 'sous ton meilleur'; _whyE = (_whyE ? _whyE + ' · ' : '') + 'meilleur récent ' + _cdFmtKg(_bq.c) + ' kg × ' + _bq.r + ' : toujours bloqué depuis ' + _bq.n + ' séances'; }
+        if (_bq) { col = 'var(--text-muted)'; deltaSub = 'sous ton meilleur'; _whyE = (_whyE ? _whyE + ' · ' : '') + 'meilleur récent ' + _cdFmtKg(_bq.c) + ' kg × ' + _bq.r + ' : toujours ' + _bqMot(data) + ' depuis ' + _bq.n + ' séances'; }
         if (dn && attendu) { col = 'var(--text-muted)'; deltaSub = 'baisse attendue'; nAtt++; }
         else if (_bq) nEq++;
         else if (up) nUp++; else if (dn) nDn++; else nEq++;
@@ -19218,7 +19224,7 @@ function _tjDetailUneSeance(data, sd, titre) {
     if (f('records')) return '<span style="color:var(--tj-good);font-weight:800">★ record</span>';
     if (f('progresse')) return '<span style="color:var(--tj-good);font-weight:800">▲ progrès</span>';
     if (f('sous')) return '<span style="color:#DC3545;font-weight:800">! sous fourchette</span>';
-    if (f('bloque')) return '<span style="color:#E07800;font-weight:800">⏸ bloqué</span>';
+    if (f('bloque')) return '<span style="color:#E07800;font-weight:800">⏸ ' + _bqMot(data) + '</span>';
     return '';
   };
   var rows = (sd.exercices || []).map(function (e) {
@@ -19281,7 +19287,7 @@ function _tjCiblesHtml(rows) {
   var why = function (x) {
     if (x.mode === 'premier') return '1re fois : trouve ta charge de travail';
     var dg = _dgT[String(x.exo).trim()];
-    if (x.bloqueN) return 'bloqué depuis ' + x.bloqueN + ' séances : ' + (dg ? dg.levier : 'repos +30 s, plus tôt dans la séance, ou persiste à RPE 8-9 · indicatif');
+    if (x.bloqueN) return _bqMot() + ' depuis ' + x.bloqueN + ' séances : ' + (dg ? dg.levier : 'repos +30 s, plus tôt dans la séance, ou persiste à RPE 8-9 · indicatif');
     return x.why || '';
   };
   var planTag = function (x) {
@@ -19320,7 +19326,7 @@ function _tjDepuisDerniere(data, L) {
   var _dgA = {}; try { (typeof _lv3Diags === 'function' ? _lv3Diags(data) : []).forEach(function (d) { _dgA[d.exo] = d; }); } catch (e) {}
   var _pqA = function (exo) { var d = _dgA[exo]; return d ? (_lv3PourquoiHtml(d) + '<div onclick="maVoirPourquoi(\'' + _maOnc(exo) + '\')" style="font-size:11px;color:var(--accent);font-weight:700;cursor:pointer;margin-top:3px">Voir le détail →</div>') : ''; };
   sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + String(x.rpe).replace('.', ',') + _pqA(x.exo))); });
-  blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + (Number(x.c) > 0 ? kg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x) + _pqA(x.exo))); });
+  blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> ' + _bqMot(data) + ' à ' + (Number(x.c) > 0 ? kg(x.c) + ' kg × ' + x.r : x.r + ' reps au poids du corps') + ' depuis ' + x.n + ' séances' + _bqRefTxt(x) + _pqA(x.exo))); });
   if (!rows.length) return '';
   // 20/11 (banc « deux séances le même jour ») : les records peuvent venir des 2 séances du jour → on les nomme toutes.
   var _noms = []; Object.keys(prog).forEach(function (k) { var p0 = prog[k] && prog[k][0]; if (p0 && p0.date === lastD && p0.seance && _noms.indexOf(p0.seance) < 0) _noms.push(p0.seance); });

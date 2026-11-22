@@ -4,6 +4,22 @@
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
 > Dernière mise à jour : **21 nov. 2026** (campagne « fiabilité muscu à 100 % » — bloc juste en dessous ; l'historique plus ancien suit).
 
+## ▶ 21-22/11 — LEVIERS et « POURQUOI » confrontés aux études : EN PROD (index.ts v281 vérifié) · AAB n° 33 livré
+
+- Audits : `docs/audit-leviers-science-2026-11-21.md` (12 leviers) et `docs/audit-pourquoi-science-2026-11-21.md` (12 constats),
+  références vérifiées par recherche (Schoenfeld, Singer, Robinson, Refalo, Pelland, Baz-Valle, Moesgaard, Kassiano, Nunes, Wilk,
+  Morán-Navarro, Halperin…). Règle : un conseil s'appuie sur une étude, sinon il est présenté comme logique d'entraînement.
+- **Décisions porteur codées** : « bloqué » = plateau d'au moins **4 semaines** (app + serveur) · « fiable » = ≥ 4 séances sur ≥ 14 j ·
+  option repos selon le type d'exercice (poly-articulaire < 2 min, isolation / non classé < 90 s, plafond 3 min) · « aucune cause
+  visible » par niveau (+2 séries/sem si < 20, exercice en début de séance, tempo « à tester » et variante pour avancé/expert ; plus de
+  « change de fourchette ») · réserve → RPE 9 · effort en hausse sans « −10 % » · Q1 seuil effort +1 (une séance) / +0,5 (moyenne) ·
+  Q2 fréquence en cause seulement si volume aussi bas · Q3 repos raccourci seulement sous le seuil utile · Q4 réserve « souvent plus » ·
+  Q5 « pas en cause » → « rien d'anormal ».
+- Vérifié : npm test 124 · banc 25 · parcours 53 · 9 athlètes réels 0 écart. Prod `main` 6cf2e71, Supabase v281 = repo.
+- AAB Play Store n° 33 (prod 6cf2e71) construit et envoyé au porteur (`livrables/aab-33/`, hors git) — à déposer en test interne.
+- Reste dans la même veine : confronter aussi aux études les **règles de progression de la cible en séance** (charge à RPE ≤ 8,
+  +1 rep, consolidation, échec, reprise après 21 j, déload) et les **recommandations** d'Aujourd'hui / Résumé.
+
 ## ▶ 20-21/11 — FIABILITÉ MUSCU « À 100 % » : terminée, EN PROD (multisport reporté)
 
 **Méthode** (à garder) : chaque chiffre / phrase affiché est recalculé indépendamment depuis les séries brutes par le
@@ -29,7 +45,7 @@ pic de charge non encaissé → aucun ajout conseillé, cardio compris (Croisé)
 Coach en présentiel corrigé (date vide, brouillon, file d'attente). Boutique : double achat simultané impossible (serveur).
 
 **Reste (hors code ou plus tard)** : multisport (reporté par le porteur) · observation des vrais comptes / tests utilisateurs (décision
-du 14/11) · pertinence sportive des règles (expertise porteur) · IA en prod après pilote + `privacy.html` · AAB Play Store ·
+du 14/11) · pertinence sportive des règles (expertise porteur) · IA en prod après pilote + `privacy.html` · AAB Play Store (n° 33 livré le 21/11) ·
 récompenses adaptées à chaque athlète · chantiers de fond (`docs/chantiers-futurs/`).
 
 ## ▶ 15/11 — IA morpho + chat en Opus 5.5 : EN PRÉPROD pour le pilote (gel levé pour cette seule fonctionnalité)
