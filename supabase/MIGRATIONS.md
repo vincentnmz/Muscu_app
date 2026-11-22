@@ -88,3 +88,9 @@ Lire l'état : `select jobname, schedule, active from cron.job;`
 - `cron-resumes.sql` décrit d'anciens jobs (hebdo/mensuel) qui n'existent plus en prod → archive, ne pas relancer.
 - Données de démo en prod : **marquées `is_demo`** (09/11) et gardées pour les démonstrations ; exclues des alertes push et résumés e-mail automatiques.
 - Table `indicateurs` fourre-tout → sortie progressive de `pref` / `alerte_*` — audit P1.
+
+### 22/11/2026 — PRÉPROD UNIQUEMENT : rafraîchissement nocturne des comptes démo
+- Fichier : `supabase/preprod-demo-rafraichir.sql` (hors `migrations/` : ne doit **jamais** être appliqué en prod ; garde-fou interne).
+- Effet : fonction `demo_rafraichir_dates()` + tâche pg_cron `demo-rafraichir-dates` (03:17 UTC) — avance les dates des comptes démo
+  (John, Lucas) d'un nombre entier de semaines dès que leur dernière séance a plus d'une semaine, pour que la démo reste « active ».
+- Appliqué sur la préprod (vqxkeqjaqkkmtzxvqvhi) le 22/11/2026, vérifié (tâche active, dernière séance démo 21/11).
