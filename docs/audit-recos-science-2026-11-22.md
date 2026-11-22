@@ -55,3 +55,5 @@ décision Novalyz (−8 % / +5 % volume, +0,7 RPE, 60 % de l'objectif). Le seuil
 - Schoenfeld 2015 (durée de rep) — https://pubmed.ncbi.nlm.nih.gov/25601394/ · Kassiano 2022 — https://pubmed.ncbi.nlm.nih.gov/35438660/
 - Bell 2023 — https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/ · Schoenfeld 2016 (repos) — https://pubmed.ncbi.nlm.nih.gov/26605807/
 - Robinson 2024 — https://rke.abertay.ac.uk/en/publications/exploring-the-dose-response-relationship-between-estimated-resist/ · Pelland 2024 — https://sportrxiv.org/index.php/server/preprint/view/460
+
+## Décision porteur (22/11) : R1 à R4 acceptées et codées (serveur).

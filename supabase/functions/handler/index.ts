@@ -2278,7 +2278,7 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const progOk = tonEvol != null && tonEvol >= 5
   let reco: any
   if (contrainte) reco = { texte: `Allège temporairement le volume ou l'intensité 1 à 2 séances pour laisser la récupération remonter.`, priorite: 'haute' }
-  else if (regFaible) reco = { texte: `Vise ${seancesPrev} séances/semaine : la régularité est le 1er moteur de progression.`, priorite: 'moyenne' }
+  else if (regFaible) reco = { texte: `Vise ${seancesPrev} séances/semaine : c'est ce qui te permet d'atteindre ton volume par muscle, le 1er levier de progression.`, priorite: 'moyenne' }
   // État en vigilance : on NE dit PAS « augmente » — on s'aligne sur le verdict.
   else if (etatVigilance && progOk) reco = { texte: `Ta progression est cohérente, mais ton état du jour appelle à la vigilance : garde la charge sans l'augmenter aujourd'hui et priorise la récupération ; tu relanceras la surcharge une fois au vert.`, priorite: 'moyenne' }
   else if (etatVigilance) reco = { texte: `Priorise la récupération aujourd'hui (état en vigilance) avant d'augmenter la charge.`, priorite: 'moyenne' }
@@ -2290,6 +2290,8 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   // Le front en affiche un par jour (rotation) → « le mot de Novalyz » tourne.
   // Chaque entrée reste une règle TRACÉE sur l'état mesuré, jamais un chiffre inventé ;
   // on n'ajoute un levier que si sa condition est vraie. (CLAUDE.md §5/§6bis)
+  // 22/11 (R1-R4, docs/audit-recos-science-2026-11-22.md) : plus de « 1er moteur » / « 1er facteur » non établis, exercices
+  // gardés « assez longtemps pour mesurer » (la variation raisonnée reste un levier), pas d'effet promis du tempo.
   const reco_pool: any[] = []
   const pushReco = (t: string, p: string) => { if (t && !reco_pool.some(x => x.texte === t)) reco_pool.push({ texte: t, priorite: p }) }
   // 1) Le levier prioritaire du jour (reco principale déjà calculée).
@@ -2305,7 +2307,7 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   if (sommeilFaible && stressEleve) {
     pushReco(`Sommeil et stress pèsent sur ta récupération en ce moment : vise 7-9 h de sommeil régulier et un temps calme avant de dormir — c'est là que ton corps encaisse la charge d'entraînement.`, 'moyenne')
   } else if (sommeilFaible) {
-    pushReco(`Ton sommeil est en dessous ces jours-ci : vise 7-9 h et des horaires réguliers — c'est le 1er facteur de récupération et de progression.`, 'moyenne')
+    pushReco(`Ton sommeil est en dessous ces jours-ci : vise 7-9 h et des horaires réguliers — le manque de sommeil fait baisser la force et surtout l'endurance de force.`, 'moyenne')
   } else if (stressEleve) {
     pushReco(`Ton stress est élevé ces jours-ci : il freine la récupération. Garde l'entraînement (il aide à décompresser), mais baisse l'intensité si besoin et ménage-toi des temps de pause.`, 'moyenne')
   }
@@ -2334,16 +2336,17 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     if (tonEvol != null && !aBaisse && !progOk) pushReco(`Ton volume est stable : relance la progression en visant +1 rep sur tes exos principaux, puis +2,5 kg une fois le haut de ta fourchette atteint.`, 'moyenne')
     if (tonEvol != null && !aBaisse) pushReco(`Cible un muscle en retard : ajoute 1 à 2 séries par semaine là où ton volume est sous ta cible, pour équilibrer ton développement.`, 'moyenne')
     // 3) Leviers d'AIDE transverses (toujours utiles, non chiffrés → priorité info).
-    //    Philosophie : on ne change PAS d'exercice — on progresse par l'intensité, la
+    //    Philosophie : on garde ses exercices principaux assez longtemps pour mesurer (22/11 : la variation raisonnée
+    //    reste un levier pour les confirmés) — on progresse par l'intensité, la
     //    surcharge progressive, la récupération et la nutrition (demande porteur).
     // Audit 06/11 : seulement si les séries sont loin de l'échec (RPE moyen 28 j < 8) — sinon la reco contredit
     // l'écran (« chaque série va près de l'échec ») pour quelqu'un qui pousse déjà à RPE 8,6.
     const rpeMoy28 = cmp.rpe && cmp.rpe.j28 != null ? Number(cmp.rpe.j28) : null
     if (rpeMoy28 != null && rpeMoy28 > 0 && rpeMoy28 < 8) pushReco(`Mets de l'intensité : tes séries finissent en moyenne à RPE ${String(Math.round(rpeMoy28 * 10) / 10).replace('.', ',')}. Les dernières doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
-    pushReco(`Progresse une variable à la fois et garde les mêmes exercices : d'abord les reps jusqu'au haut de ta fourchette, puis la charge — c'est comme ça qu'on mesure vraiment les progrès.`, 'info')
+    pushReco(`Progresse une variable à la fois et garde tes exercices principaux assez longtemps pour mesurer tes progrès (au moins 4-6 semaines) : d'abord les reps jusqu'au haut de ta fourchette, puis la charge.`, 'info')
     pushReco(`Soigne ta récupération : vise 7-9 h de sommeil et un repos suffisant entre séries (2-3 min sur les gros exercices) pour pousser fort la séance d'après.`, 'info')
     pushReco(`Assure l'apport : assez de protéines (~1,6 à 2 g/kg/jour) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.`, 'info')
-    pushReco(`Soigne l'exécution avant la charge : tempo contrôlé et amplitude complète rendent chaque série plus efficace.`, 'info')
+    pushReco(`Soigne l'exécution avant la charge : amplitude complète et mouvement maîtrisé.`, 'info')
     pushReco(`Enregistre ton RPE à chaque série : plus tes données sont complètes, plus les analyses et les cibles de charge sont justes.`, 'info')
   }
   // Confiance = profondeur réelle des données (nb de séances) + présence d'une base
